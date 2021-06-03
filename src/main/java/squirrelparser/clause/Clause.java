@@ -2,21 +2,22 @@ package squirrelparser.clause;
 
 import java.util.Map;
 
-import squirrelparser.match.MatchResult;
-import squirrelparser.parser.ClauseAndPos;
+import squirrelparser.match.Match;
 import squirrelparser.parser.Parser;
+import squirrelparser.rule.Rule;
 
 public abstract class Clause {
 	public String ruleName;
 	private String toStringCached;
 
-	public abstract MatchResult match(ClauseAndPos clauseAndPos, Parser parser);
+	public abstract Match match(int pos, int rulePos, Parser parser);
 
 	public void setRuleName(String ruleName) {
 		this.ruleName = ruleName;
 	}
 
-	public abstract void replaceRuleRefs(Map<String, Clause> grammar);
+	public void lookUpRuleRefs(Map<String, Rule> rules) {
+	}
 	
 	protected abstract String toStringInternal();
 	

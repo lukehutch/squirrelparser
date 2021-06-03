@@ -1,9 +1,7 @@
 package squirrelparser.clause.terminal;
 
 import squirrelparser.clause.ClauseWithZeroSubClauses;
-import squirrelparser.match.MatchResult;
-import squirrelparser.match.MatchTerminal;
-import squirrelparser.parser.ClauseAndPos;
+import squirrelparser.match.Match;
 import squirrelparser.parser.Parser;
 
 public class Terminal extends ClauseWithZeroSubClauses {
@@ -14,12 +12,12 @@ public class Terminal extends ClauseWithZeroSubClauses {
 	}
 
 	@Override
-	public MatchResult match(ClauseAndPos clauseAndPos, Parser parser) {
-		return clauseAndPos.pos() < parser.input.length() && parser.input.charAt(clauseAndPos.pos()) == chr
-				? new MatchTerminal(clauseAndPos, 1)
-				: MatchResult.NO_MATCH;
+	public Match match(int pos, int rulePos, Parser parser) {
+		return pos < parser.input.length() && parser.input.charAt(pos) == chr ? new Match(this, pos, 1)
+				: Match.NO_MATCH;
 	}
 
+	@Override
 	public String toStringInternal() {
 		String chrStr;
 		switch (chr) {

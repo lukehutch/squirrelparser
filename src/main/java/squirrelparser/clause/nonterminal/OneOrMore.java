@@ -1,14 +1,10 @@
 package squirrelparser.clause.nonterminal;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.ClauseWithOneSubClause;
 import squirrelparser.match.Match;
-import squirrelparser.match.MatchMultiple;
-import squirrelparser.match.MatchResult;
-import squirrelparser.parser.ClauseAndPos;
 import squirrelparser.parser.Parser;
 
 public class OneOrMore extends ClauseWithOneSubClause {
@@ -17,18 +13,16 @@ public class OneOrMore extends ClauseWithOneSubClause {
 	}
 
 	@Override
-	public MatchResult match(ClauseAndPos clauseAndPos, Parser parser) {
-		List<Match> subClauseMatches = null;
-		int currPos = clauseAndPos.pos();
-		for (;;) {
-			var subClauseMatchResult = parser.match(clauseAndPos.pos(), new ClauseAndPos(subClause, currPos));
-			if (subClauseMatchResult == MatchResult.NO_MATCH) {
+	public Match match(int pos, int rulePos, Parser parser) {
+		ArrayList<Match> subClauseMatches = null;
+		for (int currPos = pos;;) {
+			var subClauseMatch = subClause.match(currPos, rulePos, parser);
+			if (subClauseMatch == Match.NO_MATCH) {
 				break;
 			}
 			if (subClauseMatches == null) {
 				subClauseMatches = new ArrayList<>();
 			}
-			var subClauseMatch = (Match) subClauseMatchResult;
 			subClauseMatches.add(subClauseMatch);
 			currPos += subClauseMatch.len;
 			// If subclauseMatch.len == 0, then we have a pathological grammar that will trigger an
@@ -37,10 +31,15 @@ public class OneOrMore extends ClauseWithOneSubClause {
 				break;
 			}
 		}
-		return subClauseMatches == null ? MatchResult.NO_MATCH
-				: new MatchMultiple(clauseAndPos, subClauseMatches.toArray(new Match[subClauseMatches.size()]));
+		if (subClauseMatches == null) {
+			return Match.NO_MATCH;
+		} else {
+			subClauseMatches.trimToSize();
+			return new Match(this, pos, subClauseMatches);
+		}
 	}
 
+	@Override
 	public String toStringInternal() {
 		return subClause + "+";
 	}

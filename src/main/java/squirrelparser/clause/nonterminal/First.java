@@ -3,9 +3,6 @@ package squirrelparser.clause.nonterminal;
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.ClauseWithMultipleSubClauses;
 import squirrelparser.match.Match;
-import squirrelparser.match.MatchFirst;
-import squirrelparser.match.MatchResult;
-import squirrelparser.parser.ClauseAndPos;
 import squirrelparser.parser.Parser;
 
 public class First extends ClauseWithMultipleSubClauses {
@@ -14,17 +11,17 @@ public class First extends ClauseWithMultipleSubClauses {
 	}
 
 	@Override
-	public MatchResult match(ClauseAndPos clauseAndPos, Parser parser) {
-		for (int i = 0; i < subClauses.length; i++) {
-			var subClauseMatchResult = parser.match(clauseAndPos.pos(),
-					new ClauseAndPos(subClauses[i], clauseAndPos.pos()));
-			if (subClauseMatchResult != MatchResult.NO_MATCH) {
-				return new MatchFirst(clauseAndPos, (Match) subClauseMatchResult, i);
+	public Match match(int pos, int rulePos, Parser parser) {
+		for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
+			var subClauseMatch = subClauses[subClauseIdx].match(pos, rulePos, parser);
+			if (subClauseMatch != Match.NO_MATCH) {
+				return new Match(this, pos, subClauseIdx, subClauseMatch);
 			}
 		}
-		return MatchResult.NO_MATCH;
+		return Match.NO_MATCH;
 	}
 
+	@Override
 	public String toStringInternal() {
 		StringBuilder buf = new StringBuilder();
 		buf.append('(');

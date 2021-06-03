@@ -1,11 +1,11 @@
 package squirrelparser.clause.nonterminal;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.ClauseWithMultipleSubClauses;
 import squirrelparser.match.Match;
-import squirrelparser.match.MatchMultiple;
-import squirrelparser.match.MatchResult;
-import squirrelparser.parser.ClauseAndPos;
 import squirrelparser.parser.Parser;
 
 public class Seq extends ClauseWithMultipleSubClauses {
@@ -14,24 +14,23 @@ public class Seq extends ClauseWithMultipleSubClauses {
 	}
 
 	@Override
-	public MatchResult match(ClauseAndPos clauseAndPos, Parser parser) {
-		Match[] subClauseMatches = null;
-		int currPos = clauseAndPos.pos();
-		for (int i = 0; i < subClauses.length; i++) {
-			var subClauseMatchResult = parser.match(clauseAndPos.pos(), new ClauseAndPos(subClauses[i], currPos));
-			if (subClauseMatchResult == MatchResult.NO_MATCH) {
-				return MatchResult.NO_MATCH;
+	public Match match(int pos, int rulePos, Parser parser) {
+		List<Match> subClauseMatches = null;
+		for (int i = 0, currPos = pos; i < subClauses.length; i++) {
+			var subClauseMatch = subClauses[i].match(currPos, rulePos, parser);
+			if (subClauseMatch == Match.NO_MATCH) {
+				return Match.NO_MATCH;
 			}
 			if (subClauseMatches == null) {
-				subClauseMatches = new Match[subClauses.length];
+				subClauseMatches = new ArrayList<>(subClauses.length);
 			}
-			var subClauseMatch = (Match) subClauseMatchResult;
-			subClauseMatches[i] = subClauseMatch;
+			subClauseMatches.add(subClauseMatch);
 			currPos += subClauseMatch.len;
 		}
-		return new MatchMultiple(clauseAndPos, subClauseMatches);
+		return new Match(this, pos, subClauseMatches);
 	}
 
+	@Override
 	public String toStringInternal() {
 		StringBuilder buf = new StringBuilder();
 		buf.append('(');

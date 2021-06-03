@@ -2,7 +2,7 @@ package squirrelparser.clause;
 
 import java.util.Map;
 
-import squirrelparser.clause.nonterminal.RuleRef;
+import squirrelparser.rule.Rule;
 
 public abstract class ClauseWithMultipleSubClauses extends Clause {
 	public final Clause[] subClauses;
@@ -12,19 +12,9 @@ public abstract class ClauseWithMultipleSubClauses extends Clause {
 	}
 
 	@Override
-	public void replaceRuleRefs(Map<String, Clause> grammar) {
+	public void lookUpRuleRefs(Map<String, Rule> rules) {
 		for (int i = 0; i < subClauses.length; i++) {
-			if (subClauses[i] instanceof RuleRef) {
-				var refdRuleTopClause = grammar.get(((RuleRef) subClauses[i]).refdRuleName);
-				if (refdRuleTopClause == null) {
-					throw new IllegalArgumentException("Grammar contains reference to non-existent rule: "
-							+ ((RuleRef) subClauses[i]).ruleName);
-				}
-				subClauses[i] = refdRuleTopClause;
-			} else {
-				// Recurse
-				subClauses[i].replaceRuleRefs(grammar);
-			}
+			subClauses[i].lookUpRuleRefs(rules);
 		}
 	}
 }
