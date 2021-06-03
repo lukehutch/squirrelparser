@@ -43,14 +43,20 @@ public class Rule {
 
 		boolean loop;
 		do {
+			// Try matching this rule's toplevel clause at this position
 			var newMatch = clause.match(pos, /* rulePos = */ pos, parser);
+			if (newMatch != Match.NO_MATCH) {
+				// Record this rule name in the top node of the match hierarchy, if there was a match
+				newMatch.ruleName = ruleName;
+			}
+			// Compare new match to old match in memo table, if any
 			var oldMatch = parser.memoTable.get(ruleAndPos);
 			if (newMatch.isBetterThan(oldMatch)) {
 				// Found a new or improved match for this clause at this position
 				parser.memoTable.put(ruleAndPos, newMatch);
 
-				// Need to match this clause at this position again if this was marked as a cycle entry point
-				// by the same clause being reached again at the same position during recursion
+				// Check if this recursion frame was marked as a cycle start by a lower recursion frame,
+				// and if so, need to loop until match can no longer be improved
 				loop = parser.cycleStart.get(ruleAndPos);
 			} else {
 				// Don't loop if match doesn't improve
@@ -61,13 +67,8 @@ public class Rule {
 		// Remove from visited set once this clause and position has finished recursing
 		parser.cycleStart.remove(ruleAndPos);
 
-		// Get best match so far
-		var bestMatch = parser.memoTable.get(ruleAndPos);
-		if (bestMatch != Match.NO_MATCH) {
-			// Record this rule name in the top node of the match
-			bestMatch.ruleName = ruleName;
-		}
-		return bestMatch;
+		// Return best match so far
+		return parser.memoTable.get(ruleAndPos);
 	}
 
 	@Override
