@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.rule.Rule;
 import squirrelparser.rule.RuleAndPos;
 

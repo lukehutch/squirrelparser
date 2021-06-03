@@ -2,7 +2,7 @@ package squirrelparser.clause.terminal;
 
 import java.util.BitSet;
 
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.StringUtils;
 

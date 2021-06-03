@@ -2,7 +2,7 @@ package squirrelparser.clause.nonterminal;
 
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.Clause.ClauseWithOneSubClause;
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
 public class Optional extends ClauseWithOneSubClause {

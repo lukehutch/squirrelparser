@@ -2,7 +2,7 @@ package squirrelparser.clause;
 
 import java.util.Map;
 
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.rule.Rule;
 

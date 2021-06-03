@@ -3,7 +3,7 @@ package squirrelparser.clause.nonterminal;
 import java.util.Map;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.rule.Rule;
 

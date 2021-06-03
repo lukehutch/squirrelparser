@@ -1,7 +1,7 @@
 package squirrelparser.rule;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
 public class Rule {

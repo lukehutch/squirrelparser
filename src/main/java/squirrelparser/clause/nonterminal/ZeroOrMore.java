@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.Clause.ClauseWithOneSubClause;
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
 public class ZeroOrMore extends ClauseWithOneSubClause {

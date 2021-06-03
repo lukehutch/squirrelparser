@@ -5,7 +5,7 @@ import java.util.List;
 
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.Clause.ClauseWithMultipleSubClauses;
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
 public class Seq extends ClauseWithMultipleSubClauses {

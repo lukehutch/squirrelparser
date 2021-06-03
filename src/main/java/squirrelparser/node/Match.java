@@ -1,4 +1,4 @@
-package squirrelparser.match;
+package squirrelparser.node;
 
 import java.util.Collections;
 import java.util.List;

@@ -1,6 +1,6 @@
 package squirrelparser.clause.terminal;
 
-import squirrelparser.match.Match;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.StringUtils;
 
