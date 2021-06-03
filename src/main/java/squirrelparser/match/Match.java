@@ -5,8 +5,9 @@ import java.util.List;
 
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.nonterminal.First;
+import squirrelparser.clause.nonterminal.OneOrMore;
 import squirrelparser.clause.terminal.Terminal;
-import squirrelparser.utils.Utils;
+import squirrelparser.utils.StringUtils;
 
 public class Match {
 	public final Clause clause;
@@ -120,7 +121,7 @@ public class Match {
 		for (int i = 0; i < indent; i++) {
 			System.out.print("--");
 		}
-		System.out.println(toString() + " : [" + Utils.strEscaped(input.substring(pos, pos + len)) + "]");
+		System.out.println(toString() + " : [" + StringUtils.escapeString(input.substring(pos, pos + len)) + "]");
 		for (int i = 0; i < subClauseMatches.size(); i++) {
 			subClauseMatches.get(i).print(indent + 1, input);
 		}
