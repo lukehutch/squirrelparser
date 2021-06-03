@@ -8,7 +8,6 @@ import squirrelparser.rule.Rule;
 
 public abstract class Clause {
 	public String ruleName;
-	private String toStringCached;
 
 	public abstract Match match(int pos, int rulePos, Parser parser);
 
@@ -18,14 +17,32 @@ public abstract class Clause {
 
 	public void lookUpRuleRefs(Map<String, Rule> rules) {
 	}
-	
-	protected abstract String toStringInternal();
-	
-	@Override
-	public String toString() {
-		if (toStringCached == null) {
-			toStringCached = toStringInternal();
+
+	public static abstract class ClauseWithMultipleSubClauses extends Clause {
+		public final Clause[] subClauses;
+
+		public ClauseWithMultipleSubClauses(Clause... subClauses) {
+			this.subClauses = subClauses;
 		}
-		return toStringCached;
+
+		@Override
+		public void lookUpRuleRefs(Map<String, Rule> rules) {
+			for (int i = 0; i < subClauses.length; i++) {
+				subClauses[i].lookUpRuleRefs(rules);
+			}
+		}
+	}
+
+	public static abstract class ClauseWithOneSubClause extends Clause {
+		public Clause subClause;
+
+		public ClauseWithOneSubClause(Clause subClause) {
+			this.subClause = subClause;
+		}
+
+		@Override
+		public void lookUpRuleRefs(Map<String, Rule> rules) {
+			subClause.lookUpRuleRefs(rules);
+		}
 	}
 }

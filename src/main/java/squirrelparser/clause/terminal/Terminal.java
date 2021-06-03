@@ -1,10 +1,11 @@
 package squirrelparser.clause.terminal;
 
-import squirrelparser.clause.ClauseWithZeroSubClauses;
+import squirrelparser.clause.Clause;
 import squirrelparser.match.Match;
 import squirrelparser.parser.Parser;
+import squirrelparser.utils.Utils;
 
-public class Terminal extends ClauseWithZeroSubClauses {
+public class Terminal extends Clause {
 	public final char chr;
 
 	public Terminal(char chr) {
@@ -18,32 +19,7 @@ public class Terminal extends ClauseWithZeroSubClauses {
 	}
 
 	@Override
-	public String toStringInternal() {
-		String chrStr;
-		switch (chr) {
-		case '\'':
-			chrStr = "\\'";
-			break;
-		case '\n':
-			chrStr = "\\n";
-			break;
-		case '\r':
-			chrStr = "\\r";
-			break;
-		case '\t':
-			chrStr = "\\t";
-			break;
-		case '\b':
-			chrStr = "\\b";
-			break;
-		default:
-			if (chr < 32 || chr > 126) {
-				String hex = "000" + Integer.toHexString(chr);
-				chrStr = "\\u" + hex.substring(hex.length() - 4);
-			} else {
-				chrStr = Character.toString(chr);
-			}
-		}
-		return "'" + chrStr + "'";
+	public String toString() {
+		return "'" + Utils.chrToStrEscaped(chr) + "'";
 	}
 }

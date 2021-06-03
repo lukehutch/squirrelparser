@@ -1,7 +1,7 @@
 package squirrelparser.clause.nonterminal;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.ClauseWithMultipleSubClauses;
+import squirrelparser.clause.Clause.ClauseWithMultipleSubClauses;
 import squirrelparser.match.Match;
 import squirrelparser.parser.Parser;
 
@@ -22,8 +22,8 @@ public class First extends ClauseWithMultipleSubClauses {
 	}
 
 	@Override
-	public String toStringInternal() {
-		StringBuilder buf = new StringBuilder();
+	public String toString() {
+		var buf = new StringBuilder();
 		buf.append('(');
 		for (int i = 0; i < subClauses.length; i++) {
 			if (i > 0) {

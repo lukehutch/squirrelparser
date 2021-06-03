@@ -7,8 +7,8 @@ import squirrelparser.clause.Clause.ClauseWithOneSubClause;
 import squirrelparser.match.Match;
 import squirrelparser.parser.Parser;
 
-public class OneOrMore extends ClauseWithOneSubClause {
-	public OneOrMore(Clause subClause) {
+public class ZeroOrMore extends ClauseWithOneSubClause {
+	public ZeroOrMore(Clause subClause) {
 		super(subClause);
 	}
 
@@ -31,7 +31,7 @@ public class OneOrMore extends ClauseWithOneSubClause {
 			}
 		}
 		if (subClauseMatches == null) {
-			return Match.NO_MATCH;
+			return new Match(this, pos);
 		} else {
 			subClauseMatches.trimToSize();
 			return new Match(this, pos, subClauseMatches);
@@ -40,6 +40,6 @@ public class OneOrMore extends ClauseWithOneSubClause {
 
 	@Override
 	public String toString() {
-		return subClause + "+";
+		return subClause + "*";
 	}
 }

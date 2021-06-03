@@ -19,7 +19,7 @@ public class Main {
 		var match = parser.parse();
 
 		System.out.println("\nParse result:");
-		match.print(0, parser);
+		match.print(0, parser.input);
 	}
 
 }

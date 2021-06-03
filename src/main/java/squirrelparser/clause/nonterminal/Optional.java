@@ -1,7 +1,7 @@
 package squirrelparser.clause.nonterminal;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.ClauseWithOneSubClause;
+import squirrelparser.clause.Clause.ClauseWithOneSubClause;
 import squirrelparser.match.Match;
 import squirrelparser.parser.Parser;
 
@@ -18,7 +18,7 @@ public class Optional extends ClauseWithOneSubClause {
 	}
 
 	@Override
-	public String toStringInternal() {
+	public String toString() {
 		return subClause + "?";
 	}
 }

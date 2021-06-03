@@ -6,7 +6,7 @@ import java.util.List;
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.nonterminal.First;
 import squirrelparser.clause.terminal.Terminal;
-import squirrelparser.parser.Parser;
+import squirrelparser.utils.Utils;
 
 public class Match {
 	public final Clause clause;
@@ -16,6 +16,7 @@ public class Match {
 	public final int firstMatchingSubClauseIdx;
 	public String ruleName;
 
+	/** Used to return or memoize the notification that the clause did not match. */
 	public static final Match NO_MATCH = new Match(null, -1, Collections.emptyList()) {
 		@Override
 		public boolean isBetterThan(Match other) {
@@ -29,6 +30,7 @@ public class Match {
 		}
 	};
 
+	/** A match with multiple subclause matches. */
 	public Match(Clause clause, int pos, List<Match> subClauseMatches) {
 		this.clause = clause;
 		this.pos = pos;
@@ -41,6 +43,7 @@ public class Match {
 		this.firstMatchingSubClauseIdx = 0;
 	}
 
+	/** A match with a single subclause match. */
 	public Match(Clause clause, int pos, Match subClauseMatch) {
 		this.clause = clause;
 		this.pos = pos;
@@ -49,6 +52,7 @@ public class Match {
 		this.firstMatchingSubClauseIdx = 0;
 	}
 
+	/** A match of a {@link First} clause, with one subclause match. */
 	public Match(First clause, int pos, int matchingSubClauseIdx, Match subClauseMatch) {
 		this.clause = clause;
 		this.pos = pos;
@@ -57,14 +61,7 @@ public class Match {
 		this.firstMatchingSubClauseIdx = matchingSubClauseIdx;
 	}
 
-	public Match(Clause clause, int pos) {
-		this.clause = clause;
-		this.pos = pos;
-		this.len = 0;
-		this.subClauseMatches = Collections.emptyList();
-		this.firstMatchingSubClauseIdx = 0;
-	}
-
+	/** A match of a {@link Terminal}. */
 	public Match(Terminal clause, int pos, int len) {
 		this.clause = clause;
 		this.pos = pos;
@@ -73,10 +70,24 @@ public class Match {
 		this.firstMatchingSubClauseIdx = 0;
 	}
 
+	/** A match of zero length, with no subclause matches. */
+	public Match(Clause clause, int pos) {
+		this.clause = clause;
+		this.pos = pos;
+		this.len = 0;
+		this.subClauseMatches = Collections.emptyList();
+		this.firstMatchingSubClauseIdx = 0;
+	}
+
 	public void setRuleName(String ruleName) {
 		this.ruleName = ruleName;
 	}
 
+	/**
+	 * Returns true if this match is "better than" the other match, defined as having a lower first matching
+	 * subclause index (for {@link First} clauses), or longer subclause matches, or matching more times (for
+	 * {@link OneOrMore} clauses).
+	 */
 	public boolean isBetterThan(Match other) {
 		if (other == null || other == NO_MATCH) {
 			return true;
@@ -104,18 +115,19 @@ public class Match {
 		return false;
 	}
 
-	public void print(int indent, Parser parser) {
+	/** Print a tree of matches. */
+	public void print(int indent, String input) {
 		for (int i = 0; i < indent; i++) {
 			System.out.print("--");
 		}
-		System.out.println(toString());
+		System.out.println(toString() + " : [" + Utils.strEscaped(input.substring(pos, pos + len)) + "]");
 		for (int i = 0; i < subClauseMatches.size(); i++) {
-			subClauseMatches.get(i).print(indent + 1, parser);
+			subClauseMatches.get(i).print(indent + 1, input);
 		}
 	}
 
 	@Override
 	public String toString() {
-		return (ruleName == null ? "" : ruleName + " <- ") + clause + ":" + pos + "+" + len;
+		return (ruleName == null ? "" : ruleName + " <- ") + clause + " : " + pos + "+" + len;
 	}
 }
