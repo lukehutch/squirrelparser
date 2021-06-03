@@ -116,8 +116,7 @@ public class Match {
 		return false;
 	}
 
-	/** Print a tree of matches. */
-	public void print(int indent, String input) {
+	private void print(int indent, String input) {
 		for (int i = 0; i < indent; i++) {
 			System.out.print("--");
 		}
@@ -125,6 +124,11 @@ public class Match {
 		for (int i = 0; i < subClauseMatches.size(); i++) {
 			subClauseMatches.get(i).print(indent + 1, input);
 		}
+	}
+
+	/** Print the tree. */
+	public void print(String input) {
+		print(0, input);
 	}
 
 	@Override

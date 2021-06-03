@@ -202,7 +202,7 @@ public class StringUtils {
 	}
 
 	/** Escape a string. */
-	public static String escapeString(String str) {
+	public static String escapeString(CharSequence str) {
 		var buf = new StringBuilder();
 		for (int i = 0; i < str.length(); i++) {
 			char c = str.charAt(i);
