@@ -329,7 +329,7 @@ public class MetaGrammar {
 
             // A whitespace-matching terminal
             rule(WHITESPACE, //
-                    ast(WHITESPACE_AST, str("<WS>"))),
+                    ast(WHITESPACE_AST, str(Whitespace.WS_DISPLAY_STR))),
 
             // Whitespace or comment in the grammar description
             rule(WSC, //
@@ -395,7 +395,7 @@ public class MetaGrammar {
 
             // Regexp token matcher
             rule(REGEXP, //
-                    seq(c('`'), ast(REGEXP_AST, oneOrMore(c('`').invert())), c('`'))), //
+                    seq(c('`'), ast(REGEXP_AST, oneOrMore(c('`', '\n', '\r').invert())), c('`'))), //
 
             // Quoted string
             rule(QUOTED_STRING, //

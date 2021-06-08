@@ -8,6 +8,8 @@ import squirrelparser.parser.Parser;
  * even if the character at the current position is not a whitespace character.)
  */
 public class Whitespace extends Terminal {
+    public static final String WS_DISPLAY_STR = "<WS>";
+
     public Whitespace() {
     }
 
@@ -27,6 +29,6 @@ public class Whitespace extends Terminal {
 
     @Override
     public String toString() {
-        return labelClause("<WS>");
+        return labelClause(WS_DISPLAY_STR);
     }
 }
