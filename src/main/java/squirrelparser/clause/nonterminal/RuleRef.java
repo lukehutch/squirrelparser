@@ -1,35 +1,33 @@
 package squirrelparser.clause.nonterminal;
 
-import java.util.Map;
-
 import squirrelparser.clause.Clause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.rule.Rule;
 
 public class RuleRef extends Clause {
-	public final String refdRuleName;
-	public Rule refdRule;
+    public String refdRuleName;
+    public Rule refdRule;
 
-	public RuleRef(String refdRuleName) {
-		this.refdRuleName = refdRuleName;
-	}
+    public RuleRef(String refdRuleName) {
+        this.refdRuleName = refdRuleName;
+    }
 
-	@Override
-	public Match match(int pos, int rulePos, Parser parser) {
-		return refdRule.match(pos, rulePos, parser);
-	}
+    @Override
+    public Match match(int pos, int rulePos, Parser parser) {
+        // Match the referenced rule
+        var refdRuleMatch = refdRule.match(pos, rulePos, parser);
+        if (refdRuleMatch != Match.NO_MATCH) {
+            // Wrap the match of the referenced rule in a new match, so that RuleRefs can add their own
+            // AST node labels to the AST, even if the referenced rule has its own AST node label
+            return new Match(this, /* subClauseMatch = */ refdRuleMatch);
+        } else {
+            return Match.NO_MATCH;
+        }
+    }
 
-	@Override
-	public void lookUpRuleRefs(Map<String, Rule> rules) {
-		refdRule = rules.get(refdRuleName);
-		if (refdRule == null) {
-			throw new IllegalArgumentException("Grammar contains reference to non-existent rule: " + ruleName);
-		}
-	}
-
-	@Override
-	public String toString() {
-		return refdRuleName;
-	}
+    @Override
+    public String toString() {
+        return labelClause(refdRuleName);
+    }
 }

@@ -1,29 +1,38 @@
 package squirrelparser.main;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Objects;
 
-import squirrelparser.clause.nonterminal.First;
-import squirrelparser.clause.nonterminal.RuleRef;
-import squirrelparser.clause.nonterminal.Seq;
-import squirrelparser.clause.terminal.CharSet;
-import squirrelparser.node.CSTNode;
+import squirrelparser.node.ASTNode;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
-import squirrelparser.rule.Rule;
+import squirrelparser.utils.MetaGrammar;
 
 public class Main {
-	public static void main(String[] args) {
-		var rules = Arrays
-				.asList(new Rule("A", new First(new Seq(new RuleRef("A"), new CharSet('a')), new CharSet('a'))));
 
-		var parser = new Parser("aaa", rules, "A");
+    static String loadResourceFile(String filename) throws IOException, URISyntaxException {
+        final var resource = Main.class.getClassLoader().getResource(filename);
+        final var resourceURI = Objects.requireNonNull(resource).toURI();
+        return Files.readString(Paths.get(resourceURI));
+    }
 
-		var match = parser.parse();
+    public static void main(String[] args) throws Exception {
+        var grammar = MetaGrammar.parse(loadResourceFile("arithmetic.grammar"));
+        System.out.println("Grammar:\n" + grammar);
 
-		System.out.println("\nParse tree:");
-		match.print(parser.input);
+        var input = loadResourceFile("arithmetic.input");
+        System.out.println("\nInput:\n" + input);
 
-		System.out.println("\nCST:");
-		var cst = new CSTNode(match, parser.input);
-		cst.print();
-	}
+        var parser = new Parser(grammar, input);
+        var match = parser.parse();
+        System.out.println("\nParse tree:\n" + match.toStringWholeTree(parser.input));
+
+        if (match != Match.NO_MATCH) {
+            var ast = new ASTNode(match, parser.input);
+            System.out.println("\nAST:\n" + ast.toStringWholeTree());
+        }
+    }
 }

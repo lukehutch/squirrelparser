@@ -1,48 +1,90 @@
 package squirrelparser.clause;
 
-import java.util.Map;
-
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.rule.Rule;
+import squirrelparser.utils.MetaGrammar;
 
 public abstract class Clause {
-	public String ruleName;
+    /** The rule, if this is the toplevel clause of a rule. */
+    public Rule rule;
 
-	public abstract Match match(int pos, int rulePos, Parser parser);
+    /** The name of the AST node to generate if this node matches. */
+    public String astNodeLabel;
 
-	public void setRuleName(String ruleName) {
-		this.ruleName = ruleName;
-	}
+    public abstract Match match(int pos, int rulePos, Parser parser);
 
-	public void lookUpRuleRefs(Map<String, Rule> rules) {
-	}
+    /**
+     * Traverse the subclauses of this clause. Can also function as a clause rewriter, if the returned
+     * {@link Clause} is different from the passed instance.
+     */
+    @FunctionalInterface
+    public interface SubClauseTraverser {
+        public Clause traverse(Clause subClause);
+    }
 
-	public static abstract class ClauseWithMultipleSubClauses extends Clause {
-		public final Clause[] subClauses;
+    public void traverse(SubClauseTraverser traverser) {
+        // Empty body for terminals
+    }
 
-		public ClauseWithMultipleSubClauses(Clause... subClauses) {
-			this.subClauses = subClauses;
-		}
+    public static abstract class ClauseWithMultipleSubClauses extends Clause {
+        public final Clause[] subClauses;
 
-		@Override
-		public void lookUpRuleRefs(Map<String, Rule> rules) {
-			for (int i = 0; i < subClauses.length; i++) {
-				subClauses[i].lookUpRuleRefs(rules);
-			}
-		}
-	}
+        public ClauseWithMultipleSubClauses(Clause... subClauses) {
+            this.subClauses = subClauses;
+        }
 
-	public static abstract class ClauseWithOneSubClause extends Clause {
-		public Clause subClause;
+        @Override
+        public void traverse(SubClauseTraverser traverser) {
+            for (int i = 0; i < subClauses.length; i++) {
+                var newSubClause = traverser.traverse(subClauses[i]);
+                if (newSubClause != subClauses[i]) {
+                    // If subclause changes, move AST node label to new subclause
+                    newSubClause.astNodeLabel = subClauses[i].astNodeLabel;
+                    subClauses[i].astNodeLabel = null;
+                    subClauses[i] = newSubClause;
+                }
+                subClauses[i].traverse(traverser);
+            }
+        }
+    }
 
-		public ClauseWithOneSubClause(Clause subClause) {
-			this.subClause = subClause;
-		}
+    public static abstract class ClauseWithOneSubClause extends Clause {
+        public Clause subClause;
 
-		@Override
-		public void lookUpRuleRefs(Map<String, Rule> rules) {
-			subClause.lookUpRuleRefs(rules);
-		}
-	}
+        public ClauseWithOneSubClause(Clause subClause) {
+            this.subClause = subClause;
+        }
+
+        @Override
+        public void traverse(SubClauseTraverser traverser) {
+            // Preorder traversal
+            var newSubClause = traverser.traverse(subClause);
+            if (newSubClause != subClause) {
+                // If subclause changes, move AST node label to new subclause
+                newSubClause.astNodeLabel = subClause.astNodeLabel;
+                subClause.astNodeLabel = null;
+                subClause = newSubClause;
+            }
+            subClause.traverse(traverser);
+        }
+    }
+
+    protected String labelClause(String toString) {
+        if (astNodeLabel == null) {
+            return toString;
+        } else if (MetaGrammar.needToAddParensAroundASTNodeLabel(this)) {
+            return astNodeLabel + ":(" + toString + ")";
+        } else {
+            return astNodeLabel + ":" + toString;
+        }
+    }
+
+    protected String subClauseToString(Clause subClause) {
+        if (MetaGrammar.needToAddParensAroundSubClause(this, subClause)) {
+            return "(" + subClause + ")";
+        } else {
+            return subClause.toString();
+        }
+    }
 }
