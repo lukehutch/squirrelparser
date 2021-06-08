@@ -1,7 +1,7 @@
 package squirrelparser.utils;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.SubClauseTraverser;
+import squirrelparser.clause.SubClauseVisitor;
 
 /** A grammar rule with optional precedence and optional associativity. */
 public class PrecAssocRule {
@@ -32,8 +32,8 @@ public class PrecAssocRule {
         this(ruleName, -1, /* associativity = */ null, clause);
     }
 
-    public void traverse(SubClauseTraverser traverser) {
-        clause = traverser.traverse(clause);
+    public void traverse(SubClauseVisitor traverser) {
+        clause = traverser.visit(clause);
         clause.traverse(traverser);
     }
 

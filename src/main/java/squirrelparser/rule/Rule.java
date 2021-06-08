@@ -1,7 +1,7 @@
 package squirrelparser.rule;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.SubClauseTraverser;
+import squirrelparser.clause.SubClauseVisitor;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.parser.RuleAndPos;
@@ -74,15 +74,15 @@ public class Rule {
     }
 
     /** Traverse the clause tree of this rule. */
-    public void traverse(SubClauseTraverser traverser) {
-        var newClause = traverser.traverse(clause);
+    public void traverse(SubClauseVisitor visitor) {
+        var newClause = visitor.visit(clause);
         if (newClause != clause) {
             // If clause changes, move AST node label to new clause
             newClause.astNodeLabel = clause.astNodeLabel;
             clause.astNodeLabel = null;
             clause = newClause;
         }
-        clause.traverse(traverser);
+        clause.traverse(visitor);
     }
 
     @Override

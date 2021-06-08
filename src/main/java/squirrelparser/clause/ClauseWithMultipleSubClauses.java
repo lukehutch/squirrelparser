@@ -13,16 +13,16 @@ public abstract class ClauseWithMultipleSubClauses extends Clause {
     }
 
     @Override
-    public void traverse(SubClauseTraverser traverser) {
+    public void traverse(SubClauseVisitor visitor) {
         for (int i = 0; i < subClauses.length; i++) {
-            var newSubClause = traverser.traverse(subClauses[i]);
+            var newSubClause = visitor.visit(subClauses[i]);
             if (newSubClause != subClauses[i]) {
                 // If subclause changes, move AST node label to new subclause
                 newSubClause.astNodeLabel = subClauses[i].astNodeLabel;
                 subClauses[i].astNodeLabel = null;
                 subClauses[i] = newSubClause;
             }
-            subClauses[i].traverse(traverser);
+            subClauses[i].traverse(visitor);
         }
     }
 

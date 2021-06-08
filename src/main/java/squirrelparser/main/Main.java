@@ -31,13 +31,13 @@ public class Main {
 
         var parser = new Parser(rewrittenGrammar, input);
         var match = parser.parse();
-        if (match != Match.NO_MATCH) {
+        if (match == Match.NO_MATCH) {
+            System.out.println("\nNO_MATCH");
+        } else {
             System.out.println("\nPARSE TREE:\n\n" + match.toStringWholeTree(parser.input));
 
             var ast = new ASTNode(match, parser.input);
             System.out.println("\nAST:\n\n" + ast.toStringWholeTree());
-        } else {
-            System.out.println("\nNO_MATCH");
         }
     }
 }

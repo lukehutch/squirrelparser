@@ -26,9 +26,9 @@ public abstract class Clause {
     /**
      * Traverse all subclauses of this clause.
      * 
-     * @param traverser The {@link SubClauseTraverser} to call for each subclause.
+     * @param visitor The {@link SubClauseVisitor} to call for each subclause.
      */
-    public void traverse(SubClauseTraverser traverser) {
+    public void traverse(SubClauseVisitor visitor) {
     }
 
     /**

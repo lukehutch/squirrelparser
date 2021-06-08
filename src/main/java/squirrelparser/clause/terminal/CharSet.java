@@ -8,7 +8,6 @@ import squirrelparser.utils.StringUtils;
 
 /** Matches a character or sequence of characters. */
 public class CharSet extends Terminal {
-
     private BitSet chars;
     private BitSet invertedChars;
 
