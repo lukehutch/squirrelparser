@@ -20,7 +20,9 @@ import squirrelparser.clause.nonterminal.ZeroOrMore;
 import squirrelparser.clause.terminal.CharSeq;
 import squirrelparser.clause.terminal.CharSet;
 import squirrelparser.clause.terminal.Nothing;
+import squirrelparser.clause.terminal.RegexpToken;
 import squirrelparser.clause.terminal.Terminal;
+import squirrelparser.clause.terminal.Whitespace;
 import squirrelparser.node.ASTNode;
 import squirrelparser.parser.Parser;
 import squirrelparser.rule.Grammar;
@@ -106,6 +108,11 @@ public class MetaGrammar {
         return new Nothing();
     }
 
+    /** Construct a {@link Whitespace} terminal. */
+    private static Clause whitespace() {
+        return new Whitespace();
+    }
+
     /** Construct a terminal that matches a string token. */
     private static Clause str(String str) {
         if (str.length() == 1) {
@@ -113,6 +120,11 @@ public class MetaGrammar {
         } else {
             return new CharSeq(str);
         }
+    }
+
+    /** Construct a terminal that matches a regexp. */
+    private static Clause regexp(String str) {
+        return new RegexpToken(str);
     }
 
     /** Construct a terminal that matches one instance of any character given in the varargs param. */
@@ -212,6 +224,7 @@ public class MetaGrammar {
     private static final String GRAMMAR = "GRAMMAR";
     private static final String WSC = "WSC";
     private static final String COMMENT = "COMMENT";
+    private static final String WHITESPACE = "WHITESPACE";
     private static final String RULE = "RULE";
     private static final String CLAUSE = "CLAUSE";
     private static final String IDENT = "IDENT";
@@ -222,6 +235,7 @@ public class MetaGrammar {
     private static final String HEX = "HEX";
     private static final String CHAR_RANGE = "CHAR_RANGE";
     private static final String CHAR_RANGE_CHAR = "CHAR_RANGE_CHAR";
+    private static final String REGEXP = "REGEXP";
     private static final String QUOTED_STRING = "QUOTED_STR";
     private static final String ESCAPED_CTRL_CHAR = "ESCAPED_CTRL_CHAR";
     private static final String SINGLE_QUOTED_CHAR = "SINGLE_QUOTED_CHAR";
@@ -247,8 +261,10 @@ public class MetaGrammar {
     private static final String OPTIONAL_AST = "OptionalAST";
     private static final String SINGLE_QUOTED_CHAR_AST = "SingleQuotedCharAST";
     private static final String CHAR_RANGE_AST = "CharRangeAST";
+    private static final String REGEXP_AST = "RegExpAST";
     private static final String QUOTED_STRING_AST = "QuotedStringAST";
     private static final String NOTHING_AST = "NothingAST";
+    private static final String WHITESPACE_AST = "WhitespaceAST";
 
     // Metagrammar:
 
@@ -272,6 +288,8 @@ public class MetaGrammar {
             rule(CLAUSE, 7, /* associativity = */ null, //
                     first( //
                             ruleRef(IDENT), // RuleRef
+                            ruleRef(WHITESPACE), //
+                            ruleRef(REGEXP), //
                             ruleRef(QUOTED_STRING), //
                             ruleRef(CHAR_SET), //
                             ruleRef(NOTHING))), //
@@ -309,7 +327,11 @@ public class MetaGrammar {
                             seq(ruleRef(CLAUSE), ruleRef(WSC),
                                     oneOrMore(seq(c('/'), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC)))))),
 
-            // Whitespace or comment
+            // A whitespace-matching terminal
+            rule(WHITESPACE, //
+                    ast(WHITESPACE_AST, str("<WS>"))),
+
+            // Whitespace or comment in the grammar description
             rule(WSC, //
                     zeroOrMore(first(c(' ', '\n', '\r', '\t'), ruleRef(COMMENT)))),
 
@@ -355,7 +377,7 @@ public class MetaGrammar {
             rule(SINGLE_QUOTED_CHAR, //
                     first( //
                             ruleRef(ESCAPED_CTRL_CHAR), //
-                            c('\'').invert())), // TODO: replace invert() with NotFollowedBy
+                            c('\'').invert())),
 
             // Char range
             rule(CHAR_RANGE, //
@@ -370,6 +392,10 @@ public class MetaGrammar {
                             str("\\\\"), //
                             str("\\]"), //
                             str("\\^"))),
+
+            // Regexp token matcher
+            rule(REGEXP, //
+                    seq(c('`'), ast(REGEXP_AST, oneOrMore(c('`').invert())), c('`'))), //
 
             // Quoted string
             rule(QUOTED_STRING, //
@@ -489,6 +515,9 @@ public class MetaGrammar {
         case IDENT_AST:
             clause = ruleRef(astNode.getText());
             break;
+        case REGEXP_AST:
+            clause = regexp(astNode.getText());
+            break;
         case QUOTED_STRING_AST: // Doesn't include surrounding quotes
             clause = str(StringUtils.unescapeString(astNode.getText()));
             break;
@@ -500,6 +529,9 @@ public class MetaGrammar {
             break;
         case CHAR_RANGE_AST:
             clause = cRange(astNode.getText());
+            break;
+        case WHITESPACE_AST:
+            clause = whitespace();
             break;
         default:
             throw new IllegalArgumentException("Unexpected grammar AST node label: " + astNode.label);
