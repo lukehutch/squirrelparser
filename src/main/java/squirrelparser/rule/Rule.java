@@ -6,6 +6,7 @@ import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.parser.RuleAndPos;
 
+/** A PEG grammar rule. */
 public class Rule {
     public final String ruleName;
     public Clause clause;
@@ -72,6 +73,7 @@ public class Rule {
         return parser.memoTable.get(ruleAndPos);
     }
 
+    /** Traverse the clause tree of this rule. */
     public void traverse(SubClauseTraverser traverser) {
         var newClause = traverser.traverse(clause);
         if (newClause != clause) {
