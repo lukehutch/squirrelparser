@@ -24,7 +24,7 @@ public abstract class Clause {
     public abstract Match match(int pos, int rulePos, Parser parser);
 
     /**
-     * Traverse all subclauses of this clause.
+     * Traverse all subclauses of this clause, to search for information, and/or to rewrite the clause tree.
      * 
      * @param visitor The {@link SubClauseVisitor} to call for each subclause.
      */
