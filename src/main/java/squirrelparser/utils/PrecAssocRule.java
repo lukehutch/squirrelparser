@@ -1,7 +1,7 @@
 package squirrelparser.utils;
 
-import squirrelparser.clause.Clause;
-import squirrelparser.clause.SubClauseVisitor;
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.SubClauseVisitor;
 
 /** A grammar rule with optional precedence and optional associativity. */
 public class PrecAssocRule {

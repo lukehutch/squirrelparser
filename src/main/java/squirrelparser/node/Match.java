@@ -3,10 +3,10 @@ package squirrelparser.node;
 import java.util.Collections;
 import java.util.List;
 
-import squirrelparser.clause.Clause;
-import squirrelparser.clause.nonterminal.First;
-import squirrelparser.clause.nonterminal.OneOrMore;
-import squirrelparser.clause.terminal.Terminal;
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.nonterminal.First;
+import squirrelparser.grammar.clause.nonterminal.OneOrMore;
+import squirrelparser.grammar.clause.terminal.Terminal;
 import squirrelparser.utils.TreePrinter;
 
 /** A match (i.e. a parse tree node). */

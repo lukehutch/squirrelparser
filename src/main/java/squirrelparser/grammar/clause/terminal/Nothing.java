@@ -1,4 +1,4 @@
-package squirrelparser.clause.terminal;
+package squirrelparser.grammar.clause.terminal;
 
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;

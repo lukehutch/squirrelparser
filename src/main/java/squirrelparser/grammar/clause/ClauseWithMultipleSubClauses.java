@@ -1,4 +1,4 @@
-package squirrelparser.clause;
+package squirrelparser.grammar.clause;
 
 /** A {@link Clause} with multiple subclauses. */
 public abstract class ClauseWithMultipleSubClauses extends Clause {

@@ -3,7 +3,7 @@ package squirrelparser.grammar;
 import java.util.HashMap;
 import java.util.List;
 
-import squirrelparser.clause.nonterminal.RuleRef;
+import squirrelparser.grammar.clause.nonterminal.RuleRef;
 
 /** A collection of {@link Rule} instances. */
 public class Grammar {

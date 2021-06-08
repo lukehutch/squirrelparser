@@ -1,10 +1,10 @@
-package squirrelparser.clause.nonterminal;
+package squirrelparser.grammar.clause.nonterminal;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import squirrelparser.clause.Clause;
-import squirrelparser.clause.ClauseWithMultipleSubClauses;
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.ClauseWithMultipleSubClauses;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 

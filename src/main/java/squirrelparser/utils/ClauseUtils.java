@@ -1,9 +1,9 @@
 package squirrelparser.utils;
 
-import squirrelparser.clause.Clause;
-import squirrelparser.clause.nonterminal.First;
-import squirrelparser.clause.nonterminal.Seq;
-import squirrelparser.clause.terminal.Terminal;
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.nonterminal.First;
+import squirrelparser.grammar.clause.nonterminal.Seq;
+import squirrelparser.grammar.clause.terminal.Terminal;
 
 public class ClauseUtils {
     /**

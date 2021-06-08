@@ -1,7 +1,7 @@
-package squirrelparser.clause.nonterminal;
+package squirrelparser.grammar.clause.nonterminal;
 
-import squirrelparser.clause.Clause;
-import squirrelparser.clause.ClauseWithOneSubClause;
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 

@@ -1,4 +1,4 @@
-package squirrelparser.clause;
+package squirrelparser.grammar.clause;
 
 import squirrelparser.grammar.Rule;
 import squirrelparser.node.Match;

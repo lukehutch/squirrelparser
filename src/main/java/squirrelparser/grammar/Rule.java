@@ -1,7 +1,7 @@
 package squirrelparser.grammar;
 
-import squirrelparser.clause.Clause;
-import squirrelparser.clause.SubClauseVisitor;
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.SubClauseVisitor;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.parser.RuleAndPos;

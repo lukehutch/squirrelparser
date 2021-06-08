@@ -1,4 +1,4 @@
-package squirrelparser.clause;
+package squirrelparser.grammar.clause;
 
 /**
  * Traverse the subclauses of this clause. Can also function as a clause rewriter, if the returned {@link Clause} is

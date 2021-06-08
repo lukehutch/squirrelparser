@@ -7,9 +7,9 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import squirrelparser.clause.nonterminal.First;
-import squirrelparser.clause.nonterminal.RuleRef;
 import squirrelparser.grammar.Rule;
+import squirrelparser.grammar.clause.nonterminal.First;
+import squirrelparser.grammar.clause.nonterminal.RuleRef;
 
 /** Rewrite a grammar from precedence-associativity form into plain PEG rules. */
 public class PrecAssocRuleRewriter {

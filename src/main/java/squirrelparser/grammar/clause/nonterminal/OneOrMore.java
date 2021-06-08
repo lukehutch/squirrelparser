@@ -1,16 +1,19 @@
-package squirrelparser.clause.nonterminal;
+package squirrelparser.grammar.clause.nonterminal;
 
 import java.util.ArrayList;
 
-import squirrelparser.clause.Clause;
-import squirrelparser.clause.ClauseWithOneSubClause;
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
-/** Always matches, consuming as many subclause matches as possible, starting at the current position. */
-public class ZeroOrMore extends ClauseWithOneSubClause {
-    public ZeroOrMore(Clause subClause) {
-        super("", "*", subClause);
+/**
+ * Matches if the subclause matches at least once, consuming as many subclause matches as possible, starting at the
+ * current position.
+ */
+public class OneOrMore extends ClauseWithOneSubClause {
+    public OneOrMore(Clause subClause) {
+        super("", "+", subClause);
     }
 
     @Override
@@ -32,7 +35,7 @@ public class ZeroOrMore extends ClauseWithOneSubClause {
             }
         }
         if (subClauseMatches == null) {
-            return new Match(this, pos);
+            return Match.NO_MATCH;
         } else {
             subClauseMatches.trimToSize();
             return new Match(this, pos, subClauseMatches);

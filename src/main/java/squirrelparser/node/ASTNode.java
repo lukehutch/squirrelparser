@@ -3,7 +3,7 @@ package squirrelparser.node;
 import java.util.ArrayList;
 import java.util.List;
 
-import squirrelparser.clause.Clause;
+import squirrelparser.grammar.clause.Clause;
 import squirrelparser.utils.TreePrinter;
 
 /** A node in the Abstract Syntax Tree (AST). */
