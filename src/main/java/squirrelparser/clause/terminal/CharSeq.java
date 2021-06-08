@@ -15,8 +15,7 @@ public class CharSeq extends Terminal {
     }
 
     public CharSeq(String seq) {
-        this.seq = seq;
-        this.ignoreCase = false;
+        this(seq, /* ignoreCase = */ false);
     }
 
     @Override
