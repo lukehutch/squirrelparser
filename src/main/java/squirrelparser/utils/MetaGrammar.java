@@ -20,7 +20,7 @@ import squirrelparser.clause.nonterminal.ZeroOrMore;
 import squirrelparser.clause.terminal.CharSeq;
 import squirrelparser.clause.terminal.CharSet;
 import squirrelparser.clause.terminal.Nothing;
-import squirrelparser.clause.terminal.RegexpToken;
+import squirrelparser.clause.terminal.Regexp;
 import squirrelparser.clause.terminal.Terminal;
 import squirrelparser.clause.terminal.Whitespace;
 import squirrelparser.node.ASTNode;
@@ -124,7 +124,7 @@ public class MetaGrammar {
 
     /** Construct a terminal that matches a regexp. */
     private static Clause regexp(String str) {
-        return new RegexpToken(str);
+        return new Regexp(str);
     }
 
     /** Construct a terminal that matches one instance of any character given in the varargs param. */
@@ -261,7 +261,7 @@ public class MetaGrammar {
     private static final String OPTIONAL_AST = "OptionalAST";
     private static final String SINGLE_QUOTED_CHAR_AST = "SingleQuotedCharAST";
     private static final String CHAR_RANGE_AST = "CharRangeAST";
-    private static final String REGEXP_AST = "RegExpAST";
+    private static final String REGEXP_AST = "RegexpAST";
     private static final String QUOTED_STRING_AST = "QuotedStringAST";
     private static final String NOTHING_AST = "NothingAST";
     private static final String WHITESPACE_AST = "WhitespaceAST";
