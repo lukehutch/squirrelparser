@@ -3,14 +3,14 @@ package squirrelparser.clause.nonterminal;
 import java.util.ArrayList;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.Clause.ClauseWithOneSubClause;
+import squirrelparser.clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
 /** Always matches, consuming as many subclause matches as possible, starting at the current position. */
 public class ZeroOrMore extends ClauseWithOneSubClause {
     public ZeroOrMore(Clause subClause) {
-        super(subClause);
+        super("", "*", subClause);
     }
 
     @Override
@@ -37,10 +37,5 @@ public class ZeroOrMore extends ClauseWithOneSubClause {
             subClauseMatches.trimToSize();
             return new Match(this, pos, subClauseMatches);
         }
-    }
-
-    @Override
-    public String toString() {
-        return labelClause(subClauseToString(subClause) + "*");
     }
 }

@@ -3,7 +3,7 @@ package squirrelparser.clause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.rule.Rule;
-import squirrelparser.utils.MetaGrammar;
+import squirrelparser.utils.ClauseUtils;
 
 /** A grammar clause. A {@link Rule} contains a tree of {@link Clause} instances. */
 public abstract class Clause {
@@ -24,68 +24,11 @@ public abstract class Clause {
     public abstract Match match(int pos, int rulePos, Parser parser);
 
     /**
-     * Traverse the subclauses of this clause. Can also function as a clause rewriter, if the returned
-     * {@link Clause} is different from the passed instance.
-     */
-    @FunctionalInterface
-    public interface SubClauseTraverser {
-        public Clause traverse(Clause subClause);
-    }
-
-    /**
      * Traverse all subclauses of this clause.
      * 
      * @param traverser The {@link SubClauseTraverser} to call for each subclause.
      */
     public void traverse(SubClauseTraverser traverser) {
-        // Empty body for terminals
-    }
-
-    /** A {@link Clause} with multiple subclauses. */
-    public static abstract class ClauseWithMultipleSubClauses extends Clause {
-        /** The subclauses of this {@link Clause}. */
-        public final Clause[] subClauses;
-
-        public ClauseWithMultipleSubClauses(Clause... subClauses) {
-            this.subClauses = subClauses;
-        }
-
-        @Override
-        public void traverse(SubClauseTraverser traverser) {
-            for (int i = 0; i < subClauses.length; i++) {
-                var newSubClause = traverser.traverse(subClauses[i]);
-                if (newSubClause != subClauses[i]) {
-                    // If subclause changes, move AST node label to new subclause
-                    newSubClause.astNodeLabel = subClauses[i].astNodeLabel;
-                    subClauses[i].astNodeLabel = null;
-                    subClauses[i] = newSubClause;
-                }
-                subClauses[i].traverse(traverser);
-            }
-        }
-    }
-
-    /** A {@link Clause} with one subclause. */
-    public static abstract class ClauseWithOneSubClause extends Clause {
-        /** The subclause of this {@link Clause}. */
-        public Clause subClause;
-
-        public ClauseWithOneSubClause(Clause subClause) {
-            this.subClause = subClause;
-        }
-
-        @Override
-        public void traverse(SubClauseTraverser traverser) {
-            // Preorder traversal
-            var newSubClause = traverser.traverse(subClause);
-            if (newSubClause != subClause) {
-                // If subclause changes, move AST node label to new subclause
-                newSubClause.astNodeLabel = subClause.astNodeLabel;
-                subClause.astNodeLabel = null;
-                subClause = newSubClause;
-            }
-            subClause.traverse(traverser);
-        }
     }
 
     /**
@@ -93,13 +36,9 @@ public abstract class Clause {
      * clause is labeled.
      */
     protected String labelClause(String toString) {
-        if (astNodeLabel == null) {
-            return toString;
-        } else if (MetaGrammar.needToAddParensAroundASTNodeLabel(this)) {
-            return astNodeLabel + ":(" + toString + ")";
-        } else {
-            return astNodeLabel + ":" + toString;
-        }
+        return astNodeLabel == null ? toString
+                : ClauseUtils.needToAddParensAroundASTNodeLabel(this) ? astNodeLabel + ":(" + toString + ")"
+                        : astNodeLabel + ":" + toString;
     }
 
     /**
@@ -107,10 +46,7 @@ public abstract class Clause {
      * precedence of this clause and the subclause).
      */
     protected String subClauseToString(Clause subClause) {
-        if (MetaGrammar.needToAddParensAroundSubClause(this, subClause)) {
-            return "(" + subClause + ")";
-        } else {
-            return subClause.toString();
-        }
+        return ClauseUtils.needToAddParensAroundSubClause(this, subClause) ? "(" + subClause + ")"
+                : subClause.toString();
     }
 }

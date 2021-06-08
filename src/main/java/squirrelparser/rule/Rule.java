@@ -1,7 +1,7 @@
 package squirrelparser.rule;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.Clause.SubClauseTraverser;
+import squirrelparser.clause.SubClauseTraverser;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.parser.RuleAndPos;

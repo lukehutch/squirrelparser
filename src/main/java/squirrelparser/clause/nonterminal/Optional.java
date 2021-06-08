@@ -1,7 +1,7 @@
 package squirrelparser.clause.nonterminal;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.Clause.ClauseWithOneSubClause;
+import squirrelparser.clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
@@ -11,7 +11,7 @@ import squirrelparser.parser.Parser;
  */
 public class Optional extends ClauseWithOneSubClause {
     public Optional(Clause subClause) {
-        super(subClause);
+        super("", "?", subClause);
     }
 
     @Override
@@ -19,10 +19,5 @@ public class Optional extends ClauseWithOneSubClause {
         var subClauseMatch = subClause.match(pos, rulePos, parser);
         // Optional always matches, whether or not subclause matches
         return subClauseMatch == Match.NO_MATCH ? new Match(this, pos) : new Match(this, subClauseMatch);
-    }
-
-    @Override
-    public String toString() {
-        return labelClause(subClauseToString(subClause) + "?");
     }
 }

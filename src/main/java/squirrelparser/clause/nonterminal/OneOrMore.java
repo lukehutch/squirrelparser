@@ -3,7 +3,7 @@ package squirrelparser.clause.nonterminal;
 import java.util.ArrayList;
 
 import squirrelparser.clause.Clause;
-import squirrelparser.clause.Clause.ClauseWithOneSubClause;
+import squirrelparser.clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
@@ -13,7 +13,7 @@ import squirrelparser.parser.Parser;
  */
 public class OneOrMore extends ClauseWithOneSubClause {
     public OneOrMore(Clause subClause) {
-        super(subClause);
+        super("", "+", subClause);
     }
 
     @Override
@@ -40,10 +40,5 @@ public class OneOrMore extends ClauseWithOneSubClause {
             subClauseMatches.trimToSize();
             return new Match(this, pos, subClauseMatches);
         }
-    }
-
-    @Override
-    public String toString() {
-        return labelClause(subClauseToString(subClause) + "+");
     }
 }
