@@ -5,6 +5,7 @@ import squirrelparser.clause.Clause.ClauseWithMultipleSubClauses;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
+/** Matches the same span as the first subclause that is found to match. */
 public class First extends ClauseWithMultipleSubClauses {
     public First(Clause... subClauses) {
         super(subClauses);
@@ -18,6 +19,7 @@ public class First extends ClauseWithMultipleSubClauses {
                 return new Match(this, subClauseIdx, subClauseMatch);
             }
         }
+        // No subclauses matched
         return Match.NO_MATCH;
     }
 

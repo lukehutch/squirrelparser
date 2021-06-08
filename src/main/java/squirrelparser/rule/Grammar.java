@@ -5,10 +5,11 @@ import java.util.List;
 
 import squirrelparser.clause.nonterminal.RuleRef;
 
+/** A collection of {@link Rule} instances. */
 public class Grammar {
     /** The rule to start parsing at. */
     public final Rule topRule;
-    
+
     /** The rules in the grammar. */
     public final List<Rule> rules;
 
@@ -46,7 +47,7 @@ public class Grammar {
         // Look up top rule of grammar
         this.topRule = rules.get(0);
     }
-    
+
     @Override
     public String toString() {
         var buf = new StringBuilder();

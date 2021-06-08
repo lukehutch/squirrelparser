@@ -107,10 +107,12 @@ public class Match {
         return false;
     }
 
+    /** Get the subsequence of the input matched by this {@link Match}. */
     public String getText(String input) {
         return input.substring(pos, pos + len);
     }
 
+    /** Render the parse tree into ASCII art form. */
     public String toStringWholeTree(String input) {
         StringBuilder buf = new StringBuilder();
         TreePrinter.renderTreeView(this, clause.astNodeLabel, input, "", true, buf);

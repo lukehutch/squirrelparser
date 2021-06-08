@@ -5,6 +5,10 @@ import squirrelparser.clause.Clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
+/**
+ * Always matches, whether or not the subclause matches, but returns a match the same length as the subclause if the
+ * subclause matches, or a zero-length match if the subclause does not match.
+ */
 public class Optional extends ClauseWithOneSubClause {
     public Optional(Clause subClause) {
         super(subClause);

@@ -6,7 +6,7 @@ import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.StringUtils;
 
-/** Terminal clause that matches a character or sequence of characters. */
+/** Matches a character or sequence of characters. */
 public class CharSet extends Terminal {
 
     private BitSet chars;

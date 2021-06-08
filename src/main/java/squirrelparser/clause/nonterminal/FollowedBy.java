@@ -5,6 +5,7 @@ import squirrelparser.clause.Clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
+/** Matches, consuming zero characters, if the subclause that is found to match at the current position. */
 public class FollowedBy extends ClauseWithOneSubClause {
     public FollowedBy(Clause subClause) {
         super(subClause);

@@ -8,6 +8,7 @@ import squirrelparser.clause.Clause.ClauseWithMultipleSubClauses;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
+/** Matches if all subclauses match. */
 public class Seq extends ClauseWithMultipleSubClauses {
     public Seq(Clause... subClauses) {
         super(subClauses);

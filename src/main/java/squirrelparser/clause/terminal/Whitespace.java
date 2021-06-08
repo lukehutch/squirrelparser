@@ -3,6 +3,10 @@ package squirrelparser.clause.terminal;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
+/**
+ * Match a run of zero or more whitespace characters, defined by {@link Character#isWhitespace()}. (Always matches,
+ * even if the character at the current position is not a whitespace character.)
+ */
 public class Whitespace extends Terminal {
     public Whitespace() {
     }

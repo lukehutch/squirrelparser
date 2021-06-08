@@ -47,6 +47,11 @@ public class ASTNode {
         }
     }
 
+    /**
+     * @return The only child of this AST node.
+     * 
+     * @throws IllegalArgumentException if this AST node does not have exactly one child.
+     */
     public ASTNode getOnlyChild() {
         if (children.size() != 1) {
             throw new IllegalArgumentException("Expected one child, got " + children.size());
@@ -54,35 +59,52 @@ public class ASTNode {
         return children.get(0);
     }
 
+    /**
+     * @return The first child of this AST node.
+     * 
+     * @throws IllegalArgumentException if this AST node does not have at least one child.
+     */
     public ASTNode getFirstChild() {
-        if (children.size() < 1) {
-            throw new IllegalArgumentException("No first child");
-        }
-        return children.get(0);
+        return getChild(0);
     }
 
+    /**
+     * @return The second child of this AST node.
+     * 
+     * @throws IllegalArgumentException if this AST node does not have at least two children.
+     */
     public ASTNode getSecondChild() {
-        if (children.size() < 2) {
-            throw new IllegalArgumentException("No second child");
-        }
-        return children.get(1);
+        return getChild(1);
     }
 
+    /**
+     * @return The third child of this AST node.
+     * 
+     * @throws IllegalArgumentException if this AST node does not have at least three children.
+     */
     public ASTNode getThirdChild() {
-        if (children.size() < 3) {
-            throw new IllegalArgumentException("No third child");
-        }
-        return children.get(2);
+        return getChild(2);
     }
 
+    /**
+     * @return The i-th child of this AST node (zero-indexed).
+     * 
+     * @throws IllegalArgumentException if this AST node does not have at least i+1 children.
+     */
     public ASTNode getChild(int i) {
+        if (children.size() < i + 1) {
+            throw new IllegalArgumentException(
+                    "ASTNode does not have enough children: i = " + i + "; children.size() = " + children.size());
+        }
         return children.get(i);
     }
 
+    /** Get the subsequence of the input matched by this AST node. */
     public String getText() {
         return text.toString();
     }
 
+    /** Render the AST into ASCII art form. */
     public String toStringWholeTree() {
         StringBuilder buf = new StringBuilder();
         TreePrinter.renderTreeView(this, "", true, buf);

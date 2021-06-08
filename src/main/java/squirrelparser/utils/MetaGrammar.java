@@ -144,7 +144,7 @@ public class MetaGrammar {
     private static CharSet cRange(String charRangeStr) {
         boolean invert = charRangeStr.startsWith("^");
         var charList = StringUtils.getCharRangeChars(invert ? charRangeStr.substring(1) : charRangeStr);
-        var chars = new BitSet(0xffff);
+        var chars = new BitSet(128);
         for (int i = 0; i < charList.size(); i++) {
             var c = charList.get(i);
             if (c.length() == 2) {
@@ -204,7 +204,7 @@ public class MetaGrammar {
                     entry(Seq.class, 2), //
                     entry(First.class, 1) //
             );
-    
+
     private static final int AST_NODE_LABEL_PRECEDENCE = 3;
 
     // Rule names:
@@ -530,7 +530,7 @@ public class MetaGrammar {
     /** Parse a grammar description in an input string, returning a new {@link Grammar} object. */
     public static Grammar parse(String input) {
         // System.out.println(metaGrammar);
-        
+
         var parser = new Parser(metaGrammar, input);
         var topMatch = parser.parse();
 

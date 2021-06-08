@@ -2,9 +2,10 @@ package squirrelparser.parser;
 
 import squirrelparser.rule.Rule;
 
-public record RuleAndPos(Rule rule, int startPos) {
+/** The current rule being parsed, and the current position of the parser. */ 
+public record RuleAndPos(Rule rule, int pos) {
     @Override
     public String toString() {
-        return rule.ruleName + " <- " + rule.clause + " : " + startPos;
+        return rule.ruleName + " <- " + rule.clause + " : " + pos;
     }
 }

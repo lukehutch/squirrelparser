@@ -32,7 +32,7 @@ package squirrelparser.utils;
 import squirrelparser.node.ASTNode;
 import squirrelparser.node.Match;
 
-/** Tree utilities. */
+/** Methods for converting a tree structure into ASCII art form. */
 public class TreePrinter {
     /** Render the AST rooted at an {@link ASTNode} into a StringBuffer. */
     public static void renderTreeView(ASTNode astNode, String indentStr, boolean isLastChild, StringBuilder buf) {

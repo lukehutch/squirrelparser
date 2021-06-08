@@ -7,6 +7,10 @@ import squirrelparser.clause.Clause.ClauseWithOneSubClause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
+/**
+ * Matches if the subclause matches at least once, consuming as many subclause matches as possible, starting at the
+ * current position.
+ */
 public class OneOrMore extends ClauseWithOneSubClause {
     public OneOrMore(Clause subClause) {
         super(subClause);

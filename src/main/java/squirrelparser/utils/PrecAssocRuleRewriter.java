@@ -13,6 +13,7 @@ import squirrelparser.clause.nonterminal.First;
 import squirrelparser.clause.nonterminal.RuleRef;
 import squirrelparser.rule.Rule;
 
+/** Rewrite a grammar from precedence-associativity form into plain PEG rules. */
 public class PrecAssocRuleRewriter {
     /** Associativity (null implies no specified associativity). */
     public static enum Associativity {
@@ -183,6 +184,7 @@ public class PrecAssocRuleRewriter {
         ruleNameToLowestPrecedenceLevelRuleNameOut.put(ruleNameWithoutPrecedence, lowestPrecRule.ruleName);
     }
 
+    /** Rewrite a list of rules in precedence-associativity form into plain PEG form. */ 
     public static List<Rule> rewrite(List<PrecAssocRule> precAssocRules) {
         if (precAssocRules.isEmpty()) {
             throw new IllegalArgumentException("Need at least one rule");

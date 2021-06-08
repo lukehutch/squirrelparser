@@ -5,6 +5,10 @@ import java.util.regex.Pattern;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
+/**
+ * Matches if the regexp matches, starting at the current position. The length of the match is the number of
+ * characters matched by the regexp.
+ */
 public class RegexpToken extends Terminal {
     private final String regexp;
     private final Pattern pattern;
