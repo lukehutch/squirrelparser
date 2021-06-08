@@ -3,8 +3,8 @@ package squirrelparser.parser;
 import java.util.HashMap;
 import java.util.Map;
 
+import squirrelparser.grammar.Grammar;
 import squirrelparser.node.Match;
-import squirrelparser.rule.Grammar;
 
 /** The parser (holds the memo table and other parsing information). */
 public class Parser {

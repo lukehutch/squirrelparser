@@ -1,4 +1,4 @@
-package squirrelparser.rule;
+package squirrelparser.grammar;
 
 import java.util.HashMap;
 import java.util.List;

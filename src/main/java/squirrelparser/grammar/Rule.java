@@ -1,4 +1,4 @@
-package squirrelparser.rule;
+package squirrelparser.grammar;
 
 import squirrelparser.clause.Clause;
 import squirrelparser.clause.SubClauseVisitor;

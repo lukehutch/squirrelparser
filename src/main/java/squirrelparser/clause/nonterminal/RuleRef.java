@@ -1,9 +1,9 @@
 package squirrelparser.clause.nonterminal;
 
 import squirrelparser.clause.Clause;
+import squirrelparser.grammar.Rule;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
-import squirrelparser.rule.Rule;
 
 /** Matches if the named rule matches at the current position. */
 public class RuleRef extends Clause {

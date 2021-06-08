@@ -1,6 +1,6 @@
 package squirrelparser.parser;
 
-import squirrelparser.rule.Rule;
+import squirrelparser.grammar.Rule;
 
 /** The current rule being parsed, and the current position of the parser. */ 
 public record RuleAndPos(Rule rule, int pos) {

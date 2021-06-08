@@ -23,9 +23,9 @@ import squirrelparser.clause.terminal.Nothing;
 import squirrelparser.clause.terminal.Regexp;
 import squirrelparser.clause.terminal.Terminal;
 import squirrelparser.clause.terminal.Whitespace;
+import squirrelparser.grammar.Grammar;
 import squirrelparser.node.ASTNode;
 import squirrelparser.parser.Parser;
-import squirrelparser.rule.Grammar;
 
 /**
  * A "meta-grammar" that produces a runtime parser generator, allowing a grammar to be defined using ASCII notation.

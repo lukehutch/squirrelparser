@@ -1,8 +1,8 @@
 package squirrelparser.clause;
 
+import squirrelparser.grammar.Rule;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
-import squirrelparser.rule.Rule;
 import squirrelparser.utils.ClauseUtils;
 
 /** A grammar clause. A {@link Rule} contains a tree of {@link Clause} instances. */
