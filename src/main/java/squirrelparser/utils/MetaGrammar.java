@@ -35,24 +35,24 @@ public class MetaGrammar {
     // Object construction methods for shorter notation:
 
     /** Construct a {@link PrecAssocRule}. */
-    private static PrecAssocRule rule(String ruleName, Clause clause) {
+    public static PrecAssocRule rule(String ruleName, Clause clause) {
         // Use -1 as precedence if rule group has only one precedence
         return rule(ruleName, -1, /* associativity = */ null, clause);
     }
 
     /** Construct a {@link PrecAssocRule} with the given precedence and associativity. */
-    private static PrecAssocRule rule(String ruleName, int precedence, Associativity associativity, Clause clause) {
+    public static PrecAssocRule rule(String ruleName, int precedence, Associativity associativity, Clause clause) {
         var rule = new PrecAssocRule(ruleName, precedence, associativity, clause);
         return rule;
     }
 
     /** Construct a {@link Seq} clause. */
-    private static Clause seq(Clause... subClauses) {
+    public static Clause seq(Clause... subClauses) {
         return new Seq(subClauses);
     }
 
     /** Construct a {@link OneOrMore} clause. */
-    private static Clause oneOrMore(Clause subClause) {
+    public static Clause oneOrMore(Clause subClause) {
         // It doesn't make sense to wrap these clause types in OneOrMore, but the OneOrMore should have
         // no effect if this does occur in the grammar, so remove it
         if (subClause instanceof OneOrMore || subClause instanceof Nothing || subClause instanceof FollowedBy
@@ -63,22 +63,22 @@ public class MetaGrammar {
     }
 
     /** Construct an {@link Optional} clause. */
-    private static Clause optional(Clause subClause) {
+    public static Clause optional(Clause subClause) {
         return new Optional(subClause);
     }
 
     /** Construct a {@link ZeroOrMore} clause. */
-    private static Clause zeroOrMore(Clause subClause) {
+    public static Clause zeroOrMore(Clause subClause) {
         return new ZeroOrMore(subClause);
     }
 
     /** Construct a {@link First} clause. */
-    private static Clause first(Clause... subClauses) {
+    public static Clause first(Clause... subClauses) {
         return new First(subClauses);
     }
 
     /** Construct a {@link FollowedBy} clause. */
-    private static Clause followedBy(Clause subClause) {
+    public static Clause followedBy(Clause subClause) {
         if (subClause instanceof Nothing || subClause instanceof FollowedBy || subClause instanceof NotFollowedBy) {
             return subClause;
         }
@@ -86,7 +86,7 @@ public class MetaGrammar {
     }
 
     /** Construct a {@link NotFollowedBy} clause. */
-    private static Clause notFollowedBy(Clause subClause) {
+    public static Clause notFollowedBy(Clause subClause) {
         if (subClause instanceof Nothing) {
             throw new IllegalArgumentException(NotFollowedBy.class.getSimpleName() + "("
                     + Nothing.class.getSimpleName() + ") will never match anything");
@@ -102,17 +102,17 @@ public class MetaGrammar {
     }
 
     /** Construct a {@link Nothing} terminal. */
-    private static Clause nothing() {
+    public static Clause nothing() {
         return new Nothing();
     }
 
     /** Construct a {@link Whitespace} terminal. */
-    private static Clause whitespace() {
+    public static Clause whitespace() {
         return new Whitespace();
     }
 
     /** Construct a terminal that matches a string token. */
-    private static Clause str(String str) {
+    public static Clause str(String str) {
         if (str.length() == 1) {
             return c(str.charAt(0));
         } else {
@@ -121,22 +121,22 @@ public class MetaGrammar {
     }
 
     /** Construct a terminal that matches a regexp. */
-    private static Clause regexp(String str) {
+    public static Clause regexp(String str) {
         return new Regexp(str);
     }
 
     /** Construct a terminal that matches one instance of any character given in the varargs param. */
-    private static CharSet c(char... chrs) {
+    public static CharSet c(char... chrs) {
         return new CharSet(chrs);
     }
 
-    //	/** Construct a terminal that matches one instance of any character in a given string. */
-    //	private static CharSet cInStr(String str) {
-    //		return new CharSet(str.toCharArray());
-    //	}
+    /** Construct a terminal that matches one instance of any character in a given string. */
+    public static CharSet cInStr(String str) {
+    		return new CharSet(str.toCharArray());
+    }
 
     /** Construct a terminal that matches a character range. */
-    private static CharSet cRange(char minChar, char maxChar) {
+    public static CharSet cRange(char minChar, char maxChar) {
         if (maxChar < minChar) {
             throw new IllegalArgumentException("maxChar < minChar");
         }
@@ -151,7 +151,7 @@ public class MetaGrammar {
      * Construct a terminal that matches a character range, specified using regexp notation without the square
      * brackets.
      */
-    private static CharSet cRange(String charRangeStr) {
+    public static CharSet cRange(String charRangeStr) {
         boolean invert = charRangeStr.startsWith("^");
         var charList = StringUtils.getCharRangeChars(invert ? charRangeStr.substring(1) : charRangeStr);
         var chars = new BitSet(128);
@@ -182,18 +182,18 @@ public class MetaGrammar {
     }
 
     /** Construct a character set as the union of other character sets. */
-    private static CharSet c(CharSet... charSets) {
+    public static CharSet c(CharSet... charSets) {
         return new CharSet(charSets);
     }
 
     /** Set the AST node label of a clause, then return the clause. */
-    private static Clause ast(String astNodeLabel, Clause clause) {
+    public static Clause ast(String astNodeLabel, Clause clause) {
         clause.astNodeLabel = astNodeLabel;
         return clause;
     }
 
     /** Construct a {@link RuleRef}. */
-    private static Clause ruleRef(String ruleName) {
+    public static Clause ruleRef(String ruleName) {
         return new RuleRef(ruleName);
     }
 
