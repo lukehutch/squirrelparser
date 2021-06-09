@@ -155,7 +155,7 @@ public class MetaGrammar {
 
     /** Construct a terminal that matches one instance of any character in a given string. */
     public static CharSet cInStr(String str) {
-    		return new CharSet(str.toCharArray());
+        return new CharSet(str.toCharArray());
     }
 
     /** Construct a terminal that matches a character range. */
@@ -163,11 +163,9 @@ public class MetaGrammar {
         if (maxChar < minChar) {
             throw new IllegalArgumentException("maxChar < minChar");
         }
-        char[] chars = new char[maxChar - minChar + 1];
-        for (char c = minChar; c <= maxChar; c++) {
-            chars[c - minChar] = c;
-        }
-        return new CharSet(chars);
+        BitSet bs = new BitSet(maxChar + 1);
+        bs.set(minChar, maxChar);
+        return new CharSet(bs);
     }
 
     /**
