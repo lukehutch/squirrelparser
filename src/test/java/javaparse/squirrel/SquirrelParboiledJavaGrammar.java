@@ -1,5 +1,5 @@
 // Java 1.6 grammar, ported from Parboiled
-package parboiled;
+package javaparse.squirrel;
 
 import static squirrelparser.utils.MetaGrammar.c;
 import static squirrelparser.utils.MetaGrammar.cInStr;
@@ -20,7 +20,7 @@ import squirrelparser.grammar.Grammar;
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.utils.PrecAssocRuleRewriter;
 
-public class ParboiledJavaGrammar {
+public class SquirrelParboiledJavaGrammar {
 
     //-------------------------------------------------------------------------
     //  JLS 3.11-12  Separators, Operators

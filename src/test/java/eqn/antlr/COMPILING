@@ -1,0 +1,4 @@
+
+- Download antlr-complete from https://www.antlr.org/download.html
+- java -jar ~/Downloads/antlr-4.9.2-complete.jar Equation.g4
+- javac -cp ~/Downloads/antlr-4.9.2-complete.jar *.java

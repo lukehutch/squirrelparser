@@ -39,7 +39,7 @@ import pikaparser.grammar.Rule;
 import pikaparser.grammar.Rule.Associativity;
 
 /** Grammar utils. */
-public class GrammarUtils {
+public class TestJavaClass {
     /** Find reachable clauses, and bottom-up (postorder), find clauses that always match in every position. */
     private static void findTerminals(Clause clause, HashSet<Clause> visited, List<Clause> terminalsOut) {
         if (visited.add(clause)) {

@@ -21,18 +21,20 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-package squirrelparser;
+package squirrel;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Objects;
 
 public class TestUtils {
-    static String loadResourceFile(String filename) throws IOException, URISyntaxException {
-        final var resource = TestUtils.class.getClassLoader().getResource(filename);
-        final var resourceURI = Objects.requireNonNull(resource).toURI();
-        return Files.readString(Paths.get(resourceURI));
+    public static String loadResourceFile(String filename) {
+        try {
+            final var resource = TestUtils.class.getClassLoader().getResource(filename);
+            final var resourceURI = Objects.requireNonNull(resource).toURI();
+            return Files.readString(Paths.get(resourceURI));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

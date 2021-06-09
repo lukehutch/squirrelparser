@@ -21,7 +21,7 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-package squirrelparser;
+package squirrel;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -29,7 +29,7 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-import parboiled.ParboiledJavaGrammar;
+import javaparse.squirrel.SquirrelParboiledJavaGrammar;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
@@ -59,9 +59,9 @@ public class Benchmark {
     @Test
     public void java_parsing_benchmark_1() throws IOException, URISyntaxException {
         final var grammarSpec = TestUtils.loadResourceFile("Java.1.8.peg");
-        final var input = TestUtils.loadResourceFile("GrammarUtils.java");
-
         final var grammar = MetaGrammar.parse(grammarSpec);
+
+        final var input = TestUtils.loadResourceFile("TestJavaClass.java");
 
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar, input);
@@ -74,8 +74,8 @@ public class Benchmark {
 
     @Test
     public void java_parsing_benchmark_2() throws IOException, URISyntaxException {
-        final var grammar = ParboiledJavaGrammar.grammar;
-        final var input = TestUtils.loadResourceFile("GrammarUtils.java");
+        final var grammar = SquirrelParboiledJavaGrammar.grammar;
+        final var input = TestUtils.loadResourceFile("TestJavaClass.java");
 
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar, input);
