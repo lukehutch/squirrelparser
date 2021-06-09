@@ -54,7 +54,7 @@ Total lexer+parser time 30844ms.
  */
 lexer grammar Java8Lexer;
 
-@header { package javaparse.antlr; }
+@header { package javaparse.antlr.java8; }
 
 // LEXER
 
@@ -340,20 +340,26 @@ fragment
 SingleCharacter
 	:	~['\\\r\n]
 	;
+
 // §3.10.5 String Literals
+
 StringLiteral
 	:	'"' StringCharacters? '"'
 	;
+
 fragment
 StringCharacters
 	:	StringCharacter+
 	;
+
 fragment
 StringCharacter
 	:	~["\\\r\n]
 	|	EscapeSequence
 	;
+
 // §3.10.6 Escape Sequences for Character and String Literals
+
 fragment
 EscapeSequence
 	:	'\\' [btnfr"'\\]
@@ -451,6 +457,7 @@ JavaLetter
 	|	// covers UTF-16 surrogate pairs encodings for U+10000 to U+10FFFF
 		[\uD800-\uDBFF] [\uDC00-\uDFFF] {this.wasJavaIdentiferStartUTF16()}?
 	;
+
 fragment
 JavaLetterOrDigit
 	:	[a-zA-Z0-9$_] // these are the "java letters or digits" below 0x7F

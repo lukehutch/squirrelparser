@@ -36,6 +36,7 @@ public class JavaParserProfiler extends Main {
         System.out.println();
         System.out.println(report.print());
     }
+
     @Override
     protected ParsingResult<?> run(Rule rootRule, String sourceText) {
         if (parseRunner == null) {

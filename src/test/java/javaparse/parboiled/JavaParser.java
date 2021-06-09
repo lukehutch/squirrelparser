@@ -54,13 +54,8 @@ public class JavaParser extends BaseParser<Object> {
     //-------------------------------------------------------------------------
 
     public Rule CompilationUnit() {
-        return Sequence(
-                Spacing(),
-                Optional(PackageDeclaration()),
-                ZeroOrMore(ImportDeclaration()),
-                ZeroOrMore(TypeDeclaration()),
-                EOI
-        );
+        return Sequence(Spacing(), Optional(PackageDeclaration()), ZeroOrMore(ImportDeclaration()),
+                ZeroOrMore(TypeDeclaration()), EOI);
     }
 
     Rule PackageDeclaration() {
@@ -68,28 +63,12 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule ImportDeclaration() {
-        return Sequence(
-                IMPORT,
-                Optional(STATIC),
-                QualifiedIdentifier(),
-                Optional(DOT, STAR),
-                SEMI
-        );
+        return Sequence(IMPORT, Optional(STATIC), QualifiedIdentifier(), Optional(DOT, STAR), SEMI);
     }
 
     Rule TypeDeclaration() {
-        return FirstOf(
-                Sequence(
-                        ZeroOrMore(Modifier()),
-                        FirstOf(
-                                ClassDeclaration(),
-                                EnumDeclaration(),
-                                InterfaceDeclaration(),
-                                AnnotationTypeDeclaration()
-                        )
-                ),
-                SEMI
-        );
+        return FirstOf(Sequence(ZeroOrMore(Modifier()), FirstOf(ClassDeclaration(), EnumDeclaration(),
+                InterfaceDeclaration(), AnnotationTypeDeclaration())), SEMI);
     }
 
     //-------------------------------------------------------------------------
@@ -97,14 +76,8 @@ public class JavaParser extends BaseParser<Object> {
     //-------------------------------------------------------------------------
 
     Rule ClassDeclaration() {
-        return Sequence(
-                CLASS,
-                Identifier(),
-                Optional(TypeParameters()),
-                Optional(EXTENDS, ClassType()),
-                Optional(IMPLEMENTS, ClassTypeList()),
-                ClassBody()
-        );
+        return Sequence(CLASS, Identifier(), Optional(TypeParameters()), Optional(EXTENDS, ClassType()),
+                Optional(IMPLEMENTS, ClassTypeList()), ClassBody());
     }
 
     Rule ClassBody() {
@@ -112,49 +85,30 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule ClassBodyDeclaration() {
-        return FirstOf(
-                SEMI,
-                Sequence(Optional(STATIC), Block()),
-                Sequence(ZeroOrMore(Modifier()), MemberDecl())
-        );
+        return FirstOf(SEMI, Sequence(Optional(STATIC), Block()), Sequence(ZeroOrMore(Modifier()), MemberDecl()));
     }
 
     Rule MemberDecl() {
-        return FirstOf(
-                Sequence(TypeParameters(), GenericMethodOrConstructorRest()),
+        return FirstOf(Sequence(TypeParameters(), GenericMethodOrConstructorRest()),
                 Sequence(Type(), Identifier(), MethodDeclaratorRest()),
                 Sequence(Type(), VariableDeclarators(), SEMI),
                 Sequence(VOID, Identifier(), VoidMethodDeclaratorRest()),
-                Sequence(Identifier(), ConstructorDeclaratorRest()),
-                InterfaceDeclaration(),
-                ClassDeclaration(),
-                EnumDeclaration(),
-                AnnotationTypeDeclaration()
-        );
+                Sequence(Identifier(), ConstructorDeclaratorRest()), InterfaceDeclaration(), ClassDeclaration(),
+                EnumDeclaration(), AnnotationTypeDeclaration());
     }
 
     Rule GenericMethodOrConstructorRest() {
-        return FirstOf(
-                Sequence(FirstOf(Type(), VOID), Identifier(), MethodDeclaratorRest()),
-                Sequence(Identifier(), ConstructorDeclaratorRest())
-        );
+        return FirstOf(Sequence(FirstOf(Type(), VOID), Identifier(), MethodDeclaratorRest()),
+                Sequence(Identifier(), ConstructorDeclaratorRest()));
     }
 
     Rule MethodDeclaratorRest() {
-        return Sequence(
-                FormalParameters(),
-                ZeroOrMore(Dim()),
-                Optional(THROWS, ClassTypeList()),
-                FirstOf(MethodBody(), SEMI)
-        );
+        return Sequence(FormalParameters(), ZeroOrMore(Dim()), Optional(THROWS, ClassTypeList()),
+                FirstOf(MethodBody(), SEMI));
     }
 
     Rule VoidMethodDeclaratorRest() {
-        return Sequence(
-                FormalParameters(),
-                Optional(THROWS, ClassTypeList()),
-                FirstOf(MethodBody(), SEMI)
-        );
+        return Sequence(FormalParameters(), Optional(THROWS, ClassTypeList()), FirstOf(MethodBody(), SEMI));
     }
 
     Rule ConstructorDeclaratorRest() {
@@ -170,13 +124,8 @@ public class JavaParser extends BaseParser<Object> {
     //-------------------------------------------------------------------------
 
     Rule InterfaceDeclaration() {
-        return Sequence(
-                INTERFACE,
-                Identifier(),
-                Optional(TypeParameters()),
-                Optional(EXTENDS, ClassTypeList()),
-                InterfaceBody()
-        );
+        return Sequence(INTERFACE, Identifier(), Optional(TypeParameters()), Optional(EXTENDS, ClassTypeList()),
+                InterfaceBody());
     }
 
     Rule InterfaceBody() {
@@ -184,22 +133,13 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule InterfaceBodyDeclaration() {
-        return FirstOf(
-                Sequence(ZeroOrMore(Modifier()), InterfaceMemberDecl()),
-                SEMI
-        );
+        return FirstOf(Sequence(ZeroOrMore(Modifier()), InterfaceMemberDecl()), SEMI);
     }
 
     Rule InterfaceMemberDecl() {
-        return FirstOf(
-                InterfaceMethodOrFieldDecl(),
-                InterfaceGenericMethodDecl(),
-                Sequence(VOID, Identifier(), VoidInterfaceMethodDeclaratorsRest()),
-                InterfaceDeclaration(),
-                AnnotationTypeDeclaration(),
-                ClassDeclaration(),
-                EnumDeclaration()
-        );
+        return FirstOf(InterfaceMethodOrFieldDecl(), InterfaceGenericMethodDecl(),
+                Sequence(VOID, Identifier(), VoidInterfaceMethodDeclaratorsRest()), InterfaceDeclaration(),
+                AnnotationTypeDeclaration(), ClassDeclaration(), EnumDeclaration());
     }
 
     Rule InterfaceMethodOrFieldDecl() {
@@ -207,19 +147,11 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule InterfaceMethodOrFieldRest() {
-        return FirstOf(
-                Sequence(ConstantDeclaratorsRest(), SEMI),
-                InterfaceMethodDeclaratorRest()
-        );
+        return FirstOf(Sequence(ConstantDeclaratorsRest(), SEMI), InterfaceMethodDeclaratorRest());
     }
 
     Rule InterfaceMethodDeclaratorRest() {
-        return Sequence(
-                FormalParameters(),
-                ZeroOrMore(Dim()),
-                Optional(THROWS, ClassTypeList()),
-                SEMI
-        );
+        return Sequence(FormalParameters(), ZeroOrMore(Dim()), Optional(THROWS, ClassTypeList()), SEMI);
     }
 
     Rule InterfaceGenericMethodDecl() {
@@ -247,22 +179,11 @@ public class JavaParser extends BaseParser<Object> {
     //-------------------------------------------------------------------------
 
     Rule EnumDeclaration() {
-        return Sequence(
-                ENUM,
-                Identifier(),
-                Optional(IMPLEMENTS, ClassTypeList()),
-                EnumBody()
-        );
+        return Sequence(ENUM, Identifier(), Optional(IMPLEMENTS, ClassTypeList()), EnumBody());
     }
 
     Rule EnumBody() {
-        return Sequence(
-                LWING,
-                Optional(EnumConstants()),
-                Optional(COMMA),
-                Optional(EnumBodyDeclarations()),
-                RWING
-        );
+        return Sequence(LWING, Optional(EnumConstants()), Optional(COMMA), Optional(EnumBodyDeclarations()), RWING);
     }
 
     Rule EnumConstants() {
@@ -270,12 +191,7 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule EnumConstant() {
-        return Sequence(
-                ZeroOrMore(Annotation()),
-                Identifier(),
-                Optional(Arguments()),
-                Optional(ClassBody())
-        );
+        return Sequence(ZeroOrMore(Annotation()), Identifier(), Optional(Arguments()), Optional(ClassBody()));
     }
 
     Rule EnumBodyDeclarations() {
@@ -315,10 +231,8 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule FormalParameterDeclsRest() {
-        return FirstOf(
-                Sequence(VariableDeclaratorId(), Optional(COMMA, FormalParameterDecls())),
-                Sequence(ELLIPSIS, VariableDeclaratorId())
-        );
+        return FirstOf(Sequence(VariableDeclaratorId(), Optional(COMMA, FormalParameterDecls())),
+                Sequence(ELLIPSIS, VariableDeclaratorId()));
     }
 
     Rule VariableDeclaratorId() {
@@ -338,35 +252,24 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule BlockStatement() {
-        return FirstOf(
-                LocalVariableDeclarationStatement(),
-                Sequence(ZeroOrMore(Modifier()), FirstOf(ClassDeclaration(), EnumDeclaration())),
-                Statement()
-        );
+        return FirstOf(LocalVariableDeclarationStatement(),
+                Sequence(ZeroOrMore(Modifier()), FirstOf(ClassDeclaration(), EnumDeclaration())), Statement());
     }
 
     Rule Statement() {
-        return FirstOf(
-                Block(),
-                Sequence(ASSERT, Expression(), Optional(COLON, Expression()), SEMI),
+        return FirstOf(Block(), Sequence(ASSERT, Expression(), Optional(COLON, Expression()), SEMI),
                 Sequence(IF, ParExpression(), Statement(), Optional(ELSE, Statement())),
                 Sequence(FOR, LPAR, Optional(ForInit()), SEMI, Optional(Expression()), SEMI, Optional(ForUpdate()),
                         RPAR, Statement()),
                 Sequence(FOR, LPAR, FormalParameter(), COLON, Expression(), RPAR, Statement()),
                 Sequence(WHILE, ParExpression(), Statement()),
                 Sequence(DO, Statement(), WHILE, ParExpression(), SEMI),
-                Sequence(TRY, Block(),
-                        FirstOf(Sequence(OneOrMore(Catch_()), Optional(Finally_())), Finally_())),
+                Sequence(TRY, Block(), FirstOf(Sequence(OneOrMore(Catch_()), Optional(Finally_())), Finally_())),
                 Sequence(SWITCH, ParExpression(), LWING, SwitchBlockStatementGroups(), RWING),
-                Sequence(SYNCHRONIZED, ParExpression(), Block()),
-                Sequence(RETURN, Optional(Expression()), SEMI),
-                Sequence(THROW, Expression(), SEMI),
-                Sequence(BREAK, Optional(Identifier()), SEMI),
+                Sequence(SYNCHRONIZED, ParExpression(), Block()), Sequence(RETURN, Optional(Expression()), SEMI),
+                Sequence(THROW, Expression(), SEMI), Sequence(BREAK, Optional(Identifier()), SEMI),
                 Sequence(CONTINUE, Optional(Identifier()), SEMI),
-                Sequence(Sequence(Identifier(), COLON), Statement()),
-                Sequence(StatementExpression(), SEMI),
-                SEMI
-        );
+                Sequence(Sequence(Identifier(), COLON), Statement()), Sequence(StatementExpression(), SEMI), SEMI);
     }
 
     Rule Catch_() {
@@ -386,18 +289,13 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule SwitchLabel() {
-        return FirstOf(
-                Sequence(CASE, ConstantExpression(), COLON),
-                Sequence(CASE, EnumConstantName(), COLON),
-                Sequence(DEFAULT, COLON)
-        );
+        return FirstOf(Sequence(CASE, ConstantExpression(), COLON), Sequence(CASE, EnumConstantName(), COLON),
+                Sequence(DEFAULT, COLON));
     }
 
     Rule ForInit() {
-        return FirstOf(
-                Sequence(ZeroOrMore(FirstOf(FINAL, Annotation())), Type(), VariableDeclarators()),
-                Sequence(StatementExpression(), ZeroOrMore(COMMA, StatementExpression()))
-        );
+        return FirstOf(Sequence(ZeroOrMore(FirstOf(FINAL, Annotation())), Type(), VariableDeclarators()),
+                Sequence(StatementExpression(), ZeroOrMore(COMMA, StatementExpression())));
     }
 
     Rule ForUpdate() {
@@ -431,143 +329,81 @@ public class JavaParser extends BaseParser<Object> {
     // as LeftHandSide, which results in accepting statements like 5 = a.
 
     Rule Expression() {
-        return Sequence(
-                ConditionalExpression(),
-                ZeroOrMore(AssignmentOperator(), ConditionalExpression())
-        );
+        return Sequence(ConditionalExpression(), ZeroOrMore(AssignmentOperator(), ConditionalExpression()));
     }
 
     Rule AssignmentOperator() {
-        return FirstOf(EQU, PLUSEQU, MINUSEQU, STAREQU, DIVEQU, ANDEQU, OREQU, HATEQU, MODEQU, SLEQU, SREQU, BSREQU);
+        return FirstOf(EQU, PLUSEQU, MINUSEQU, STAREQU, DIVEQU, ANDEQU, OREQU, HATEQU, MODEQU, SLEQU, SREQU,
+                BSREQU);
     }
 
     Rule ConditionalExpression() {
-        return Sequence(
-                ConditionalOrExpression(),
-                ZeroOrMore(QUERY, Expression(), COLON, ConditionalOrExpression())
-        );
+        return Sequence(ConditionalOrExpression(),
+                ZeroOrMore(QUERY, Expression(), COLON, ConditionalOrExpression()));
     }
 
     Rule ConditionalOrExpression() {
-        return Sequence(
-                ConditionalAndExpression(),
-                ZeroOrMore(OROR, ConditionalAndExpression())
-        );
+        return Sequence(ConditionalAndExpression(), ZeroOrMore(OROR, ConditionalAndExpression()));
     }
 
     Rule ConditionalAndExpression() {
-        return Sequence(
-                InclusiveOrExpression(),
-                ZeroOrMore(ANDAND, InclusiveOrExpression())
-        );
+        return Sequence(InclusiveOrExpression(), ZeroOrMore(ANDAND, InclusiveOrExpression()));
     }
 
     Rule InclusiveOrExpression() {
-        return Sequence(
-                ExclusiveOrExpression(),
-                ZeroOrMore(OR, ExclusiveOrExpression())
-        );
+        return Sequence(ExclusiveOrExpression(), ZeroOrMore(OR, ExclusiveOrExpression()));
     }
 
     Rule ExclusiveOrExpression() {
-        return Sequence(
-                AndExpression(),
-                ZeroOrMore(HAT, AndExpression())
-        );
+        return Sequence(AndExpression(), ZeroOrMore(HAT, AndExpression()));
     }
 
     Rule AndExpression() {
-        return Sequence(
-                EqualityExpression(),
-                ZeroOrMore(AND, EqualityExpression())
-        );
+        return Sequence(EqualityExpression(), ZeroOrMore(AND, EqualityExpression()));
     }
 
     Rule EqualityExpression() {
-        return Sequence(
-                RelationalExpression(),
-                ZeroOrMore(FirstOf(EQUAL, NOTEQUAL), RelationalExpression())
-        );
+        return Sequence(RelationalExpression(), ZeroOrMore(FirstOf(EQUAL, NOTEQUAL), RelationalExpression()));
     }
 
     Rule RelationalExpression() {
-        return Sequence(
-                ShiftExpression(),
-                ZeroOrMore(
-                        FirstOf(
-                                Sequence(FirstOf(LE, GE, LT, GT), ShiftExpression()),
-                                Sequence(INSTANCEOF, ReferenceType())
-                        )
-                )
-        );
+        return Sequence(ShiftExpression(), ZeroOrMore(FirstOf(Sequence(FirstOf(LE, GE, LT, GT), ShiftExpression()),
+                Sequence(INSTANCEOF, ReferenceType()))));
     }
 
     Rule ShiftExpression() {
-        return Sequence(
-                AdditiveExpression(),
-                ZeroOrMore(FirstOf(SL, SR, BSR), AdditiveExpression())
-        );
+        return Sequence(AdditiveExpression(), ZeroOrMore(FirstOf(SL, SR, BSR), AdditiveExpression()));
     }
 
     Rule AdditiveExpression() {
-        return Sequence(
-                MultiplicativeExpression(),
-                ZeroOrMore(FirstOf(PLUS, MINUS), MultiplicativeExpression())
-        );
+        return Sequence(MultiplicativeExpression(), ZeroOrMore(FirstOf(PLUS, MINUS), MultiplicativeExpression()));
     }
 
     Rule MultiplicativeExpression() {
-        return Sequence(
-                UnaryExpression(),
-                ZeroOrMore(FirstOf(STAR, DIV, MOD), UnaryExpression())
-        );
+        return Sequence(UnaryExpression(), ZeroOrMore(FirstOf(STAR, DIV, MOD), UnaryExpression()));
     }
 
     Rule UnaryExpression() {
-        return FirstOf(
-                Sequence(PrefixOp(), UnaryExpression()),
-                Sequence(LPAR, Type(), RPAR, UnaryExpression()),
-                Sequence(Primary(), ZeroOrMore(Selector()), ZeroOrMore(PostFixOp()))
-        );
+        return FirstOf(Sequence(PrefixOp(), UnaryExpression()), Sequence(LPAR, Type(), RPAR, UnaryExpression()),
+                Sequence(Primary(), ZeroOrMore(Selector()), ZeroOrMore(PostFixOp())));
     }
 
     Rule Primary() {
-        return FirstOf(
-                ParExpression(),
-                Sequence(
-                        NonWildcardTypeArguments(),
-                        FirstOf(ExplicitGenericInvocationSuffix(), Sequence(THIS, Arguments()))
-                ),
-                Sequence(THIS, Optional(Arguments())),
-                Sequence(SUPER, SuperSuffix()),
-                Literal(),
-                Sequence(NEW, Creator()),
-                Sequence(QualifiedIdentifier(), Optional(IdentifierSuffix())),
-                Sequence(BasicType(), ZeroOrMore(Dim()), DOT, CLASS),
-                Sequence(VOID, DOT, CLASS)
-        );
+        return FirstOf(ParExpression(),
+                Sequence(NonWildcardTypeArguments(),
+                        FirstOf(ExplicitGenericInvocationSuffix(), Sequence(THIS, Arguments()))),
+                Sequence(THIS, Optional(Arguments())), Sequence(SUPER, SuperSuffix()), Literal(),
+                Sequence(NEW, Creator()), Sequence(QualifiedIdentifier(), Optional(IdentifierSuffix())),
+                Sequence(BasicType(), ZeroOrMore(Dim()), DOT, CLASS), Sequence(VOID, DOT, CLASS));
     }
 
     Rule IdentifierSuffix() {
         return FirstOf(
                 Sequence(LBRK,
-                        FirstOf(
-                                Sequence(RBRK, ZeroOrMore(Dim()), DOT, CLASS),
-                                Sequence(Expression(), RBRK)
-                        )
-                ),
+                        FirstOf(Sequence(RBRK, ZeroOrMore(Dim()), DOT, CLASS), Sequence(Expression(), RBRK))),
                 Arguments(),
-                Sequence(
-                        DOT,
-                        FirstOf(
-                                CLASS,
-                                ExplicitGenericInvocation(),
-                                THIS,
-                                Sequence(SUPER, Arguments()),
-                                Sequence(NEW, Optional(NonWildcardTypeArguments()), InnerCreator())
-                        )
-                )
-        );
+                Sequence(DOT, FirstOf(CLASS, ExplicitGenericInvocation(), THIS, Sequence(SUPER, Arguments()),
+                        Sequence(NEW, Optional(NonWildcardTypeArguments()), InnerCreator()))));
     }
 
     Rule ExplicitGenericInvocation() {
@@ -579,10 +415,7 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule ExplicitGenericInvocationSuffix() {
-        return FirstOf(
-                Sequence(SUPER, SuperSuffix()),
-                Sequence(Identifier(), Arguments())
-        );
+        return FirstOf(Sequence(SUPER, SuperSuffix()), Sequence(Identifier(), Arguments()));
     }
 
     Rule PrefixOp() {
@@ -594,14 +427,10 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule Selector() {
-        return FirstOf(
-                Sequence(DOT, Identifier(), Optional(Arguments())),
-                Sequence(DOT, ExplicitGenericInvocation()),
-                Sequence(DOT, THIS),
+        return FirstOf(Sequence(DOT, Identifier(), Optional(Arguments())),
+                Sequence(DOT, ExplicitGenericInvocation()), Sequence(DOT, THIS),
                 Sequence(DOT, SUPER, SuperSuffix()),
-                Sequence(DOT, NEW, Optional(NonWildcardTypeArguments()), InnerCreator()),
-                DimExpr()
-        );
+                Sequence(DOT, NEW, Optional(NonWildcardTypeArguments()), InnerCreator()), DimExpr());
     }
 
     Rule SuperSuffix() {
@@ -610,33 +439,22 @@ public class JavaParser extends BaseParser<Object> {
 
     @MemoMismatches
     Rule BasicType() {
-        return Sequence(
-                FirstOf("byte", "short", "char", "int", "long", "float", "double", "boolean"),
-                TestNot(LetterOrDigit()),
-                Spacing()
-        );
+        return Sequence(FirstOf("byte", "short", "char", "int", "long", "float", "double", "boolean"),
+                TestNot(LetterOrDigit()), Spacing());
     }
 
     Rule Arguments() {
-        return Sequence(
-                LPAR,
-                Optional(Expression(), ZeroOrMore(COMMA, Expression())),
-                RPAR
-        );
+        return Sequence(LPAR, Optional(Expression(), ZeroOrMore(COMMA, Expression())), RPAR);
     }
 
     Rule Creator() {
-        return FirstOf(
-                Sequence(Optional(NonWildcardTypeArguments()), CreatedName(), ClassCreatorRest()),
-                Sequence(Optional(NonWildcardTypeArguments()), FirstOf(ClassType(), BasicType()), ArrayCreatorRest())
-        );
+        return FirstOf(Sequence(Optional(NonWildcardTypeArguments()), CreatedName(), ClassCreatorRest()), Sequence(
+                Optional(NonWildcardTypeArguments()), FirstOf(ClassType(), BasicType()), ArrayCreatorRest()));
     }
 
     Rule CreatedName() {
-        return Sequence(
-                Identifier(), Optional(NonWildcardTypeArguments()),
-                ZeroOrMore(DOT, Identifier(), Optional(NonWildcardTypeArguments()))
-        );
+        return Sequence(Identifier(), Optional(NonWildcardTypeArguments()),
+                ZeroOrMore(DOT, Identifier(), Optional(NonWildcardTypeArguments())));
     }
 
     Rule InnerCreator() {
@@ -646,13 +464,8 @@ public class JavaParser extends BaseParser<Object> {
     // The following is more generous than JLS 15.10. According to that definition,
     // BasicType must be followed by at least one DimExpr or by ArrayInitializer.
     Rule ArrayCreatorRest() {
-        return Sequence(
-                LBRK,
-                FirstOf(
-                        Sequence(RBRK, ZeroOrMore(Dim()), ArrayInitializer()),
-                        Sequence(Expression(), RBRK, ZeroOrMore(DimExpr()), ZeroOrMore(Dim()))
-                )
-        );
+        return Sequence(LBRK, FirstOf(Sequence(RBRK, ZeroOrMore(Dim()), ArrayInitializer()),
+                Sequence(Expression(), RBRK, ZeroOrMore(DimExpr()), ZeroOrMore(Dim()))));
     }
 
     Rule ClassCreatorRest() {
@@ -660,15 +473,8 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule ArrayInitializer() {
-        return Sequence(
-                LWING,
-                Optional(
-                    VariableInitializer(),
-                    ZeroOrMore(COMMA, VariableInitializer())
-                ),
-                Optional(COMMA),
-                RWING
-        );
+        return Sequence(LWING, Optional(VariableInitializer(), ZeroOrMore(COMMA, VariableInitializer())),
+                Optional(COMMA), RWING);
     }
 
     Rule VariableInitializer() {
@@ -700,17 +506,12 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule ReferenceType() {
-        return FirstOf(
-                Sequence(BasicType(), OneOrMore(Dim())),
-                Sequence(ClassType(), ZeroOrMore(Dim()))
-        );
+        return FirstOf(Sequence(BasicType(), OneOrMore(Dim())), Sequence(ClassType(), ZeroOrMore(Dim())));
     }
 
     Rule ClassType() {
-        return Sequence(
-                Identifier(), Optional(TypeArguments()),
-                ZeroOrMore(DOT, Identifier(), Optional(TypeArguments()))
-        );
+        return Sequence(Identifier(), Optional(TypeArguments()),
+                ZeroOrMore(DOT, Identifier(), Optional(TypeArguments())));
     }
 
     Rule ClassTypeList() {
@@ -722,10 +523,7 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule TypeArgument() {
-        return FirstOf(
-                ReferenceType(),
-                Sequence(QUERY, Optional(FirstOf(EXTENDS, SUPER), ReferenceType()))
-        );
+        return FirstOf(ReferenceType(), Sequence(QUERY, Optional(FirstOf(EXTENDS, SUPER), ReferenceType())));
     }
 
     Rule TypeParameters() {
@@ -744,15 +542,11 @@ public class JavaParser extends BaseParser<Object> {
     // in JLS Chapter 18 to minimize look ahead. The main body of JLS has
     // different lists of modifiers for different language elements.
     Rule Modifier() {
-        return FirstOf(
-                Annotation(),
+        return FirstOf(Annotation(),
                 Sequence(
                         FirstOf("public", "protected", "private", "static", "abstract", "final", "native",
                                 "synchronized", "transient", "volatile", "strictfp"),
-                        TestNot(LetterOrDigit()),
-                        Spacing()
-                )
-        );
+                        TestNot(LetterOrDigit()), Spacing()));
     }
 
     //-------------------------------------------------------------------------
@@ -768,20 +562,12 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule AnnotationTypeElementDeclaration() {
-        return FirstOf(
-                Sequence(ZeroOrMore(Modifier()), AnnotationTypeElementRest()),
-                SEMI
-        );
+        return FirstOf(Sequence(ZeroOrMore(Modifier()), AnnotationTypeElementRest()), SEMI);
     }
 
     Rule AnnotationTypeElementRest() {
-        return FirstOf(
-                Sequence(Type(), AnnotationMethodOrConstantRest(), SEMI),
-                ClassDeclaration(),
-                EnumDeclaration(),
-                InterfaceDeclaration(),
-                AnnotationTypeDeclaration()
-        );
+        return FirstOf(Sequence(Type(), AnnotationMethodOrConstantRest(), SEMI), ClassDeclaration(),
+                EnumDeclaration(), InterfaceDeclaration(), AnnotationTypeDeclaration());
     }
 
     Rule AnnotationMethodOrConstantRest() {
@@ -852,12 +638,7 @@ public class JavaParser extends BaseParser<Object> {
                 Sequence("/*", ZeroOrMore(TestNot("*/"), ANY), "*/"),
 
                 // end of line comment
-                Sequence(
-                        "//",
-                        ZeroOrMore(TestNot(AnyOf("\r\n")), ANY),
-                        FirstOf("\r\n", '\r', '\n', EOI)
-                )
-        ));
+                Sequence("//", ZeroOrMore(TestNot(AnyOf("\r\n")), ANY), FirstOf("\r\n", '\r', '\n', EOI))));
     }
 
     //-------------------------------------------------------------------------
@@ -894,11 +675,10 @@ public class JavaParser extends BaseParser<Object> {
     Rule Keyword() {
         return Sequence(
                 FirstOf("assert", "break", "case", "catch", "class", "const", "continue", "default", "do", "else",
-                        "enum", "extends", "finally", "final", "for", "goto", "if", "implements", "import", "interface",
-                        "instanceof", "new", "package", "return", "static", "super", "switch", "synchronized", "this",
-                        "throws", "throw", "try", "void", "while"),
-                TestNot(LetterOrDigit())
-        );
+                        "enum", "extends", "finally", "final", "for", "goto", "if", "implements", "import",
+                        "interface", "instanceof", "new", "package", "return", "static", "super", "switch",
+                        "synchronized", "this", "throws", "throw", "try", "void", "while"),
+                TestNot(LetterOrDigit()));
     }
 
     public final Rule ASSERT = Keyword("assert");
@@ -945,18 +725,9 @@ public class JavaParser extends BaseParser<Object> {
     //-------------------------------------------------------------------------
 
     Rule Literal() {
-        return Sequence(
-                FirstOf(
-                        FloatLiteral(),
-                        IntegerLiteral(),
-                        CharLiteral(),
-                        StringLiteral(),
-                        Sequence("true", TestNot(LetterOrDigit())),
-                        Sequence("false", TestNot(LetterOrDigit())),
-                        Sequence("null", TestNot(LetterOrDigit()))
-                ),
-                Spacing()
-        );
+        return Sequence(FirstOf(FloatLiteral(), IntegerLiteral(), CharLiteral(), StringLiteral(),
+                Sequence("true", TestNot(LetterOrDigit())), Sequence("false", TestNot(LetterOrDigit())),
+                Sequence("null", TestNot(LetterOrDigit()))), Spacing());
     }
 
     //@SuppressSubnodes
@@ -992,11 +763,11 @@ public class JavaParser extends BaseParser<Object> {
     //@SuppressSubnodes
     Rule DecimalFloat() {
         return FirstOf(
-                Sequence(OneOrMore(Digit()), '.', ZeroOrMore(Digit()), Optional(Exponent()), Optional(AnyOf("fFdD"))),
+                Sequence(OneOrMore(Digit()), '.', ZeroOrMore(Digit()), Optional(Exponent()),
+                        Optional(AnyOf("fFdD"))),
                 Sequence('.', OneOrMore(Digit()), Optional(Exponent()), Optional(AnyOf("fFdD"))),
                 Sequence(OneOrMore(Digit()), Exponent(), Optional(AnyOf("fFdD"))),
-                Sequence(OneOrMore(Digit()), Optional(Exponent()), AnyOf("fFdD"))
-        );
+                Sequence(OneOrMore(Digit()), Optional(Exponent()), AnyOf("fFdD")));
     }
 
     Rule Exponent() {
@@ -1013,10 +784,8 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule HexSignificant() {
-        return FirstOf(
-                Sequence(FirstOf("0x", "0X"), ZeroOrMore(HexDigit()), '.', OneOrMore(HexDigit())),
-                Sequence(HexNumeral(), Optional('.'))
-        );
+        return FirstOf(Sequence(FirstOf("0x", "0X"), ZeroOrMore(HexDigit()), '.', OneOrMore(HexDigit())),
+                Sequence(HexNumeral(), Optional('.')));
     }
 
     Rule BinaryExponent() {
@@ -1024,24 +793,12 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule CharLiteral() {
-        return Sequence(
-                '\'',
-                FirstOf(Escape(), Sequence(TestNot(AnyOf("'\\")), ANY)).suppressSubnodes(),
-                '\''
-        );
+        return Sequence('\'', FirstOf(Escape(), Sequence(TestNot(AnyOf("'\\")), ANY)).suppressSubnodes(), '\'');
     }
 
     Rule StringLiteral() {
-        return Sequence(
-                '"',
-                ZeroOrMore(
-                        FirstOf(
-                                Escape(),
-                                Sequence(TestNot(AnyOf("\r\n\"\\")), ANY)
-                        )
-                ).suppressSubnodes(),
-                '"'
-        );
+        return Sequence('"',
+                ZeroOrMore(FirstOf(Escape(), Sequence(TestNot(AnyOf("\r\n\"\\")), ANY))).suppressSubnodes(), '"');
     }
 
     Rule Escape() {
@@ -1049,11 +806,8 @@ public class JavaParser extends BaseParser<Object> {
     }
 
     Rule OctalEscape() {
-        return FirstOf(
-                Sequence(CharRange('0', '3'), CharRange('0', '7'), CharRange('0', '7')),
-                Sequence(CharRange('0', '7'), CharRange('0', '7')),
-                CharRange('0', '7')
-        );
+        return FirstOf(Sequence(CharRange('0', '3'), CharRange('0', '7'), CharRange('0', '7')),
+                Sequence(CharRange('0', '7'), CharRange('0', '7')), CharRange('0', '7'));
     }
 
     Rule UnicodeEscape() {

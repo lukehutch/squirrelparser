@@ -61,7 +61,8 @@ public class Main {
 
         start = System.currentTimeMillis();
         File baseDir = args.length == 1 ? new File(args[0]) : null;
-        if (baseDir == null || !baseDir.exists()) baseDir = new File(".");
+        if (baseDir == null || !baseDir.exists())
+            baseDir = new File(".");
         System.out.printf("Retrieving file list from '%s'", baseDir);
         List<File> sources = recursiveGetAllJavaSources(baseDir, new ArrayList<File>());
         time(start);
@@ -138,15 +139,15 @@ public class Main {
         checkArgNotNull(charset, "charset");
         try {
             return readAllText(new FileInputStream(file), charset);
-        }
-        catch (FileNotFoundException e) {
+        } catch (FileNotFoundException e) {
             return null;
         }
     }
 
     public static String readAllText(InputStream stream, Charset charset) {
         checkArgNotNull(charset, "charset");
-        if (stream == null) return null;
+        if (stream == null)
+            return null;
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream, charset));
         StringWriter writer = new StringWriter();
         copyAll(reader, writer);
@@ -159,12 +160,12 @@ public class Main {
         try {
             char[] data = new char[4096]; // copy in chunks of 4K
             int count;
-            while ((count = reader.read(data)) >= 0) writer.write(data, 0, count);
+            while ((count = reader.read(data)) >= 0)
+                writer.write(data, 0, count);
 
             reader.close();
             writer.close();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

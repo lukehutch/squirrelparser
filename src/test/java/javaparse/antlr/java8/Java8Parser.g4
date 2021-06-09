@@ -53,7 +53,7 @@ Total lexer+parser time 30844ms.
  */
 parser grammar Java8Parser;
 
-@header { package javaparse.antlr; }
+@header { package javaparse.antlr.java8; }
 
 options {
     tokenVocab=Java8Lexer;

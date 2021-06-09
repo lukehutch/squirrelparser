@@ -57,7 +57,7 @@ public class Benchmark {
     }
 
     @Test
-    public void java_parsing_benchmark_1() throws IOException, URISyntaxException {
+    public void java_parsing_benchmark_mouse_1p8() throws IOException, URISyntaxException {
         final var grammarSpec = TestUtils.loadResourceFile("Java.1.8.peg");
         final var grammar = MetaGrammar.parse(grammarSpec);
 
@@ -73,7 +73,7 @@ public class Benchmark {
     }
 
     @Test
-    public void java_parsing_benchmark_2() throws IOException, URISyntaxException {
+    public void java_parsing_benchmark_parb_1p6() throws IOException, URISyntaxException {
         final var grammar = SquirrelParboiledJavaGrammar.grammar;
         final var input = TestUtils.loadResourceFile("TestJavaClass.java");
 
@@ -84,6 +84,22 @@ public class Benchmark {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "java-parse-2");
+    }
+
+    @Test
+    public void java_parsing_benchmark_many_strings_concat() throws IOException, URISyntaxException {
+        final var grammarSpec = TestUtils.loadResourceFile("Java.1.8.peg");
+        final var grammar = MetaGrammar.parse(grammarSpec);
+
+        final var input = TestUtils.loadResourceFile("ManyStringsConcat.java");
+
+        executeInTimedLoop(() -> {
+            var parser = new Parser(grammar, input);
+            var match = parser.parse();
+            if (match == Match.NO_MATCH) {
+                throw new IllegalArgumentException("Did not match input");
+            }
+        }, "java-parse-many-strings-concat");
     }
 
     private static <T> void executeInTimedLoop(Runnable toExecute, String benchmarkName) {
