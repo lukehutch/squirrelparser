@@ -1,3 +1,26 @@
+//
+// This file is part of the squirrel parser reference implementation:
+//
+//     https://github.com/lukehutch/squirrelparser
+//
+// This software is provided under the MIT license:
+//
+// Copyright 2021 Luke A. D. Hutchison
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+// documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+// and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions
+// of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+// TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+// CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+//
 package squirrelparser.utils;
 
 import java.util.ArrayList;
@@ -11,24 +34,27 @@ import squirrelparser.grammar.Rule;
 import squirrelparser.grammar.clause.nonterminal.First;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
 
-/** Rewrite a grammar from precedence-associativity form into plain PEG rules. */
+/**
+ * Rewrite a grammar from precedence-associativity form into plain PEG rules.
+ * 
+ * <code>
+        For all but the highest precedence level:
+        
+        E[0] <- E (Op E)+  =>  E[0] <- (E[1] (Op E[1])+) / E[1] 
+        E[0,L] <- E Op E   =>  E[0] <- (E[0] Op E[1]) / E[1] 
+        E[0,R] <- E Op E   =>  E[0] <- (E[1] Op E[0]) / E[1]
+        E[3] <- '-' E      =>  E[3] <- '-' (E[3] / E[4]) / E[4]
+        
+        For highest precedence level, next highest precedence wraps back to lowest precedence level:
+        
+        E[5] <- '(' E ')'  =>  E[5] <- '(' E[0] ')'
+ * </code>
+ * 
+ */
 public class PrecAssocRuleRewriter {
     /** Rewrite self-references in a precedence hierarchy into precedence-climbing form. */
     private static void rewriteRuleGroup(List<PrecAssocRule> ruleGroup,
             Map<String, String> ruleNameToLowestPrecedenceLevelRuleNameOut) {
-        // Rewrite rules
-        // 
-        // For all but the highest precedence level:
-        //
-        // E[0] <- E (Op E)+  =>  E[0] <- (E[1] (Op E[1])+) / E[1] 
-        // E[0,L] <- E Op E   =>  E[0] <- (E[0] Op E[1]) / E[1] 
-        // E[0,R] <- E Op E   =>  E[0] <- (E[1] Op E[0]) / E[1]
-        // E[3] <- '-' E      =>  E[3] <- '-' (E[3] / E[4]) / E[4]
-        //
-        // For highest precedence level, next highest precedence wraps back to lowest precedence level:
-        //
-        // E[5] <- '(' E ')'  =>  E[5] <- '(' E[0] ')'
-
         var ruleNameWithoutPrecedence = ruleGroup.get(0).ruleName;
 
         // Check there are no duplicate precedence levels
@@ -131,7 +157,7 @@ public class PrecAssocRuleRewriter {
         ruleNameToLowestPrecedenceLevelRuleNameOut.put(ruleNameWithoutPrecedence, lowestPrecRule.ruleName);
     }
 
-    /** Rewrite a list of rules in precedence-associativity form into plain PEG form. */ 
+    /** Rewrite a list of rules in precedence-associativity form into plain PEG form. */
     public static List<Rule> rewrite(List<PrecAssocRule> precAssocRules) {
         if (precAssocRules.isEmpty()) {
             throw new IllegalArgumentException("Need at least one rule");

@@ -1,17 +1,11 @@
 //
-// This file is part of the pika parser reference implementation:
+// This file is part of the squirrel parser reference implementation:
 //
-//     https://github.com/lukehutch/pikaparser
-//
-// The pika parsing algorithm is described in the following paper:
-//
-//     Pika parsing: reformulating packrat parsing as a dynamic programming algorithm solves the left recursion
-//     and error recovery problems. Luke A. D. Hutchison, May 2020.
-//     https://arxiv.org/abs/2005.06444
+//     https://github.com/lukehutch/squirrelparser
 //
 // This software is provided under the MIT license:
 //
-// Copyright 2020 Luke A. D. Hutchison
+// Copyright 2021 Luke A. D. Hutchison
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 // documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -27,7 +21,7 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-package pikaparser;
+package squirrelparser;
 
 import java.io.IOException;
 import java.net.URISyntaxException;

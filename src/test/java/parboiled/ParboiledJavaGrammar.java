@@ -1,3 +1,4 @@
+// Java 1.6 grammar, ported from Parboiled
 package parboiled;
 
 import static squirrelparser.utils.MetaGrammar.c;
