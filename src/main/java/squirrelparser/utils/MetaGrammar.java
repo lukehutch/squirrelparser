@@ -164,7 +164,7 @@ public class MetaGrammar {
             throw new IllegalArgumentException("maxChar < minChar");
         }
         BitSet bs = new BitSet(maxChar + 1);
-        bs.set(minChar, maxChar);
+        bs.set(minChar, maxChar + 1);
         return new CharSet(bs);
     }
 
