@@ -50,7 +50,7 @@ public class Benchmark {
 
     @Test
     public void grammar_loading_benchmark() throws IOException, URISyntaxException {
-        final var grammarSpec = TestUtils.loadResourceFile("Java.1.8.peg");
+        final var grammarSpec = TestUtils.loadResourceFile("javaparse/squirrel/Java.1.8.peg");
         executeInTimedLoop(() -> {
             MetaGrammar.parse(grammarSpec);
         }, "java-grammar");
