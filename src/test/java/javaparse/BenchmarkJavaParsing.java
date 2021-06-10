@@ -57,11 +57,11 @@ public class BenchmarkJavaParsing {
             if (timeAntlr_java < 0) {
                 continue;
             }
-            var timeAntlr_java8 = 0L;//findMinTime(JavaParsers::benchmarkAntlr_java8, input);
+            var timeAntlr_java8 = findMinTime(JavaParsers::benchmarkAntlr_java8, input);
             if (timeAntlr_java8 < 0) {
                 continue;
             }
-            var timeAntlr_java9 = 0L;//findMinTime(JavaParsers::benchmarkAntlr_java9, input);
+            var timeAntlr_java9 = findMinTime(JavaParsers::benchmarkAntlr_java9, input);
             if (timeAntlr_java9 < 0) {
                 continue;
             }

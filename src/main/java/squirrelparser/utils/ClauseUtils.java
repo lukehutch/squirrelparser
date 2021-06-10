@@ -73,7 +73,7 @@ public class ClauseUtils {
             var inlineableRules = new HashSet<String>();
             for (var rule : g.rules) {
                 var containsRuleRefs = new AtomicBoolean(false);
-                rule.clause.traverse(clause -> {
+                rule.traverse(clause -> {
                     if (!containsRuleRefs.get() && clause instanceof RuleRef) {
                         containsRuleRefs.set(true);
                     }
@@ -86,7 +86,7 @@ public class ClauseUtils {
             // Inline RuleRefs if they refer to inlineable rules, as long as there is no AST node label
             var inlinedRule = new AtomicBoolean(false);
             for (var rule : g.rules) {
-                rule.clause.traverse(clause -> {
+                rule.traverse(clause -> {
                     if (clause.astNodeLabel == null && clause instanceof RuleRef
                             && inlineableRules.contains(((RuleRef) clause).refdRuleName)) {
                         inlinedRule.set(true);
