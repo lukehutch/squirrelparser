@@ -37,4 +37,39 @@ public class MemoUtils {
         }
         return maxEndPos;
     }
+
+    private static final int SYTAX_ERROR_CONTEXT_WINDOW_SIZE = 60;
+    
+    /** Display the syntax error position after the last successful match */
+    public static void printSyntaxError(Parser parser) {
+        var endPos = findMaxEndPos(parser);
+        
+        // Find line/col number in input corresponding to endPos
+        int line = 0;
+        int col = 0;
+        for (int i = 0; i < endPos; i++) {
+            char c = parser.input.charAt(i);
+            if (c == '\n' || c == '\r') {
+                line++;
+                col = 0;
+                if (c == '\r' && i < parser.input.length() - 1 && parser.input.charAt(i + 1) == '\n') {
+                    i++;
+                }
+            } else {
+                col++;
+            }
+        }
+
+        System.out
+                .println("Syntax error at line " + (line + 1) + " col " + (col + 1) + " pos " + (endPos + 1) + ":");
+        int charsBefore = Math.min(SYTAX_ERROR_CONTEXT_WINDOW_SIZE, endPos);
+        int charsAfter = Math.min(SYTAX_ERROR_CONTEXT_WINDOW_SIZE, parser.input.length() - endPos);
+        var chrs = parser.input.substring(endPos - charsBefore, endPos + charsAfter);
+        System.out.println(StringUtils.replaceNonASCII(chrs));
+        for (int i = 0; i < charsBefore; i++) {
+            System.out.print(' ');
+        }
+        System.out.println('^');
+    }
+
 }

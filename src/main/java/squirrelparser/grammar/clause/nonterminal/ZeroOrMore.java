@@ -54,11 +54,12 @@ public class ZeroOrMore extends ClauseWithOneSubClause {
                 break;
             }
         }
-        if (subClauseMatches == null) {
-            return new Match(this, pos);
-        } else {
+        if (subClauseMatches != null) {
             subClauseMatches.trimToSize();
             return new Match(this, pos, subClauseMatches);
+        } else {
+            // Zero-width match (always matches)
+            return new Match(this, pos);
         }
     }
 }

@@ -43,11 +43,13 @@ public class Parser {
     /** One entry for each recursion frame in stack. Value indicates whether key is a cycle head or not. */
     public final Map<RuleAndPos, Boolean> cycleStart = new HashMap<>();
 
+    /** Construct a parser. */
     public Parser(Grammar grammar, String input) {
         this.grammar = grammar;
         this.input = input;
     }
 
+    /** Start parsing from the top rule at the beginning of the input. */ 
     public Match parse() {
         return grammar.topRule.match(0, /* parentRulePos = */ -1, this);
     }

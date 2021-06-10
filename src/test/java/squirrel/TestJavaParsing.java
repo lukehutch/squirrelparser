@@ -6,6 +6,7 @@ import javaparse.JavaParsers;
 import javaparse.squirrel.SquirrelParboiledJavaGrammar;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
+import squirrelparser.utils.MemoUtils;
 
 public class TestJavaParsing {
 
@@ -17,8 +18,9 @@ public class TestJavaParsing {
         //        // TODO: why do we get a zero-length match and not NO_MATCH when there's a diamond operator? 
         //        System.out.println(match.pos + "\t" + match.len + "\t" + input.length());
 
-        if (match == Match.NO_MATCH) {
-            System.out.println("Syntax error");
+        if (match == Match.NO_MATCH || match.len < input.length()) {
+            // System.out.println("Syntax error");
+            MemoUtils.printSyntaxError(parser);
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;
@@ -26,7 +28,7 @@ public class TestJavaParsing {
     }
 
     public static void main(String[] args) throws IOException {
-        var input = "class X { List<String> xs = new ArrayList(); }";
+        var input = "class X { List<String> xs = new ArrayList<>(); }";
         //var input = "classX{List<String>xs=newArrayList();}";
 
         var timeParb = JavaParsers.benchmarkParboiled_java(input);
@@ -34,7 +36,7 @@ public class TestJavaParsing {
         var timeSquirrelParb = benchmarkSquirrel_Parboiled_java1p6(input);
 
         System.out.println(timeParb + "\t" + timeSquirrelParb);
-        
+
         System.out.println("Finished");
     }
 }

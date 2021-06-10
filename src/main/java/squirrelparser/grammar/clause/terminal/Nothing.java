@@ -30,6 +30,7 @@ import squirrelparser.parser.Parser;
 public class Nothing extends Terminal {
     @Override
     public Match match(int pos, int rulePos, Parser parser) {
+        // Zero-width match (always matches)
         return new Match(this, pos);
     }
 

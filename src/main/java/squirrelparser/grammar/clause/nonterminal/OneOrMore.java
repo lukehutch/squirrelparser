@@ -57,11 +57,11 @@ public class OneOrMore extends ClauseWithOneSubClause {
                 break;
             }
         }
-        if (subClauseMatches == null) {
-            return Match.NO_MATCH;
-        } else {
+        if (subClauseMatches != null) {
             subClauseMatches.trimToSize();
             return new Match(this, pos, subClauseMatches);
+        } else {
+            return Match.NO_MATCH;
         }
     }
 }

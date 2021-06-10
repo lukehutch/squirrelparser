@@ -40,7 +40,11 @@ public class Optional extends ClauseWithOneSubClause {
     @Override
     public Match match(int pos, int rulePos, Parser parser) {
         var subClauseMatch = subClause.match(pos, rulePos, parser);
-        // Optional always matches, whether or not subclause matches
-        return subClauseMatch == Match.NO_MATCH ? new Match(this, pos) : new Match(this, subClauseMatch);
+        if (subClauseMatch != Match.NO_MATCH) {
+            return new Match(this, subClauseMatch);
+        } else {
+            // Zero-width match (always matches)
+            return new Match(this, pos);
+        }
     }
 }
