@@ -23,8 +23,14 @@
 //
 package squirrelparser.utils;
 
+import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import squirrelparser.grammar.Grammar;
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.First;
+import squirrelparser.grammar.clause.nonterminal.RuleRef;
 import squirrelparser.grammar.clause.nonterminal.Seq;
 import squirrelparser.grammar.clause.terminal.Terminal;
 
@@ -56,5 +62,46 @@ public class ClauseUtils {
         int subClausePrec = subClause instanceof Terminal ? MetaGrammar.clauseTypeToPrecedence.get(Terminal.class)
                 : MetaGrammar.clauseTypeToPrecedence.get(subClause.getClass());
         return subClausePrec < /* astNodeLabel precedence */ MetaGrammar.AST_NODE_LABEL_PRECEDENCE;
+    }
+
+    /** Optimize a grammar by inlining clauses that do not contain any RuleRefs. */
+    public static void optimize(Grammar g) {
+        var numInlined = new AtomicInteger(0);
+        var numInlinePasses = new AtomicInteger(0);
+        for (;;) {
+            // Find rules that contain no RuleRefs
+            var inlineableRules = new HashSet<String>();
+            for (var rule : g.rules) {
+                var containsRuleRefs = new AtomicBoolean(false);
+                rule.clause.traverse(clause -> {
+                    if (!containsRuleRefs.get() && clause instanceof RuleRef) {
+                        containsRuleRefs.set(true);
+                    }
+                    return clause;
+                });
+                if (!containsRuleRefs.get()) {
+                    inlineableRules.add(rule.ruleName);
+                }
+            }
+            // Inline RuleRefs if they refer to inlineable rules, as long as there is no AST node label
+            var inlinedRule = new AtomicBoolean(false);
+            for (var rule : g.rules) {
+                rule.clause.traverse(clause -> {
+                    if (clause.astNodeLabel == null && clause instanceof RuleRef
+                            && inlineableRules.contains(((RuleRef) clause).refdRuleName)) {
+                        inlinedRule.set(true);
+                        numInlined.incrementAndGet();
+                        return ((RuleRef) clause).refdRule.clause;
+                    }
+                    return clause;
+                });
+            }
+            numInlinePasses.incrementAndGet();
+            if (!inlinedRule.get()) {
+                // Continue until nothing more can be inlined
+                break;
+            }
+        }
+        System.out.println("Inlined " + numInlined + " RuleRefs in " + numInlinePasses + " passes");
     }
 }

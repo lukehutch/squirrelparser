@@ -14,6 +14,7 @@ import squirrel.TestUtils;
 import squirrelparser.grammar.Grammar;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
+import squirrelparser.utils.ClauseUtils;
 import squirrelparser.utils.MetaGrammar;
 
 public class JavaParsers {
@@ -134,6 +135,9 @@ public class JavaParsers {
     }
 
     private static Grammar squirrelGrammar_Parboiled_java1p6 = SquirrelParboiledJavaGrammar.grammar;
+    static {
+        ClauseUtils.optimize(squirrelGrammar_Parboiled_java1p6);
+    }
 
     public static long benchmarkSquirrel_Parboiled_java1p6(String input) {
         var startTime = System.nanoTime();
@@ -148,6 +152,9 @@ public class JavaParsers {
 
     private static Grammar squirrelGrammar_Mouse_java1p8 = MetaGrammar
             .parse(TestUtils.loadResourceFile("javaparse/squirrel/Mouse_Java.1.8.peg"));
+    static {
+        ClauseUtils.optimize(squirrelGrammar_Mouse_java1p8);
+    }
 
     public static long benchmarkSquirrel_Mouse_java1p8(String input) {
         var startTime = System.nanoTime();
