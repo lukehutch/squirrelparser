@@ -1,7 +1,5 @@
 package javaparse;
 
-import java.io.IOException;
-
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -20,14 +18,25 @@ import squirrelparser.utils.MetaGrammar;
 
 public class JavaParsers {
 
-    public static long benchmarkParboiled(String input) throws IOException {
+    public static long benchmarkParboiled_java(String input) {
         var startTime = System.nanoTime();
         var parser = Parboiled.createParser(JavaParser.class);
         parser = parser.newInstance();
         var rootRule = parser.CompilationUnit();
         try {
-            var result = new ReportingParseRunner<>(rootRule).run(input);
+            var reportingParseRunner = new ReportingParseRunner<>(rootRule);
+            var result = reportingParseRunner.run(input);
             if (!result.matched) {
+                // This grammar supports only Java 1.6, so diamond operators and lambdas give a syntax error
+
+                //                for (var err : reportingParseRunner.getParseErrors()) {
+                //                    var start = err.getStartIndex();
+                //                    var end = err.getEndIndex();
+                //                    end = Math.min(Math.max(end, start + 80), input.length());
+                //                    System.err.println(start + "\t" + end);
+                //                    var span = StringUtils.replaceNonASCII(input.substring(start, end));
+                //                    System.err.println(span);
+                //                }
                 return -1;
             } else {
                 var elapsedTime = System.nanoTime() - startTime;
@@ -40,7 +49,7 @@ public class JavaParsers {
         }
     }
 
-    public static long benchmarkAntlr_java(String input) throws IOException {
+    public static long benchmarkAntlr_java(String input) {
         var startTime = System.nanoTime();
         try {
             // Create a scanner that reads from the input stream passed to us
@@ -68,7 +77,7 @@ public class JavaParsers {
         }
     }
 
-    public static long benchmarkAntlr_java8(String input) throws IOException {
+    public static long benchmarkAntlr_java8(String input) {
         var startTime = System.nanoTime();
         try {
             // Create a scanner that reads from the input stream passed to us
@@ -96,7 +105,7 @@ public class JavaParsers {
         }
     }
 
-    public static long benchmarkAntlr_java9(String input) throws IOException {
+    public static long benchmarkAntlr_java9(String input) {
         var startTime = System.nanoTime();
         try {
             // Create a scanner that reads from the input stream passed to us
@@ -124,32 +133,30 @@ public class JavaParsers {
         }
     }
 
-    private static Grammar squirrelGrammarParboiled_1p6 = SquirrelParboiledJavaGrammar.grammar;
+    private static Grammar squirrelGrammar_Parboiled_java1p6 = SquirrelParboiledJavaGrammar.grammar;
 
-    public static long benchmarkSquirrelParboiled_1p6(String input) throws IOException {
+    public static long benchmarkSquirrel_Parboiled_java1p6(String input) {
         var startTime = System.nanoTime();
-        var parser = new Parser(squirrelGrammarParboiled_1p6, input);
+        var parser = new Parser(squirrelGrammar_Parboiled_java1p6, input);
         var match = parser.parse();
-        if (match == Match.NO_MATCH) {
-            System.out.println("Syntax error");
+        if (match == Match.NO_MATCH || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;
         return elapsedTime;
     }
 
-    private static Grammar squirrelGrammarMouse_1p8 = MetaGrammar.parse(TestUtils.loadResourceFile("Java.1.8.peg"));
+    private static Grammar squirrelGrammar_Mouse_java1p8 = MetaGrammar
+            .parse(TestUtils.loadResourceFile("javaparse/squirrel/Mouse_Java.1.8.peg"));
 
-    public static long benchmarkSquirrelMouse_1p8(String input) throws IOException {
+    public static long benchmarkSquirrel_Mouse_java1p8(String input) {
         var startTime = System.nanoTime();
-        var parser = new Parser(squirrelGrammarMouse_1p8, input);
+        var parser = new Parser(squirrelGrammar_Mouse_java1p8, input);
         var match = parser.parse();
-        if (match == Match.NO_MATCH) {
-            System.out.println("Syntax error");
+        if (match == Match.NO_MATCH || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;
         return elapsedTime;
     }
-
 }

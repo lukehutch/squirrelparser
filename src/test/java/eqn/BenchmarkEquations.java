@@ -9,6 +9,7 @@ import static squirrelparser.utils.MetaGrammar.seq;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.function.Function;
 
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -52,7 +53,7 @@ public class BenchmarkEquations {
         }
     }
 
-    public static long benchmarkParboiled(String input) throws IOException {
+    public static long benchmarkParboiled(String input) {
         var parser = Parboiled.createParser(EquationParser.class);
         var startTime = System.nanoTime();
         parser = parser.newInstance();
@@ -73,7 +74,7 @@ public class BenchmarkEquations {
         return -1;
     }
 
-    public static long benchmarkSquirrel(String input) throws IOException {
+    public static long benchmarkSquirrel(String input) {
         var grammar = new Grammar(Arrays.asList( //
 
                 new squirrelparser.grammar.Rule("Eqn", ruleRef("Prec0")),
@@ -95,14 +96,14 @@ public class BenchmarkEquations {
         var startTime = System.nanoTime();
         var parser = new Parser(grammar, input);
         var match = parser.parse();
-        if (match == Match.NO_MATCH) {
+        if (match == Match.NO_MATCH || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;
         return elapsedTime;
     }
 
-    public static long benchmarkAntlr(String input) throws IOException {
+    public static long benchmarkAntlr(String input) {
         var startTime = System.nanoTime();
 
         EquationLexer lexer = new EquationLexer(CharStreams.fromString(input));
@@ -119,16 +120,26 @@ public class BenchmarkEquations {
         //        return -1;
     }
 
+    // Execute 3x, and find the minimum execution time, to try to remove the effect of GC and other hiccups
+    private static long findMinTime(Function<String, Long> timerFunction, String input) {
+        long minTime = Long.MAX_VALUE;
+        for (int i = 0; i < 3; i++) {
+            minTime = Math.min(minTime, timerFunction.apply(input));
+        }
+        return minTime;
+    }
+    
     public static void main(String[] args) throws IOException {
-        for (int depth = 0; depth < 100; depth++) {
-            for (int i = 0; i < 10; i++) {
+        for (int depth = 0; depth < 21; depth++) {
+            for (int i = 0; i < 100; i++) {
                 var input = EquationGenerator.generateEquation(depth);
-                var timeParb = benchmarkParboiled(input);
-                var timeAntlr = benchmarkAntlr(input);
-                var timeSquirrel = benchmarkSquirrel(input);
+                var timeParb = findMinTime(BenchmarkEquations::benchmarkParboiled, input);
+                var timeAntlr = 0L; //findMinTime(BenchmarkEquations::benchmarkAntlr, input);
+                var timeSquirrel = findMinTime(BenchmarkEquations::benchmarkSquirrel, input);
                 System.out.println(depth + "\t" + input.length() + "\t" + timeParb * 1.0e-9 + "\t"
                         + timeAntlr * 1.0e-9 + "\t" + timeSquirrel * 1.0e-9);
             }
         }
+        System.out.println("Finished");
     }
 }

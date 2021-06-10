@@ -4,7 +4,7 @@ import java.util.Random;
 
 public class EquationGenerator {
 
-    private static Random rand = new Random();
+    private static Random rand = new Random(1);
 
     private static final int MAX_INT = 1000;
 

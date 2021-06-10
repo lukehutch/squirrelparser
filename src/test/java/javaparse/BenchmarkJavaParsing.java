@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class BenchmarkJavaParsing {
@@ -29,40 +30,48 @@ public class BenchmarkJavaParsing {
         System.out.println("Source code files found: " + totPaths);
     }
 
-    //    private static String preprocessSource(String input) {
-    //        return input.replaceAll("/\\*.*\\*/", "").replaceAll("//.*\n", "\n").replaceAll("<>", "");
-    //    }
+    // Execute 3x, and find the minimum execution time, to try to remove the effect of GC and other hiccups
+    private static long findMinTime(Function<String, Long> timerFunction, String input) {
+        long minTime = Long.MAX_VALUE;
+        for (int i = 0; i < 3; i++) {
+            minTime = Math.min(minTime, timerFunction.apply(input));
+        }
+        return minTime;
+    }
 
     public static void main(String[] args) throws IOException {
         //long totLen = 0L;
         for (var path : sourcePaths) {
             //totLen += path.toFile().length();
             var input = Files.readString(path);
-            // input = preprocessSource(input);
+            
+            // Get rid of the diamond operator, since this is a common reason for the Parboiled Java 1.6 grammar
+            // to fail to parse a file (the other common reason is the presence of lambdas)
+            input = input.replace("<>", "");
 
-            var timeParb = JavaParsers.benchmarkParboiled(input);
+            var timeParb = findMinTime(JavaParsers::benchmarkParboiled_java, input);
             if (timeParb < 0) {
-                //continue;
+                continue; // Skips source files with Java 7+ features
             }
-            var timeAntlr_java = JavaParsers.benchmarkAntlr_java(input);
+            var timeAntlr_java = findMinTime(JavaParsers::benchmarkAntlr_java, input);
             if (timeAntlr_java < 0) {
-                //continue;
+                continue;
             }
-            var timeAntlr_java8 = JavaParsers.benchmarkAntlr_java8(input);
+            var timeAntlr_java8 = findMinTime(JavaParsers::benchmarkAntlr_java8, input);
             if (timeAntlr_java8 < 0) {
-                //continue;
+                continue;
             }
-            var timeAntlr_java9 = JavaParsers.benchmarkAntlr_java9(input);
+            var timeAntlr_java9 = findMinTime(JavaParsers::benchmarkAntlr_java9, input);
             if (timeAntlr_java9 < 0) {
-                //continue;
+                continue;
             }
-            var timeSquirrelParb = JavaParsers.benchmarkSquirrelParboiled_1p6(input);
+            var timeSquirrelParb = findMinTime(JavaParsers::benchmarkSquirrel_Parboiled_java1p6, input);
             if (timeSquirrelParb < 0) {
-                //continue;
+                continue;
             }
-            var timeSquirrelMouse = JavaParsers.benchmarkSquirrelMouse_1p8(input);
+            var timeSquirrelMouse = findMinTime(JavaParsers::benchmarkSquirrel_Mouse_java1p8, input);
             if (timeSquirrelMouse < 0) {
-                //continue;
+                continue;
             }
             System.out.println(path + "\t" + input.length() + "\t" + timeParb * 1.0e-9 + "\t"
                     + timeAntlr_java * 1.0e-9 + "\t" + timeAntlr_java8 * 1.0e-9 + "\t" + timeAntlr_java9 * 1.0e-9
