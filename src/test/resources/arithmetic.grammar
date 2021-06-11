@@ -1,7 +1,9 @@
-Program <- Statement+;
-Statement <- var:[a-z]+ '=' E ';';
-E[4] <- '(' E ')';
-E[3] <- num:[0-9]+ / sym:[a-z]+;
-E[2] <- arith:(op:'-' E);
-E[1,L] <- arith:(E op:('*' / '/') E);
-E[0,L] <- arith:(E op:('+' / '-') E);
+Program <- <WS> Statement+;
+Statement <- assign:(var:Var <WS> '=' <WS> E <WS> ';' <WS>);
+E[4] <- '(' <WS> E <WS> ')';
+E[3] <- num:Num / sym:Var;
+E[2] <- arith:(neg:'-' <WS> E);
+E[1,L] <- arith:(E <WS> op:('*' / '/') <WS> E);
+E[0,L] <- arith:(E <WS> op:('+' / '-') <WS> E);
+Var <- `[_a-zA-Z][_a-zA-Z0-9]*`;
+Num <- `[0-9]+`;

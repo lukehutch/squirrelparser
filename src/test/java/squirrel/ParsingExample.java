@@ -21,32 +21,19 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-package squirrelparser.main;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Objects;
+package squirrel;
 
 import squirrelparser.node.ASTNode;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
 
-public class Main {
-
-    static String loadResourceFile(String filename) throws IOException, URISyntaxException {
-        final var resource = Main.class.getClassLoader().getResource(filename);
-        final var resourceURI = Objects.requireNonNull(resource).toURI();
-        return Files.readString(Paths.get(resourceURI));
-    }
-
-    public static void main(String[] args) throws Exception {
-        var input = loadResourceFile("arithmetic.input");
+public class ParsingExample {
+    public static void main(String[] args) {
+        var input = TestUtils.loadResourceFile("arithmetic.input");
         System.out.println("INPUT:\n\n" + input);
 
-        var grammarSource = loadResourceFile("arithmetic.grammar");
+        var grammarSource = TestUtils.loadResourceFile("arithmetic.grammar");
         System.out.println("\nGRAMMAR SOURCE:\n\n" + grammarSource);
 
         var rewrittenGrammar = MetaGrammar.parse(grammarSource);
