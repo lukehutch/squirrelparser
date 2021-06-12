@@ -110,10 +110,14 @@ public class Match {
         if (this.clause.getClass() != other.clause.getClass()) {
             throw new IllegalArgumentException("Comparing matches of different clause type");
         }
+        
         // Compare first matching subclause index (for First)
         if (this.firstMatchingSubClauseIdx < other.firstMatchingSubClauseIdx) {
             return true;
+        } else if (this.firstMatchingSubClauseIdx > other.firstMatchingSubClauseIdx) {
+            return false;
         }
+
         // Greedily compare subclause match lengths, left-to-right
         for (int i = 0, min = Math.min(this.subClauseMatches.size(), other.subClauseMatches.size()); i < min; i++) {
             var ti = this.subClauseMatches.get(i);
@@ -122,10 +126,12 @@ public class Match {
                 return true;
             }
         }
+        
         // Compare number of subclause matches (for OneOrMore)
         if (this.subClauseMatches.size() > other.subClauseMatches.size()) {
             return true;
         }
+        
         // Matches are equal
         return false;
     }
