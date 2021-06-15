@@ -4,6 +4,7 @@ package javaparse.squirrel;
 import static squirrelparser.utils.MetaGrammar.c;
 import static squirrelparser.utils.MetaGrammar.cInStr;
 import static squirrelparser.utils.MetaGrammar.cRange;
+import static squirrelparser.utils.MetaGrammar.cSet;
 import static squirrelparser.utils.MetaGrammar.first;
 import static squirrelparser.utils.MetaGrammar.notFollowedBy;
 import static squirrelparser.utils.MetaGrammar.oneOrMore;
@@ -675,7 +676,7 @@ public class SquirrelParboiledJavaGrammar {
             //@SuppressSubnodes
 
             //@MemoMismatches
-            rule("HexNumeral", seq(c('0'), c('x', 'X'), oneOrMore(ruleRef("HexDigit")))),
+            rule("HexNumeral", seq(c('0'), cSet('x', 'X'), oneOrMore(ruleRef("HexDigit")))),
 
             rule("HexDigit", first(cRange('a', 'f'), cRange('A', 'F'), cRange('0', '9'))),
 

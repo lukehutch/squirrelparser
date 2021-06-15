@@ -41,6 +41,7 @@ import squirrelparser.grammar.clause.nonterminal.Optional;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
 import squirrelparser.grammar.clause.nonterminal.Seq;
 import squirrelparser.grammar.clause.nonterminal.ZeroOrMore;
+import squirrelparser.grammar.clause.terminal.Char;
 import squirrelparser.grammar.clause.terminal.CharSeq;
 import squirrelparser.grammar.clause.terminal.CharSet;
 import squirrelparser.grammar.clause.terminal.Nothing;
@@ -142,8 +143,13 @@ public class MetaGrammar {
         }
     }
 
+    /** Construct a terminal that matches a single character. */
+    public static Char c(char chr) {
+        return new Char(chr);
+    }
+
     /** Construct a terminal that matches one instance of any character given in the varargs param. */
-    public static CharSet c(char... chrs) {
+    public static CharSet cSet(char... chrs) {
         return new CharSet(chrs);
     }
 
@@ -343,11 +349,11 @@ public class MetaGrammar {
 
             // Whitespace or comment in the grammar description
             rule(WSC, //
-                    zeroOrMore(first(c(' ', '\n', '\r', '\t'), ruleRef(COMMENT)))),
+                    zeroOrMore(first(cSet(' ', '\n', '\r', '\t'), ruleRef(COMMENT)))),
 
             // Comment
             rule(COMMENT, //
-                    seq(c('#'), zeroOrMore(c('\n').invert()))),
+                    seq(c('#'), zeroOrMore(cSet('\n').invert()))),
 
             // Identifier
             rule(IDENT, //
@@ -360,7 +366,7 @@ public class MetaGrammar {
 
             // Name character
             rule(NAME_CHAR, //
-                    c(cRange('a', 'z'), cRange('A', 'Z'), c('_', '-'))),
+                    c(cRange('a', 'z'), cRange('A', 'Z'), cSet('_', '-'))),
 
             // Precedence and optional associativity modifiers for rule name
             rule(PREC, //
@@ -387,7 +393,7 @@ public class MetaGrammar {
             rule(SINGLE_QUOTED_CHAR, //
                     first( //
                             ruleRef(ESCAPED_CTRL_CHAR), //
-                            c('\'').invert())),
+                            cSet('\'').invert())),
 
             // Char range
             rule(CHAR_RANGE, //
@@ -396,7 +402,7 @@ public class MetaGrammar {
             // Char range character
             rule(CHAR_RANGE_CHAR, //
                     first( //
-                            c('\\', ']').invert(), //
+                            cSet('\\', ']').invert(), //
                             ruleRef(ESCAPED_CTRL_CHAR), //
                             str("\\-"), //
                             str("\\\\"), //
@@ -411,7 +417,7 @@ public class MetaGrammar {
             rule(STR_QUOTED_CHAR, //
                     first( //
                             ruleRef(ESCAPED_CTRL_CHAR), //
-                            c('"', '\\').invert() //
+                            cSet('"', '\\').invert() //
                     )), //
 
             // Hex digit
