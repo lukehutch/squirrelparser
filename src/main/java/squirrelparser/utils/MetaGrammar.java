@@ -44,7 +44,6 @@ import squirrelparser.grammar.clause.nonterminal.ZeroOrMore;
 import squirrelparser.grammar.clause.terminal.CharSeq;
 import squirrelparser.grammar.clause.terminal.CharSet;
 import squirrelparser.grammar.clause.terminal.Nothing;
-import squirrelparser.grammar.clause.terminal.Regexp;
 import squirrelparser.grammar.clause.terminal.Terminal;
 import squirrelparser.grammar.clause.terminal.Whitespace;
 import squirrelparser.node.ASTNode;
@@ -141,11 +140,6 @@ public class MetaGrammar {
         } else {
             return new CharSeq(str);
         }
-    }
-
-    /** Construct a terminal that matches a regexp. */
-    public static Clause regexp(String str) {
-        return new Regexp(str);
     }
 
     /** Construct a terminal that matches one instance of any character given in the varargs param. */
@@ -254,7 +248,6 @@ public class MetaGrammar {
     private static final String HEX = "HEX";
     private static final String CHAR_RANGE = "CHAR_RANGE";
     private static final String CHAR_RANGE_CHAR = "CHAR_RANGE_CHAR";
-    private static final String REGEXP = "REGEXP";
     private static final String QUOTED_STRING = "QUOTED_STR";
     private static final String ESCAPED_CTRL_CHAR = "ESCAPED_CTRL_CHAR";
     private static final String SINGLE_QUOTED_CHAR = "SINGLE_QUOTED_CHAR";
@@ -280,7 +273,6 @@ public class MetaGrammar {
     private static final String OPTIONAL_AST = "OptionalAST";
     private static final String SINGLE_QUOTED_CHAR_AST = "SingleQuotedCharAST";
     private static final String CHAR_RANGE_AST = "CharRangeAST";
-    private static final String REGEXP_AST = "RegexpAST";
     private static final String QUOTED_STRING_AST = "QuotedStringAST";
     private static final String NOTHING_AST = "NothingAST";
     private static final String WHITESPACE_AST = "WhitespaceAST";
@@ -308,7 +300,6 @@ public class MetaGrammar {
                     first( //
                             ruleRef(IDENT), // RuleRef
                             ruleRef(WHITESPACE), //
-                            ruleRef(REGEXP), //
                             ruleRef(QUOTED_STRING), //
                             ruleRef(CHAR_SET), //
                             ruleRef(NOTHING))), //
@@ -412,10 +403,6 @@ public class MetaGrammar {
                             str("\\]"), //
                             str("\\^"))),
 
-            // Regexp token matcher
-            rule(REGEXP, //
-                    seq(c('`'), ast(REGEXP_AST, oneOrMore(c('`', '\n', '\r').invert())), c('`'))), //
-
             // Quoted string
             rule(QUOTED_STRING, //
                     seq(c('"'), ast(QUOTED_STRING_AST, zeroOrMore(ruleRef(STR_QUOTED_CHAR))), c('"'))), //
@@ -502,9 +489,6 @@ public class MetaGrammar {
             break;
         case IDENT_AST:
             clause = ruleRef(astNode.getText());
-            break;
-        case REGEXP_AST:
-            clause = regexp(astNode.getText());
             break;
         case QUOTED_STRING_AST: // Doesn't include surrounding quotes
             clause = str(StringUtils.unescapeString(astNode.getText()));
