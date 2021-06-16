@@ -88,7 +88,10 @@ public class Rule {
             var newMatch = clause.match(pos, /* rulePos = */ pos, parser);
             // Compare new match to old match in memo table, if any
             var oldMatch = parser.memoTable.get(ruleAndPos);
-            if (newMatch.isBetterThan(oldMatch)) {
+            // A longer match beats a shorter match.
+            // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
+            if (oldMatch == null || (oldMatch == Match.NO_MATCH && newMatch != Match.NO_MATCH)
+                    || newMatch.len > oldMatch.len) {
                 // Found a new or improved match for this clause at this position
                 parser.memoTable.put(ruleAndPos, newMatch);
                 if (Parser.DEBUG) {

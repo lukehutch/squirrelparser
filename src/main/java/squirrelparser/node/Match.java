@@ -28,7 +28,6 @@ import java.util.List;
 
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.First;
-import squirrelparser.grammar.clause.nonterminal.OneOrMore;
 import squirrelparser.grammar.clause.terminal.Terminal;
 import squirrelparser.utils.StringUtils;
 import squirrelparser.utils.TreePrinter;
@@ -43,12 +42,6 @@ public class Match {
 
     /** Used to return or memoize the notification that the clause did not match. */
     public static final Match NO_MATCH = new Match(null, -1, 0, 0, Collections.emptyList()) {
-        @Override
-        public boolean isBetterThan(Match other) {
-            // NO_MATCH only beats there being no entry in the memo table
-            return other == null;
-        }
-
         @Override
         public String toString(String input) {
             return toString();
@@ -102,25 +95,6 @@ public class Match {
     /** A match of zero length, with no subclause matches. */
     public Match(Clause clause, int pos) {
         this(clause, pos, 0, 0, Collections.emptyList());
-    }
-
-    /**
-     * Returns true if this match is "better than" the other match, defined as having a lower first matching
-     * subclause index (for {@link First} clauses), or longer subclause matches, or matching more times (for
-     * {@link OneOrMore} clauses).
-     */
-    public boolean isBetterThan(Match oldMatch) {
-        if (oldMatch == null || oldMatch == NO_MATCH) {
-            return true;
-        }
-        if (this.clause.getClass() != oldMatch.clause.getClass()) {
-            throw new IllegalArgumentException("Comparing matches of different clause type");
-        }
-
-        // A longer match is better than a shorter match.
-        // See long discussion here:
-        // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
-        return this.len > oldMatch.len;
     }
 
     /** Convert the parse tree to an AST. */
