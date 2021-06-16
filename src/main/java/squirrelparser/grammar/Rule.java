@@ -64,7 +64,18 @@ public class Rule {
         if (foundCycle) {
             // Reached infinite recursion cycle, and there was no previous memo for this clauseAndPos.
             // Mark cycle entry point as requiring iteration.
-            parser.cycleStart.put(ruleAndPos, Boolean.TRUE);
+            if (Parser.PREFER_LEFT_RECURSION) {
+                var cycleLoopingPos = parser.loopingPosition.get(this);
+                if (cycleLoopingPos == null || cycleLoopingPos == pos) { // TODO: .get(this) implies field should be stored here **************
+                    parser.cycleStart.put(ruleAndPos, Boolean.TRUE);
+                    if (cycleLoopingPos == null) {
+                        parser.loopingPosition.put(this, pos);
+                    }
+                } // Else do not loop in this position; already looping this clause in earlier position
+            } else {
+                // Simpler algorithm produces right-associative parse tree from ambiguously associative rules
+                parser.cycleStart.put(ruleAndPos, Boolean.TRUE);
+            }
 
             // The bottom-most closure of the cycle does not match.
             parser.memoTable.put(ruleAndPos, Match.NO_MATCH);
@@ -111,6 +122,13 @@ public class Rule {
 
         // Remove from visited set once this clause and position has finished recursing
         parser.cycleStart.remove(ruleAndPos);
+
+        if (Parser.PREFER_LEFT_RECURSION) {
+            var cycleLoopingPos = parser.loopingPosition.get(this);
+            if (cycleLoopingPos != null && cycleLoopingPos == pos) {
+                parser.loopingPosition.remove(this); // Finished left-recursion loop
+            }
+        }
 
         if (Parser.DEBUG) {
             System.out.println(indent + "Leaving: " + ruleAndPos);

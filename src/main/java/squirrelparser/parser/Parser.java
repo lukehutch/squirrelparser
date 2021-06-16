@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import squirrelparser.grammar.Grammar;
+import squirrelparser.grammar.Rule;
 import squirrelparser.node.Match;
 
 /** The parser (holds the memo table and other parsing information). */
@@ -43,8 +44,13 @@ public class Parser {
     /** One entry for each recursion frame in stack. Value indicates whether key is a cycle head or not. */
     public final Map<RuleAndPos, Boolean> cycleStart = new HashMap<>();
 
+    public final Map<Rule, Integer> loopingPosition = new HashMap<>();
+    
     /** If true, print debug info. */
     public static final boolean DEBUG = false;
+    
+    /** If true, prefer left recursion for ambiguous rules like E <- E '+' E. */
+    public static final boolean PREFER_LEFT_RECURSION = true;
     
     /** Construct a parser. */
     public Parser(Grammar grammar, String input) {
