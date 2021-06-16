@@ -24,7 +24,6 @@
 package squirrel;
 
 import squirrelparser.grammar.Grammar;
-import squirrelparser.node.ASTNode;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
@@ -36,25 +35,60 @@ public class TestArithmetic {
         if (match == Match.NO_MATCH) {
             throw new IllegalArgumentException();
         }
-        var ast = new ASTNode(match, parser.input);
+        var ast = match.toAST(parser.input);
         System.out.println(ast.toStringWholeTree());
     }
 
     public static void main(String[] args) {
-        var grammar1 = MetaGrammar.parse("Program <- Statement+;\n" //
-                + "Statement <- var:[a-z]+ '=' Sum ';';\n" //
-                + "Sum <- add:(Sum '+' Term) / sub:(Sum '-' Term) / term:Term;\n" //
-                + "Term <- num:[0-9]+ / sym:[a-z]+;\n");
-        tryParsing(grammar1, "x=a+b-c;");
-        tryParsing(grammar1, "x=a-b+c;");
+        //        var grammar1 = MetaGrammar.parse("Program <- Statement+;\n" //
+        //                + "Statement <- var:[a-z]+ '=' Sum ';';\n" //
+        //                + "Sum <- add:(Sum '+' Term) / sub:(Sum '-' Term) / term:Term;\n" //
+        //                + "Term <- num:[0-9]+ / sym:[a-z]+;\n");
+        //        tryParsing(grammar1, "x=a+b-c;");
+        //        tryParsing(grammar1, "x=a-b+c;");
+        //
+        //        // This ambiguous grammar is right associative
+        //        var grammar2 = MetaGrammar.parse("E <- sum:(E op:'+' E) / N;\n" //
+        //                + "N <- num:[0-9]+;\n");
+        //        tryParsing(grammar2, "0+1+2+3;");
+        //        // ...but this is left associative:
+        //        var grammar3 = MetaGrammar.parse("E <- sum:(E op:'+' N) / N;\n" //
+        //                + "N <- num:[0-9]+;\n");
+        //        tryParsing(grammar3, "0+1+2+3;");
 
-        // This ambiguous grammar is right associative
-        var grammar2 = MetaGrammar.parse("E <- sum:(E op:'+' E) / N;\n" //
-                + "N <- num:[0-9]+;\n");
-        tryParsing(grammar2, "0+1+2+3;");
-        // ...but this is left associative:
-        var grammar3 = MetaGrammar.parse("E <- sum:(E op:'+' N) / N;\n" //
-                + "N <- num:[0-9]+;\n");
-        tryParsing(grammar3, "0+1+2+3;");
+        var grammar4 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'y' / A 'x');");
+        tryParsing(grammar4, "xxyx;");
+
+        //        var grammar5 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'x');");
+        //        tryParsing(grammar5, "xxx;");
+
+        // Benchmark example from https://www.python.org/dev/peps/pep-0617
+        var grammar = MetaGrammar.parse(
+                //                "P <- <WS> (E '\\n'?)+;\n" //
+                //                + "E[3] <- '(' <WS> E <WS> ')';\n" //
+                //                + "E[2] <- num:N;\n" //
+                //                + "E[1,L] <- arith:(E <WS> op:'*' <WS> E);\n" //
+                //                + "E[0,L] <- arith:(E <WS> op:'+' <WS> E);\n" //
+                //                + "N <- `[0-9]+`;"
+                "P <- <WS> (E0 '\\n'?)+;\n" //
+                        + "E3 <- '(' <WS> E0 <WS> ')';\n" //
+                        + "E2 <- num:N / E3;\n" //
+                        + "E1 <- arith:(E1 <WS> op:'*' <WS> E2) / E2;\n" //
+                        + "E0 <- arith:(E0 <WS> op:'+' <WS> E1) / E1;\n" //
+                        + "N <- [0-9]+;" //
+        );
+        var pyExamp = new String[] {
+                "1 + 2 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + ((((((11 * 12 * 13 * 14 * 15 + 16 * 17 + 18 * 19 * 20))))))",
+                "2*3 + 4*5*6", "12 + (2 * 3 * 4 * 5 + 6 + 7 * 8)" };
+        var buf = new StringBuilder();
+        for (int i = 0; i < 100_000; i++) {
+            buf.append(pyExamp[i % 3]);
+            buf.append('\n');
+        }
+        var input = buf.toString();
+
+        long startTime = System.nanoTime();
+        tryParsing(grammar, input);
+        System.out.println((System.nanoTime() - startTime) * 1.0e-9);
     }
 }

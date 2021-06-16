@@ -123,6 +123,11 @@ public class Match {
         return this.len > oldMatch.len;
     }
 
+    /** Convert the parse tree to an AST. */
+    public ASTNode toAST(String input) {
+        return new ASTNode(this, input);
+    }
+
     /** Get the subsequence of the input matched by this {@link Match}. */
     public String getText(String input) {
         return input.substring(pos, pos + len);

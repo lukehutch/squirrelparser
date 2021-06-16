@@ -23,7 +23,6 @@
 //
 package squirrel;
 
-import squirrelparser.node.ASTNode;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
@@ -46,7 +45,7 @@ public class ParsingExample {
         } else {
             System.out.println("\nPARSE TREE:\n\n" + match.toStringWholeTree(parser.input));
 
-            var ast = new ASTNode(match, parser.input);
+            var ast = match.toAST(parser.input);
             System.out.println("\nAST:\n\n" + ast.toStringWholeTree());
         }
     }
