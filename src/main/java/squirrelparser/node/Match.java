@@ -30,6 +30,7 @@ import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.First;
 import squirrelparser.grammar.clause.nonterminal.OneOrMore;
 import squirrelparser.grammar.clause.terminal.Terminal;
+import squirrelparser.utils.StringUtils;
 import squirrelparser.utils.TreePrinter;
 
 /** A match (i.e. a parse tree node). */
@@ -46,6 +47,11 @@ public class Match {
         public boolean isBetterThan(Match other) {
             // NO_MATCH only beats there being no entry in the memo table
             return other == null;
+        }
+
+        @Override
+        public String toString(String input) {
+            return toString();
         }
 
         @Override
@@ -103,37 +109,18 @@ public class Match {
      * subclause index (for {@link First} clauses), or longer subclause matches, or matching more times (for
      * {@link OneOrMore} clauses).
      */
-    public boolean isBetterThan(Match other) {
-        if (other == null || other == NO_MATCH) {
+    public boolean isBetterThan(Match oldMatch) {
+        if (oldMatch == null || oldMatch == NO_MATCH) {
             return true;
         }
-        if (this.clause.getClass() != other.clause.getClass()) {
+        if (this.clause.getClass() != oldMatch.clause.getClass()) {
             throw new IllegalArgumentException("Comparing matches of different clause type");
         }
-        
-        // Compare first matching subclause index (for First)
-        if (this.firstMatchingSubClauseIdx < other.firstMatchingSubClauseIdx) {
-            return true;
-        } else if (this.firstMatchingSubClauseIdx > other.firstMatchingSubClauseIdx) {
-            return false;
-        }
 
-        // Greedily compare subclause match lengths, left-to-right
-        for (int i = 0, min = Math.min(this.subClauseMatches.size(), other.subClauseMatches.size()); i < min; i++) {
-            var ti = this.subClauseMatches.get(i);
-            var oi = other.subClauseMatches.get(i);
-            if (ti.len > oi.len) {
-                return true;
-            }
-        }
-        
-        // Compare number of subclause matches (for OneOrMore)
-        if (this.subClauseMatches.size() > other.subClauseMatches.size()) {
-            return true;
-        }
-        
-        // Matches are equal
-        return false;
+        // A longer match is better than a shorter match.
+        // See long discussion here:
+        // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
+        return this.len > oldMatch.len;
     }
 
     /** Get the subsequence of the input matched by this {@link Match}. */
@@ -148,8 +135,14 @@ public class Match {
         return buf.toString();
     }
 
+    public String toString(String input) {
+        return toString() + "[" + StringUtils.replaceNonASCII(getText(input)) + "]";
+    }
+
     @Override
     public String toString() {
-        return (clause.rule == null ? "" : clause.rule.ruleName + " <- ") + clause + " : " + pos + "+" + len;
+        return (clause.rule == null ? "" : clause.rule.ruleName + " <- ") + clause + " : " + pos + "+" + len
+                + (clause instanceof First ? " (first matching subclause index: " + firstMatchingSubClauseIdx + ")"
+                        : "");
     }
 }
