@@ -44,6 +44,8 @@ public class Rule {
     public Match match(int pos, int parentRulePos, Parser parser) {
         var ruleAndPos = new RuleAndPos(this, pos);
 
+        var indent = Parser.DEBUG ? "  ".repeat(parser.cycleStart.size()) : null;
+
         // Check whether we have reached a cycle
         var foundCycle = parser.cycleStart.containsKey(ruleAndPos);
 
@@ -52,6 +54,9 @@ public class Rule {
         if (foundCycle || pos != parentRulePos) {
             var memo = parser.memoTable.get(ruleAndPos);
             if (memo != null) {
+                if (Parser.DEBUG) {
+                    System.out.println(indent + "MEMO MATCH: " + memo.toString(parser.input));
+                }
                 return memo;
             }
         }
@@ -63,7 +68,14 @@ public class Rule {
 
             // The bottom-most closure of the cycle does not match.
             parser.memoTable.put(ruleAndPos, Match.NO_MATCH);
+            if (Parser.DEBUG) {
+                System.out.println(indent + "NO_MATCH: " + ruleAndPos);
+            }
             return Match.NO_MATCH;
+        }
+
+        if (Parser.DEBUG) {
+            System.out.println(indent + "Entering: " + ruleAndPos);
         }
 
         // Keep track of clause and start position in ancestral recursion frames.
@@ -79,18 +91,27 @@ public class Rule {
             if (newMatch.isBetterThan(oldMatch)) {
                 // Found a new or improved match for this clause at this position
                 parser.memoTable.put(ruleAndPos, newMatch);
-
+                if (Parser.DEBUG) {
+                    System.out.println(indent + "  BETTER MATCH: " + newMatch.toString(parser.input));
+                }
                 // Check if this recursion frame was marked as a cycle start by a lower recursion frame,
                 // and if so, need to loop until match can no longer be improved
                 loop = parser.cycleStart.get(ruleAndPos);
             } else {
                 // Don't loop if match doesn't improve
+                if (Parser.DEBUG) {
+                    System.out.println(indent + "  NO IMPROVEMENT: " + newMatch.toString(parser.input));
+                }
                 loop = false;
             }
         } while (loop);
 
         // Remove from visited set once this clause and position has finished recursing
         parser.cycleStart.remove(ruleAndPos);
+
+        if (Parser.DEBUG) {
+            System.out.println(indent + "Leaving: " + ruleAndPos);
+        }
 
         // Return best match so far
         return parser.memoTable.get(ruleAndPos);

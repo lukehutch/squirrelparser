@@ -43,6 +43,9 @@ public class Parser {
     /** One entry for each recursion frame in stack. Value indicates whether key is a cycle head or not. */
     public final Map<RuleAndPos, Boolean> cycleStart = new HashMap<>();
 
+    /** If true, print debug info. */
+    public static final boolean DEBUG = false;
+    
     /** Construct a parser. */
     public Parser(Grammar grammar, String input) {
         this.grammar = grammar;
