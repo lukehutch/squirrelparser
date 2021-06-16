@@ -33,9 +33,8 @@ public class TestArithmetic {
         var parser = new Parser(grammar, input);
         var match = parser.parse();
         if (match == Match.NO_MATCH) {
-            throw new IllegalArgumentException();
-        }
-        if (printAST) {
+            System.out.println("NO_MATCH\n");
+        } else if (printAST) {
             var ast = match.toAST(parser.input);
             System.out.println(ast.toStringWholeTree());
         }
