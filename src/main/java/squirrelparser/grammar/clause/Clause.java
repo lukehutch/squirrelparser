@@ -40,11 +40,11 @@ public abstract class Clause {
      * 
      * @param parser  The {@link Parser}.
      * @param pos     The start position to try matching from.
-     * @param rulePos The position of the start of the rule that contains this clause.
+     * @param ruleStart The position of the start of the rule that contains this clause.
      * 
      * @return The {@link Match}, or {@link Match#NO_MATCH} if this clause did not match at this position.
      */
-    public abstract Match match(Parser parser, int pos, int rulePos);
+    public abstract Match match(Parser parser, int pos, int ruleStart);
 
     /** Visit this clause, and optionally return a replacement for this clause. */
     public Clause visit(SubClauseVisitor visitor) {

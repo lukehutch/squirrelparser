@@ -116,7 +116,7 @@ public class BenchmarkEquations {
     // Execute 3x, and find the minimum execution time, to try to remove the effect of GC and other hiccups
     private static long findMinTime(Function<String, Long> timerFunction, String input) {
         long minTime = Long.MAX_VALUE;
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 5; i++) {
             minTime = Math.min(minTime, timerFunction.apply(input));
         }
         return minTime;
@@ -126,8 +126,8 @@ public class BenchmarkEquations {
         for (int depth = 0; depth < 21; depth++) {
             for (int i = 0; i < 100; i++) {
                 var input = EquationGenerator.generateEquation(depth);
-                var timeParb = findMinTime(BenchmarkEquations::benchmarkParboiled, input);
-                var timeAntlr = 0L; //findMinTime(BenchmarkEquations::benchmarkAntlr, input);
+                var timeParb = 0L; //findMinTime(BenchmarkEquations::benchmarkParboiled, input);
+                var timeAntlr = findMinTime(BenchmarkEquations::benchmarkAntlr, input);
                 var timeSquirrel = findMinTime(BenchmarkEquations::benchmarkSquirrel, input);
                 System.out.println(depth + "\t" + input.length() + "\t" + timeParb * 1.0e-9 + "\t"
                         + timeAntlr * 1.0e-9 + "\t" + timeSquirrel * 1.0e-9);

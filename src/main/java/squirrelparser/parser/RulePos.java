@@ -26,7 +26,7 @@ package squirrelparser.parser;
 import squirrelparser.grammar.clause.Clause;
 
 /** The current rule being parsed, and the current position of the parser. */
-public record RuleAndPos(Clause rule, int pos) {
+public record RulePos(Clause rule, int pos) {
     @Override
     public String toString() {
         return rule + " : " + pos;

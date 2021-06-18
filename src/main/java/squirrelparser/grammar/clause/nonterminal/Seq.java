@@ -38,10 +38,10 @@ public class Seq extends ClauseWithMultipleSubClauses {
     }
 
     @Override
-    public Match match(Parser parser, int pos, int rulePos) {
+    public Match match(Parser parser, int pos, int ruleStart) {
         List<Match> subClauseMatches = null;
         for (int i = 0, currPos = pos; i < subClauses.length; i++) {
-            var subClauseMatch = subClauses[i].match(parser, currPos, rulePos);
+            var subClauseMatch = subClauses[i].match(parser, currPos, ruleStart);
             if (subClauseMatch == Match.NO_MATCH) {
                 return Match.NO_MATCH;
             }

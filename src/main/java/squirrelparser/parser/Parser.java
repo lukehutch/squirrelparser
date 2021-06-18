@@ -39,7 +39,7 @@ public class Parser {
     public String input;
 
     /** The memo table. */
-    public final Map<RuleAndPos, Match> memoTable = new HashMap<>();
+    public final Map<RulePos, Match> memoTable = new HashMap<>();
 
     /**
      * A map allowing for fast lookup of the rules and positions of ancestral recursion frames, as well as for
@@ -52,7 +52,7 @@ public class Parser {
      * switched from false to true, to notify the ancestral recursion frame that it needs to iteratively expand the
      * left recursion.
      */
-    private final Map<RuleAndPos, Boolean> iterRuleAtPos = new HashMap<>();
+    private final Map<RulePos, Boolean> iterativelyMatch = new HashMap<>();
 
     /** Construct a */
     public Parser(Grammar grammar) {
@@ -60,26 +60,26 @@ public class Parser {
     }
 
     /** Parse a rule while handling left recursion. */
-    public Match match(Clause rule, int pos, int parentRulePos) {
-        var ruleAndPos = new RuleAndPos(rule, pos);
+    public Match match(Clause rule, int pos, int parentRuleStart) {
+        var rulePos = new RulePos(rule, pos);
 
         // If parent recursion frame and this recursion frame have different start positions,
         // check memo table before trying to recurse
-        if (pos != parentRulePos) {
-            var memo = memoTable.get(ruleAndPos);
+        if (pos != parentRuleStart) {
+            var memo = memoTable.get(rulePos);
             if (memo != null) {
                 return memo;
             }
         }
 
         // Keep track of clause and start position in ancestral recursion frames.
-        var oldIterRuleAtPos = iterRuleAtPos.putIfAbsent(ruleAndPos, Boolean.FALSE);
+        var oldIterativelyMatch = iterativelyMatch.putIfAbsent(rulePos, Boolean.FALSE);
 
-        if (oldIterRuleAtPos != null) {
+        if (oldIterativelyMatch != null) {
             // Check memo table for lower matches when there's a left recursive cycle
             // (N.B. this is mutually exclusive with the memo table check above, because if
             // oldIterRuleAtPos != null, then pos must equal parentPos)
-            var memo = memoTable.get(ruleAndPos);
+            var memo = memoTable.get(rulePos);
             if (memo != null) {
                 return memo;
             }
@@ -87,10 +87,10 @@ public class Parser {
             // if oldIterRuleAtPos was already marked as TRUE
 
             // Mark cycle entry point as requiring iteration.
-            iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
+            iterativelyMatch.put(rulePos, Boolean.TRUE);
 
             // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
-            memoTable.put(ruleAndPos, Match.NO_MATCH);
+            memoTable.put(rulePos, Match.NO_MATCH);
             return Match.NO_MATCH;
         }
 
@@ -99,7 +99,7 @@ public class Parser {
             // Try matching this rule's toplevel clause at this position
             var newMatch = rule.match(this, pos, /* rulePos = */ pos);
             // Compare new match to old match in memo table, if any
-            var oldMatch = memoTable.get(ruleAndPos);
+            var oldMatch = memoTable.get(rulePos);
 
             // A longer match beats a shorter match.
             // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
@@ -110,9 +110,9 @@ public class Parser {
             }
 
             // Memoize a new or improved match for this clause at this position
-            memoTable.put(ruleAndPos, newMatch);
+            memoTable.put(rulePos, newMatch);
 
-            if (!iterRuleAtPos.get(ruleAndPos)) {
+            if (!iterativelyMatch.get(rulePos)) {
                 // This recursion frame was not marked for iteration by a lower recursion frame,
                 // so don't iterate
                 break;
@@ -120,17 +120,17 @@ public class Parser {
         }
 
         // Remove from visited set once this clause and position has finished recursing
-        iterRuleAtPos.remove(ruleAndPos);
+        iterativelyMatch.remove(rulePos);
 
         // Return best match so far
-        return memoTable.get(ruleAndPos);
+        return memoTable.get(rulePos);
     }
 
     /** Start parsing from the top rule at the beginning of the input. */
     public Match parse(String input) {
         this.input = input;
         memoTable.clear();
-        iterRuleAtPos.clear();
-        return match(grammar.topRule, 0, /* parentRulePos = */ -1);
+        iterativelyMatch.clear();
+        return match(grammar.topRule, 0, /* parentRuleStart = */ -1);
     }
 }
