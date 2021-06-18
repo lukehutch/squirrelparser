@@ -44,14 +44,14 @@ public class Rule {
     public Match match(int pos, int parentRulePos, Parser parser) {
         var ruleAndPos = new RuleAndPos(this, pos);
 
-        var indent = Parser.DEBUG ? "  ".repeat(parser.cycleStart.size()) : null;
+        var indent = Parser.DEBUG ? "  ".repeat(parser.iterRuleAtPos.size()) : null;
 
         // Check whether we have reached a cycle
-        var foundCycle = parser.cycleStart.containsKey(ruleAndPos);
+        var iterRuleAtPos = parser.iterRuleAtPos.get(ruleAndPos);
 
-        // Only check memo table if we have reached a cycle, or if parent frame and this frame have
+        // Only check memo table if we reached a left-recursive cycle, or if parent frame and this frame have
         // different start positions
-        if (foundCycle || pos != parentRulePos) {
+        if (iterRuleAtPos != null || pos != parentRulePos) {
             var memo = parser.memoTable.get(ruleAndPos);
             if (memo != null) {
                 if (Parser.DEBUG) {
@@ -61,23 +61,21 @@ public class Rule {
             }
         }
 
-        if (foundCycle) {
+        if (iterRuleAtPos != null) {
             // Reached infinite recursion cycle, and there was no previous memo for this clauseAndPos.
             // Mark cycle entry point as requiring iteration.
             if (Parser.PREFER_LEFT_RECURSION) {
-                var cycleLoopingPos = parser.loopingPosition.get(this);
-                if (cycleLoopingPos == null || cycleLoopingPos == pos) { // TODO: .get(this) implies field should be stored here **************
-                    parser.cycleStart.put(ruleAndPos, Boolean.TRUE);
-                    if (cycleLoopingPos == null) {
-                        parser.loopingPosition.put(this, pos);
-                    }
-                } // Else do not loop in this position; already looping this clause in earlier position
+                // Only mark ancestral rule for iterative expansion of left recursion if there was
+                // no ancestral rule yet marked for iteration at an earlier position
+                if (parser.leftRecIterPos.putIfAbsent(this, pos) == null) {
+                    parser.iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
+                } // Else do not iterate in this position; already iterating rule at an earlier position
             } else {
                 // Simpler algorithm produces right-associative parse tree from ambiguously associative rules
-                parser.cycleStart.put(ruleAndPos, Boolean.TRUE);
+                parser.iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
             }
 
-            // The bottom-most closure of the cycle does not match.
+            // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
             parser.memoTable.put(ruleAndPos, Match.NO_MATCH);
             if (Parser.DEBUG) {
                 System.out.println(indent + "NO_MATCH: " + ruleAndPos);
@@ -90,44 +88,40 @@ public class Rule {
         }
 
         // Keep track of clause and start position in ancestral recursion frames.
-        parser.cycleStart.put(ruleAndPos, Boolean.FALSE);
+        parser.iterRuleAtPos.put(ruleAndPos, Boolean.FALSE);
 
         // Left recursion expansion loop (executes only once if there is no left recursion)
-        boolean loop;
-        do {
+        while (true) {
             // Try matching this rule's toplevel clause at this position
             var newMatch = clause.match(pos, /* rulePos = */ pos, parser);
             // Compare new match to old match in memo table, if any
             var oldMatch = parser.memoTable.get(ruleAndPos);
             // A longer match beats a shorter match.
             // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
-            if (oldMatch == null || (oldMatch == Match.NO_MATCH && newMatch != Match.NO_MATCH)
-                    || newMatch.len > oldMatch.len) {
-                // Found a new or improved match for this clause at this position
-                parser.memoTable.put(ruleAndPos, newMatch);
-                if (Parser.DEBUG) {
-                    System.out.println(indent + "  BETTER MATCH: " + newMatch.toString(parser.input));
-                }
-                // Check if this recursion frame was marked as a cycle start by a lower recursion frame,
-                // and if so, need to loop until match can no longer be improved
-                loop = parser.cycleStart.get(ruleAndPos);
-            } else {
-                // Don't loop if match doesn't improve
+            // N.B. NO_MATCH has a len of -1 so that even a zero-length match is better (longer) than NO_MATCH
+            if (oldMatch != null && newMatch.len <= oldMatch.len) {
+                // Don't match did not improve monotonically -- don't memoize (or iterate)
                 if (Parser.DEBUG) {
                     System.out.println(indent + "  NO IMPROVEMENT: " + newMatch.toString(parser.input));
                 }
-                loop = false;
+                break;
             }
-        } while (loop);
+            // Memoize a new or improved match for this clause at this position
+            parser.memoTable.put(ruleAndPos, newMatch);
+            if (Parser.DEBUG) {
+                System.out.println(indent + "  BETTER MATCH: " + newMatch.toString(parser.input));
+            }
+            if (!parser.iterRuleAtPos.get(ruleAndPos)) {
+                // This recursion frame was not marked for iteration by a lower recursion frame
+                break;
+            } // else keep iteratively matching until match can no longer be improved 
+        }
 
         // Remove from visited set once this clause and position has finished recursing
-        parser.cycleStart.remove(ruleAndPos);
-
+        parser.iterRuleAtPos.remove(ruleAndPos);
         if (Parser.PREFER_LEFT_RECURSION) {
-            var cycleLoopingPos = parser.loopingPosition.get(this);
-            if (cycleLoopingPos != null && cycleLoopingPos == pos) {
-                parser.loopingPosition.remove(this); // Finished left-recursion loop
-            }
+            // Remove iterative expansion position, only if the value matches the current position
+            parser.leftRecIterPos.remove(this, pos);
         }
 
         if (Parser.DEBUG) {
@@ -137,6 +131,64 @@ public class Rule {
         // Return best match so far
         return parser.memoTable.get(ruleAndPos);
     }
+
+    //    // Old parsing algorithm, which was right-associative for grammars with ambiguous associativity
+    //    /** Parse a rule while handling left recursion. */
+    //    public Match match(int pos, int parentRulePos, Parser parser) {
+    //        var ruleAndPos = new RuleAndPos(this, pos);
+    //
+    //        // Check whether we have reached a cycle
+    //        var foundCycle = parser.cycleStart.containsKey(ruleAndPos);
+    //
+    //        // Only check memo table if we are in a cycle, or if parent frame and this frame have
+    //        // different start positions
+    //        if (foundCycle || pos != parentRulePos) {
+    //            var memo = parser.memoTable.get(ruleAndPos);
+    //            if (memo != null) {
+    //                return memo;
+    //            }
+    //        }
+    //
+    //        if (foundCycle) {
+    //            // Reached infinite recursion cycle, and there was no previous memo for this clauseAndPos.
+    //            // Mark cycle entry point as requiring iteration.
+    //            parser.cycleStart.put(ruleAndPos, Boolean.TRUE);
+    //            // The bottom-most closure of the cycle does not match.
+    //            parser.memoTable.put(ruleAndPos, Match.NO_MATCH);
+    //            return Match.NO_MATCH;
+    //        }
+    //
+    //        // Keep track of clause and start position in ancestral recursion frames.
+    //        parser.cycleStart.put(ruleAndPos, Boolean.FALSE);
+    //
+    //        // Left recursion expansion loop (executes only once if there is no left recursion)
+    //        boolean loop;
+    //        do {
+    //            // Try matching this rule's toplevel clause at this position
+    //            var newMatch = clause.match(pos, /* rulePos = */ pos, parser);
+    //            // Compare new match to old match in memo table, if any
+    //            var oldMatch = parser.memoTable.get(ruleAndPos);
+    //            // A longer match beats a shorter match.
+    //            // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
+    //            if (oldMatch == null || (oldMatch == Match.NO_MATCH && newMatch != Match.NO_MATCH)
+    //                    || newMatch.len > oldMatch.len) {
+    //                // Found a new or improved match for this clause at this position
+    //                parser.memoTable.put(ruleAndPos, newMatch);
+    //                // Check if this recursion frame was marked as a cycle start by a lower recursion frame,
+    //                // and if so, need to loop until match can no longer be improved
+    //                loop = parser.cycleStart.get(ruleAndPos);
+    //            } else {
+    //                // Don't loop if match doesn't improve
+    //                loop = false;
+    //            }
+    //        } while (loop);
+    //
+    //        // Remove from visited set once this clause and position has finished recursing
+    //        parser.cycleStart.remove(ruleAndPos);
+    //
+    //        // Return best match so far
+    //        return parser.memoTable.get(ruleAndPos);
+    //    }
 
     /** Traverse the clause tree of this rule. */
     public void traverse(SubClauseVisitor visitor) {

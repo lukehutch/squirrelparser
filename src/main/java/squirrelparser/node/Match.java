@@ -41,7 +41,7 @@ public class Match {
     public final int firstMatchingSubClauseIdx;
 
     /** Used to return or memoize the notification that the clause did not match. */
-    public static final Match NO_MATCH = new Match(null, -1, 0, 0, Collections.emptyList()) {
+    public static final Match NO_MATCH = new Match(null, -1, -1, 0, Collections.emptyList()) {
         @Override
         public String toString(String input) {
             return toString();

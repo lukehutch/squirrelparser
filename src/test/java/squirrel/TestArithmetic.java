@@ -67,25 +67,34 @@ public class TestArithmetic {
         var grammar5 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'x');");
         tryParsing(grammar5, "xxx;");
 
-        // Benchmark example from https://www.python.org/dev/peps/pep-0617
-        var grammar = MetaGrammar.parse( //
-                "P <- <WS> (E0 '\\n'?)+;\n" //
-                        + "E3 <- '(' <WS> E0 <WS> ')';\n" //
-                        + "E2 <- num:N / E3;\n" //
-                        + "E1 <- arith:(E1 <WS> op:'*' <WS> E2) / E2;\n" //
-                        + "E0 <- arith:(E0 <WS> op:'+' <WS> E1) / E1;\n" //
-                        + "N <- [0-9]+;");
-        var pyExamp = new String[] {
-                "1 + 2 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + ((((((11 * 12 * 13 * 14 * 15 + 16 * 17 + 18 * 19 * 20))))))",
-                "2*3 + 4*5*6", "12 + (2 * 3 * 4 * 5 + 6 + 7 * 8)" };
-        var buf = new StringBuilder();
-        for (int i = 0; i < 100_000; i++) {
-            buf.append(pyExamp[i % 3]);
-            buf.append('\n');
-        }
-        var input = buf.toString();
-        long startTime = System.nanoTime();
-        tryParsing(grammar, input, false);
-        System.out.println((System.nanoTime() - startTime) * 1.0e-9);
+        //        // Benchmark example from https://www.python.org/dev/peps/pep-0617
+        //        var grammar6 = MetaGrammar.parse( //
+        //                "P <- <WS> (E0 '\\n'?)+;\n" //
+        //                        + "E3 <- '(' <WS> E0 <WS> ')';\n" //
+        //                        + "E2 <- num:N / E3;\n" //
+        //                        + "E1 <- arith:(E1 <WS> op:'*' <WS> E2) / E2;\n" //
+        //                        + "E0 <- arith:(E0 <WS> op:'+' <WS> E1) / E1;\n" //
+        //                        + "N <- [0-9]+;");
+        //        var pyExamp = new String[] {
+        //                "1 + 2 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + ((((((11 * 12 * 13 * 14 * 15 + 16 * 17 + 18 * 19 * 20))))))",
+        //                "2*3 + 4*5*6", "12 + (2 * 3 * 4 * 5 + 6 + 7 * 8)" };
+        //        var buf = new StringBuilder();
+        //        for (int i = 0; i < 100_000; i++) {
+        //            buf.append(pyExamp[i % 3]);
+        //            buf.append('\n');
+        //        }
+        //        var input = buf.toString();
+        //        long startTime = System.nanoTime();
+        //        tryParsing(grammar6, input, false);
+        //        System.out.println((System.nanoTime() - startTime) * 1.0e-9);
+
+        var grammar7 = MetaGrammar.parse("A <- \"a \" B \"monkeyapples\"; B <- \"million \" / \"million monkey\";");
+        tryParsing(grammar7, "a million monkeyapples");
+
+
+        var grammar8 = MetaGrammar.parse("A <- (A 'y') / 'x';");
+        tryParsing(grammar8, "xy");
+
+        
     }
 }
