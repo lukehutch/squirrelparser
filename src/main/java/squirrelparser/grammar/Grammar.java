@@ -26,15 +26,16 @@ package squirrelparser.grammar;
 import java.util.HashMap;
 import java.util.List;
 
+import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
 
 /** A collection of {@link Rule} instances. */
 public class Grammar {
     /** The rule to start parsing at. */
-    public final Rule topRule;
+    public final Clause topRule;
 
     /** The rules in the grammar. */
-    public final List<Rule> rules;
+    public List<Clause> rules;
 
     /**
      * Create a grammar.
@@ -42,19 +43,19 @@ public class Grammar {
      * @param rules The list of grammar rules. The first rule should be the top rule of the grammar (i.e. the entry
      *              point for recursion).
      */
-    public Grammar(List<Rule> rules) {
+    public Grammar(List<Clause> rules) {
         if (rules == null || rules.isEmpty()) {
             throw new IllegalArgumentException("Grammar must contain at least one rule");
         }
         this.rules = rules;
 
         // Look up rule reference for all RuleRef instances in rule clauses
-        var ruleMap = new HashMap<String, Rule>();
+        var ruleMap = new HashMap<String, Clause>();
         for (var rule : rules) {
             ruleMap.put(rule.ruleName, rule);
         }
         for (var rule : rules) {
-            rule.traverse(clause -> {
+            rule.visit(clause -> {
                 if (clause instanceof RuleRef) {
                     var ruleRef = (RuleRef) clause;
                     ruleRef.refdRule = ruleMap.get(ruleRef.refdRuleName);

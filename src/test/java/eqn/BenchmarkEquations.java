@@ -1,5 +1,6 @@
 package eqn;
 
+import static squirrelparser.utils.MetaGrammar.assignRuleName;
 import static squirrelparser.utils.MetaGrammar.c;
 import static squirrelparser.utils.MetaGrammar.cRange;
 import static squirrelparser.utils.MetaGrammar.first;
@@ -76,22 +77,14 @@ public class BenchmarkEquations {
 
     public static long benchmarkSquirrel(String input) {
         var grammar = new Grammar(Arrays.asList( //
-
-                new squirrelparser.grammar.Rule("Eqn", ruleRef("Prec0")),
-
-                new squirrelparser.grammar.Rule("Prec4", seq(c('('), ruleRef("Prec0"), c(')'))),
-
-                new squirrelparser.grammar.Rule("Prec3", first(oneOrMore(cRange('0', '9')), ruleRef("Prec4"))),
-
-                new squirrelparser.grammar.Rule("Prec2", first(seq(c('-'), ruleRef("Prec3")), ruleRef("Prec3"))),
-
-                new squirrelparser.grammar.Rule("Prec1",
+                assignRuleName("Eqn", ruleRef("Prec0")), //
+                assignRuleName("Prec4", seq(c('('), ruleRef("Prec0"), c(')'))), //
+                assignRuleName("Prec3", first(oneOrMore(cRange('0', '9')), ruleRef("Prec4"))), //
+                assignRuleName("Prec2", first(seq(c('-'), ruleRef("Prec3")), ruleRef("Prec3"))), //
+                assignRuleName("Prec1",
                         first(seq(ruleRef("Prec2"), first(c('*'), c('/')), ruleRef("Prec2")), ruleRef("Prec2"))),
-
-                new squirrelparser.grammar.Rule("Prec0",
-                        first(seq(ruleRef("Prec1"), first(c('+'), c('-')), ruleRef("Prec1")), ruleRef("Prec1")))
-
-        ));
+                assignRuleName("Prec0",
+                        first(seq(ruleRef("Prec1"), first(c('+'), c('-')), ruleRef("Prec1")), ruleRef("Prec1")))));
 
         var startTime = System.nanoTime();
         var parser = new Parser(grammar, input);
@@ -128,7 +121,7 @@ public class BenchmarkEquations {
         }
         return minTime;
     }
-    
+
     public static void main(String[] args) throws IOException {
         for (int depth = 0; depth < 21; depth++) {
             for (int i = 0; i < 100; i++) {

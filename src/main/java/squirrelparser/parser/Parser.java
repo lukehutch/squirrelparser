@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import squirrelparser.grammar.Grammar;
-import squirrelparser.grammar.Rule;
+import squirrelparser.grammar.clause.Clause;
 import squirrelparser.node.Match;
 
 /** The parser (holds the memo table and other parsing information). */
@@ -61,7 +61,7 @@ public class Parser {
     }
 
     /** Parse a rule while handling left recursion. */
-    public Match match(Rule rule, int pos, int parentRulePos) {
+    public Match match(Clause rule, int pos, int parentRulePos) {
         var ruleAndPos = new RuleAndPos(rule, pos);
 
         // If parent recursion frame and this recursion frame have different start positions,
@@ -98,7 +98,7 @@ public class Parser {
         // Left recursion expansion iteration loop (executes only once in the absence of left recursion)
         while (true) {
             // Try matching this rule's toplevel clause at this position
-            var newMatch = rule.clause.match(this, pos, /* rulePos = */ pos);
+            var newMatch = rule.match(this, pos, /* rulePos = */ pos);
             // Compare new match to old match in memo table, if any
             var oldMatch = memoTable.get(ruleAndPos);
 

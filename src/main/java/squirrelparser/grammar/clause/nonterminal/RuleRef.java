@@ -23,7 +23,6 @@
 //
 package squirrelparser.grammar.clause.nonterminal;
 
-import squirrelparser.grammar.Rule;
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
@@ -31,7 +30,7 @@ import squirrelparser.parser.Parser;
 /** Matches if the named rule matches at the current position. */
 public class RuleRef extends Clause {
     public String refdRuleName;
-    public Rule refdRule;
+    public Clause refdRule;
 
     public RuleRef(String refdRuleName) {
         this.refdRuleName = refdRuleName;

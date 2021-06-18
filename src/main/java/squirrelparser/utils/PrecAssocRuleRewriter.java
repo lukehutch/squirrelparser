@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import squirrelparser.grammar.Rule;
+import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.First;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
 
@@ -82,7 +82,7 @@ public class PrecAssocRuleRewriter {
 
             // Count the number of self-references among descendant clauses of rule
             var numSelfRefs = new AtomicInteger(0);
-            rule.traverse(clause -> {
+            rule.visit(clause -> {
                 if (clause instanceof RuleRef
                         && ((RuleRef) clause).refdRuleName.equals(ruleNameWithoutPrecedence)) {
                     numSelfRefs.incrementAndGet();
@@ -105,7 +105,7 @@ public class PrecAssocRuleRewriter {
                 // (the toplevel clause of the rule, rule.clause, can't be a self-reference,
                 // since we already checked for that, and IllegalArgumentException would have been thrown.)
                 var numSelfRefsSoFar = new AtomicInteger(0);
-                rule.traverse(clause -> {
+                rule.visit(clause -> {
                     if (clause instanceof RuleRef) {
                         if (((RuleRef) clause).refdRuleName.equals(ruleNameWithoutPrecedence)) {
                             numSelfRefsSoFar.incrementAndGet();
@@ -158,7 +158,7 @@ public class PrecAssocRuleRewriter {
     }
 
     /** Rewrite a list of rules in precedence-associativity form into plain PEG form. */
-    public static List<Rule> rewrite(List<PrecAssocRule> precAssocRules) {
+    public static List<Clause> rewrite(List<PrecAssocRule> precAssocRules) {
         if (precAssocRules.isEmpty()) {
             throw new IllegalArgumentException("Need at least one rule");
         }
@@ -188,7 +188,7 @@ public class PrecAssocRuleRewriter {
 
         // Rewrite RuleRefs that refer to a precedence group to refer to the lowest clause in the precedence group
         for (var precRewrittenRule : precAssocRules) {
-            precRewrittenRule.traverse(clause -> {
+            precRewrittenRule.visit(clause -> {
                 if (clause instanceof RuleRef) {
                     var ruleRef = (RuleRef) clause;
                     var refdRuleName = ruleRef.refdRuleName;
@@ -205,10 +205,11 @@ public class PrecAssocRuleRewriter {
         }
 
         // Now the precedence level and associativity can be dropped, converting PrecAssocRule into Rule
-        var rules = new ArrayList<Rule>();
-        var topRule = (Rule) null;
+        var rules = new ArrayList<Clause>();
+        var topRule = (Clause) null;
         for (var precRewrittenRule : precAssocRules) {
-            var rewrittenRule = new Rule(precRewrittenRule.ruleName, precRewrittenRule.clause);
+            var rewrittenRule = precRewrittenRule.clause;
+            rewrittenRule.ruleName = precRewrittenRule.ruleName;
             if (rewrittenRule.ruleName.equals(topRuleName)) {
                 topRule = rewrittenRule;
             } else {

@@ -23,6 +23,7 @@
 //
 package squirrelparser.utils;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,15 +66,15 @@ public class ClauseUtils {
     }
 
     /** Optimize a grammar by inlining clauses that do not contain any RuleRefs. */
-    public static void optimize(Grammar g) {
+    public static void optimize(Grammar grammar) {
         var numInlined = new AtomicInteger(0);
         var numInlinePasses = new AtomicInteger(0);
         for (;;) {
             // Find rules that contain no RuleRefs
             var inlineableRules = new HashSet<String>();
-            for (var rule : g.rules) {
+            for (var rule : grammar.rules) {
                 var containsRuleRefs = new AtomicBoolean(false);
-                rule.traverse(clause -> {
+                rule.visit(clause -> {
                     if (!containsRuleRefs.get() && clause instanceof RuleRef) {
                         containsRuleRefs.set(true);
                     }
@@ -85,17 +86,20 @@ public class ClauseUtils {
             }
             // Inline RuleRefs if they refer to inlineable rules, as long as there is no AST node label
             var inlinedRule = new AtomicBoolean(false);
-            for (var rule : g.rules) {
-                rule.traverse(clause -> {
+            var rewrittenRules = new ArrayList<Clause>();
+            for (var rule : grammar.rules) {
+                rewrittenRules.add(rule.visit(clause -> {
                     if (clause.astNodeLabel == null && clause instanceof RuleRef
                             && inlineableRules.contains(((RuleRef) clause).refdRuleName)) {
                         inlinedRule.set(true);
                         numInlined.incrementAndGet();
-                        return ((RuleRef) clause).refdRule.clause;
+                        return ((RuleRef) clause).refdRule;
                     }
                     return clause;
-                });
+                }));
             }
+            grammar.rules = rewrittenRules;
+
             numInlinePasses.incrementAndGet();
             if (!inlinedRule.get()) {
                 // Continue until nothing more can be inlined

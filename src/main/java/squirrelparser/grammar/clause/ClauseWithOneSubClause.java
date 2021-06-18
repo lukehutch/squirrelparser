@@ -39,16 +39,8 @@ public abstract class ClauseWithOneSubClause extends Clause {
     }
 
     @Override
-    public void traverse(SubClauseVisitor visitor) {
-        // Preorder traversal
-        var newSubClause = visitor.visit(subClause);
-        if (newSubClause != subClause) {
-            // If subclause changes, move AST node label to new subclause
-            newSubClause.astNodeLabel = subClause.astNodeLabel;
-            subClause.astNodeLabel = null;
-            subClause = newSubClause;
-        }
-        subClause.traverse(visitor);
+    protected void visitSubclauses(SubClauseVisitor visitor) {
+        subClause = subClause.visit(visitor);
     }
 
     @Override

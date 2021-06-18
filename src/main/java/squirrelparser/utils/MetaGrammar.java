@@ -69,6 +69,12 @@ public class MetaGrammar {
         return rule;
     }
 
+    /** Assign a rule name to a {@link Clause} (which should be the toplevel clause of a rule). */
+    public static Clause assignRuleName(String ruleName, Clause clause) {
+        clause.ruleName = ruleName;
+        return clause;
+    }
+
     /** Construct a {@link Seq} clause. */
     public static Clause seq(Clause... subClauses) {
         return new Seq(subClauses);

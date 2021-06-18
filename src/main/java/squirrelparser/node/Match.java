@@ -120,7 +120,7 @@ public class Match {
 
     @Override
     public String toString() {
-        return (clause.rule == null ? "" : clause.rule.ruleName + " <- ") + clause + " : " + pos + "+" + len
+        return clause + " : " + pos + "+" + len
                 + (clause instanceof First ? " (first matching subclause index: " + firstMatchingSubClauseIdx + ")"
                         : "");
     }

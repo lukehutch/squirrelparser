@@ -23,21 +23,21 @@
 //
 package squirrelparser.grammar.clause;
 
-import squirrelparser.grammar.Rule;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.ClauseUtils;
 
 /** A grammar clause. A {@link Rule} contains a tree of {@link Clause} instances. */
 public abstract class Clause {
-    /** The rule, if this is the toplevel clause of a rule. */
-    public Rule rule;
+    /** The rule name, if this is the toplevel clause of a rule. */
+    public String ruleName;
 
     /** The name of the AST node to generate if this node matches. */
     public String astNodeLabel;
 
     /**
      * Match this clause at the given position in the input.
+     * 
      * @param parser  The {@link Parser}.
      * @param pos     The start position to try matching from.
      * @param rulePos The position of the start of the rule that contains this clause.
@@ -46,12 +46,19 @@ public abstract class Clause {
      */
     public abstract Match match(Parser parser, int pos, int rulePos);
 
-    /**
-     * Traverse all subclauses of this clause, to search for information, and/or to rewrite the clause tree.
-     * 
-     * @param visitor The {@link SubClauseVisitor} to call for each subclause.
-     */
-    public void traverse(SubClauseVisitor visitor) {
+    /** Visit this clause, and optionally return a replacement for this clause. */
+    public Clause visit(SubClauseVisitor visitor) {
+        visitSubclauses(visitor);
+        var newClause = visitor.visit(this);
+        if (newClause != this) {
+            // If clause was replaced, copy AST node label from this to newClause
+            newClause.astNodeLabel = this.astNodeLabel;
+        }
+        return newClause;
+    }
+
+    /** Visit the subclauses of this clause. */
+    protected void visitSubclauses(SubClauseVisitor visitor) {
     }
 
     /**
@@ -59,9 +66,11 @@ public abstract class Clause {
      * clause is labeled.
      */
     protected String labelClause(String toString) {
-        return astNodeLabel == null ? toString
-                : ClauseUtils.needToAddParensAroundASTNodeLabel(this) ? astNodeLabel + ":(" + toString + ")"
-                        : astNodeLabel + ":" + toString;
+        return (ruleName == null ? "" : ruleName + " <- ") // 
+                + (astNodeLabel == null ? ""
+                        : ClauseUtils.needToAddParensAroundASTNodeLabel(this) ? astNodeLabel + ":(" + toString + ")"
+                                : astNodeLabel + ":") //
+                + toString;
     }
 
     /**

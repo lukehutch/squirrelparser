@@ -23,12 +23,12 @@
 //
 package squirrelparser.parser;
 
-import squirrelparser.grammar.Rule;
+import squirrelparser.grammar.clause.Clause;
 
-/** The current rule being parsed, and the current position of the parser. */ 
-public record RuleAndPos(Rule rule, int pos) {
+/** The current rule being parsed, and the current position of the parser. */
+public record RuleAndPos(Clause rule, int pos) {
     @Override
     public String toString() {
-        return rule.ruleName + " <- " + rule.clause + " : " + pos;
+        return rule + " : " + pos;
     }
 }

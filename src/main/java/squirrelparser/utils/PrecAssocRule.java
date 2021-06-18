@@ -55,9 +55,9 @@ public class PrecAssocRule {
         this(ruleName, -1, /* associativity = */ null, clause);
     }
 
-    public void traverse(SubClauseVisitor traverser) {
-        clause = traverser.visit(clause);
-        clause.traverse(traverser);
+    /** Traverse the clause tree of this rule. */
+    public void visit(SubClauseVisitor visitor) {
+        clause = clause.visit(visitor);
     }
 
     @Override
