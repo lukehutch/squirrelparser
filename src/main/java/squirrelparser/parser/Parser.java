@@ -76,30 +76,32 @@ public class Parser {
         var oldIterativelyMatch = iterativelyMatch.putIfAbsent(rulePos, Boolean.FALSE);
 
         if (oldIterativelyMatch != null) {
-            // Check memo table for lower matches when there's a left recursive cycle
-            // (N.B. this is mutually exclusive with the memo table check above, because if
-            // oldIterRuleAtPos != null, then pos must equal parentPos)
-            var memo = memoTable.get(rulePos);
-            if (memo != null) {
-                return memo;
+            // Just closed a left-recursive cycle -- check memo table to see if there's an even lower match
+            // for this rule at this position.
+            if (oldIterativelyMatch) {
+                // There must be an entry in the memo table if oldIterativelyMatch is true. 
+                // (N.B. this is mutually exclusive with the memo table check above, because if
+                // oldIterativelyMatch != null, then pos must equal parentRuleStart.)
+                return memoTable.get(rulePos);
+            } else {
+                // oldIterativelyMatch is false, so there must be no entry in the memo table.
+                // Mark cycle entry point as requiring iteration.
+                iterativelyMatch.put(rulePos, Boolean.TRUE);
+                // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
+                memoTable.put(rulePos, Match.NO_MATCH);
+                return Match.NO_MATCH;
             }
-            // oldIterRuleAtPos must be FALSE here -- there will only be a memotable entry
-            // if oldIterRuleAtPos was already marked as TRUE
-
-            // Mark cycle entry point as requiring iteration.
-            iterativelyMatch.put(rulePos, Boolean.TRUE);
-
-            // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
-            memoTable.put(rulePos, Match.NO_MATCH);
-            return Match.NO_MATCH;
         }
 
         // Left recursion expansion iteration loop (executes only once in the absence of left recursion)
+        Match bestMatch;
         while (true) {
-            // Try matching this rule's toplevel clause at this position
-            var newMatch = rule.match(this, pos, /* rulePos = */ pos);
             // Compare new match to old match in memo table, if any
             var oldMatch = memoTable.get(rulePos);
+            bestMatch = oldMatch;
+
+            // Try matching this rule's toplevel clause at this position
+            var newMatch = rule.match(this, pos, /* rulePos = */ pos);
 
             // A longer match beats a shorter match.
             // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
@@ -111,6 +113,7 @@ public class Parser {
 
             // Memoize a new or improved match for this clause at this position
             memoTable.put(rulePos, newMatch);
+            bestMatch = newMatch;
 
             if (!iterativelyMatch.get(rulePos)) {
                 // This recursion frame was not marked for iteration by a lower recursion frame,
@@ -122,8 +125,8 @@ public class Parser {
         // Remove from visited set once this clause and position has finished recursing
         iterativelyMatch.remove(rulePos);
 
-        // Return best match so far
-        return memoTable.get(rulePos);
+        // Return the best match so far
+        return bestMatch;
     }
 
     /** Start parsing from the top rule at the beginning of the input. */
