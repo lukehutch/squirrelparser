@@ -41,9 +41,12 @@ public class MemoEntry {
     Match match(Parser parser, Clause rule, int pos, int parentRuleStart) {
         // If parent recursion frame and this recursion frame have different start positions,
         // and there is a memo entry for this rule and position, return the memo entry rather
-        // than duplicating work. (i.e. if (pos == parentRuleStart && match != null), don't
-        // look at the memo table, so that when expanding left-recursive cycles, lower matches
-        // don't prevent the detection of higher matches in the parse tree.)
+        // than duplicating work. In other words, if (pos != parentRuleStart && match != null),
+        // just return the memoized match, but if (pos == parentRuleStart || match == null), don't
+        // look at the memo table. In particular, don't look at the memo table
+        // if (pos == parentRuleStart), even if (match != null), so that when expanding
+        // left-recursive cycles, lower matches don't prevent the detection of higher matches
+        // in the parse tree.)
         if (pos == parentRuleStart || match == null) {
             if (inRecPath) {
                 // If we encountered the same rule and position twice in the recursion path, then we reached
