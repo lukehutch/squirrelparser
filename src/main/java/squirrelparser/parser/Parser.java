@@ -39,20 +39,7 @@ public class Parser {
     public String input;
 
     /** The memo table. */
-    public final Map<RulePos, Match> memoTable = new HashMap<>();
-
-    /**
-     * A map allowing for fast lookup of the rules and positions of ancestral recursion frames, as well as for
-     * looking up whether or not the current rule needs to iteratively continue to try to grow a left-recursive
-     * match at the current position. There is one entry for each recursion frame in stack. The Boolean value
-     * indicates whether or not a left-recursive cycle of the key's rule has been encountered yet in the grammar at
-     * the key's position. A key is first put into the map with a false value, indicating that the key is on the
-     * recursion path but a left-recursive cycle has not yet been encountered. If a left-recursive cycle is found
-     * (i.e. a grammar cycle which revisits the same rule at the same position), then the value in the map is
-     * switched from false to true, to notify the ancestral recursion frame that it needs to iteratively expand the
-     * left recursion.
-     */
-    private final Map<RulePos, Boolean> iterate = new HashMap<>();
+    public final Map<RulePos, MemoEntry> memoTable = new HashMap<>();
 
     /** Construct a */
     public Parser(Grammar grammar) {
@@ -62,41 +49,35 @@ public class Parser {
     /** Parse a rule while handling left recursion. */
     public Match match(Clause rule, int pos, int parentRuleStart) {
         var rulePos = new RulePos(rule, pos);
+        var memoEntry = memoTable.computeIfAbsent(rulePos, rp -> new MemoEntry());
 
         // If parent recursion frame and this recursion frame have different start positions,
         // check memo table before trying to recurse
-        if (pos != parentRuleStart) {
-            var memo = memoTable.get(rulePos);
-            if (memo != null) {
-                return memo;
-            }
+        if (pos != parentRuleStart && memoEntry.match != null) {
+            // Return memo entry
+            return memoEntry.match;
         }
 
         // Keep track of clause and start position in ancestral recursion frames.
-        var oldIterativelyMatch = iterate.putIfAbsent(rulePos, Boolean.FALSE);
-
-        if (oldIterativelyMatch != null) {
-            // Just closed a left-recursive cycle -- check memo table to see if there's an even lower match
-            // for this rule at this position.
-            if (oldIterativelyMatch) {
-                // There must be an entry in the memo table if oldIterativelyMatch is true. 
-                // (N.B. this is mutually exclusive with the memo table check above, because if
-                // oldIterativelyMatch != null, then pos must equal parentRuleStart.)
-                return memoTable.get(rulePos);
-            } else {
-                // oldIterativelyMatch is false, so there must be no entry in the memo table.
-                // Mark cycle entry point as requiring iteration.
-                iterate.put(rulePos, Boolean.TRUE);
-                // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
-                memoTable.put(rulePos, Match.MISMATCH);
-                return Match.MISMATCH;
+        if (memoEntry.leftRecIter != null) {
+            // rulePos is present at a higher stack frame in recursion path => hit a left-recursion cycle.
+            // Set leftRecIter to true if it is currently set to FALSE.
+            memoEntry.leftRecIter = Boolean.TRUE;
+            if (memoEntry.match == null) {
+                // Set memo entry to MISMATCH if a better match has not already been found.
+                memoEntry.match = Match.MISMATCH;
             }
+            // Return memo entry
+            return memoEntry.match;
         }
+
+        // rulePos is not present at a higher stack frame in recursion path
+        memoEntry.leftRecIter = Boolean.FALSE;
 
         // Left recursion expansion iteration loop (executes only once in the absence of left recursion).
         // Don't need to look up bestMatch = memoTable.get(rulePos), because oldIterativelyMatch == null,
         // so this is the first time this rule has been matched at this position.
-        Match bestMatch = null;
+        Match bestMatch = memoEntry.match;
         while (true) {
             // Try matching this rule's toplevel clause at this position.
             // newMatch will be either MISMATCH if there was no match, or a Match reference if there was a match.
@@ -111,21 +92,21 @@ public class Parser {
                 break;
             }
 
-            // Memoize a new or improved match for this clause at this position
-            memoTable.put(rulePos, newMatch);
+            // Write the new or improved match to the memo entry
+            memoEntry.match = newMatch;
             bestMatch = newMatch;
 
             // Check if this recursion frame was marked for iteration by a lower recursion frame
             // (need to check every iteration, since any iteration could result in triggering a new
             // path through a left-recursive cycle).
-            if (!iterate.get(rulePos)) {
+            if (!memoEntry.leftRecIter) {
                 // No left recursion -- don't iterate.
                 break;
             } // else keep iteratively matching until match can no longer be improved. 
         }
 
-        // Remove from visited set once this clause and position has finished recursing
-        iterate.remove(rulePos);
+        // Unmark this clause for iteration at this position once iteration is finished
+        memoEntry.leftRecIter = null;
 
         // Return the best match so far
         return bestMatch;
@@ -135,7 +116,6 @@ public class Parser {
     public Match parse(String input) {
         this.input = input;
         memoTable.clear();
-        iterate.clear();
         return match(grammar.topRule, 0, /* parentRuleStart = */ -1);
     }
 }
