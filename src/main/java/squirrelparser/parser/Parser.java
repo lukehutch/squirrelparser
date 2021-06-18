@@ -79,7 +79,7 @@ public class Parser {
         // Left recursion expansion iteration loop (executes only once in the absence of left recursion).
         // Don't need to look up bestMatch = memoTable.get(rulePos), because oldIterativelyMatch == null,
         // so this is the first time this rule has been matched at this position.
-        Match bestMatch = memoEntry.match;
+        var bestMatch = memoEntry.match;
         while (true) {
             // Try matching this rule's toplevel clause at this position.
             // newMatch will be either MISMATCH if there was no match, or a Match reference if there was a match.
@@ -114,6 +114,7 @@ public class Parser {
         return bestMatch;
     }
 
+    
     /** Start parsing from the top rule at the beginning of the input. */
     public Match parse(String input) {
         this.input = input;
