@@ -54,16 +54,6 @@ public class Parser {
      */
     private final Map<RuleAndPos, Boolean> iterRuleAtPos = new HashMap<>();
 
-    /**
-     * A map indicating the position of the leftmost (highest ancestral) recursion frame for the current rule, i.e.
-     * the position at which a rule must iteratively attempt to match a left-recursive grammar cycle, in order to
-     * ensure left associativity of ambiguous grammars.
-     */
-    private final Map<Rule, Integer> leftRecIterPos = new HashMap<>();
-
-    /** If true, prefer left recursion for ambiguous rules like E <- E '+' E. */
-    private static final boolean PREFER_LEFT_RECURSION = true;
-
     /** Construct a */
     public Parser(Grammar grammar, String input) {
         this.grammar = grammar;
@@ -98,16 +88,7 @@ public class Parser {
             // if oldIterRuleAtPos was already marked as TRUE
 
             // Mark cycle entry point as requiring iteration.
-            if (PREFER_LEFT_RECURSION) {
-                // Only mark ancestral rule for iterative expansion of left recursion if there was
-                // no ancestral rule yet marked for iteration at an earlier position
-                if (leftRecIterPos.putIfAbsent(rule, pos) == null) {
-                    iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
-                } // Else do not iterate in this position; already iterating rule at an earlier position
-            } else {
-                // Simpler algorithm produces right-associative parse tree from ambiguously associative rules
-                iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
-            }
+            iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
 
             // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
             memoTable.put(ruleAndPos, Match.NO_MATCH);
@@ -141,10 +122,6 @@ public class Parser {
 
         // Remove from visited set once this clause and position has finished recursing
         iterRuleAtPos.remove(ruleAndPos);
-        if (PREFER_LEFT_RECURSION) {
-            // Remove iterative expansion position, only if the value matches the current position
-            leftRecIterPos.remove(this, pos);
-        }
 
         // Return best match so far
         return memoTable.get(ruleAndPos);
