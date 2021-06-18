@@ -27,6 +27,12 @@ import squirrelparser.node.Match;
 
 /** An entry in the memo table. */
 public class MemoEntry {
+    /** The best {@link Match} found so far for this clause at this start position. */
     public Match match;
-    public Boolean leftRecIter;
+
+    /** If true, the memo table key (rule & position) corresponding to this memo entry is in the recursion path. */
+    public boolean inRecPath;
+
+    /** If true, a left-recursive cycle can be reached from this rule at this start position. */
+    public boolean inLeftRecCycle;
 }

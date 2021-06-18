@@ -59,12 +59,9 @@ public class Parser {
         }
 
         // Keep track of clause and start position in ancestral recursion frames.
-        if (memoEntry.leftRecIter != null) {
-            // rulePos is present at a higher stack frame in recursion path => hit a left-recursion cycle.
-            if (!memoEntry.leftRecIter) {
-                // Set leftRecIter to true if it is currently set to FALSE.
-                memoEntry.leftRecIter = Boolean.TRUE;
-            }
+        if (memoEntry.inRecPath) {
+            // Hit a left recursion cycle.
+            memoEntry.inLeftRecCycle = true;
             if (memoEntry.match == null) {
                 // Set memo entry to MISMATCH if a better match has not already been found.
                 memoEntry.match = Match.MISMATCH;
@@ -73,8 +70,10 @@ public class Parser {
             return memoEntry.match;
         }
 
-        // rulePos is not present at a higher stack frame in recursion path
-        memoEntry.leftRecIter = Boolean.FALSE;
+        // This RulePos is not present at a higher stack frame in the recursion path -- add it to the path
+        memoEntry.inRecPath = true;
+        // No left recursion cycle is yet known
+        memoEntry.inLeftRecCycle = false;
 
         // Left recursion expansion iteration loop (executes only once in the absence of left recursion).
         // Don't need to look up bestMatch = memoTable.get(rulePos), because oldIterativelyMatch == null,
@@ -101,20 +100,19 @@ public class Parser {
             // Check if this recursion frame was marked for iteration by a lower recursion frame
             // (need to check every iteration, since any iteration could result in triggering a new
             // path through a left-recursive cycle).
-            if (!memoEntry.leftRecIter) {
-                // No left recursion -- don't iterate.
+            if (!memoEntry.inLeftRecCycle) {
+                // Not in left-recursive cycle -- don't iterate.
                 break;
             } // else keep iteratively matching until match can no longer be improved. 
         }
 
-        // Unmark this clause for iteration at this position once iteration is finished
-        memoEntry.leftRecIter = null;
+        // This RulePos is no longer in the recursion path
+        memoEntry.inRecPath = false;
 
         // Return the best match so far
         return bestMatch;
     }
 
-    
     /** Start parsing from the top rule at the beginning of the input. */
     public Match parse(String input) {
         this.input = input;
