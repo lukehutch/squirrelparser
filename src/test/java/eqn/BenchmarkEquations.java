@@ -89,7 +89,7 @@ public class BenchmarkEquations {
         var startTime = System.nanoTime();
         var parser = new Parser(grammar);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH || match.len < input.length()) {
+        if (match == Match.MISMATCH || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;

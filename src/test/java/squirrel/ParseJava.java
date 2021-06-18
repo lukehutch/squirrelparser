@@ -34,7 +34,7 @@ public class ParseJava {
             var input = Files.readString(path);
             var parser = new Parser(grammar);
             var match = parser.parse(input);
-            if (match == Match.NO_MATCH) {
+            if (match == Match.MISMATCH) {
                 var syntaxErrPos = MemoUtils.findMaxEndPos(parser);
                 var syntaxErr = input.substring(syntaxErrPos, Math.min(syntaxErrPos + 180, input.length()));
                 System.out.println("Syntax error at position " + syntaxErrPos + " : "

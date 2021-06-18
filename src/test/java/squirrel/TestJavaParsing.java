@@ -15,10 +15,10 @@ public class TestJavaParsing {
         var parser = new Parser(SquirrelParboiledJavaGrammar.grammar);
         var match = parser.parse(input);
 
-        //        // TODO: why do we get a zero-length match and not NO_MATCH when there's a diamond operator? 
+        //        // TODO: why do we get a zero-length match and not MISMATCH when there's a diamond operator? 
         //        System.out.println(match.pos + "\t" + match.len + "\t" + input.length());
 
-        if (match == Match.NO_MATCH || match.len < input.length()) {
+        if (match == Match.MISMATCH || match.len < input.length()) {
             // System.out.println("Syntax error");
             MemoUtils.printSyntaxError(parser);
             return -1;

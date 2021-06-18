@@ -88,8 +88,8 @@ public class Parser {
                 // Mark cycle entry point as requiring iteration.
                 iterativelyMatch.put(rulePos, Boolean.TRUE);
                 // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
-                memoTable.put(rulePos, Match.NO_MATCH);
-                return Match.NO_MATCH;
+                memoTable.put(rulePos, Match.MISMATCH);
+                return Match.MISMATCH;
             }
         }
 
@@ -99,13 +99,13 @@ public class Parser {
         Match bestMatch = null;
         while (true) {
             // Try matching this rule's toplevel clause at this position.
-            // newMatch will be either NO_MATCH if there was no match, or a Match reference if there was a match.
+            // newMatch will be either MISMATCH if there was no match, or a Match reference if there was a match.
             var newMatch = rule.match(this, pos, /* rulePos = */ pos);
 
             // Break if newMatch is not better than bestMatch.
             // A longer match always beats a shorter match:
             // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
-            // N.B. NO_MATCH has a len of -1 so that even a zero-length match is better (longer) than NO_MATCH.
+            // N.B. MISMATCH has a len of -1 so that even a zero-length match is better (longer) than MISMATCH.
             if (bestMatch != null && newMatch.len <= bestMatch.len) {
                 // Match did not monotonically improve -- don't memoize newMatch (and stop iterating, if iterating)
                 break;

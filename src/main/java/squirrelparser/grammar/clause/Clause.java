@@ -42,7 +42,7 @@ public abstract class Clause {
      * @param pos     The start position to try matching from.
      * @param ruleStart The position of the start of the rule that contains this clause.
      * 
-     * @return The {@link Match}, or {@link Match#NO_MATCH} if this clause did not match at this position.
+     * @return The {@link Match}, or {@link Match#MISMATCH} if this clause did not match at this position.
      */
     public abstract Match match(Parser parser, int pos, int ruleStart);
 

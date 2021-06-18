@@ -43,7 +43,7 @@ public class Char extends Terminal {
                 return new Match(this, pos, 1);
             }
         }
-        return Match.NO_MATCH;
+        return Match.MISMATCH;
     }
 
     @Override

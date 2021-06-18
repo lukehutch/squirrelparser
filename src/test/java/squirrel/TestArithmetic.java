@@ -32,8 +32,8 @@ public class TestArithmetic {
     private static void tryParsing(Grammar grammar, String input, boolean printAST) {
         var parser = new Parser(grammar);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH) {
-            System.out.println("NO_MATCH\n");
+        if (match == Match.MISMATCH) {
+            System.out.println("MISMATCH\n");
         } else if (printAST) {
             var ast = match.toAST(parser.input);
             System.out.println(ast.toStringWholeTree());

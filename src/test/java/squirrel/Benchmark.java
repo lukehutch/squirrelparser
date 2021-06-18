@@ -42,7 +42,7 @@ public class Benchmark {
 
         executeInTimedLoop(() -> {
             var match = new Parser(MetaGrammar.parse(grammarSpec)).parse(input);
-            if (match == Match.NO_MATCH) {
+            if (match == Match.MISMATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "arithmetic");
@@ -66,7 +66,7 @@ public class Benchmark {
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar);
             var match = parser.parse(input);
-            if (match == Match.NO_MATCH) {
+            if (match == Match.MISMATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "java-parse-1");
@@ -80,7 +80,7 @@ public class Benchmark {
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar);
             var match = parser.parse(input);
-            if (match == Match.NO_MATCH) {
+            if (match == Match.MISMATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "java-parse-2");
@@ -96,7 +96,7 @@ public class Benchmark {
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar);
             var match = parser.parse(input);
-            if (match == Match.NO_MATCH) {
+            if (match == Match.MISMATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "java-parse-many-strings-concat");

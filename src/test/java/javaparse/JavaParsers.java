@@ -143,7 +143,7 @@ public class JavaParsers {
         var startTime = System.nanoTime();
         var parser = new Parser(squirrelGrammar_Parboiled_java1p6);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH || match.len < input.length()) {
+        if (match == Match.MISMATCH || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;
@@ -160,7 +160,7 @@ public class JavaParsers {
         var startTime = System.nanoTime();
         var parser = new Parser(squirrelGrammar_Mouse_java1p8);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH || match.len < input.length()) {
+        if (match == Match.MISMATCH || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;

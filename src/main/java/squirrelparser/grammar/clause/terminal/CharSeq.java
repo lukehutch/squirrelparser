@@ -47,7 +47,7 @@ public class CharSeq extends Terminal {
                 && parser.input.regionMatches(ignoreCase, pos, seq, 0, seq.length())) {
             return new Match(this, pos, seq.length());
         } else {
-            return Match.NO_MATCH;
+            return Match.MISMATCH;
         }
     }
 

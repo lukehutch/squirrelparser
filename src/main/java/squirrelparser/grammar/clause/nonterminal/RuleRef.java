@@ -44,10 +44,10 @@ public class RuleRef extends Clause {
             // This RuleRef clause doesn't have a separate AST node label; just reuse the Match from the
             // referenced rule
             return refdRuleMatch;
-        } else if (refdRuleMatch != Match.NO_MATCH) {
+        } else if (refdRuleMatch != Match.MISMATCH) {
             return new Match(this, /* subClauseMatch = */ refdRuleMatch);
         } else {
-            return Match.NO_MATCH;
+            return Match.MISMATCH;
         }
     }
 

@@ -40,8 +40,8 @@ public class ParsingExample {
 
         var parser = new Parser(rewrittenGrammar);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH) {
-            System.out.println("\nNO_MATCH");
+        if (match == Match.MISMATCH) {
+            System.out.println("\nMISMATCH");
         } else {
             System.out.println("\nPARSE TREE:\n\n" + match.toStringWholeTree(parser.input));
 

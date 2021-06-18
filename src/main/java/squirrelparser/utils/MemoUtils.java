@@ -31,7 +31,7 @@ public class MemoUtils {
     public static int findMaxEndPos(Parser parser) {
         int maxEndPos = 0;
         for (var match : parser.memoTable.values()) {
-            if (match != Match.NO_MATCH) {
+            if (match != Match.MISMATCH) {
                 maxEndPos = Math.max(maxEndPos, match.pos + match.len);
             }
         }

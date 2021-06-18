@@ -90,7 +90,7 @@ public class CharSet extends Terminal {
                 return new Match(this, pos, 1);
             }
         }
-        return Match.NO_MATCH;
+        return Match.MISMATCH;
     }
 
     private static void toString(BitSet chars, int cardinality, boolean inverted, StringBuilder buf) {
