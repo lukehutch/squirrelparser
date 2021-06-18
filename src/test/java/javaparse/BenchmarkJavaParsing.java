@@ -33,7 +33,7 @@ public class BenchmarkJavaParsing {
     // Execute 3x, and find the minimum execution time, to try to remove the effect of GC and other hiccups
     private static long findMinTime(Function<String, Long> timerFunction, String input) {
         long minTime = Long.MAX_VALUE;
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 5; i++) {
             minTime = Math.min(minTime, timerFunction.apply(input));
         }
         return minTime;
