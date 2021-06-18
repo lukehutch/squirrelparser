@@ -93,21 +93,21 @@ public class Parser {
             }
         }
 
-        // Left recursion expansion iteration loop (executes only once in the absence of left recursion)
-        Match bestMatch;
+        // Left recursion expansion iteration loop (executes only once in the absence of left recursion).
+        // Don't need to look up bestMatch = memoTable.get(rulePos), because oldIterativelyMatch == null,
+        // so this is the first time this rule has been matched at this position.
+        Match bestMatch = null;
         while (true) {
-            // Compare new match to old match in memo table, if any
-            var oldMatch = memoTable.get(rulePos);
-            bestMatch = oldMatch;
-
-            // Try matching this rule's toplevel clause at this position
+            // Try matching this rule's toplevel clause at this position.
+            // newMatch will be either NO_MATCH if there was no match, or a Match reference if there was a match.
             var newMatch = rule.match(this, pos, /* rulePos = */ pos);
 
-            // A longer match beats a shorter match.
+            // Break if newMatch is not better than bestMatch.
+            // A longer match always beats a shorter match:
             // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
-            // N.B. NO_MATCH has a len of -1 so that even a zero-length match is better (longer) than NO_MATCH
-            if (oldMatch != null && newMatch.len <= oldMatch.len) {
-                // Match did not monotonically improve -- don't memoize (and stop iterating, if iterating)
+            // N.B. NO_MATCH has a len of -1 so that even a zero-length match is better (longer) than NO_MATCH.
+            if (bestMatch != null && newMatch.len <= bestMatch.len) {
+                // Match did not monotonically improve -- don't memoize newMatch (and stop iterating, if iterating)
                 break;
             }
 
@@ -115,11 +115,13 @@ public class Parser {
             memoTable.put(rulePos, newMatch);
             bestMatch = newMatch;
 
+            // Check if this recursion frame was marked for iteration by a lower recursion frame
+            // (need to check every iteration, since any iteration could result in triggering a new
+            // path through a left-recursive cycle).
             if (!iterativelyMatch.get(rulePos)) {
-                // This recursion frame was not marked for iteration by a lower recursion frame,
-                // so don't iterate
+                // No left recursion -- don't iterate.
                 break;
-            } // else keep iteratively matching until match can no longer be improved 
+            } // else keep iteratively matching until match can no longer be improved. 
         }
 
         // Remove from visited set once this clause and position has finished recursing
