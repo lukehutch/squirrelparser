@@ -88,9 +88,6 @@ public class Parser {
         // No left recursion cycle is yet known
         memoEntry.inLeftRecCycle = false;
         
-        // The best match for this rule and position before recursing is the match in the memo table (may be null)
-        var bestMatch = memoEntry.match;
-        
         // Left recursion expansion loop (executes only once if there no left recursive cycle is encountered).
         while (true) {
             // Try matching this rule's toplevel clause at this position.
@@ -106,14 +103,13 @@ public class Parser {
             // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
             // N.B. Match.MISMATCH was defined to have a sentinel length of -1, so that even a zero-length match
             // always beats MISMATCH.
-            if (bestMatch != null && newMatch.len <= bestMatch.len) {
+            if (memoEntry.match != null && newMatch.len <= memoEntry.match.len) {
                 // Match did not monotonically improve -- don't memoize newMatch (and stop iterating, if iterating)
                 break;
             }
 
             // Write the new or improved match to the memo table
             memoEntry.match = newMatch;
-            bestMatch = newMatch;
 
             // Check if this recursion frame was marked for iteration by a lower recursion frame
             // of the same rule and position detecting a left-recursive cycle had been reached
@@ -129,7 +125,7 @@ public class Parser {
         memoEntry.inRecPath = false;
 
         // Return the best match so far
-        return bestMatch;
+        return memoEntry.match;
     }
 
     /** Start parsing from the top rule at the beginning of the input. */
