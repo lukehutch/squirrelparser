@@ -52,7 +52,7 @@ public class Parser {
      * switched from false to true, to notify the ancestral recursion frame that it needs to iteratively expand the
      * left recursion.
      */
-    private final Map<RulePos, Boolean> iterativelyMatch = new HashMap<>();
+    private final Map<RulePos, Boolean> iterate = new HashMap<>();
 
     /** Construct a */
     public Parser(Grammar grammar) {
@@ -73,7 +73,7 @@ public class Parser {
         }
 
         // Keep track of clause and start position in ancestral recursion frames.
-        var oldIterativelyMatch = iterativelyMatch.putIfAbsent(rulePos, Boolean.FALSE);
+        var oldIterativelyMatch = iterate.putIfAbsent(rulePos, Boolean.FALSE);
 
         if (oldIterativelyMatch != null) {
             // Just closed a left-recursive cycle -- check memo table to see if there's an even lower match
@@ -86,7 +86,7 @@ public class Parser {
             } else {
                 // oldIterativelyMatch is false, so there must be no entry in the memo table.
                 // Mark cycle entry point as requiring iteration.
-                iterativelyMatch.put(rulePos, Boolean.TRUE);
+                iterate.put(rulePos, Boolean.TRUE);
                 // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
                 memoTable.put(rulePos, Match.MISMATCH);
                 return Match.MISMATCH;
@@ -118,14 +118,14 @@ public class Parser {
             // Check if this recursion frame was marked for iteration by a lower recursion frame
             // (need to check every iteration, since any iteration could result in triggering a new
             // path through a left-recursive cycle).
-            if (!iterativelyMatch.get(rulePos)) {
+            if (!iterate.get(rulePos)) {
                 // No left recursion -- don't iterate.
                 break;
             } // else keep iteratively matching until match can no longer be improved. 
         }
 
         // Remove from visited set once this clause and position has finished recursing
-        iterativelyMatch.remove(rulePos);
+        iterate.remove(rulePos);
 
         // Return the best match so far
         return bestMatch;
@@ -135,7 +135,7 @@ public class Parser {
     public Match parse(String input) {
         this.input = input;
         memoTable.clear();
-        iterativelyMatch.clear();
+        iterate.clear();
         return match(grammar.topRule, 0, /* parentRuleStart = */ -1);
     }
 }
