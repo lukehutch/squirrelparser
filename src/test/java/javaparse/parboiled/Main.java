@@ -16,28 +16,18 @@
 
 package javaparse.parboiled;
 
-import static org.parboiled.common.Preconditions.checkArgNotNull;
-import static org.parboiled.errors.ErrorUtils.printParseErrors;
+import static org.parboiled.common.Preconditions.*;
+import org.parboiled.Parboiled;
+import org.parboiled.parserunners.ReportingParseRunner;
+import org.parboiled.Rule;
+import org.parboiled.support.ParsingResult;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.Writer;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.parboiled.Parboiled;
-import org.parboiled.Rule;
-import org.parboiled.parserunners.ReportingParseRunner;
-import org.parboiled.support.ParsingResult;
+import static org.parboiled.errors.ErrorUtils.printParseErrors;
 
 public class Main {
 

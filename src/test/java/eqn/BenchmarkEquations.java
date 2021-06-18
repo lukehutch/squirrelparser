@@ -22,6 +22,7 @@ import org.parboiled.parserunners.ReportingParseRunner;
 
 import eqn.antlr.EquationLexer;
 import squirrelparser.grammar.Grammar;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
 public class BenchmarkEquations {
@@ -88,7 +89,7 @@ public class BenchmarkEquations {
         var startTime = System.nanoTime();
         var parser = new Parser(grammar);
         var match = parser.parse(input);
-        if (!match.matches() || match.len < input.length()) {
+        if (match == Match.NO_MATCH || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;

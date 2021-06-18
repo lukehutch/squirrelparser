@@ -30,6 +30,7 @@ import java.util.Arrays;
 import org.junit.Test;
 
 import javaparse.squirrel.SquirrelParboiledJavaGrammar;
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
 
@@ -41,7 +42,7 @@ public class Benchmark {
 
         executeInTimedLoop(() -> {
             var match = new Parser(MetaGrammar.parse(grammarSpec)).parse(input);
-            if (!match.matches()) {
+            if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "arithmetic");
@@ -65,7 +66,7 @@ public class Benchmark {
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar);
             var match = parser.parse(input);
-            if (!match.matches()) {
+            if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "java-parse-1");
@@ -79,7 +80,7 @@ public class Benchmark {
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar);
             var match = parser.parse(input);
-            if (!match.matches()) {
+            if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "java-parse-2");
@@ -95,7 +96,7 @@ public class Benchmark {
         executeInTimedLoop(() -> {
             var parser = new Parser(grammar);
             var match = parser.parse(input);
-            if (!match.matches()) {
+            if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
         }, "java-parse-many-strings-concat");

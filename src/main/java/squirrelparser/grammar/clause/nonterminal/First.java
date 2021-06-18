@@ -38,11 +38,11 @@ public class First extends ClauseWithMultipleSubClauses {
     public Match match(Parser parser, int pos, int ruleStart) {
         for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
             var subClauseMatch = subClauses[subClauseIdx].match(parser, pos, ruleStart);
-            if (subClauseMatch.matches()) {
+            if (subClauseMatch != Match.NO_MATCH) {
                 return new Match(this, subClauseIdx, subClauseMatch);
             }
         }
         // No subclauses matched
-        return Match.MISMATCH;
+        return Match.NO_MATCH;
     }
 }

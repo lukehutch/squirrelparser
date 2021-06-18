@@ -41,7 +41,7 @@ public class ZeroOrMore extends ClauseWithOneSubClause {
         ArrayList<Match> subClauseMatches = null;
         for (int currPos = pos;;) {
             var subClauseMatch = subClause.match(parser, currPos, ruleStart);
-            if (!subClauseMatch.matches()) {
+            if (subClauseMatch == Match.NO_MATCH) {
                 break;
             }
             if (subClauseMatches == null) {

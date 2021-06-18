@@ -23,6 +23,7 @@
 //
 package squirrel;
 
+import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
 
@@ -39,7 +40,7 @@ public class ParsingExample {
 
         var parser = new Parser(rewrittenGrammar);
         var match = parser.parse(input);
-        if (!match.matches()) {
+        if (match == Match.NO_MATCH) {
             System.out.println("\nNO_MATCH");
         } else {
             System.out.println("\nPARSE TREE:\n\n" + match.toStringWholeTree(parser.input));

@@ -42,12 +42,12 @@ public class RuleRef extends Clause {
         var refdRuleMatch = parser.match(refdRule, pos, /* parentRuleStart = */ ruleStart);
         if (astNodeLabel == null) {
             // This RuleRef clause doesn't have a separate AST node label; just reuse the Match from the
-            // referenced rule (this shrinks down the size of the parse tree)
+            // referenced rule
             return refdRuleMatch;
-        } else if (refdRuleMatch.matches()) {
+        } else if (refdRuleMatch != Match.NO_MATCH) {
             return new Match(this, /* subClauseMatch = */ refdRuleMatch);
         } else {
-            return Match.MISMATCH;
+            return Match.NO_MATCH;
         }
     }
 
