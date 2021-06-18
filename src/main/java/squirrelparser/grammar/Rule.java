@@ -56,7 +56,7 @@ public class Rule {
         // Keep track of clause and start position in ancestral recursion frames.
         var oldIterRuleAtPos = parser.iterRuleAtPos.putIfAbsent(ruleAndPos, Boolean.FALSE);
 
-        if (oldIterRuleAtPos != null) {  // If true, oldIterRuleAtPos must be Boolean.FALSE
+        if (oldIterRuleAtPos != null) {
             // Check memo table for lower matches when there's a left recursive cycle
             // (N.B. this is mutually exclusive with the memo table check above, because if
             // oldIterRuleAtPos != null, then pos must equal parentPos)
@@ -64,8 +64,9 @@ public class Rule {
             if (memo != null) {
                 return memo;
             }
+            // oldIterRuleAtPos must be FALSE here -- there will only be a memotable entry
+            // if oldIterRuleAtPos was already marked as TRUE
 
-            // Reached infinite recursion cycle, and there was no previous memo for this clauseAndPos.
             // Mark cycle entry point as requiring iteration.
             if (Parser.PREFER_LEFT_RECURSION) {
                 // Only mark ancestral rule for iterative expansion of left recursion if there was
@@ -89,6 +90,7 @@ public class Rule {
             var newMatch = clause.match(pos, /* rulePos = */ pos, parser);
             // Compare new match to old match in memo table, if any
             var oldMatch = parser.memoTable.get(ruleAndPos);
+
             // A longer match beats a shorter match.
             // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
             // N.B. NO_MATCH has a len of -1 so that even a zero-length match is better (longer) than NO_MATCH
@@ -96,8 +98,10 @@ public class Rule {
                 // Match did not monotonically improve -- don't memoize (and stop iterating, if iterating)
                 break;
             }
+
             // Memoize a new or improved match for this clause at this position
             parser.memoTable.put(ruleAndPos, newMatch);
+
             if (!parser.iterRuleAtPos.get(ruleAndPos)) {
                 // This recursion frame was not marked for iteration by a lower recursion frame,
                 // so don't iterate
