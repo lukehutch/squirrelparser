@@ -88,8 +88,8 @@ public class Parser {
                 // Mark cycle entry point as requiring iteration.
                 iterativelyMatch.put(rulePos, Boolean.TRUE);
                 // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
-                memoTable.put(rulePos, Match.NO_MATCH);
-                return Match.NO_MATCH;
+                memoTable.put(rulePos, Match.MISMATCH);
+                return Match.MISMATCH;
             }
         }
 

@@ -24,7 +24,6 @@
 package squirrel;
 
 import squirrelparser.grammar.Grammar;
-import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
 
@@ -32,7 +31,7 @@ public class TestArithmetic {
     private static void tryParsing(Grammar grammar, String input, boolean printAST) {
         var parser = new Parser(grammar);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH) {
+        if (!match.matches()) {
             System.out.println("NO_MATCH\n");
         } else if (printAST) {
             var ast = match.toAST(parser.input);

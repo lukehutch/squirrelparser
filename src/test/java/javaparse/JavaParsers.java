@@ -12,7 +12,6 @@ import javaparse.parboiled.JavaParser;
 import javaparse.squirrel.SquirrelParboiledJavaGrammar;
 import squirrel.TestUtils;
 import squirrelparser.grammar.Grammar;
-import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.ClauseUtils;
 import squirrelparser.utils.MetaGrammar;
@@ -143,7 +142,7 @@ public class JavaParsers {
         var startTime = System.nanoTime();
         var parser = new Parser(squirrelGrammar_Parboiled_java1p6);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH || match.len < input.length()) {
+        if (!match.matches() || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;
@@ -160,7 +159,7 @@ public class JavaParsers {
         var startTime = System.nanoTime();
         var parser = new Parser(squirrelGrammar_Mouse_java1p8);
         var match = parser.parse(input);
-        if (match == Match.NO_MATCH || match.len < input.length()) {
+        if (!match.matches() || match.len < input.length()) {
             return -1;
         }
         var elapsedTime = System.nanoTime() - startTime;

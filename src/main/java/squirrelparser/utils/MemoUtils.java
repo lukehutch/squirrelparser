@@ -23,7 +23,6 @@
 //
 package squirrelparser.utils;
 
-import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
 public class MemoUtils {
@@ -31,7 +30,7 @@ public class MemoUtils {
     public static int findMaxEndPos(Parser parser) {
         int maxEndPos = 0;
         for (var match : parser.memoTable.values()) {
-            if (match != Match.NO_MATCH) {
+            if (match.matches()) {
                 maxEndPos = Math.max(maxEndPos, match.pos + match.len);
             }
         }

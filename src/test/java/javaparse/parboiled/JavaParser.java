@@ -44,7 +44,9 @@ package javaparse.parboiled;
 
 import org.parboiled.BaseParser;
 import org.parboiled.Rule;
-import org.parboiled.annotations.*;
+import org.parboiled.annotations.BuildParseTree;
+import org.parboiled.annotations.DontLabel;
+import org.parboiled.annotations.MemoMismatches;
 
 @BuildParseTree
 public class JavaParser extends BaseParser<Object> {

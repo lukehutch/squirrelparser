@@ -40,11 +40,39 @@ public class Match {
     public final List<Match> subClauseMatches;
     public final int firstMatchingSubClauseIdx;
 
-    /** Used to return or memoize the notification that the clause did not match. */
-    public static final Match NO_MATCH = new Match(null, -1, -1, 0, Collections.emptyList()) {
+    /** A mismatch. */
+    public static final Match MISMATCH = new Match(null, -1, -1, 0, Collections.emptyList()) {
         @Override
         public String toString(String input) {
             return toString();
+        }
+
+        @Override
+        public boolean matches() {
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return "NO_MATCH";
+        }
+    };
+
+    /** A mismatch used to mark the point where left recursion must iteratively try to improve the match. */
+    public static final Match LEFT_REC_SEED = new Match(null, -1, -1, 0, Collections.emptyList()) {
+        @Override
+        public String toString(String input) {
+            return toString();
+        }
+
+        @Override
+        public boolean matches() {
+            return false;
+        }
+
+        @Override
+        public boolean isLeftRecSeed() {
+            return true;
         }
 
         @Override
@@ -100,6 +128,22 @@ public class Match {
     /** Convert the parse tree to an AST. */
     public ASTNode toAST(String input) {
         return new ASTNode(this, input);
+    }
+
+    /**
+     * Returns true if this memo entry matches the input. Returns true by default; overridden to return false for
+     * {@link #MISMATCH} and {@link LEFT_REC_SEED}.
+     */
+    public boolean matches() {
+        return true;
+    }
+
+    /**
+     * Returns true if this memo entry is a left recursive seed. Returns false by default; overridden to return true
+     * for {@link LEFT_REC_SEED}.
+     */
+    public boolean isLeftRecSeed() {
+        return false;
     }
 
     /** Get the subsequence of the input matched by this {@link Match}. */
