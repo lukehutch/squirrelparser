@@ -95,10 +95,13 @@ public class MemoEntry {
                     // Write the new or improved match to the memo table
                     match = newMatch;
 
-                    // Check if this recursion frame was marked for iteration by a lower recursion frame
-                    // of the same rule and position detecting a left-recursive cycle had been reached
-                    // (see where inLeftRecCycle was set above). If inLeftRecCycle is true, keep iteratively
-                    // matching until the match can no longer be improved. 
+                    // Check if this recursion frame was marked for iterative expansion of a left-recursive
+                    // cycle by a lower recursion frame that closed the cycle (i.e. a lower recursion frame
+                    // that returned to the same rule at the same position) -- see where inLeftRecCycle
+                    // was set, above. If inLeftRecCycle has been set to true, keep iteratively matching
+                    // (growing the parse tree downwards from the current point), incorporating lower matches
+                    // for this rule at this position as successively higher subtrees of the match tree,
+                    // until the match can no longer be improved. 
                 } while (inLeftRecCycle);
 
                 // On exit from this frame of recursion, mark this rule and position as is no longer being part of
