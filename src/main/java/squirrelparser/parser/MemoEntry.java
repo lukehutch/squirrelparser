@@ -26,15 +26,15 @@ package squirrelparser.parser;
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.node.Match;
 
-/** An entry in the memo table. */
+/** An entry in the memo table, for a specific {@link RulePos}. */
 public class MemoEntry {
-    /** The best {@link Match} found so far for this clause at this start position. */
+    /** The best {@link Match} found so far for this rule at this position. */
     public Match match;
 
-    /** If true, the memo table key (rule & position) corresponding to this memo entry is in the recursion path. */
+    /** If true, the rule and position of this memo entry is in the recursion path. */
     public boolean inRecPath;
 
-    /** If true, a left-recursive cycle can be reached from this rule at this start position. */
+    /** If true, this rule is the head of a left-recursive cycle at the current position. */
     public boolean inLeftRecCycle;
 
     /** Parse a rule while handling left recursion. */
