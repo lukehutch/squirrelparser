@@ -38,8 +38,8 @@ public class ParsingExample {
         var rewrittenGrammar = MetaGrammar.parse(grammarSource);
         System.out.println("\nREWRITTEN GRAMMAR:\n\n" + rewrittenGrammar);
 
-        var parser = new Parser(rewrittenGrammar, input);
-        var match = parser.parse();
+        var parser = new Parser(rewrittenGrammar);
+        var match = parser.parse(input);
         if (match == Match.NO_MATCH) {
             System.out.println("\nNO_MATCH");
         } else {

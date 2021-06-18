@@ -87,8 +87,8 @@ public class BenchmarkEquations {
                         first(seq(ruleRef("Prec1"), first(c('+'), c('-')), ruleRef("Prec1")), ruleRef("Prec1")))));
 
         var startTime = System.nanoTime();
-        var parser = new Parser(grammar, input);
-        var match = parser.parse();
+        var parser = new Parser(grammar);
+        var match = parser.parse(input);
         if (match == Match.NO_MATCH || match.len < input.length()) {
             return -1;
         }

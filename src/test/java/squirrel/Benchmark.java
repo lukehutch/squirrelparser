@@ -41,7 +41,7 @@ public class Benchmark {
         final var input = TestUtils.loadResourceFile("arithmetic.input");
 
         executeInTimedLoop(() -> {
-            var match = new Parser(MetaGrammar.parse(grammarSpec), input).parse();
+            var match = new Parser(MetaGrammar.parse(grammarSpec)).parse(input);
             if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
@@ -64,8 +64,8 @@ public class Benchmark {
         final var input = TestUtils.loadResourceFile("TestJavaClass.java");
 
         executeInTimedLoop(() -> {
-            var parser = new Parser(grammar, input);
-            var match = parser.parse();
+            var parser = new Parser(grammar);
+            var match = parser.parse(input);
             if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
@@ -78,8 +78,8 @@ public class Benchmark {
         final var input = TestUtils.loadResourceFile("TestJavaClass.java");
 
         executeInTimedLoop(() -> {
-            var parser = new Parser(grammar, input);
-            var match = parser.parse();
+            var parser = new Parser(grammar);
+            var match = parser.parse(input);
             if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }
@@ -94,8 +94,8 @@ public class Benchmark {
         final var input = TestUtils.loadResourceFile("ManyStringsConcat.java");
 
         executeInTimedLoop(() -> {
-            var parser = new Parser(grammar, input);
-            var match = parser.parse();
+            var parser = new Parser(grammar);
+            var match = parser.parse(input);
             if (match == Match.NO_MATCH) {
                 throw new IllegalArgumentException("Did not match input");
             }

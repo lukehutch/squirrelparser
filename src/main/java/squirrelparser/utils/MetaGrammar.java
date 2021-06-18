@@ -547,8 +547,8 @@ public class MetaGrammar {
     public static Grammar parse(String input) {
         // System.out.println(metaGrammar);
 
-        var parser = new Parser(metaGrammar, input);
-        var topMatch = parser.parse();
+        var parser = new Parser(metaGrammar);
+        var topMatch = parser.parse(input);
 
         //		ParserInfo.printParseResult("GRAMMAR", memoTable, new String[] { "GRAMMAR", "RULE", "CLAUSE[1]" },
         //				/* showAllMatches = */ false);

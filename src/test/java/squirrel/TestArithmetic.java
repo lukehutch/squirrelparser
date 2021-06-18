@@ -30,8 +30,8 @@ import squirrelparser.utils.MetaGrammar;
 
 public class TestArithmetic {
     private static void tryParsing(Grammar grammar, String input, boolean printAST) {
-        var parser = new Parser(grammar, input);
-        var match = parser.parse();
+        var parser = new Parser(grammar);
+        var match = parser.parse(input);
         if (match == Match.NO_MATCH) {
             System.out.println("NO_MATCH\n");
         } else if (printAST) {
@@ -91,10 +91,8 @@ public class TestArithmetic {
         var grammar7 = MetaGrammar.parse("A <- \"a \" B \"monkeyapples\"; B <- \"million \" / \"million monkey\";");
         tryParsing(grammar7, "a million monkeyapples");
 
-
         var grammar8 = MetaGrammar.parse("A <- (A 'y') / 'x';");
         tryParsing(grammar8, "xy");
 
-        
     }
 }

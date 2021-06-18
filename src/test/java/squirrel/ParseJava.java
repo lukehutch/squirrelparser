@@ -32,8 +32,8 @@ public class ParseJava {
         for (var path : sourcePaths) {
             totLen += path.toFile().length();
             var input = Files.readString(path);
-            var parser = new Parser(grammar, input);
-            var match = parser.parse();
+            var parser = new Parser(grammar);
+            var match = parser.parse(input);
             if (match == Match.NO_MATCH) {
                 var syntaxErrPos = MemoUtils.findMaxEndPos(parser);
                 var syntaxErr = input.substring(syntaxErrPos, Math.min(syntaxErrPos + 180, input.length()));

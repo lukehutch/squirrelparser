@@ -36,7 +36,7 @@ public class Parser {
     public final Grammar grammar;
 
     /** The input to parse. */
-    public final String input;
+    public String input;
 
     /** The memo table. */
     public final Map<RuleAndPos, Match> memoTable = new HashMap<>();
@@ -55,9 +55,8 @@ public class Parser {
     private final Map<RuleAndPos, Boolean> iterRuleAtPos = new HashMap<>();
 
     /** Construct a */
-    public Parser(Grammar grammar, String input) {
+    public Parser(Grammar grammar) {
         this.grammar = grammar;
-        this.input = input;
     }
 
     /** Parse a rule while handling left recursion. */
@@ -128,7 +127,10 @@ public class Parser {
     }
 
     /** Start parsing from the top rule at the beginning of the input. */
-    public Match parse() {
+    public Match parse(String input) {
+        this.input = input;
+        memoTable.clear();
+        iterRuleAtPos.clear();
         return match(grammar.topRule, 0, /* parentRulePos = */ -1);
     }
 }

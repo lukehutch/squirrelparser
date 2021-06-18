@@ -141,8 +141,8 @@ public class JavaParsers {
 
     public static long benchmarkSquirrel_Parboiled_java1p6(String input) {
         var startTime = System.nanoTime();
-        var parser = new Parser(squirrelGrammar_Parboiled_java1p6, input);
-        var match = parser.parse();
+        var parser = new Parser(squirrelGrammar_Parboiled_java1p6);
+        var match = parser.parse(input);
         if (match == Match.NO_MATCH || match.len < input.length()) {
             return -1;
         }
@@ -158,8 +158,8 @@ public class JavaParsers {
 
     public static long benchmarkSquirrel_Mouse_java1p8(String input) {
         var startTime = System.nanoTime();
-        var parser = new Parser(squirrelGrammar_Mouse_java1p8, input);
-        var match = parser.parse();
+        var parser = new Parser(squirrelGrammar_Mouse_java1p8);
+        var match = parser.parse(input);
         if (match == Match.NO_MATCH || match.len < input.length()) {
             return -1;
         }

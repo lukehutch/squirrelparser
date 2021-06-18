@@ -12,8 +12,8 @@ public class TestJavaParsing {
 
     public static long benchmarkSquirrel_Parboiled_java1p6(String input) throws IOException {
         var startTime = System.nanoTime();
-        var parser = new Parser(SquirrelParboiledJavaGrammar.grammar, input);
-        var match = parser.parse();
+        var parser = new Parser(SquirrelParboiledJavaGrammar.grammar);
+        var match = parser.parse(input);
 
         //        // TODO: why do we get a zero-length match and not NO_MATCH when there's a diamond operator? 
         //        System.out.println(match.pos + "\t" + match.len + "\t" + input.length());
