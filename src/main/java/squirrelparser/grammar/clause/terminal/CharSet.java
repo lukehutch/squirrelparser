@@ -83,7 +83,7 @@ public class CharSet extends Terminal {
     }
 
     @Override
-    public Match match(int pos, int rulePos, Parser parser) {
+    public Match match(Parser parser, int pos, int rulePos) {
         if (pos < parser.input.length()) {
             char c = parser.input.charAt(pos);
             if ((chars != null && chars.get(c)) || (invertedChars != null && !invertedChars.get(c))) {

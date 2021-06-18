@@ -37,7 +37,7 @@ public class Whitespace extends Terminal {
     }
 
     @Override
-    public Match match(int pos, int rulePos, Parser parser) {
+    public Match match(Parser parser, int pos, int rulePos) {
         int currPos = pos;
         while (currPos < parser.input.length()) {
             if (Character.isWhitespace(parser.input.charAt(currPos))) {

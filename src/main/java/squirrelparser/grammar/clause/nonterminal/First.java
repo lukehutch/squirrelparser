@@ -35,9 +35,9 @@ public class First extends ClauseWithMultipleSubClauses {
     }
 
     @Override
-    public Match match(int pos, int rulePos, Parser parser) {
+    public Match match(Parser parser, int pos, int rulePos) {
         for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
-            var subClauseMatch = subClauses[subClauseIdx].match(pos, rulePos, parser);
+            var subClauseMatch = subClauses[subClauseIdx].match(parser, pos, rulePos);
             if (subClauseMatch != Match.NO_MATCH) {
                 return new Match(this, subClauseIdx, subClauseMatch);
             }

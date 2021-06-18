@@ -35,8 +35,8 @@ public class FollowedBy extends ClauseWithOneSubClause {
     }
 
     @Override
-    public Match match(int pos, int rulePos, Parser parser) {
-        var subClauseMatch = subClause.match(pos, rulePos, parser);
+    public Match match(Parser parser, int pos, int rulePos) {
+        var subClauseMatch = subClause.match(parser, pos, rulePos);
         if (subClauseMatch != Match.NO_MATCH) {
             return new Match(this, pos);
         } else {

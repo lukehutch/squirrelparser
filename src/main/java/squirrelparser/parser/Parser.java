@@ -33,7 +33,7 @@ import squirrelparser.node.Match;
 /** The parser (holds the memo table and other parsing information). */
 public class Parser {
     /** The grammar. */
-    private Grammar grammar;
+    public final Grammar grammar;
 
     /** The input to parse. */
     public final String input;
@@ -52,26 +52,106 @@ public class Parser {
      * switched from false to true, to notify the ancestral recursion frame that it needs to iteratively expand the
      * left recursion.
      */
-    public final Map<RuleAndPos, Boolean> iterRuleAtPos = new HashMap<>();
+    private final Map<RuleAndPos, Boolean> iterRuleAtPos = new HashMap<>();
 
     /**
      * A map indicating the position of the leftmost (highest ancestral) recursion frame for the current rule, i.e.
      * the position at which a rule must iteratively attempt to match a left-recursive grammar cycle, in order to
      * ensure left associativity of ambiguous grammars.
      */
-    public final Map<Rule, Integer> leftRecIterPos = new HashMap<>();
+    private final Map<Rule, Integer> leftRecIterPos = new HashMap<>();
 
     /** If true, prefer left recursion for ambiguous rules like E <- E '+' E. */
-    public static final boolean PREFER_LEFT_RECURSION = true;
+    private static final boolean PREFER_LEFT_RECURSION = true;
 
-    /** Construct a parser. */
+    /** Construct a */
     public Parser(Grammar grammar, String input) {
         this.grammar = grammar;
         this.input = input;
     }
 
+    /** Parse a rule while handling left recursion. */
+    public Match match(Rule rule, int pos, int parentRulePos) {
+        var ruleAndPos = new RuleAndPos(rule, pos);
+
+        // If parent recursion frame and this recursion frame have different start positions,
+        // check memo table before trying to recurse
+        if (pos != parentRulePos) {
+            var memo = memoTable.get(ruleAndPos);
+            if (memo != null) {
+                return memo;
+            }
+        }
+
+        // Keep track of clause and start position in ancestral recursion frames.
+        var oldIterRuleAtPos = iterRuleAtPos.putIfAbsent(ruleAndPos, Boolean.FALSE);
+
+        if (oldIterRuleAtPos != null) {
+            // Check memo table for lower matches when there's a left recursive cycle
+            // (N.B. this is mutually exclusive with the memo table check above, because if
+            // oldIterRuleAtPos != null, then pos must equal parentPos)
+            var memo = memoTable.get(ruleAndPos);
+            if (memo != null) {
+                return memo;
+            }
+            // oldIterRuleAtPos must be FALSE here -- there will only be a memotable entry
+            // if oldIterRuleAtPos was already marked as TRUE
+
+            // Mark cycle entry point as requiring iteration.
+            if (PREFER_LEFT_RECURSION) {
+                // Only mark ancestral rule for iterative expansion of left recursion if there was
+                // no ancestral rule yet marked for iteration at an earlier position
+                if (leftRecIterPos.putIfAbsent(rule, pos) == null) {
+                    iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
+                } // Else do not iterate in this position; already iterating rule at an earlier position
+            } else {
+                // Simpler algorithm produces right-associative parse tree from ambiguously associative rules
+                iterRuleAtPos.put(ruleAndPos, Boolean.TRUE);
+            }
+
+            // The bottom-most invocation of the rule does not match (we grow the parse tree upwards from there)
+            memoTable.put(ruleAndPos, Match.NO_MATCH);
+            return Match.NO_MATCH;
+        }
+
+        // Left recursion expansion iteration loop (executes only once in the absence of left recursion)
+        while (true) {
+            // Try matching this rule's toplevel clause at this position
+            var newMatch = rule.clause.match(this, pos, /* rulePos = */ pos);
+            // Compare new match to old match in memo table, if any
+            var oldMatch = memoTable.get(ruleAndPos);
+
+            // A longer match beats a shorter match.
+            // https://github.com/lukehutch/pikaparser/issues/32#issuecomment-861873964
+            // N.B. NO_MATCH has a len of -1 so that even a zero-length match is better (longer) than NO_MATCH
+            if (oldMatch != null && newMatch.len <= oldMatch.len) {
+                // Match did not monotonically improve -- don't memoize (and stop iterating, if iterating)
+                break;
+            }
+
+            // Memoize a new or improved match for this clause at this position
+            memoTable.put(ruleAndPos, newMatch);
+
+            if (!iterRuleAtPos.get(ruleAndPos)) {
+                // This recursion frame was not marked for iteration by a lower recursion frame,
+                // so don't iterate
+                break;
+            } // else keep iteratively matching until match can no longer be improved 
+        }
+
+        // Remove from visited set once this clause and position has finished recursing
+        iterRuleAtPos.remove(ruleAndPos);
+        if (PREFER_LEFT_RECURSION) {
+            // Remove iterative expansion position, only if the value matches the current position
+            leftRecIterPos.remove(this, pos);
+        }
+
+        // Return best match so far
+        return memoTable.get(ruleAndPos);
+    }
+
     /** Start parsing from the top rule at the beginning of the input. */
     public Match parse() {
-        return grammar.topRule.match(0, /* parentRulePos = */ -1, this);
+        return match(grammar.topRule, 0, /* parentRulePos = */ -1);
     }
 }

@@ -42,7 +42,7 @@ public class CharSeq extends Terminal {
     }
 
     @Override
-    public Match match(int pos, int rulePos, Parser parser) {
+    public Match match(Parser parser, int pos, int rulePos) {
         if (pos <= parser.input.length() - seq.length()
                 && parser.input.regionMatches(ignoreCase, pos, seq, 0, seq.length())) {
             return new Match(this, pos, seq.length());

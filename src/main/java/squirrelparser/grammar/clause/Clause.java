@@ -38,13 +38,13 @@ public abstract class Clause {
 
     /**
      * Match this clause at the given position in the input.
-     * 
+     * @param parser  The {@link Parser}.
      * @param pos     The start position to try matching from.
      * @param rulePos The position of the start of the rule that contains this clause.
-     * @param parser  The {@link Parser}.
+     * 
      * @return The {@link Match}, or {@link Match#NO_MATCH} if this clause did not match at this position.
      */
-    public abstract Match match(int pos, int rulePos, Parser parser);
+    public abstract Match match(Parser parser, int pos, int rulePos);
 
     /**
      * Traverse all subclauses of this clause, to search for information, and/or to rewrite the clause tree.

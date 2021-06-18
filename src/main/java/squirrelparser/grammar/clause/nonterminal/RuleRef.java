@@ -38,9 +38,9 @@ public class RuleRef extends Clause {
     }
 
     @Override
-    public Match match(int pos, int rulePos, Parser parser) {
-        // Match the referenced rule
-        var refdRuleMatch = refdRule.match(pos, rulePos, parser);
+    public Match match(Parser parser, int pos, int rulePos) {
+        // Recurse to match the referenced rule
+        var refdRuleMatch = parser.match(refdRule, pos, rulePos);
         if (astNodeLabel == null) {
             // This RuleRef clause doesn't have a separate AST node label; just reuse the Match from the
             // referenced rule

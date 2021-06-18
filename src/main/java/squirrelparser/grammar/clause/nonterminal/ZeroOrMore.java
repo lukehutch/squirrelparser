@@ -37,10 +37,10 @@ public class ZeroOrMore extends ClauseWithOneSubClause {
     }
 
     @Override
-    public Match match(int pos, int rulePos, Parser parser) {
+    public Match match(Parser parser, int pos, int rulePos) {
         ArrayList<Match> subClauseMatches = null;
         for (int currPos = pos;;) {
-            var subClauseMatch = subClause.match(currPos, rulePos, parser);
+            var subClauseMatch = subClause.match(parser, currPos, rulePos);
             if (subClauseMatch == Match.NO_MATCH) {
                 break;
             }
