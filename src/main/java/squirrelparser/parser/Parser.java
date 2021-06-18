@@ -61,9 +61,6 @@ public class Parser {
      */
     public final Map<Rule, Integer> leftRecIterPos = new HashMap<>();
 
-    /** If true, print debug info. */
-    public static final boolean DEBUG = false;
-
     /** If true, prefer left recursion for ambiguous rules like E <- E '+' E. */
     public static final boolean PREFER_LEFT_RECURSION = true;
 
