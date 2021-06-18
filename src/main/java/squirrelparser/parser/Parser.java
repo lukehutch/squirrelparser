@@ -61,8 +61,10 @@ public class Parser {
         // Keep track of clause and start position in ancestral recursion frames.
         if (memoEntry.leftRecIter != null) {
             // rulePos is present at a higher stack frame in recursion path => hit a left-recursion cycle.
-            // Set leftRecIter to true if it is currently set to FALSE.
-            memoEntry.leftRecIter = Boolean.TRUE;
+            if (!memoEntry.leftRecIter) {
+                // Set leftRecIter to true if it is currently set to FALSE.
+                memoEntry.leftRecIter = Boolean.TRUE;
+            }
             if (memoEntry.match == null) {
                 // Set memo entry to MISMATCH if a better match has not already been found.
                 memoEntry.match = Match.MISMATCH;
