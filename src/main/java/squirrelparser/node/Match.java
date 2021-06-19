@@ -38,7 +38,9 @@ public class Match {
     public final int pos;
     public final int len;
     public final List<Match> subClauseMatches;
-    public final int firstMatchingSubClauseIdx;
+
+    // This is no only used for printing debug info via toString()
+    private final int firstMatchingSubClauseIdx;
 
     /** Used to return or memoize the notification that the clause did not match. */
     public static final Match MISMATCH = new Match(null, -1, -1, 0, Collections.emptyList()) {
