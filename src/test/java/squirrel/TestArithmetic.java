@@ -45,30 +45,33 @@ public class TestArithmetic {
     }
 
     public static void main(String[] args) {
-        var grammar1 = MetaGrammar.parse("Program <- Statement+;\n" //
-                + "Statement <- var:[a-z]+ '=' Sum ';';\n" //
-                + "Sum <- add:(Sum '+' Term) / sub:(Sum '-' Term) / term:Term;\n" //
-                + "Term <- num:[0-9]+ / sym:[a-z]+;\n");
-        tryParsing(grammar1, "x=a+b-c;");
-        tryParsing(grammar1, "x=a-b+c;");
+//        var grammar1 = MetaGrammar.parse("Program <- Statement+;\n" //
+//                + "Statement <- var:[a-z]+ '=' Sum ';';\n" //
+//                + "Sum <- add:(Sum '+' Term) / sub:(Sum '-' Term) / term:Term;\n" //
+//                + "Term <- num:[0-9]+ / sym:[a-z]+;\n");
+//        tryParsing(grammar1, "x=a+b-c;");
+//        tryParsing(grammar1, "x=a-b+c;");
+//
+//        // This ambiguous grammar is right associative
+//        var grammar2 = MetaGrammar.parse("E <- sum:(E op:'+' E) / N;\n" //
+//                + "N <- num:[0-9]+;\n");
+//        tryParsing(grammar2, "0+1+2+3;");
+//        // ...but this is left associative:
+//        var grammar3 = MetaGrammar.parse("E <- sum:(E op:'+' N) / N;\n" //
+//                + "N <- num:[0-9]+;\n");
+//        tryParsing(grammar3, "0+1+2+3;");
 
-        // This ambiguous grammar is right associative
-        var grammar2 = MetaGrammar.parse("E <- sum:(E op:'+' E) / N;\n" //
-                + "N <- num:[0-9]+;\n");
-        tryParsing(grammar2, "0+1+2+3;");
-        // ...but this is left associative:
-        var grammar3 = MetaGrammar.parse("E <- sum:(E op:'+' N) / N;\n" //
-                + "N <- num:[0-9]+;\n");
-        tryParsing(grammar3, "0+1+2+3;");
+        var grammar4 = MetaGrammar.parse("A <- a:((B !'y') / 'x'); B <- b:(A 'x');");
+        tryParsing(grammar4, "xxxy;");
 
-        var grammar4 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'y' / A 'x');");
-        tryParsing(grammar4, "xxyx;");
-
-        var grammar5 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'x');");
-        tryParsing(grammar5, "xxx;");
+//        var grammar5 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'y' / A 'x');");
+//        tryParsing(grammar5, "xxyx;");
+//
+//        var grammar6 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'x');");
+//        tryParsing(grammar6, "xxx;");
 
         //        // Benchmark example from https://www.python.org/dev/peps/pep-0617
-        //        var grammar6 = MetaGrammar.parse( //
+        //        var grammar7 = MetaGrammar.parse( //
         //                "P <- <WS> (E0 '\\n'?)+;\n" //
         //                        + "E3 <- '(' <WS> E0 <WS> ')';\n" //
         //                        + "E2 <- num:N / E3;\n" //
@@ -85,14 +88,16 @@ public class TestArithmetic {
         //        }
         //        var input = buf.toString();
         //        long startTime = System.nanoTime();
-        //        tryParsing(grammar6, input, false);
+        //        tryParsing(grammar7, input, false);
         //        System.out.println((System.nanoTime() - startTime) * 1.0e-9);
 
-        var grammar7 = MetaGrammar.parse("A <- \"a \" B \"monkeyapples\"; B <- \"million \" / \"million monkey\";");
-        tryParsing(grammar7, "a million monkeyapples");
+//        var grammar8 = MetaGrammar.parse("A <- \"a \" B \"monkeyapples\"; B <- \"million \" / \"million monkey\";");
+//        tryParsing(grammar8, "a million monkeyapples");
+//
+//        var grammar9 = MetaGrammar.parse("A <- (A 'y') / 'x';");
+//        tryParsing(grammar9, "xy");
 
-        var grammar8 = MetaGrammar.parse("A <- (A 'y') / 'x';");
-        tryParsing(grammar8, "xy");
 
+        
     }
 }
