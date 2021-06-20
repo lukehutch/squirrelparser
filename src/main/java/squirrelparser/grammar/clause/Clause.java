@@ -38,8 +38,8 @@ public abstract class Clause {
     /**
      * Match this clause at the given position in the input.
      * 
-     * @param parser  The {@link Parser}.
-     * @param pos     The start position to try matching from.
+     * @param parser    The {@link Parser}.
+     * @param pos       The start position to try matching from.
      * @param ruleStart The position of the start of the rule that contains this clause.
      * 
      * @return The {@link Match}, or {@link Match#MISMATCH} if this clause did not match at this position.
@@ -67,10 +67,9 @@ public abstract class Clause {
      */
     protected String labelClause(String toString) {
         return (ruleName == null ? "" : ruleName + " <- ") // 
-                + (astNodeLabel == null ? ""
+                + (astNodeLabel == null ? toString
                         : ClauseUtils.needToAddParensAroundASTNodeLabel(this) ? astNodeLabel + ":(" + toString + ")"
-                                : astNodeLabel + ":") //
-                + toString;
+                                : astNodeLabel + ":" + toString);
     }
 
     /**
