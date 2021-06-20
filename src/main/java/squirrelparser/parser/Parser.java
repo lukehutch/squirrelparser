@@ -42,7 +42,7 @@ public class Parser {
     public final Map<RulePos, MemoEntry> memoTable = new HashMap<>();
 
     /** If true, print debug info while parsing. */
-    public static final boolean DEBUG = true;
+    public static boolean DEBUG = true;
     
     /** Current recursion depth (used when DEBUG == true). */
     public int recursionDepth;
