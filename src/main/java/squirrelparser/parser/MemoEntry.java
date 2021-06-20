@@ -39,6 +39,10 @@ public class MemoEntry {
 
     /** Parse a rule while handling left recursion. */
     Match match(Parser parser, Clause rule, int pos, int parentRuleStart) {
+        var indent = Parser.DEBUG ? "|   ".repeat(parser.recursionDepth - 1) : null;
+        if (Parser.DEBUG) {
+            System.out.println(indent + "Entering: " + rule + " : " + pos);
+        }
         // If parent recursion frame and this recursion frame have different start positions,
         // and there is a memo entry for this rule and position, return the memo entry rather
         // than duplicating work. In other words, if (pos != parentRuleStart && match != null),
@@ -49,6 +53,9 @@ public class MemoEntry {
         // in the parse tree.)
         if (pos == parentRuleStart || match == null) {
             if (inRecPath) {
+                if (Parser.DEBUG) {
+                    System.out.println(indent + "In rec path for: " + rule + " : " + pos);
+                }
                 // If we encountered the same rule and position twice in the recursion path, then we reached
                 // a left-recursive cycle.
                 // Mark this memo entry as being the "head node" in the left recursive cycle.
@@ -62,9 +69,20 @@ public class MemoEntry {
                 // the cylce" has iterated more than once), don't override that better match with
                 // a mismatch.
                 if (match == null) {
+                    if (Parser.DEBUG) {
+                        System.out.println(indent + "Seed match: " + rule + " : " + pos + " => MISMATCH");
+                    }
                     match = Match.MISMATCH;
+                } else {
+                    if (Parser.DEBUG) {
+                        System.out.println(indent + "Using memo: "
+                                + (match == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : match));
+                    }
                 }
             } else {
+                if (Parser.DEBUG) {
+                    System.out.println(indent + "Not in rec path for: " + rule + " : " + pos);
+                }
                 // Otherwise no memo entry is available or usable, and no left recursive cycle has yet been
                 // detected -- recurse on this rule and position (i.e. perform standard recursive descent
                 // parsing).
@@ -80,6 +98,10 @@ public class MemoEntry {
                     // recursion to return back to this method, whether or not the memo table should be consulted
                     // can be checked (via the pos != parentRuleStart test, above).
                     var newMatch = rule.match(parser, pos, /* ruleStart = */ pos);
+                    if (Parser.DEBUG) {
+                        System.out.println(indent + "New match: "
+                                + (newMatch == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : newMatch));
+                    }
 
                     // Stop iterating if newMatch is not longer than bestMatch. This ensures this cycle will
                     // terminate, because a left-recursive cycle must consume at least one extra character per
@@ -89,6 +111,9 @@ public class MemoEntry {
                     // zero-length match always beats MISMATCH.
                     if (match != null && newMatch.len <= match.len) {
                         // Match did not monotonically improve -- don't memoize newMatch, and stop iterating.
+                        if (Parser.DEBUG) {
+                            System.out.println(indent + "Match did not improve compared to old match: " + match);
+                        }
                         break;
                     }
 
@@ -108,6 +133,15 @@ public class MemoEntry {
                 // the recursion path. (This is paired with "inRecPath = true;" before the while loop.) 
                 inRecPath = false;
             }
+        } else {
+            if (Parser.DEBUG) {
+                System.out.println(indent + "Using memo: "
+                        + (match == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : match));
+            }
+        }
+        if (Parser.DEBUG) {
+            System.out.println(indent + "Exiting recursion: "
+                    + (match == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : match));
         }
         // Return the best match so far (match will be non-null at this point)
         return match;

@@ -41,6 +41,12 @@ public class Parser {
     /** The memo table. */
     public final Map<RulePos, MemoEntry> memoTable = new HashMap<>();
 
+    /** If true, print debug info while parsing. */
+    public static final boolean DEBUG = true;
+    
+    /** Current recursion depth (used when DEBUG == true). */
+    public int recursionDepth;
+    
     /** Construct a */
     public Parser(Grammar grammar) {
         this.grammar = grammar;
@@ -48,12 +54,15 @@ public class Parser {
 
     /** Parse a rule while handling left recursion. */
     public Match match(Clause rule, int pos, int parentRuleStart) {
+        recursionDepth++;
         // Get the existing memo entry for this rule and position, if there is one, otherwise add
         // a new blank memo entry to the memo table for this rule and position.
         var memoEntry = memoTable.computeIfAbsent(new RulePos(rule, pos), ignoreKey -> new MemoEntry());
-        // Match this rule at this position, store the match result in the memo entry, and return the
-        // match result.
-        return memoEntry.match(this, rule, pos, parentRuleStart);
+        // Match this rule at this position, and store or update the match result in the memo entry
+        var match = memoEntry.match(this, rule, pos, parentRuleStart);
+        // Return the match
+        --recursionDepth;
+        return match;
     }
 
     /** Start parsing from the top rule at the beginning of the input. */
