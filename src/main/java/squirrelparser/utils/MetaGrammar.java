@@ -545,6 +545,9 @@ public class MetaGrammar {
 
     /** Parse a grammar description in an input string, returning a new {@link Grammar} object. */
     public static Grammar parse(String input) {
+        // Don't debug metagrammar parsing
+        var oldDebug = Parser.DEBUG;
+        Parser.DEBUG = false;
         // System.out.println(metaGrammar);
 
         var parser = new Parser(metaGrammar);
@@ -600,6 +603,8 @@ public class MetaGrammar {
         // Rewrite from precedence-associativity form into raw PEG rules
         var rules = PrecAssocRuleRewriter.rewrite(prevAssocRules);
 
+        parser.DEBUG = oldDebug;
+        
         return new Grammar(rules);
     }
 }
