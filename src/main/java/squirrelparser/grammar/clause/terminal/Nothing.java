@@ -29,7 +29,7 @@ import squirrelparser.parser.Parser;
 /** Always matches, consuming zero characters. */
 public class Nothing extends Terminal {
     @Override
-    public Match match(Parser parser, int pos, int ruleStart) {
+    public Match match(Parser parser, int pos) {
         // Zero-width match (always matches)
         return new Match(this, pos);
     }

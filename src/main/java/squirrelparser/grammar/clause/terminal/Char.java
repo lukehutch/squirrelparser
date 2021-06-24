@@ -36,7 +36,7 @@ public class Char extends Terminal {
     }
 
     @Override
-    public Match match(Parser parser, int pos, int ruleStart) {
+    public Match match(Parser parser, int pos) {
         if (pos < parser.input.length()) {
             char c = parser.input.charAt(pos);
             if (c == chr) {

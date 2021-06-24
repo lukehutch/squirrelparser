@@ -40,10 +40,10 @@ public class OneOrMore extends ClauseWithOneSubClause {
     }
 
     @Override
-    public Match match(Parser parser, int pos, int ruleStart) {
+    public Match match(Parser parser, int pos) {
         ArrayList<Match> subClauseMatches = null;
         for (int currPos = pos;;) {
-            var subClauseMatch = subClause.match(parser, currPos, ruleStart);
+            var subClauseMatch = subClause.match(parser, currPos);
             if (subClauseMatch == Match.MISMATCH) {
                 break;
             }
