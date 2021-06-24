@@ -13,7 +13,6 @@ import static squirrelparser.utils.MetaGrammar.rule;
 import static squirrelparser.utils.MetaGrammar.ruleRef;
 import static squirrelparser.utils.MetaGrammar.seq;
 import static squirrelparser.utils.MetaGrammar.str;
-import static squirrelparser.utils.MetaGrammar.whitespace;
 import static squirrelparser.utils.MetaGrammar.zeroOrMore;
 
 import java.util.Arrays;
@@ -609,7 +608,7 @@ public class SquirrelParboiledJavaGrammar {
             rule("Spacing", zeroOrMore(first(
 
                     // whitespace
-                    whitespace(),
+                    oneOrMore(cInStr(" \t\r\n\f")),
 
                     // traditional comment
                     seq(str("/*"), zeroOrMore(seq(notFollowedBy(str("*/")), ANY)), str("*/")),
