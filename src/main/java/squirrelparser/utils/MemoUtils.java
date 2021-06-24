@@ -30,7 +30,7 @@ public class MemoUtils {
     /** Find the maximum end position of any match in the memo table. */
     public static int findMaxEndPos(Parser parser) {
         int maxEndPos = 0;
-        for (var ent : parser.memoTable.values()) {
+        for (var ent : parser.getMemoEntries()) {
             var match = ent.match;
             if (match != Match.MISMATCH) {
                 maxEndPos = Math.max(maxEndPos, match.pos + match.len);

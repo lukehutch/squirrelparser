@@ -24,6 +24,7 @@
 package squirrelparser.parser;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,7 @@ public class Parser {
     /** The memo table as a (dense) array. */
     public MemoEntry[][] memoTableAsArray;
 
-    /** A sparse memo table uses less memory but is almost twice as slow. */
+    /** A sparse memo table uses less memory, but the parser runs at half the speed. */
     private static final boolean USE_SPARSE_MEMO_TABLE = false;
 
     /** If true, print debug info while parsing. */
@@ -73,12 +74,12 @@ public class Parser {
         var memoEntry = (MemoEntry) null;
         var rulePos = (RulePos) null;
         if (USE_SPARSE_MEMO_TABLE) {
-            // Recycling RulePos instances increases speed by 10%
+            // Use a sparse map for the memo table. (Recycling RulePos instances increases speed by 10%.)
             rulePos = rulePosRecycler.isEmpty() ? new RulePos(rule, pos)
                     : rulePosRecycler.remove(rulePosRecycler.size() - 1).set(rule, pos);
             memoEntry = memoTableAsMap.computeIfAbsent(rulePos, ignoreKey -> new MemoEntry());
         } else {
-            // Using an array rather than a HashMap increases speed by ~2x, but takes more memory
+            // Using an array for the memo table rather than a map increases speed by ~2x, but takes more memory.
             memoEntry = memoTableAsArray[rule.ruleIdx][pos];
             if (memoEntry == null) {
                 memoEntry = new MemoEntry();
@@ -111,5 +112,23 @@ public class Parser {
         var topMatch = match(grammar.topRule, 0, /* parentRuleStart = */ -1);
         rulePosRecycler = null;
         return topMatch;
+    }
+    
+    /** Get all memo table entries. */
+    public Collection<MemoEntry> getMemoEntries() {
+        if (USE_SPARSE_MEMO_TABLE) {
+            return memoTableAsMap.values();
+        } else {
+            var values = new ArrayList<MemoEntry>();
+            for (int i = 0; i < grammar.rules.size(); i++) {
+                for (int j = 0; j <= input.length(); j++) {
+                    var value = memoTableAsArray[i][j];
+                    if (value != null) {
+                        values.add(value);
+                    }
+                }
+            }
+            return values;
+        }
     }
 }
