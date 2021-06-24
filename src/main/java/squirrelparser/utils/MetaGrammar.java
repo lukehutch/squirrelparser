@@ -447,7 +447,7 @@ public class MetaGrammar {
                     ast(NOTHING_AST, seq(c('('), ruleRef(WSC), c(')')))));
 
     /** Rules rewritten to handle precedence and associativity. */
-    private static Grammar metaGrammar = new Grammar(PrecAssocRuleRewriter.rewrite(precAssocRules));
+    public static Grammar metaGrammar = new Grammar(PrecAssocRuleRewriter.rewrite(precAssocRules));
 
     // -------------------------------------------------------------------------------------------------------------
 
@@ -603,7 +603,7 @@ public class MetaGrammar {
         // Rewrite from precedence-associativity form into raw PEG rules
         var rules = PrecAssocRuleRewriter.rewrite(prevAssocRules);
 
-        parser.DEBUG = oldDebug;
+        Parser.DEBUG = oldDebug;
         
         return new Grammar(rules);
     }
