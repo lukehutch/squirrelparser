@@ -32,6 +32,9 @@ public abstract class Clause {
     /** The rule name, if this is the toplevel clause of a rule. */
     public String ruleName;
 
+    /** The index of the rule within the grammar, if this is the toplevel clause of a rule. */
+    public int ruleIdx;
+    
     /** The name of the AST node to generate if this node matches. */
     public String astNodeLabel;
 
