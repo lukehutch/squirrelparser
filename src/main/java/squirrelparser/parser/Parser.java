@@ -134,6 +134,14 @@ public class Parser {
         // Start recursive descent parsing
         var topMatch = match(grammar.topRule, 0);
 
+        if (DEBUG) {
+            var totCycleDepth = 0;
+            for (var depth : cycleDepthForPos) {
+                totCycleDepth += depth;
+            }
+            System.out.println("Total left recursive cycle expansions: " + totCycleDepth);
+        }
+        
         if (USE_SPARSE_MEMO_TABLE) {
             rulePosRecycler = null;
         }

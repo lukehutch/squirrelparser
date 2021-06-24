@@ -26,6 +26,7 @@ package squirrel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class TestUtils {
     public static String loadResourceFile(String filename) {
@@ -36,5 +37,15 @@ public class TestUtils {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // Execute 5x, and find the minimum execution time, to try to remove the effect of GC and other hiccups
+    public static long findMinTime(Function<String, Long> timerFunction, String input) {
+        long minTime = Long.MAX_VALUE;
+        for (int i = 0; i < 5; i++) {
+            var time = timerFunction.apply(input);
+            minTime = Math.min(minTime, time);
+        }
+        return minTime;
     }
 }

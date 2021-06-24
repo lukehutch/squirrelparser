@@ -127,8 +127,8 @@ public class BenchmarkEquations {
         for (int depth = 0; depth < 21; depth++) {
             for (int i = 0; i < 100; i++) {
                 var input = EquationGenerator.generateEquation(depth);
-                var timeParb = findMinTime(BenchmarkEquations::benchmarkParboiled, input);
-                var timeAntlr = findMinTime(BenchmarkEquations::benchmarkAntlr, input);
+                var timeParb = 0L;//findMinTime(BenchmarkEquations::benchmarkParboiled, input);
+                var timeAntlr = 0L;//findMinTime(BenchmarkEquations::benchmarkAntlr, input);
                 var timeSquirrel = findMinTime(BenchmarkEquations::benchmarkSquirrel, input);
                 System.out.println(depth + "\t" + input.length() + "\t" + timeParb * 1.0e-9 + "\t"
                         + timeAntlr * 1.0e-9 + "\t" + timeSquirrel * 1.0e-9);
