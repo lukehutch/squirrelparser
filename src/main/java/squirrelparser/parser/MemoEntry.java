@@ -127,6 +127,9 @@ public class MemoEntry {
                     // (growing the parse tree downwards from the current point), incorporating lower matches
                     // for this rule at this position as successively higher subtrees of the match tree,
                     // until the match can no longer be improved. 
+                    if (Parser.DEBUG && inLeftRecCycle) {
+                        System.out.println(indent + "LOOPING: " + rule + " : " + pos);
+                    }
                 } while (inLeftRecCycle);
 
                 // On exit from this frame of recursion, mark this rule and position as is no longer being part of
