@@ -52,9 +52,13 @@ public class Grammar {
         // Look up rule reference for all RuleRef instances in rule clauses
         var ruleMap = new HashMap<String, Clause>();
         for (var rule : rules) {
+            if (rule.ruleName == null) {
+                throw new IllegalArgumentException("Rule is not named: " + rule);
+            }
             ruleMap.put(rule.ruleName, rule);
         }
-        for (var rule : rules) {
+        for (var i = 0; i < rules.size(); i++) {
+            var rule = rules.get(i);
             rule.visit(clause -> {
                 if (clause instanceof RuleRef) {
                     var ruleRef = (RuleRef) clause;
@@ -66,6 +70,7 @@ public class Grammar {
                 }
                 return clause;
             });
+            rule.ruleIdx = i;
         }
 
         // Look up top rule of grammar
