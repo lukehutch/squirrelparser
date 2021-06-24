@@ -41,22 +41,22 @@ public class BenchmarkJavaParsing {
             // to fail to parse a file (the other common reason is the presence of lambdas)
             input = input.replace("<>", "");
 
-            var timeParb = TestUtils.findMinTime(JavaParsers::benchmarkParboiled_java, input);
+            var timeParb = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkParboiled_java, input);
             if (timeParb < 0) {
                 continue; // Skips source files with Java 7+ features
             }
 
             // Run Antlr parse just once, because Antlr has very high cold startup times (taking the minimum
             // across 5 runs is not representative of normal parsing times)
-            var timeAntlr_java = JavaParsers.benchmarkAntlr_java(input);
+            var timeAntlr_java = 0L;//JavaParsers.benchmarkAntlr_java(input);
             if (timeAntlr_java < 0) {
                 continue;
             }
-            var timeAntlr_java8 = JavaParsers.benchmarkAntlr_java8(input);
+            var timeAntlr_java8 = 0L;//JavaParsers.benchmarkAntlr_java8(input);
             if (timeAntlr_java8 < 0) {
                 continue;
             }
-            var timeAntlr_java9 = JavaParsers.benchmarkAntlr_java9(input);
+            var timeAntlr_java9 = 0L;//JavaParsers.benchmarkAntlr_java9(input);
             if (timeAntlr_java9 < 0) {
                 continue;
             }

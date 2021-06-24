@@ -113,28 +113,47 @@ public class BenchmarkEquations {
         //        return -1;
     }
 
-    // Execute 3x, and find the minimum execution time, to try to remove the effect of GC and other hiccups
-    private static long findMinTime(Function<String, Long> timerFunction, String input) {
-        long minTime = Long.MAX_VALUE;
-        for (int i = 0; i < 5; i++) {
-            minTime = Math.min(minTime, timerFunction.apply(input));
-        }
-        return minTime;
-    }
-
     public static void main(String[] args) throws IOException {
-        var tot = 0.0;
-        for (int depth = 0; depth < 21; depth++) {
-            for (int i = 0; i < 100; i++) {
-                var input = EquationGenerator.generateEquation(depth);
-                var timeParb = 0L;//findMinTime(BenchmarkEquations::benchmarkParboiled, input);
-                var timeAntlr = 0L;//findMinTime(BenchmarkEquations::benchmarkAntlr, input);
-                var timeSquirrel = findMinTime(BenchmarkEquations::benchmarkSquirrel, input);
-                System.out.println(depth + "\t" + input.length() + "\t" + timeParb * 1.0e-9 + "\t"
-                        + timeAntlr * 1.0e-9 + "\t" + timeSquirrel * 1.0e-9);
-                tot += timeSquirrel;
+        var totSquirrel = 0.0;
+        var totAntlr = 0.0;
+        var totParb = 0.0;
+        {
+            System.out.println("\nSquirrel: ======================");
+            var eq = new EquationGenerator();
+            for (int depth = 0; depth < 20; depth++) {
+                for (int i = 0; i < 100; i++) {
+                    var input = eq.generateEquation(depth);
+                    var time = benchmarkSquirrel(input);
+                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+                    totSquirrel += time;
+                }
             }
         }
-        System.out.println("Squirrel parser finished in " + tot * 1.0e-9);
+//        {
+//            System.out.println("\nAntlr: ======================");
+//            var eq = new EquationGenerator();
+//            for (int depth = 0; depth < 20; depth++) {
+//                for (int i = 0; i < 100; i++) {
+//                    var input = eq.generateEquation(depth);
+//                    var time = benchmarkAntlr(input);
+//                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+//                    totAntlr += time;
+//                }
+//            }
+//        }
+//        {
+//            System.out.println("\nParboiled: ======================");
+//            var eq = new EquationGenerator();
+//            for (int depth = 0; depth < 14; depth++) {
+//                for (int i = 0; i < 100; i++) {
+//                    var input = eq.generateEquation(depth);
+//                    var time = benchmarkParboiled(input);
+//                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+//                    totParb += time;
+//                }
+//            }
+//        }
+        System.out
+                .println("\nTOT:\n\n" + totSquirrel * 1.0e-9 + "\t" + totAntlr * 1.0e-9 + "\t" + totParb * 1.0e-9);
     }
 }

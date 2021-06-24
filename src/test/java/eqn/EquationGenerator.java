@@ -4,7 +4,7 @@ import java.util.Random;
 
 public class EquationGenerator {
 
-    private static Random rand = new Random(1);
+    private Random rand = new Random(1);
 
     private static final int MAX_INT = 1000;
 
@@ -16,7 +16,7 @@ public class EquationGenerator {
     // 1: * /
     // 0: ? -
 
-    private static void op(StringBuilder buf, int parentPrec, int depth) {
+    private void op(StringBuilder buf, int parentPrec, int depth) {
         int prec;
         if (depth <= 0) {
             prec = 3;
@@ -56,13 +56,13 @@ public class EquationGenerator {
         }
     }
 
-    public static String generateEquation(int recursionDepth) {
+    public String generateEquation(int recursionDepth) {
         var buf = new StringBuilder();
         op(buf, 99, recursionDepth);
         return buf.toString();
     }
 
-    public static void main(String[] args) {
+    public void main(String[] args) {
         var eq = generateEquation(10);
         System.out.println(eq.length());
     }
