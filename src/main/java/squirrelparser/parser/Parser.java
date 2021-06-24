@@ -53,6 +53,7 @@ public class Parser {
     /** Reuse {@link RulePos} instances. */
     private List<RulePos> rulePosRecycler;
 
+    /** The number of left recursive cycles that have been expanded at each input position. */
     public int[] cycleDepthForPos;
 
     /** Current recursion depth (used when DEBUG == true). */

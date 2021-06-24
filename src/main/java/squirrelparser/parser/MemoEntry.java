@@ -37,6 +37,7 @@ public class MemoEntry {
     /** If true, this rule is the head of a left-recursive cycle at the current position. */
     private boolean inLeftRecCycle;
 
+    /** The number of left recursive cycles that had been expanded when this memo entry was last read. */
     private int cycleDepth;
 
     /** Parse a rule while handling left recursion. */
@@ -58,7 +59,10 @@ public class MemoEntry {
         // (4) When referring to subclauses to the right of the current position, the subclause's
         //     own cycleDepthForPos will be checked, which will ensure that if the memo for the
         //     subclause is non-null and has the latest cycle depth for that position, the memo
-        //     will be returned, rather than repeating the work.
+        //     will be returned, rather than repeating the work. In other words, if an attempt
+        //     is made to match a rule more than once during the same iteration of left recursion
+        //     expansion, then the second and subsequent attempt will read straight from the
+        //     memo table.
         if (match == null || cycleDepth < parser.cycleDepthForPos[pos]) {
             // This memo entry contains a match from a previous expansion of left recursion
             // (i.e. with a smaller cycle depth than the current cycle depth), or there is
@@ -144,14 +148,14 @@ public class MemoEntry {
                     // (growing the parse tree downwards from the current point), incorporating lower matches
                     // for this rule at this position as successively higher subtrees of the match tree,
                     // until the match can no longer be improved. 
-                    if (inLeftRecCycle) {
-                        // Increment cycleDepthForPos[pos], and update cycleDepth of the new match
-                        cycleDepth = ++parser.cycleDepthForPos[pos];
-                        if (Parser.DEBUG) {
-                            System.out.println(indent + "LOOPING: " + rule + " : " + pos);
-                        }
-                    } else {
+                    if (!inLeftRecCycle) {
                         break;
+                    }
+                    
+                    // Increment cycleDepthForPos[pos], and update cycleDepth of the new match
+                    cycleDepth = ++parser.cycleDepthForPos[pos];
+                    if (Parser.DEBUG) {
+                        System.out.println(indent + "LOOPING: " + rule + " : " + pos);
                     }
                 }
 
@@ -159,6 +163,15 @@ public class MemoEntry {
                 // the recursion path. (This is paired with "inRecPath = true;" before the while loop.) 
                 inRecPath = false;
             }
+
+            // Update cycleDepth when a memo entry is read, whether or not the match improved,
+            // to avoid duplicating work in "cousin clauses" (where the same RuleRef occurs
+            // multiple times within the clause tree of a single rule). This "upgrades" the
+            // cycleDepth of the match or mismatch, in keeping with the logic that a memo should
+            // only be updated if the match gets longer -- i.e. once a clause goes from matching 
+            // to mismatching, its longest match is always considered the current best match.
+            cycleDepth = parser.cycleDepthForPos[pos];
+
         } else {
             // There is a match already in this memo entry, and the match is for the same cycle depth.
             // Fall through, and just return the current memo entry.
@@ -171,14 +184,6 @@ public class MemoEntry {
             System.out.println(indent + "Exiting recursion: "
                     + (match == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : match));
         }
-
-        // Update cycleDepth when a memo entry is read, whether or not the match improved,
-        // to avoid duplicating work in "cousin clauses" (where the same RuleRef occurs
-        // multiple times within the clause tree of a single rule). This "upgrades" the
-        // cycleDepth of the match or mismatch, in keeping with the logic that a memo should
-        // only be updated if the match gets longer -- i.e. once a clause goes from matching 
-        // to mismatching, its longest match is always considered the current best match.
-        cycleDepth = parser.cycleDepthForPos[pos];
 
         // Return the best match so far (match will be non-null at this point)
         return match;
