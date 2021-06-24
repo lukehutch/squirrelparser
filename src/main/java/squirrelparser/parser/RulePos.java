@@ -25,10 +25,43 @@ package squirrelparser.parser;
 
 import squirrelparser.grammar.clause.Clause;
 
-/** The current rule being parsed, and the current position of the parser. */
-public record RulePos(Clause rule, int pos) {
+///** The current rule being parsed, and the current position of the parser. */
+//public record RulePos(Clause rule, int pos) {
+//    @Override
+//    public String toString() {
+//        return rule + " : " + pos;
+//    }
+//}
+
+public class RulePos {
+    Clause rule;
+    int pos;
+
+    public RulePos(Clause rule, int pos) {
+        this.rule = rule;
+        this.pos = pos;
+    }
+
     @Override
-    public String toString() {
-        return rule + " : " + pos;
+    public int hashCode() {
+        return rule.hashCode() ^ pos;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof RulePos)) {
+            return false;
+        }
+        var o = (RulePos) obj;
+        return o.rule == this.rule && o.pos == this.pos;
+    }
+
+    public RulePos set(Clause rule, int pos) {
+        this.rule = rule;
+        this.pos = pos;
+        return this;
     }
 }
