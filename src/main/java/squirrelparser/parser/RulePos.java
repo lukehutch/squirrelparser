@@ -25,14 +25,7 @@ package squirrelparser.parser;
 
 import squirrelparser.grammar.clause.Clause;
 
-///** The current rule being parsed, and the current position of the parser. */
-//public record RulePos(Clause rule, int pos) {
-//    @Override
-//    public String toString() {
-//        return rule + " : " + pos;
-//    }
-//}
-
+/** The current rule being parsed, and the current position of the parser. */
 public class RulePos {
     Clause rule;
     int pos;
@@ -63,5 +56,10 @@ public class RulePos {
         this.rule = rule;
         this.pos = pos;
         return this;
+    }
+
+    @Override
+    public String toString() {
+        return rule + " : " + pos;
     }
 }

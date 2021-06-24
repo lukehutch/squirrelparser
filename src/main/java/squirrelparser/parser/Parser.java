@@ -40,8 +40,14 @@ public class Parser {
     /** The input to parse. */
     public String input;
 
-    /** The memo table. */
-    public Map<RulePos, MemoEntry> memoTable;
+    /** The memo table as a (sparse) map. */
+    public Map<RulePos, MemoEntry> memoTableAsMap;
+
+    /** The memo table as a (dense) array. */
+    public MemoEntry[][] memoTableAsArray;
+
+    /** A sparse memo table uses less memory but is almost twice as slow. */
+    private static final boolean USE_SPARSE_MEMO_TABLE = false;
 
     /** If true, print debug info while parsing. */
     public static boolean DEBUG = false;
@@ -57,30 +63,38 @@ public class Parser {
         this.grammar = grammar;
     }
 
-    /** Allocate a new {@link RulePos}. */
-    private RulePos newRulePos(Clause rule, int pos) {
-        //        return new RulePos(rule, pos);
-        return rulePosRecycler.isEmpty() ? new RulePos(rule, pos)
-                : rulePosRecycler.remove(rulePosRecycler.size() - 1).set(rule, pos);
-    }
-
-    /** Recycle a {@link RulePos}. Increases parsing speed by ~10%. */
-    private void recycle(RulePos rulePos) {
-        rulePosRecycler.add(rulePos);
-    }
-
     /** Parse a rule while handling left recursion. */
     public Match match(Clause rule, int pos, int parentRuleStart) {
+        // Enter a new recursion frame
         recursionDepth++;
+
         // Get the existing memo entry for this rule and position, if there is one, otherwise add
         // a new blank memo entry to the memo table for this rule and position.
-        var rulePos = newRulePos(rule, pos);
-        var memoEntry = memoTable.computeIfAbsent(rulePos, ignoreKey -> new MemoEntry());
+        var memoEntry = (MemoEntry) null;
+        var rulePos = (RulePos) null;
+        if (USE_SPARSE_MEMO_TABLE) {
+            // Recycling RulePos instances increases speed by 10%
+            rulePos = rulePosRecycler.isEmpty() ? new RulePos(rule, pos)
+                    : rulePosRecycler.remove(rulePosRecycler.size() - 1).set(rule, pos);
+            memoEntry = memoTableAsMap.computeIfAbsent(rulePos, ignoreKey -> new MemoEntry());
+        } else {
+            // Using an array rather than a HashMap increases speed by ~2x, but takes more memory
+            memoEntry = memoTableAsArray[rule.ruleIdx][pos];
+            if (memoEntry == null) {
+                memoEntry = new MemoEntry();
+                memoTableAsArray[rule.ruleIdx][pos] = memoEntry;
+            }
+        }
+
         // Match this rule at this position, and store or update the match result in the memo entry
         var match = memoEntry.match(this, rule, pos, parentRuleStart);
-        // Prep to exit recursion frame
+
+        // Exit the recursion frame
+        if (USE_SPARSE_MEMO_TABLE) {
+            rulePosRecycler.add(rulePos);
+        }
         --recursionDepth;
-        recycle(rulePos);
+
         // Return the match
         return match;
     }
@@ -88,8 +102,12 @@ public class Parser {
     /** Start parsing from the top rule at the beginning of the input. */
     public Match parse(String input) {
         this.input = input;
-        memoTable = new HashMap<>();
-        rulePosRecycler = new ArrayList<>();
+        if (USE_SPARSE_MEMO_TABLE) {
+            memoTableAsMap = new HashMap<>();
+            rulePosRecycler = new ArrayList<>();
+        } else {
+            memoTableAsArray = new MemoEntry[grammar.rules.size()][input.length() + 1];
+        }
         var topMatch = match(grammar.topRule, 0, /* parentRuleStart = */ -1);
         rulePosRecycler = null;
         return topMatch;
