@@ -45,16 +45,22 @@ public class MemoEntry {
         if (Parser.DEBUG) {
             System.out.println(indent + "Entering: " + rule + " : " + pos);
         }
-        // If parent recursion frame and this recursion frame have different start positions,
-        // and there is a memo entry for this rule and position, return the memo entry rather
-        // than duplicating work. In other words, if (pos != parentRuleStart && match != null),
-        // just return the memoized match, but if (pos == parentRuleStart || match == null), don't
-        // look at the memo table. In particular, don't look at the memo table
-        // if (pos == parentRuleStart), even if (match != null), so that when expanding
-        // left-recursive cycles, lower matches don't prevent the detection of higher matches
-        // in the parse tree.)
+        // Checking whether the cycle depth of a memo entry is the same as the cycle depth for the
+        // current position serves several purposes:
+        // (1) It ensures that the existence of an older memo in the memo table does not prevent the
+        //     evaluation of the same rule in the next-higher expansion of a left-recursive cycle.
+        // (2) It ensures that a rule is evaluated at most once in the current expansion of a
+        //     left-recursive cycle (if the same rule is encountered at the same position in the
+        //     recursion path, then the memo table must be used for the lower instance).
+        // (3) It ensures that "cousin" RuleRefs (where a reference to the same rule is used in
+        //     more than one subclause of the same rule) are evaluated only once, to avoid
+        //     duplicating work.
         if (cycleDepth < parser.cycleDepthForPos[pos] || match == null) {
+            // This memo entry contains a match from a previous expansion of left recursion
+            // (i.e. with a smaller cycle depth than the current cycle depth), or there is
+            // no match for this memo entry yet.
             if (inRecPath) {
+                // We reached a cycle in the recursion path.
                 if (Parser.DEBUG) {
                     System.out.println(indent + "In rec path for: " + rule + " : " + pos);
                 }
@@ -62,45 +68,42 @@ public class MemoEntry {
                     if (Parser.DEBUG) {
                         System.out.println(indent + "Seed match: " + rule + " : " + pos + " => MISMATCH");
                     }
-                    // If we encountered the same rule and position twice in the recursion path, and there
-                    // is not yet a memo entry in the memo table, then we hit a left-recursive cycle
-                    // for the first time.
+                    // If we encountered the same rule and position twice in the recursion path, and
+                    // there is not yet a memo entry in the memo table, then we hit a left-recursive
+                    // cycle for the first time.
                     // Mark this memo entry as being the "head node" in the left recursive cycle.
                     // This effectively passes a message back up to the ancestral node with the same
                     // rule and position to tell it to start iteratively growing the left-recursive
                     // subtree of the parse tree.
                     inLeftRecCycle = true;
                     // When a left-recursive cycle is first found, the bottom-most node in the parse
-                    // tree corresponding to this clause at this position must be marked as a mismatch. 
-                    // However, if a better match was already found (e.g. because the ancestral "head of
-                    // the cylce" has iterated more than once), don't override that better match with
-                    // a mismatch.
+                    // tree corresponding to this clause at this position must be marked as a mismatch.
+                    // (This is the fixed point of the left recursive cycle.)
                     match = Match.MISMATCH;
-                    // Initial cycleDepth for a mismatch will usually be 0, but may be greater than 0
-                    // if there are two interwoven cycles.
-                    cycleDepth = parser.cycleDepthForPos[pos];
                 } else {
                     if (Parser.DEBUG) {
                         System.out.println(indent + "Using memo: "
                                 + (match == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : match));
                     }
                     // Otherwise if we reached the same clause twice on the recursion path, but there's
-                    // already a memo in the memo table for this clause, then fall through, and just
-                    // return the match from the memo table. There's no need to expand a left recursive
-                    // cycle -- that would have already been done if it were needed.
+                    // already a memo in the memo table for this clause. This must be a match from a
+                    // lower expansion of a left-recursive cycle. fall through, and return the match
+                    // from the memo table.
                 }
             } else {
+                // No left recursive cycle has yet been found in the recursion path.
                 if (Parser.DEBUG) {
                     System.out.println(indent + "Not in rec path for: " + rule + " : " + pos);
                 }
-                // Otherwise no memo entry is available or usable, and no left recursive cycle has yet been
-                // detected -- recurse on this rule and position (i.e. perform standard recursive descent
-                // parsing).
+
+                // Mark this rule and position as being in the recursion path.
                 inRecPath = true;
 
-                // Left recursion expansion loop (executes only once if there no left recursive cycle is
-                // encountered). No left recursion cycle is yet known.
+                // No left recursion cycle is yet known.
                 inLeftRecCycle = false;
+
+                // Left recursion expansion loop (executes only once if there no left recursive cycle is
+                // encountered).
                 while (true) {
                     // Try matching this rule's toplevel clause at this position. newMatch will be either MISMATCH
                     // if there was no match, or a Match reference if there was a match.
@@ -112,14 +115,6 @@ public class MemoEntry {
                         System.out.println(indent + "New match: "
                                 + (newMatch == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : newMatch));
                     }
-
-                    // Update cycleDepth, whether or not match improved, to avoid duplicating work in
-                    // "cousin clauses" (where the same RuleRef occurs multiple times within the clause
-                    // tree of a single rule). This "upgrades" the cycleDepth of the match or mismatch,
-                    // in keeping with the logic that a memo should only be updated if the match gets
-                    // longer. i.e. Once a clause goes from matching to mismatching, its longest match
-                    // is always considered the current best match.
-                    cycleDepth = parser.cycleDepthForPos[pos];
 
                     // Stop iterating if newMatch is not longer than bestMatch. This ensures this cycle will
                     // terminate, because a left-recursive cycle must consume at least one extra character per
@@ -146,10 +141,9 @@ public class MemoEntry {
                     // for this rule at this position as successively higher subtrees of the match tree,
                     // until the match can no longer be improved. 
                     if (inLeftRecCycle) {
-                        // Update cycleDepth, to reduce duplicated work when two sibling or cousin clauses
-                        // point to the same rule, then update cycle depth for this input position.
-                        parser.cycleDepthForPos[pos]++;
-                        if (Parser.DEBUG && inLeftRecCycle) {
+                        // Increment cycleDepthForPos[pos], and update cycleDepth of the new match
+                        cycleDepth = ++parser.cycleDepthForPos[pos];
+                        if (Parser.DEBUG) {
                             System.out.println(indent + "LOOPING: " + rule + " : " + pos);
                         }
                     } else {
@@ -162,6 +156,8 @@ public class MemoEntry {
                 inRecPath = false;
             }
         } else {
+            // There is a match already in this memo entry, and the match is for the same cycle depth.
+            // Fall through, and just return the current memo entry.
             if (Parser.DEBUG) {
                 System.out.println(indent + "Using memo: "
                         + (match == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : match));
@@ -171,6 +167,14 @@ public class MemoEntry {
             System.out.println(indent + "Exiting recursion: "
                     + (match == Match.MISMATCH ? rule + " : " + pos + " => MISMATCH" : match));
         }
+
+        // Update cycleDepth when a memo entry is read, whether or not the match improved,
+        // to avoid duplicating work in "cousin clauses" (where the same RuleRef occurs
+        // multiple times within the clause tree of a single rule). This "upgrades" the
+        // cycleDepth of the match or mismatch, in keeping with the logic that a memo should
+        // only be updated if the match gets longer -- i.e. once a clause goes from matching 
+        // to mismatching, its longest match is always considered the current best match.
+        cycleDepth = parser.cycleDepthForPos[pos];
 
         // Return the best match so far (match will be non-null at this point)
         return match;
