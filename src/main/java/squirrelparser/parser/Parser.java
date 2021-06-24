@@ -48,7 +48,7 @@ public class Parser {
     public MemoEntry[][] memoTableAsArray;
 
     /** A sparse memo table uses less memory, but the parser runs more slowly. */
-    private static final boolean USE_SPARSE_MEMO_TABLE = true;
+    private static final boolean USE_SPARSE_MEMO_TABLE = false;
 
     /** Reuse {@link RulePos} instances. */
     private List<RulePos> rulePosRecycler;
