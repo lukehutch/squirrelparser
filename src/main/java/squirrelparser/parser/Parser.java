@@ -141,7 +141,7 @@ public class Parser {
             }
             System.out.println("Total left recursive cycle expansions: " + totCycleDepth);
         }
-        
+
         if (USE_SPARSE_MEMO_TABLE) {
             rulePosRecycler = null;
         }

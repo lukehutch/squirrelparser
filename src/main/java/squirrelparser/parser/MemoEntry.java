@@ -55,7 +55,11 @@ public class MemoEntry {
         // (3) It ensures that "cousin" RuleRefs (where a reference to the same rule is used in
         //     more than one subclause of the same rule) are evaluated only once, to avoid
         //     duplicating work.
-        if (cycleDepth < parser.cycleDepthForPos[pos] || match == null) {
+        // (4) When referring to subclauses to the right of the current position, the subclause's
+        //     own cycleDepthForPos will be checked, which will ensure that if the memo for the
+        //     subclause is non-null and has the latest cycle depth for that position, the memo
+        //     will be returned, rather than repeating the work.
+        if (match == null || cycleDepth < parser.cycleDepthForPos[pos]) {
             // This memo entry contains a match from a previous expansion of left recursion
             // (i.e. with a smaller cycle depth than the current cycle depth), or there is
             // no match for this memo entry yet.
