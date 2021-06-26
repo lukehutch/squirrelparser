@@ -29,8 +29,8 @@ import squirrelparser.utils.StringUtils;
 
 /** Matches a sequence of characters (i.e. a fixed string). */
 public class CharSeq extends Terminal {
-    private final String seq;
-    private final boolean ignoreCase;
+    public final String seq;
+    public final boolean ignoreCase;
 
     public CharSeq(String seq, boolean ignoreCase) {
         this.seq = seq;

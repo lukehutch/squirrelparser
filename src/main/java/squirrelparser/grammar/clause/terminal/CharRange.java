@@ -27,25 +27,27 @@ import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.StringUtils;
 
-/** Matches a single character. */
-public class Char extends Terminal {
-    public final char chr;
+/** Matches a character or sequence of characters. */
+public class CharRange extends Terminal {
+    public final char minChar;
+    public final char maxChar;
     public final boolean invert;
 
-    public Char(char chr, boolean invert) {
-        this.chr = chr;
-        this.invert = invert;
+    public CharRange(char minChar, char maxChar, boolean inverted) {
+        this.minChar = minChar;
+        this.maxChar = maxChar;
+        this.invert = inverted;
     }
 
-    public Char(char chr) {
-        this(chr, false);
+    public CharRange(char minChar, char maxChar) {
+        this(minChar, maxChar, false);
     }
 
     @Override
     public Match match(Parser parser, int pos) {
         if (pos < parser.input.length()) {
             char c = parser.input.charAt(pos);
-            if ((!invert && c == chr) || (invert && c != chr)) {
+            if ((!invert && c >= minChar && c <= maxChar) || (invert && (c < minChar || c > maxChar))) {
                 return new Match(this, pos, 1);
             }
         }
@@ -54,6 +56,7 @@ public class Char extends Terminal {
 
     @Override
     public String toString() {
-        return labelClause((invert ? "!" : "") + "'" + StringUtils.escapeQuotedChar(chr) + "'");
+        return labelClause("[" + (invert ? "^" : "") + StringUtils.escapeCharRangeChar(minChar) + "-"
+                + StringUtils.escapeCharRangeChar(maxChar) + "]");
     }
 }
