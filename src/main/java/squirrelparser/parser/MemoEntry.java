@@ -153,7 +153,7 @@ public class MemoEntry {
                     }
                     
                     // Increment cycleDepthForPos[pos], and update cycleDepth of the new match
-                    cycleDepth = ++parser.cycleDepthForPos[pos];
+                    cycleDepth = ++(parser.cycleDepthForPos[pos]);
                     if (Parser.DEBUG) {
                         System.out.println(indent + "LOOPING: " + rule + " : " + pos);
                     }

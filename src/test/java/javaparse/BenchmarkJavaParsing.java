@@ -33,6 +33,7 @@ public class BenchmarkJavaParsing {
 
     public static void main(String[] args) throws IOException {
         //long totLen = 0L;
+        int numFilesParsed = 0;
         for (var path : sourcePaths) {
             //totLen += path.toFile().length();
             var input = Files.readString(path);
@@ -68,10 +69,11 @@ public class BenchmarkJavaParsing {
             if (timeSquirrelMouse < 0) {
                 continue;
             }
+            numFilesParsed++;
             System.out.println(path + "\t" + input.length() + "\t" + timeParb * 1.0e-9 + "\t"
                     + timeAntlr_java * 1.0e-9 + "\t" + timeAntlr_java8 * 1.0e-9 + "\t" + timeAntlr_java9 * 1.0e-9
                     + "\t" + timeSquirrelParb * 1.0e-9 + "\t" + +timeSquirrelMouse * 1.0e-9);
         }
-        System.out.println("Finished");
+        System.out.println("Parsed " + numFilesParsed + " files");
     }
 }

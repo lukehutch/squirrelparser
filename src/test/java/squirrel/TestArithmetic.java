@@ -100,12 +100,12 @@ public class TestArithmetic {
         //
         //        var grammar6 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'x');");
         //        tryParsing(grammar6, "xxx");
-        //
-        //        // This grammar requires monotonic length increase, and does not work with unique lengths when there's at least one '?' 
-        //        tryParsing(MetaGrammar.parse("A <- B 'y'; B <- q:(B / 'x') '?' / 'x';"), "xy");
-        //        tryParsing(MetaGrammar.parse("A <- B 'y'; B <- q:(B / C) '?' / C; C <- x:'x';"), "xy");
-        //        tryParsing(MetaGrammar.parse("A <- B 'y'; B <- q:(B / C) '?' / C; C <- x:'x';"), "x?y");
-        //        tryParsing(MetaGrammar.parse("A <- B 'y'; B <- q:(B / C) '?' / C; C <- x:'x';"), "x??y");
+
+        // This grammar requires monotonic length increase, and does not work with unique lengths when there's at least one '?' 
+        var grammar = MetaGrammar.parse("A <- a:(B 'y'); B <- b:((B / seed:\"x?\") '?') / f:'x';");
+        tryParsing(grammar, "xy");
+        tryParsing(grammar, "x?y");
+        tryParsing(grammar, "x??y");
 
         //        // Doesn't use left recursion
         //        for (var i = 1; i < 10; i++) {
@@ -123,6 +123,7 @@ public class TestArithmetic {
         //        // CPython parser time to beat:
         //        // - Just parsing and throwing away the internal AST takes 1.16 seconds with a max RSS of 681 MiB.
         //        // - Parsing and converting to ast.AST takes 6.34 seconds, max RSS 1029 MiB.
+        //        // Squirrel time: 0.68 sec
         //        Parser.DEBUG = true;
         //        var grammar7 = MetaGrammar.parse( //
         //                "P <- <WS> (E0 '\\n'?)+;\n" //
@@ -144,11 +145,11 @@ public class TestArithmetic {
         //        tryParsing(grammar7, input, false);
         //        System.out.println((System.nanoTime() - startTime) * 1.0e-9);
 
-        var grammar8 = MetaGrammar.parse("A <- \"a \" B \"monkeyapples\"; B <- \"million \" / \"million monkey\";");
-        tryParsing(grammar8, "a million monkeyapples");
-
-        var grammar9 = MetaGrammar.parse("A <- (A 'y') / 'x';");
-        tryParsing(grammar9, "xy");
+        //        var grammar8 = MetaGrammar.parse("A <- \"a \" B \"monkeyapples\"; B <- \"million \" / \"million monkey\";");
+        //        tryParsing(grammar8, "a million monkeyapples");
+        //
+        //        var grammar9 = MetaGrammar.parse("A <- (A 'y') / 'x';");
+        //        tryParsing(grammar9, "xy");
 
     }
 }

@@ -42,6 +42,7 @@ import squirrelparser.grammar.clause.nonterminal.RuleRef;
 import squirrelparser.grammar.clause.nonterminal.Seq;
 import squirrelparser.grammar.clause.nonterminal.ZeroOrMore;
 import squirrelparser.grammar.clause.terminal.Char;
+import squirrelparser.grammar.clause.terminal.CharRange;
 import squirrelparser.grammar.clause.terminal.CharSeq;
 import squirrelparser.grammar.clause.terminal.CharSet;
 import squirrelparser.grammar.clause.terminal.Nothing;
@@ -154,9 +155,22 @@ public class MetaGrammar {
         return new Char(chr);
     }
 
+    /** Construct a terminal that matches anything but a single character. */
+    public static Char cNot(char chr) {
+        return new Char(chr, true);
+    }
+
     /** Construct a terminal that matches one instance of any character given in the varargs param. */
     public static CharSet cSet(char... chrs) {
         return new CharSet(chrs);
+    }
+
+    /**
+     * Construct a terminal that matches one instance of any character given in the varargs param, unless invert is
+     * true, then the matching is inverted.
+     */
+    public static CharSet cSet(boolean invert, char... chrs) {
+        return new CharSet(invert, chrs);
     }
 
     /** Construct a terminal that matches one instance of any character in a given string. */
@@ -165,23 +179,34 @@ public class MetaGrammar {
     }
 
     /** Construct a terminal that matches a character range. */
-    public static CharSet cRange(char minChar, char maxChar) {
+    public static CharRange cRange(char minChar, char maxChar) {
         if (maxChar < minChar) {
             throw new IllegalArgumentException("maxChar < minChar");
         }
-        BitSet bs = new BitSet(maxChar + 1);
-        bs.set(minChar, maxChar + 1);
-        return new CharSet(bs);
+        return new CharRange(minChar, maxChar);
     }
 
     /**
      * Construct a terminal that matches a character range, specified using regexp notation without the square
      * brackets.
      */
-    public static CharSet cRange(String charRangeStr) {
+    public static Clause cRange(String charRangeStr) {
         boolean invert = charRangeStr.startsWith("^");
         var charList = StringUtils.getCharRangeChars(invert ? charRangeStr.substring(1) : charRangeStr);
-        var chars = new BitSet(128);
+        var chars = new char[charList.size()];
+        for (var i = 0; i < charList.size(); i++) {
+            // Unescape \^, \-, \], \\
+            chars[i] = charList.get(i).charAt(charList.get(i).length() == 2 ? 1 : 0);
+        }
+
+        if (chars.length == 1) {
+            return new Char(chars[0], invert);
+        } else if (chars.length == 3 && chars[1] == '-') {
+            // Just one character range
+            return new CharRange(chars[0], chars[2], invert);
+        }
+
+        var bs = new BitSet(128);
         for (int i = 0; i < charList.size(); i++) {
             var c = charList.get(i);
             if (c.length() == 2) {
@@ -199,18 +224,13 @@ public class MetaGrammar {
                 if (cEnd0 < c0) {
                     throw new IllegalArgumentException("Char range limits out of order: " + c0 + ", " + cEnd0);
                 }
-                chars.set(c0, cEnd0 + 1);
+                bs.set(c0, cEnd0 + 1);
                 i += 2;
             } else {
-                chars.set(c0);
+                bs.set(c0);
             }
         }
-        return invert ? new CharSet(chars).invert() : new CharSet(chars);
-    }
-
-    /** Construct a character set as the union of other character sets. */
-    public static CharSet c(CharSet... charSets) {
-        return new CharSet(charSets);
+        return new CharSet(bs, invert);
     }
 
     /** Set the AST node label of a clause, then return the clause. */
@@ -359,7 +379,7 @@ public class MetaGrammar {
 
             // Comment
             rule(COMMENT, //
-                    seq(c('#'), zeroOrMore(cSet('\n').invert()))),
+                    seq(c('#'), zeroOrMore(cNot('\n')))),
 
             // Identifier
             rule(IDENT, //
@@ -372,7 +392,7 @@ public class MetaGrammar {
 
             // Name character
             rule(NAME_CHAR, //
-                    c(cRange('a', 'z'), cRange('A', 'Z'), cSet('_', '-'))),
+                    first(cRange('a', 'z'), cRange('A', 'Z'), cSet('_', '-'))),
 
             // Precedence and optional associativity modifiers for rule name
             rule(PREC, //
@@ -399,7 +419,7 @@ public class MetaGrammar {
             rule(SINGLE_QUOTED_CHAR, //
                     first( //
                             ruleRef(ESCAPED_CTRL_CHAR), //
-                            cSet('\'').invert())),
+                            cNot('\''))),
 
             // Char range
             rule(CHAR_RANGE, //
@@ -408,7 +428,7 @@ public class MetaGrammar {
             // Char range character
             rule(CHAR_RANGE_CHAR, //
                     first( //
-                            cSet('\\', ']').invert(), //
+                            cSet(true, '\\', ']'), //
                             ruleRef(ESCAPED_CTRL_CHAR), //
                             str("\\-"), //
                             str("\\\\"), //
@@ -423,11 +443,11 @@ public class MetaGrammar {
             rule(STR_QUOTED_CHAR, //
                     first( //
                             ruleRef(ESCAPED_CTRL_CHAR), //
-                            cSet('"', '\\').invert() //
+                            cSet(true, '"', '\\') //
                     )), //
 
             // Hex digit
-            rule(HEX, c(cRange('0', '9'), cRange('a', 'f'), cRange('A', 'F'))), //
+            rule(HEX, first(cRange('0', '9'), cRange('a', 'f'), cRange('A', 'F'))), //
 
             // Escaped control character
             rule(ESCAPED_CTRL_CHAR, //
@@ -604,7 +624,7 @@ public class MetaGrammar {
         var rules = PrecAssocRuleRewriter.rewrite(prevAssocRules);
 
         Parser.DEBUG = oldDebug;
-        
+
         return new Grammar(rules);
     }
 }

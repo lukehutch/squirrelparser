@@ -1,0 +1,1 @@
+scalac -classpath $HOME/.m2/repository/org/scala-lang/scala-library/2.12.13/scala-library-2.12.13.jar:$HOME/.m2/repository/org/parboiled/parboiled_2.12/2.3.0/parboiled_2.12-2.3.0.jar:$HOME/.m2/repository/com/chuusai/shapeless_2.12/2.3.4/shapeless_2.12-2.3.4.jar eqn/parboiled2/Parboiled2EqnParser.scala

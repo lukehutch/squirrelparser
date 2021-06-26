@@ -19,7 +19,20 @@ import java.util.Arrays;
 
 import squirrelparser.grammar.Grammar;
 import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.nonterminal.First;
+import squirrelparser.grammar.clause.nonterminal.FollowedBy;
+import squirrelparser.grammar.clause.nonterminal.NotFollowedBy;
+import squirrelparser.grammar.clause.nonterminal.OneOrMore;
+import squirrelparser.grammar.clause.nonterminal.Optional;
+import squirrelparser.grammar.clause.nonterminal.RuleRef;
+import squirrelparser.grammar.clause.nonterminal.Seq;
+import squirrelparser.grammar.clause.nonterminal.ZeroOrMore;
+import squirrelparser.grammar.clause.terminal.Char;
+import squirrelparser.grammar.clause.terminal.CharRange;
+import squirrelparser.grammar.clause.terminal.CharSeq;
+import squirrelparser.grammar.clause.terminal.CharSet;
 import squirrelparser.utils.PrecAssocRuleRewriter;
+import squirrelparser.utils.StringUtils;
 
 public class SquirrelParboiledJavaGrammar {
 
@@ -725,4 +738,127 @@ public class SquirrelParboiledJavaGrammar {
                     ruleRef("HexDigit"), ruleRef("HexDigit")))
 
     )));
+
+    // -------------------------------------------------------------------------------------------------------------
+
+    // Convert grammar to Parboiled2 expressions
+
+    private static void toParb2(Clause rule) {
+        System.out.print('(');
+        switch (rule.getClass().getSimpleName()) {
+        case "Seq":
+            var seq = (Seq) rule;
+            for (int i = 0; i < seq.subClauses.length; i++) {
+                var subClause = seq.subClauses[i];
+                if (i > 0) {
+                    System.out.print(" ~ ");
+                }
+                toParb2(subClause);
+            }
+            break;
+        case "First":
+            var first = (First) rule;
+            for (int i = 0; i < first.subClauses.length; i++) {
+                var subClause = first.subClauses[i];
+                if (i > 0) {
+                    System.out.print(" | ");
+                }
+                toParb2(subClause);
+            }
+            break;
+        case "OneOrMore":
+            System.out.print("oneOrMore");
+            toParb2(((OneOrMore) rule).subClause);
+            break;
+        case "ZeroOrMore":
+            System.out.print("zeroOrMore");
+            toParb2(((ZeroOrMore) rule).subClause);
+            break;
+        case "Optional":
+            System.out.print("optional");
+            toParb2(((Optional) rule).subClause);
+            break;
+        case "FollowedBy":
+            System.out.print("&");
+            toParb2(((FollowedBy) rule).subClause);
+            break;
+        case "NotFollowedBy":
+            System.out.print("!");
+            toParb2(((NotFollowedBy) rule).subClause);
+            break;
+        case "CharSeq":
+            System.out.print('"' + StringUtils.escapeString(((CharSeq) rule).seq) + '"');
+            break;
+        case "Char":
+            var ch = (Char) rule;
+            if (ch.invert) {
+                System.out.print("!(");
+            }
+            System.out.print('"' + StringUtils.escapeQuotedChar(((Char) rule).chr) + '"');
+            if (ch.invert) {
+                System.out.print(")");
+            }
+            break;
+        case "CharSet":
+            var cs = (CharSet) rule;
+            if (cs.invert) {
+                System.out.print("!(");
+            }
+            var cardinality = cs.chars.cardinality();
+            if (cardinality == 1 << 16) {
+                System.out.print("ANY");
+            } else /* if (cardinality <= 10) */ {
+                System.out.print("anyOf(\"");
+                for (int i = cs.chars.nextSetBit(0); i >= 0; i = cs.chars.nextSetBit(i + 1)) {
+                    System.out.print(StringUtils.escapeQuotedStringChar((char) i));
+                }
+                System.out.print("\")");
+                /* TODO figure out how to express char ranges in Parboiled2, for large char sets */
+            }
+            if (cs.invert) {
+                System.out.print(")");
+            }
+            break;
+        case "CharRange":
+            var cr = (CharRange) rule;
+            if (cr.invert) {
+                System.out.print("!(");
+            }
+            if (cr.minChar == (char) 0 && cr.maxChar == (char) 0xffff) {
+                System.out.print("ANY");
+            } else {
+                System.out.print("anyOf(\"");
+                for (int i = cr.minChar; i <= cr.maxChar; i++) {
+                    System.out.print(StringUtils.escapeQuotedStringChar((char) i));
+                }
+                System.out.print("\")");
+                /* TODO figure out how to express char ranges in Parboiled2, for large char ranges */
+            }
+            if (cr.invert) {
+                System.out.print(")");
+            }
+            break;
+        case "RuleRef":
+            var ruleRef = (RuleRef) rule;
+            System.out.print(ruleRef.refdRuleName);
+            break;
+        default:
+            throw new IllegalArgumentException(
+                    "Unsupported clause type: " + rule.getClass().getSimpleName() + " : " + rule);
+        }
+        System.out.print(')');
+    }
+
+    @SuppressWarnings("unused")
+    private static void convertToParboiled2() {
+        for (var rule : grammar.rules) {
+            System.out.print(rule.ruleName + " = rule { ");
+            toParb2(rule);
+            System.out.println(" }");
+        }
+    }
+
+    //    public static void main(String[] args) {
+    //        convertToParboiled2();
+    //    }
 }

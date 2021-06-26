@@ -14,15 +14,15 @@ public class TestJavaParsing {
         // to fail to parse a file (the other common reason is the presence of lambdas)
         input = input.replace("<>", "");
 
-        var timeParb = TestUtils.findMinTime(JavaParsers::benchmarkParboiled_java, input);
+        var timeParb = TestUtils.findMinTime(JavaParsers::benchmarkParboiled1_java, input);
 
         // Run Antlr parse just once, because Antlr has very high cold startup times (taking the minimum
         // across 5 runs is not representative of normal parsing times)
-        var timeAntlr_java = JavaParsers.benchmarkAntlr_java(input);
+        var timeAntlr_java = JavaParsers.benchmarkAntlr4_java(input);
 
-        var timeAntlr_java8 = JavaParsers.benchmarkAntlr_java8(input);
+        var timeAntlr_java8 = JavaParsers.benchmarkAntlr4_java8(input);
 
-        var timeAntlr_java9 = JavaParsers.benchmarkAntlr_java9(input);
+        var timeAntlr_java9 = JavaParsers.benchmarkAntlr4_java9(input);
 
         var timeSquirrelParb = TestUtils.findMinTime(JavaParsers::benchmarkSquirrel_Parboiled_java1p6, input);
 

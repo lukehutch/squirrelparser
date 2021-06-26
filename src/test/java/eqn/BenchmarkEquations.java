@@ -10,7 +10,6 @@ import static squirrelparser.utils.MetaGrammar.seq;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.function.Function;
 
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -20,7 +19,8 @@ import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
 import org.parboiled.parserunners.ReportingParseRunner;
 
-import eqn.antlr.EquationLexer;
+import eqn.antlr4.EquationLexer;
+import eqn.parboiled2.Parboiled2EqnParser;
 import squirrelparser.grammar.Grammar;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
@@ -54,7 +54,7 @@ public class BenchmarkEquations {
         }
     }
 
-    public static long benchmarkParboiled(String input) {
+    public static long benchmarkParboiled1(String input) {
         var parser = Parboiled.createParser(EquationParser.class);
         var startTime = System.nanoTime();
         parser = parser.newInstance();
@@ -73,6 +73,34 @@ public class BenchmarkEquations {
             //                err = e.getMessage();
         }
         return -1;
+    }
+
+    public static long benchmarkParboiled2(String input) {
+        var startTime = System.nanoTime();
+        var result = Parboiled2EqnParser.parse(input);
+        if (!result.isSuccess()) {
+            System.out.println(input + "\n" + result);
+            System.exit(1);
+            return -1L;
+        }
+        return System.nanoTime() - startTime;
+    }
+
+    public static long benchmarkAntlr4(String input) {
+        var startTime = System.nanoTime();
+
+        EquationLexer lexer = new EquationLexer(CharStreams.fromString(input));
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        eqn.antlr4.EquationParser parser = new eqn.antlr4.EquationParser(tokens);
+
+        @SuppressWarnings("unused")
+        var result = parser.eqn();
+
+        var elapsedTime = System.nanoTime() - startTime;
+        //if (parser.getNumberOfSyntaxErrors() == 0) {
+        return elapsedTime;
+        //        }
+        //        return -1;
     }
 
     public static long benchmarkSquirrel(String input) {
@@ -96,27 +124,11 @@ public class BenchmarkEquations {
         return elapsedTime;
     }
 
-    public static long benchmarkAntlr(String input) {
-        var startTime = System.nanoTime();
-
-        EquationLexer lexer = new EquationLexer(CharStreams.fromString(input));
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        eqn.antlr.EquationParser parser = new eqn.antlr.EquationParser(tokens);
-
-        @SuppressWarnings("unused")
-        var result = parser.eqn();
-
-        var elapsedTime = System.nanoTime() - startTime;
-        //if (parser.getNumberOfSyntaxErrors() == 0) {
-        return elapsedTime;
-        //        }
-        //        return -1;
-    }
-
     public static void main(String[] args) throws IOException {
         var totSquirrel = 0.0;
-        var totAntlr = 0.0;
-        var totParb = 0.0;
+        var totAntlr4 = 0.0;
+        var totParb1 = 0.0;
+        var totParb2 = 0.0;
         {
             System.out.println("\nSquirrel: ======================");
             var eq = new EquationGenerator();
@@ -129,31 +141,43 @@ public class BenchmarkEquations {
                 }
             }
         }
-//        {
-//            System.out.println("\nAntlr: ======================");
-//            var eq = new EquationGenerator();
-//            for (int depth = 0; depth < 20; depth++) {
-//                for (int i = 0; i < 100; i++) {
-//                    var input = eq.generateEquation(depth);
-//                    var time = benchmarkAntlr(input);
-//                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
-//                    totAntlr += time;
-//                }
-//            }
-//        }
-//        {
-//            System.out.println("\nParboiled: ======================");
-//            var eq = new EquationGenerator();
-//            for (int depth = 0; depth < 14; depth++) {
-//                for (int i = 0; i < 100; i++) {
-//                    var input = eq.generateEquation(depth);
-//                    var time = benchmarkParboiled(input);
-//                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
-//                    totParb += time;
-//                }
-//            }
-//        }
-        System.out
-                .println("\nTOT:\n\n" + totSquirrel * 1.0e-9 + "\t" + totAntlr * 1.0e-9 + "\t" + totParb * 1.0e-9);
+        //        {
+        //            System.out.println("\nAntlr: ======================");
+        //            var eq = new EquationGenerator();
+        //            for (int depth = 0; depth < 20; depth++) {
+        //                for (int i = 0; i < 100; i++) {
+        //                    var input = eq.generateEquation(depth);
+        //                    var time = benchmarkAntlr(input);
+        //                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+        //                    totAntlr4 += time;
+        //                }
+        //            }
+        //        }
+        //        {
+        //      System.out.println("\nParboiled1: ======================");
+        //      var eq = new EquationGenerator();
+        //      for (int depth = 0; depth < 14; depth++) {
+        //          for (int i = 0; i < 100; i++) {
+        //              var input = eq.generateEquation(depth);
+        //              var time = benchmarkParboiled1(input);
+        //              System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+        //              totParb1 += time;
+        //          }
+        //      }
+        //  }
+        {
+            System.out.println("\nParboiled2: ======================");
+            var eq = new EquationGenerator();
+            for (int depth = 0; depth < 14; depth++) {
+                for (int i = 0; i < 100; i++) {
+                    var input = eq.generateEquation(depth);
+                    var time = benchmarkParboiled2(input);
+                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+                    totParb2 += time;
+                }
+            }
+        }
+        System.out.println("\nTOT:\n\n" + totSquirrel * 1.0e-9 + "\t" + totAntlr4 * 1.0e-9 + "\t"
+                + totParb1 * 1.0e-9 + "\t" + totParb2 * 1.0e-9);
     }
 }

@@ -41,20 +41,26 @@ public class Parser {
     /** The input to parse. */
     public String input;
 
-    /** The memo table as a (sparse) map. */
-    public Map<RulePos, MemoEntry> memoTableAsMap;
-
-    /** The memo table as a (dense) array. */
-    public MemoEntry[][] memoTableAsArray;
+    // -------------------------------------------------------------------------------------------------------------
 
     /** A sparse memo table uses less memory, but the parser runs more slowly. */
     private static final boolean USE_SPARSE_MEMO_TABLE = false;
 
+    /** The memo table as a (dense) array. */
+    public MemoEntry[][] memoTableAsArray;
+
+    /** The memo table as a (sparse) map. */
+    public Map<RulePos, MemoEntry> memoTableAsMap;
+
     /** Reuse {@link RulePos} instances. */
     private List<RulePos> rulePosRecycler;
 
+    // -------------------------------------------------------------------------------------------------------------
+
     /** The number of left recursive cycles that have been expanded at each input position. */
     public int[] cycleDepthForPos;
+
+    // -------------------------------------------------------------------------------------------------------------
 
     /** Current recursion depth (used when DEBUG == true). */
     public int recursionDepth;
@@ -62,6 +68,8 @@ public class Parser {
     /** If true, print debug info while parsing. */
     public static boolean DEBUG = false;
 
+    // -------------------------------------------------------------------------------------------------------------
+    
     /** Construct a parser. */
     public Parser(Grammar grammar) {
         this.grammar = grammar;
@@ -87,9 +95,6 @@ public class Parser {
 
     /** Parse a rule while handling left recursion. */
     public Match match(Clause rule, int pos) {
-        // Enter a new recursion frame
-        recursionDepth++;
-
         // Get the existing memo entry for this rule and position, if there is one, otherwise add
         // a new blank memo entry to the memo table for this rule and position.
         var memoEntry = (MemoEntry) null;
@@ -109,13 +114,14 @@ public class Parser {
         }
 
         // Match this rule at this position, and store or update the match result in the memo entry
+        recursionDepth++;
         var match = memoEntry.match(this, rule, pos);
+        --recursionDepth;
 
-        // Exit the recursion frame
+        // Recycle memory for reuse
         if (USE_SPARSE_MEMO_TABLE) {
             rulePosRecycler.add(rulePos);
         }
-        --recursionDepth;
 
         // Return the match
         return match;

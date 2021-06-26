@@ -29,7 +29,10 @@ import squirrelparser.parser.Parser;
 
 /** Matches if the named rule matches at the current position. */
 public class RuleRef extends Clause {
+    /** The name of the referenced rule. */
     public String refdRuleName;
+    
+    /** The top clause in the referenced rule. */
     public Clause refdRule;
 
     public RuleRef(String refdRuleName) {

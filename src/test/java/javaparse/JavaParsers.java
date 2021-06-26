@@ -8,7 +8,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.parboiled.Parboiled;
 import org.parboiled.parserunners.ReportingParseRunner;
 
-import javaparse.parboiled.JavaParser;
+import javaparse.parboiled1.JavaParser;
 import javaparse.squirrel.SquirrelParboiledJavaGrammar;
 import squirrel.TestUtils;
 import squirrelparser.grammar.Grammar;
@@ -19,7 +19,7 @@ import squirrelparser.utils.MetaGrammar;
 
 public class JavaParsers {
 
-    public static long benchmarkParboiled_java(String input) {
+    public static long benchmarkParboiled1_java(String input) {
         var startTime = System.nanoTime();
         var parser = Parboiled.createParser(JavaParser.class);
         parser = parser.newInstance();
@@ -50,17 +50,17 @@ public class JavaParsers {
         }
     }
 
-    public static long benchmarkAntlr_java(String input) {
+    public static long benchmarkAntlr4_java(String input) {
         var startTime = System.nanoTime();
         try {
             // Create a scanner that reads from the input stream passed to us
-            var lexer = new javaparse.antlr.java.JavaLexer(CharStreams.fromString(input));
+            var lexer = new javaparse.antlr4.java.JavaLexer(CharStreams.fromString(input));
             lexer.removeErrorListener(ConsoleErrorListener.INSTANCE);
 
             CommonTokenStream tokens = new CommonTokenStream(lexer);
 
             // Create a parser that reads from the scanner
-            var parser = new javaparse.antlr.java.JavaParser(tokens);
+            var parser = new javaparse.antlr4.java.JavaParser(tokens);
             parser.setErrorHandler(new BailErrorStrategy());
             parser.setBuildParseTree(true);
 
@@ -78,17 +78,17 @@ public class JavaParsers {
         }
     }
 
-    public static long benchmarkAntlr_java8(String input) {
+    public static long benchmarkAntlr4_java8(String input) {
         var startTime = System.nanoTime();
         try {
             // Create a scanner that reads from the input stream passed to us
-            var lexer = new javaparse.antlr.java8.Java8Lexer(CharStreams.fromString(input));
+            var lexer = new javaparse.antlr4.java8.Java8Lexer(CharStreams.fromString(input));
             lexer.removeErrorListener(ConsoleErrorListener.INSTANCE);
 
             CommonTokenStream tokens = new CommonTokenStream(lexer);
 
             // Create a parser that reads from the scanner
-            var parser = new javaparse.antlr.java8.Java8Parser(tokens);
+            var parser = new javaparse.antlr4.java8.Java8Parser(tokens);
             parser.setErrorHandler(new BailErrorStrategy());
             parser.setBuildParseTree(true);
 
@@ -106,17 +106,17 @@ public class JavaParsers {
         }
     }
 
-    public static long benchmarkAntlr_java9(String input) {
+    public static long benchmarkAntlr4_java9(String input) {
         var startTime = System.nanoTime();
         try {
             // Create a scanner that reads from the input stream passed to us
-            var lexer = new javaparse.antlr.java9.Java9Lexer(CharStreams.fromString(input));
+            var lexer = new javaparse.antlr4.java9.Java9Lexer(CharStreams.fromString(input));
             lexer.removeErrorListener(ConsoleErrorListener.INSTANCE);
 
             CommonTokenStream tokens = new CommonTokenStream(lexer);
 
             // Create a parser that reads from the scanner
-            var parser = new javaparse.antlr.java9.Java9Parser(tokens);
+            var parser = new javaparse.antlr4.java9.Java9Parser(tokens);
             parser.setErrorHandler(new BailErrorStrategy());
             parser.setBuildParseTree(true);
 
