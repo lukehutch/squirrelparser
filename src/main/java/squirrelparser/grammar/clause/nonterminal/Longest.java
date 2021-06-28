@@ -21,33 +21,28 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-package squirrelparser.grammar.clause.terminal;
+package squirrelparser.grammar.clause.nonterminal;
 
+import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.ClauseWithMultipleSubClauses;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
-import squirrelparser.utils.MetaGrammar;
 
-/**
- * Matches any character.
- *
- * <p>
- * May be used as, for example: {@code
- * 
- * SkipToEOL <- (!'\n' _)+ '\n'?;
- * 
- * }
- */
-public class AnyChar extends Terminal {
-    @Override
-    public Match match(Parser parser, int pos) {
-        if (pos < parser.input.length()) {
-            return new Match(this, pos, 1);
-        }
-        return Match.MISMATCH;
+/** Matches the same span as the first subclause that is found to match. */
+public class Longest extends ClauseWithMultipleSubClauses {
+    public Longest(Clause... subClauses) {
+        super(" / ", subClauses);
     }
 
     @Override
-    public String toString() {
-        return labelClause(MetaGrammar.ANY_CHAR_SYMBOL);
+    public Match match(Parser parser, int pos) {
+        for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
+            var subClauseMatch = subClauses[subClauseIdx].match(parser, pos);
+            if (subClauseMatch != Match.MISMATCH) {
+                return new Match(this, subClauseIdx, subClauseMatch);
+            }
+        }
+        // No subclauses matched
+        return Match.MISMATCH;
     }
 }
