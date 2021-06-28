@@ -107,9 +107,6 @@ public class MemoEntry {
                 // Mark this rule and position as being in the recursion path.
                 inRecPath = true;
 
-                // No left recursion cycle is yet known.
-                inLeftRecCycle = false;
-
                 // Left recursion expansion loop (executes only once if there no left recursive cycle is
                 // encountered).
                 while (true) {
