@@ -28,7 +28,7 @@ import squirrelparser.grammar.clause.ClauseWithMultipleSubClauses;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
-/** Matches the same span as the first subclause that is found to match. */
+/** Matches the same span as the longest subclause that is found to match. */
 public class Longest extends ClauseWithMultipleSubClauses {
     public Longest(Clause... subClauses) {
         super(" / ", subClauses);
@@ -36,13 +36,15 @@ public class Longest extends ClauseWithMultipleSubClauses {
 
     @Override
     public Match match(Parser parser, int pos) {
+        var longestMatch = Match.MISMATCH;
+        var longestMatchSubClauseIdx = 0;
         for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
             var subClauseMatch = subClauses[subClauseIdx].match(parser, pos);
-            if (subClauseMatch != Match.MISMATCH) {
-                return new Match(this, subClauseIdx, subClauseMatch);
+            if (subClauseMatch != Match.MISMATCH && subClauseMatch.len > longestMatch.len) {
+                longestMatch = subClauseMatch;
             }
         }
-        // No subclauses matched
-        return Match.MISMATCH;
+        return longestMatch == Match.MISMATCH ? Match.MISMATCH
+                : new Match(this, longestMatchSubClauseIdx, longestMatch);
     }
 }
