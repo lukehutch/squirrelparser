@@ -90,7 +90,7 @@ public class MetaGrammar {
                     // astNodeLabel has precedence 3
                     entry(Seq.class, 2), //
                     entry(First.class, 1), //
-                    entry(Longest.class, 1) //
+                    entry(Longest.class, 0) //
             );
 
     public static final int AST_NODE_LABEL_PRECEDENCE = 3;
@@ -199,16 +199,16 @@ public class MetaGrammar {
                         ast(SEQ_AST,
                                 seq(ruleRef(CLAUSE), ruleRef(WSC), oneOrMore(seq(ruleRef(CLAUSE), ruleRef(WSC)))))),
 
-                // First / Longest
+                // First
                 rule(CLAUSE, 1, /* associativity = */ null, //
-                        first( //
-                                ast(FIRST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
-                                        oneOrMore(seq(c(FIRST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE),
-                                                ruleRef(WSC))))),
+                        ast(FIRST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
+                                oneOrMore(seq(c(FIRST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC)))))),
 
-                                ast(LONGEST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
-                                        oneOrMore(seq(c(LONGEST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE),
-                                                ruleRef(WSC))))))),
+                // Longest
+                rule(CLAUSE, 0, /* associativity = */ null, //
+                        ast(LONGEST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
+                                oneOrMore(
+                                        seq(c(LONGEST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC)))))),
 
                 // A whitespace-matching terminal
                 rule(WHITESPACE, //
