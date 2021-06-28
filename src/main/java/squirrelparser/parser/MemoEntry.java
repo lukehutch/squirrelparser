@@ -107,8 +107,7 @@ public class MemoEntry {
                 // Mark this rule and position as being in the recursion path.
                 inRecPath = true;
 
-                // Left recursion expansion loop (executes only once if there no left recursive cycle is
-                // encountered).
+                // Left recursion expansion loop (executes only once if no left recursive cycle is encountered).
                 while (true) {
                     // Try matching this rule's toplevel clause at this position. newMatch will be either MISMATCH
                     // if there was no match, or a Match reference if there was a match.
