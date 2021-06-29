@@ -83,6 +83,10 @@ public class MemoEntry {
                     // This effectively passes a message back up to the ancestral node with the same
                     // rule and position to tell it to start iteratively growing the left-recursive
                     // subtree of the parse tree.
+                    // Once a rule has been marked for left recursion expansion in a given position,
+                    // it will always be marked. This is important in the case of multiple interlocked
+                    // left recursion cycles, e.g. the "Interlocking cycles" examples given here:
+                    // https://github.com/PhilippeSigaud/Pegged/wiki/Left-Recursion
                     inLeftRecCycle = true;
                     // When a left-recursive cycle is first found, the bottom-most node in the parse
                     // tree corresponding to this clause at this position must be marked as a mismatch.
