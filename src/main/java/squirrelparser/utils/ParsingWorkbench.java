@@ -27,24 +27,34 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.regex.Pattern;
 
+import javax.swing.AbstractAction;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
 import javax.swing.WindowConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import javax.swing.text.Highlighter.HighlightPainter;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.UndoManager;
 
 import squirrelparser.grammar.Grammar;
 import squirrelparser.node.ASTNode;
@@ -54,8 +64,6 @@ public class ParsingWorkbench {
 
     private static JTextArea grammarPane = new JTextArea();
     private static Highlighter grammarHighlighter = grammarPane.getHighlighter();
-    private static HighlightPainter syntaxErrorPainter = new DefaultHighlighter.DefaultHighlightPainter(Color.pink);
-    private static HighlightPainter badRuleNamePainter = new DefaultHighlighter.DefaultHighlightPainter(Color.cyan);
 
     private static JTextArea inputPane = new JTextArea();
     private static Highlighter inputHighlighter = inputPane.getHighlighter();
@@ -63,6 +71,11 @@ public class ParsingWorkbench {
     private static JTextArea parseTreePane = new JTextArea();
 
     private static JTextArea debugPane = new JTextArea();
+
+    private static HighlightPainter syntaxErrorPainter = new DefaultHighlighter.DefaultHighlightPainter(Color.pink);
+    private static HighlightPainter badRuleNamePainter = new DefaultHighlighter.DefaultHighlightPainter(Color.cyan);
+
+    private static final int MASK = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
 
     private static void parse() {
         var grammarStr = grammarPane.getText();
@@ -96,6 +109,8 @@ public class ParsingWorkbench {
             }
         }
 
+        parseTreePane.setText("");
+        debugPane.setText("");
         if (grammar != null) {
             var parser = new Parser(grammar);
 
@@ -122,7 +137,48 @@ public class ParsingWorkbench {
             parseTreePane.setText("Parse tree:\n" + match.toStringWholeTree(inputStr) + "\n"
                     + (ast == null ? "(Parser did not match whole input)" : "AST:\n" + ast.toStringWholeTree()));
         }
+    }
 
+    private static void setupUndo(JTextArea area) {
+        var undoManager = new UndoManager();
+        var doc = area.getDocument();
+        doc.addUndoableEditListener(new UndoableEditListener() {
+            @Override
+            public void undoableEditHappened(UndoableEditEvent e) {
+                undoManager.addEdit(e.getEdit());
+                System.out.println(e);
+            }
+        });
+        area.getActionMap().put("Undo", new AbstractAction("Undo") {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                try {
+                    if (undoManager.canUndo()) {
+                        undoManager.undo();
+                    }
+                } catch (CannotUndoException e) {
+                    System.out.println(e);
+                }
+            }
+        });
+        area.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, MASK), "Undo");
+        area.getActionMap().put("Redo", new AbstractAction("Redo") {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                try {
+                    if (undoManager.canRedo()) {
+                        undoManager.redo();
+                    }
+                } catch (CannotRedoException e) {
+                    System.out.println(e);
+                }
+            }
+        });
+        area.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, MASK), "Redo");
     }
 
     public static void main(String[] args) {
@@ -151,47 +207,52 @@ public class ParsingWorkbench {
         };
 
         var font = new Font("Monospaced", Font.PLAIN, 12);
+
+        var wCol0 = .45;
+        var hRow0 = .35;
         
         c.gridx = 0;
         c.gridy = 0;
-        c.weightx = .45;
+        c.weightx = wCol0;
         c.weighty = 0;
         c.fill = GridBagConstraints.HORIZONTAL;
         p.add(new JLabel("Grammar:"), c);
         c.gridx = 0;
         c.gridy = 1;
-        c.weightx = .45;
-        c.weighty = .5;
+        c.weightx = wCol0;
+        c.weighty = hRow0;
         c.fill = GridBagConstraints.BOTH;
         p.add(new JScrollPane(grammarPane), c);
         grammarPane.getDocument().addDocumentListener(dl);
         grammarPane.setFont(font);
+        setupUndo(grammarPane);
 
         c.gridx = 1;
         c.gridy = 0;
-        c.weightx = .55;
+        c.weightx = 1.0 - wCol0;
         c.weighty = 0;
         c.fill = GridBagConstraints.HORIZONTAL;
         p.add(new JLabel("Input:"), c);
         c.gridx = 1;
         c.gridy = 1;
-        c.weightx = .55;
-        c.weighty = .5;
+        c.weightx = 1.0 - wCol0;
+        c.weighty = hRow0;
         c.fill = GridBagConstraints.BOTH;
         p.add(new JScrollPane(inputPane), c);
         inputPane.getDocument().addDocumentListener(dl);
         inputPane.setFont(font);
+        setupUndo(inputPane);
 
         c.gridx = 0;
         c.gridy = 2;
-        c.weightx = .45;
+        c.weightx = wCol0;
         c.weighty = 0;
         c.fill = GridBagConstraints.HORIZONTAL;
         p.add(new JLabel("Parse tree and AST:"), c);
         c.gridx = 0;
         c.gridy = 3;
-        c.weightx = .45;
-        c.weighty = 1;
+        c.weightx = wCol0;
+        c.weighty = 1.0 - hRow0;
         c.fill = GridBagConstraints.BOTH;
         p.add(new JScrollPane(parseTreePane), c);
         parseTreePane.setEditable(false);
@@ -199,14 +260,14 @@ public class ParsingWorkbench {
 
         c.gridx = 1;
         c.gridy = 2;
-        c.weightx = .55;
+        c.weightx = 1.0 - wCol0;
         c.weighty = 0;
         c.fill = GridBagConstraints.HORIZONTAL;
         p.add(new JLabel("Debug:"), c);
         c.gridx = 1;
         c.gridy = 3;
-        c.weightx = .55;
-        c.weighty = 1;
+        c.weightx = 1.0 - wCol0;
+        c.weighty = 1.0 - hRow0;
         c.fill = GridBagConstraints.BOTH;
         p.add(new JScrollPane(debugPane), c);
         debugPane.setEditable(false);
