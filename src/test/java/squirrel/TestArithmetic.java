@@ -35,6 +35,7 @@ public class TestArithmetic {
         if (match == Match.MISMATCH) {
             System.out.println("MISMATCH\n");
         } else if (printAST) {
+            System.out.println(match.toStringWholeTree(parser.input));
             var ast = match.toAST(parser.input);
             System.out.println(ast.toStringWholeTree());
         }
@@ -71,25 +72,34 @@ public class TestArithmetic {
         //        var grammar3 = MetaGrammar.parse("E <- sum:(E op:'+' N) / N;\n" //
         //                + "N <- num:[0-9]+;\n");
         //        tryParsing(grammar3, "0+1+2+3");
+        //        // ...and this explicitly right-associative grammar has a different parse tree:
+        //        var grammar2 = MetaGrammar.parse("E <- sum:(N op:'+' E) / N;\n" //
+        //                + "N <- num:[0-9]+;\n");
+        //        tryParsing(grammar2, "0+1+2+3");
 
-        //        tryParsing(MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'y' / A 'x');"), "xxyx;");
-        //
+        //        // Input-dependent left recursion:
+        //        tryParsing(MetaGrammar.parse("A <- B / 'z'; B <- ('x' A / A 'y');"), "xxzyyy");
+
+        // tryParsing(MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'y' / A 'x');"), "xxyx");
+
+        tryParsing(MetaGrammar.parse("A <- 'x'? (A 'y' / A / 'y');"), "xxyyy");
+        
         //        // Even though the subclauses take turns not matching, the length of the matching subclause gets longer
         //        // each time, so there's no problem. But for the Pika parser, it stops when (A 'y') can't mismatch,
         //        // due to memoization.
-        //        tryParsing(MetaGrammar.parse("A <- a:(A 'y' / A 'x' / ());"), "xxyx;");
+        //        tryParsing(MetaGrammar.parse("A <- a:(A 'y' / A 'x' / ());"), "xxyx");
         //
         //        // This grammar shows the same problem as the pika parser when comparing match lengths, because RuleRefs
         //        // are memoized, and memoized matches can't become mismatches. But when only checking for *unique* match
         //        // lengths, it works fine in the squirrel parser.
-        //        tryParsing(MetaGrammar.parse("A <- a:(B / C / ()); B <- A 'y'; C <- A 'x';"), "xxyx;");
+        //        tryParsing(MetaGrammar.parse("A <- a:(B / C / ()); B <- A 'y'; C <- A 'x';"), "xxyx");
         //
         //        // Here the rule never fails over to 'x', because iterative expansion of a left recursive cycle follows
         //        // the same rules as memoization, which is to stop at the first mismatch, or when the match length
         //        // decreases (which is this case), and then discard the last failure to improve the match.
         //        // When requiring unique match lengths, this is well-defined to not repeat the `x` match twice, so
         //        // the correct answer here is `xx`, which is what squirrel gives.
-        //        tryParsing(MetaGrammar.parse("A <- a:((A 'x' !'y') / 'x');"), "xxxy;");
+        //        tryParsing(MetaGrammar.parse("A <- a:((A 'x' !'y') / 'x');"), "xxxy");
         //
         //        //        // This will still exhibit the parse tree cycle behavior, because it has no left recursion.
         //        //        for (int i = 1; i < 10; i++) {
@@ -101,11 +111,11 @@ public class TestArithmetic {
         //        var grammar6 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'x');");
         //        tryParsing(grammar6, "xxx");
 
-        // This grammar requires monotonic length increase, and does not work with unique lengths when there's at least one '?' 
-        var grammar = MetaGrammar.parse("A <- a:(B 'y'); B <- b:((B / seed:\"x?\") '?') / f:'x';");
-        tryParsing(grammar, "xy");
-        tryParsing(grammar, "x?y");
-        tryParsing(grammar, "x??y");
+        //        // This grammar requires monotonic length increase, and does not work with unique lengths when there's at least one '?' 
+        //        var grammar = MetaGrammar.parse("A <- a:(B 'y'); B <- b:((B / seed:\"x?\") '?') / f:'x';");
+        //        tryParsing(grammar, "xy");
+        //        tryParsing(grammar, "x?y");
+        //        tryParsing(grammar, "x??y");
 
         //        // Doesn't use left recursion
         //        for (var i = 1; i < 10; i++) {
@@ -150,6 +160,23 @@ public class TestArithmetic {
         //
         //        var grammar9 = MetaGrammar.parse("A <- (A 'y') / 'x';");
         //        tryParsing(grammar9, "xy");
+
+        //        // Example of multiple interlocking left recursive cycles, from:
+        //        // https://github.com/PhilippeSigaud/Pegged/wiki/Left-Recursion
+        //        var grammar10 = MetaGrammar.parse( //
+        //                "S <- E;\n" //
+        //                        + "E <- F 'n' / 'n';\n" //
+        //                        + "F <- E '+' I* / G '-';\n" //
+        //                        + "G <- H 'm' / E;\n" //
+        //                        + "H <- G 'l';\n" //
+        //                        + "I <- '(' A+ ')';\n" //
+        //                        + "A <- 'a';");
+        //        tryParsing(grammar10, "nlm-n+(aaa)n");
+        //        var grammar11 = MetaGrammar.parse( //
+        //                "M <- L;" //
+        //                        + "L <- P \".x\" / 'x';" //
+        //                        + "P <- P \"(n)\" / L;");
+        //        tryParsing(grammar11, "x.x(n)(n).x.x");
 
     }
 }

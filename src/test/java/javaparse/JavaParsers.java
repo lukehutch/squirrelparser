@@ -8,13 +8,17 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.parboiled.Parboiled;
 import org.parboiled.parserunners.ReportingParseRunner;
 
+import javaparse.mouse23.MouseJava14Parser;
 import javaparse.parboiled1.JavaParser;
+import javaparse.parboiled2.Parboiled2JavaParser;
 import javaparse.squirrel.SquirrelParboiledJavaGrammar;
+import mouse.runtime.SourceString;
 import squirrel.TestUtils;
 import squirrelparser.grammar.Grammar;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.ClauseUtils;
+import squirrelparser.utils.MemoUtils;
 import squirrelparser.utils.MetaGrammar;
 
 public class JavaParsers {
@@ -48,6 +52,15 @@ public class JavaParsers {
         } catch (Exception e) {
             return -1;
         }
+    }
+
+    public static long benchmarkParboiled2_java(String input) {
+        var startTime = System.nanoTime();
+        var result = Parboiled2JavaParser.parse(input);
+        if (result.isFailure()) {
+            return -1;
+        }
+        return System.nanoTime() - startTime;
     }
 
     public static long benchmarkAntlr4_java(String input) {
@@ -134,14 +147,25 @@ public class JavaParsers {
         }
     }
 
-    private static Grammar squirrelGrammar_Parboiled_java1p6 = SquirrelParboiledJavaGrammar.grammar;
-    static {
-        ClauseUtils.optimize(squirrelGrammar_Parboiled_java1p6);
+    public static long benchmarkMouse_Java14(String input) {
+        var startTime = System.nanoTime();
+        var parser = new MouseJava14Parser();
+        boolean ok = parser.parse(new SourceString(input));
+        if (!ok) {
+            return -1;
+        }
+        var elapsedTime = System.nanoTime() - startTime;
+        return elapsedTime;
     }
 
-    public static long benchmarkSquirrel_Parboiled_java1p6(String input) {
+    private static Grammar squirrelGrammar_Parboiled_java6 = SquirrelParboiledJavaGrammar.grammar;
+    static {
+        ClauseUtils.optimize(squirrelGrammar_Parboiled_java6);
+    }
+
+    public static long benchmarkSquirrel_Parboiled_java6(String input) {
         var startTime = System.nanoTime();
-        var parser = new Parser(squirrelGrammar_Parboiled_java1p6);
+        var parser = new Parser(squirrelGrammar_Parboiled_java6);
         var match = parser.parse(input);
         if (match == Match.MISMATCH || match.len < input.length()) {
             return -1;
@@ -150,15 +174,32 @@ public class JavaParsers {
         return elapsedTime;
     }
 
-    private static Grammar squirrelGrammar_Mouse_java1p8 = MetaGrammar
+    private static Grammar squirrelGrammar_Mouse_java8 = MetaGrammar
             .parse(TestUtils.loadResourceFile("javaparse/squirrel/Mouse_Java.1.8.peg"));
     static {
-        ClauseUtils.optimize(squirrelGrammar_Mouse_java1p8);
+        ClauseUtils.optimize(squirrelGrammar_Mouse_java8);
     }
 
-    public static long benchmarkSquirrel_Mouse_java1p8(String input) {
+    public static long benchmarkSquirrel_Mouse_java8(String input) {
         var startTime = System.nanoTime();
-        var parser = new Parser(squirrelGrammar_Mouse_java1p8);
+        var parser = new Parser(squirrelGrammar_Mouse_java8);
+        var match = parser.parse(input);
+        if (match == Match.MISMATCH || match.len < input.length()) {
+            return -1;
+        }
+        var elapsedTime = System.nanoTime() - startTime;
+        return elapsedTime;
+    }
+
+    private static Grammar squirrelGrammar_Mouse_java14 = MetaGrammar
+            .parse(TestUtils.loadResourceFile("javaparse/squirrel/Mouse_Java.14.peg"));
+    static {
+        ClauseUtils.optimize(squirrelGrammar_Mouse_java14);
+    }
+
+    public static long benchmarkSquirrel_Mouse_java14(String input) {
+        var startTime = System.nanoTime();
+        var parser = new Parser(squirrelGrammar_Mouse_java14);
         var match = parser.parse(input);
         if (match == Match.MISMATCH || match.len < input.length()) {
             return -1;

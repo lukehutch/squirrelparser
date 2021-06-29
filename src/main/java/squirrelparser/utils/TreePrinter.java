@@ -65,7 +65,7 @@ public class TreePrinter {
 
         buf.append(indentStr);
         buf.append(isLastChild ? "└─" : "├─");
-        buf.append(match.clause);
+        buf.append(match.clause.ruleName != null ? match.clause.ruleName : match.clause);
         buf.append(" : ");
         buf.append(match.pos);
         buf.append('+');

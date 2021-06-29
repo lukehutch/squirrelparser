@@ -16,6 +16,7 @@ import static squirrelparser.utils.MetaGrammar.str;
 import static squirrelparser.utils.MetaGrammar.zeroOrMore;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import squirrelparser.grammar.Grammar;
 import squirrelparser.grammar.clause.Clause;
@@ -743,8 +744,10 @@ public class SquirrelParboiledJavaGrammar {
 
     // Convert grammar to Parboiled2 expressions
 
+    private static AtomicInteger maxSeqLen = new AtomicInteger();
+
     private static void toParb2(Clause rule) {
-        System.out.print('(');
+        System.out.print("(");
         switch (rule.getClass().getSimpleName()) {
         case "Seq":
             var seq = (Seq) rule;
@@ -755,6 +758,8 @@ public class SquirrelParboiledJavaGrammar {
                 }
                 toParb2(subClause);
             }
+            maxSeqLen.set(Math.max(maxSeqLen.get(), seq.subClauses.length));
+            System.out.print(" ~> Node" + seq.subClauses.length);
             break;
         case "First":
             var first = (First) rule;
@@ -765,36 +770,43 @@ public class SquirrelParboiledJavaGrammar {
                 }
                 toParb2(subClause);
             }
+            System.out.print(" ~> Node1");
             break;
         case "OneOrMore":
             System.out.print("oneOrMore");
             toParb2(((OneOrMore) rule).subClause);
+            System.out.print(" ~> Node1");
             break;
         case "ZeroOrMore":
             System.out.print("zeroOrMore");
             toParb2(((ZeroOrMore) rule).subClause);
+            System.out.print(" ~> Node1");
             break;
         case "Optional":
             System.out.print("optional");
             toParb2(((Optional) rule).subClause);
+            System.out.print(" ~> Node1");
             break;
         case "FollowedBy":
             System.out.print("&");
             toParb2(((FollowedBy) rule).subClause);
+            System.out.print(" ~> Node1");
             break;
         case "NotFollowedBy":
             System.out.print("!");
             toParb2(((NotFollowedBy) rule).subClause);
+            System.out.print(" ~> Node1");
             break;
         case "CharSeq":
-            System.out.print('"' + StringUtils.escapeString(((CharSeq) rule).seq) + '"');
+            var str = (CharSeq) rule;
+            System.out.print("capture(\"" + StringUtils.escapeString(str.seq) + "\") ~> Leaf");
             break;
         case "Char":
             var ch = (Char) rule;
             if (ch.invert) {
                 System.out.print("!(");
             }
-            System.out.print('"' + StringUtils.escapeQuotedChar(((Char) rule).chr) + '"');
+            System.out.print("capture('" + StringUtils.escapeQuotedChar(((Char) rule).chr) + "') ~> Leaf");
             if (ch.invert) {
                 System.out.print(")");
             }
@@ -804,6 +816,7 @@ public class SquirrelParboiledJavaGrammar {
             if (cs.invert) {
                 System.out.print("!(");
             }
+            System.out.print("capture(");
             var cardinality = cs.chars.cardinality();
             if (cardinality == 1 << 16) {
                 System.out.print("ANY");
@@ -815,6 +828,7 @@ public class SquirrelParboiledJavaGrammar {
                 System.out.print("\")");
                 /* TODO figure out how to express char ranges in Parboiled2, for large char sets */
             }
+            System.out.print(") ~> Leaf");
             if (cs.invert) {
                 System.out.print(")");
             }
@@ -824,6 +838,7 @@ public class SquirrelParboiledJavaGrammar {
             if (cr.invert) {
                 System.out.print("!(");
             }
+            System.out.print("capture(");
             if (cr.minChar == (char) 0 && cr.maxChar == (char) 0xffff) {
                 System.out.print("ANY");
             } else {
@@ -834,31 +849,53 @@ public class SquirrelParboiledJavaGrammar {
                 System.out.print("\")");
                 /* TODO figure out how to express char ranges in Parboiled2, for large char ranges */
             }
+            System.out.print(") ~> Leaf");
             if (cr.invert) {
                 System.out.print(")");
             }
             break;
         case "RuleRef":
             var ruleRef = (RuleRef) rule;
-            System.out.print(ruleRef.refdRuleName);
+            System.out.print(ruleRef.refdRuleName + " ~> Node1");
             break;
         default:
             throw new IllegalArgumentException(
                     "Unsupported clause type: " + rule.getClass().getSimpleName() + " : " + rule);
         }
-        System.out.print(')');
+        System.out.print(")");
     }
 
-    @SuppressWarnings("unused")
     private static void convertToParboiled2() {
-        for (var rule : grammar.rules) {
-            System.out.print(rule.ruleName + " = rule { ");
+        System.out.println("package javaparse.parboiled2;\n\n" //
+                + "import org.parboiled2._\n\n" //
+                + "class Parboiled2JavaParser(val input: ParserInput) extends Parser {\n" //
+                + "    import Parboiled2JavaParser._\n"
+                + "    def TopRule = rule { " + grammar.rules.get(0).ruleName + " ~ EOI }");
+        for (int i = 0; i < grammar.rules.size(); i++) {
+            var rule = grammar.rules.get(i);
+            System.out.print("    def " + rule.ruleName + " " + (i == 0 ? ": Rule1[Node] " : "") + "= rule { ");
             toParb2(rule);
             System.out.println(" }");
         }
+        System.out.println("}\n\n" //
+                + "object Parboiled2JavaParser {\n" //
+                + "    def parse(input : String) = new Parboiled2JavaParser(input).TopRule.run()\n" //
+                + "    sealed trait Node");
+        for (int i = 0; i <= maxSeqLen.get(); i++) {
+            System.out.print("    case class Node" + i + "(");
+            for (int j = 0; j < i; j++) {
+                if (j > 0) {
+                    System.out.print(", ");
+                }
+                System.out.print("c" + j + ": Node");
+            }
+            System.out.println(") extends Node");
+        }
+        System.out.print("    case class Leaf() extends Node\n" //
+                + "}");
     }
 
-    //    public static void main(String[] args) {
-    //        convertToParboiled2();
-    //    }
+    public static void main(String[] args) {
+        convertToParboiled2();
+    }
 }

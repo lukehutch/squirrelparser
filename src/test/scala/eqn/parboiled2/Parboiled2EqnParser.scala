@@ -1,9 +1,6 @@
-package eqn.parboiled2;
+package javaparse.parboiled2;
 
 import org.parboiled2._
-import org.junit.Assert._
-import org.junit.Test
-import junit.framework.TestCase
 
 class Parboiled2EqnParser(val input: ParserInput) extends Parser {
   def InputLine = rule { Expression ~ EOI }

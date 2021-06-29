@@ -28,6 +28,7 @@ import java.util.List;
 
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
+import squirrelparser.utils.MetaGrammar;
 
 /** A collection of {@link Rule} instances. */
 public class Grammar {
@@ -85,7 +86,7 @@ public class Grammar {
                 buf.append('\n');
             }
             buf.append(rule.toString());
-            buf.append(';');
+            buf.append(MetaGrammar.RULE_END_SYMBOL);
         }
         return buf.toString();
     }

@@ -42,8 +42,13 @@ public class BenchmarkJavaParsing {
             // to fail to parse a file (the other common reason is the presence of lambdas)
             input = input.replace("<>", "");
 
-            var timeParb = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkParboiled_java, input);
-            if (timeParb < 0) {
+            var timeParb1 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkParboiled1_java, input);
+            if (timeParb1 < 0) {
+                continue; // Skips source files with Java 7+ features
+            }
+
+            var timeParb2 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkParboiled2_java, input);
+            if (timeParb2 < 0) {
                 continue; // Skips source files with Java 7+ features
             }
 
@@ -61,18 +66,28 @@ public class BenchmarkJavaParsing {
             if (timeAntlr_java9 < 0) {
                 continue;
             }
-            var timeSquirrelParb = TestUtils.findMinTime(JavaParsers::benchmarkSquirrel_Parboiled_java1p6, input);
-            if (timeSquirrelParb < 0) {
+            var timeMouse_Java14 = JavaParsers.benchmarkMouse_Java14(input);
+            if (timeMouse_Java14 < 0) {
                 continue;
             }
-            var timeSquirrelMouse = TestUtils.findMinTime(JavaParsers::benchmarkSquirrel_Mouse_java1p8, input);
-            if (timeSquirrelMouse < 0) {
+            var timeSquirrel_Parb1_java6 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkSquirrel_Parboiled_java1p6, input);
+            if (timeSquirrel_Parb1_java6 < 0) {
+                continue;
+            }
+            var timeSquirrel_Mouse8 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkSquirrel_Mouse_java1p8, input);
+            if (timeSquirrel_Mouse8 < 0) {
+                continue;
+            }
+            var timeSquirrel_Mouse14 = JavaParsers.benchmarkSquirrel_Mouse_java14(input);
+            if (timeSquirrel_Mouse14 < 0) {
                 continue;
             }
             numFilesParsed++;
-            System.out.println(path + "\t" + input.length() + "\t" + timeParb * 1.0e-9 + "\t"
-                    + timeAntlr_java * 1.0e-9 + "\t" + timeAntlr_java8 * 1.0e-9 + "\t" + timeAntlr_java9 * 1.0e-9
-                    + "\t" + timeSquirrelParb * 1.0e-9 + "\t" + +timeSquirrelMouse * 1.0e-9);
+            System.out.println(path + "\t" + input.length() + "\t" + timeParb1 * 1.0e-9 + "\t" + timeParb2 * 1.0e-9
+                    + "\t" + timeAntlr_java * 1.0e-9 + "\t" + timeAntlr_java8 * 1.0e-9 + "\t"
+                    + timeAntlr_java9 * 1.0e-9 + "\t" + timeSquirrel_Parb1_java6 * 1.0e-9 + "\t"
+                    + timeMouse_Java14 * 1.0e-9 + "\t" + +timeSquirrel_Mouse8 * 1.0e-9 + "\t"
+                    + +timeSquirrel_Mouse14 * 1.0e-9);
         }
         System.out.println("Parsed " + numFilesParsed + " files");
     }

@@ -31,5 +31,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="/home/luke/Work/squirrelparser/src/test/scala"/>
+	<classpathentry kind="lib" path="src/test/resources/Mouse-2.3.runtime.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
