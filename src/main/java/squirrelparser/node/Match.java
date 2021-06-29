@@ -28,6 +28,7 @@ import java.util.List;
 
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.First;
+import squirrelparser.grammar.clause.nonterminal.Longest;
 import squirrelparser.grammar.clause.terminal.Terminal;
 import squirrelparser.utils.StringUtils;
 import squirrelparser.utils.TreePrinter;
@@ -89,6 +90,12 @@ public class Match {
                 Collections.singletonList(subClauseMatch));
     }
 
+    /** A match of a {@link Longest} clause, with one subclause match. */
+    public Match(Longest clause, int matchingSubClauseIdx, Match subClauseMatch) {
+        this(clause, subClauseMatch.pos, subClauseMatch.len, matchingSubClauseIdx,
+                Collections.singletonList(subClauseMatch));
+    }
+
     /** A match of a {@link Terminal}. */
     public Match(Terminal clause, int pos, int len) {
         this(clause, pos, len, 0, Collections.emptyList());
@@ -111,9 +118,13 @@ public class Match {
 
     /** Render the parse tree into ASCII art form. */
     public String toStringWholeTree(String input) {
-        StringBuilder buf = new StringBuilder();
-        TreePrinter.renderTreeView(this, clause.astNodeLabel, input, "", true, buf);
-        return buf.toString();
+        if (this == Match.MISMATCH) {
+            return "MISMATCH";
+        } else {
+            StringBuilder buf = new StringBuilder();
+            TreePrinter.renderTreeView(this, clause.astNodeLabel, input, "", true, buf);
+            return buf.toString();
+        }
     }
 
     public String toString(String input) {

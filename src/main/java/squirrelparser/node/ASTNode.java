@@ -48,8 +48,11 @@ public class ASTNode {
 
     /** Recursively create an AST from a parse tree. */
     public ASTNode(Match match, String input) {
-        this(match.clause.astNodeLabel, match.clause, match.pos, match.len,
+        this(match.clause == null ? null : match.clause.astNodeLabel, match.clause, match.pos, match.len,
                 input.subSequence(match.pos, Math.min(input.length(), match.pos + match.len)));
+        if (match == Match.MISMATCH) {
+            throw new IllegalArgumentException("Can't create AST node from a mismatch");
+        }
         addNodesWithASTNodeLabelsRecursive(this, match, input);
     }
 
