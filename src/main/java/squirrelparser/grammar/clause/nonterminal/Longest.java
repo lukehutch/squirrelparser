@@ -27,11 +27,16 @@ import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.ClauseWithMultipleSubClauses;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
+import squirrelparser.utils.MetaGrammar;
 
-/** Matches the same span as the longest subclause that is found to match. */
+/**
+ * This is a non-standard PEG operator.
+ * 
+ * Matches the same span as the longest subclause that is found to match.
+ */
 public class Longest extends ClauseWithMultipleSubClauses {
     public Longest(Clause... subClauses) {
-        super(" / ", subClauses);
+        super(" " + MetaGrammar.LONGEST_SEPARATOR + " ", subClauses);
     }
 
     @Override

@@ -74,26 +74,30 @@ public class MetaGrammar {
 
     public static char LONGEST_SEPARATOR = '|';
 
+    public static String AND_SEPARATOR = "&&";
+
     // -------------------------------------------------------------------------------------------------------------
 
     // Precedence levels (should correspond to levels in metagrammar):
 
     public static Map<Class<? extends Clause>, Integer> clauseTypeToPrecedence = //
             Map.ofEntries( //
-                    entry(Terminal.class, 7), //
-                    entry(RuleRef.class, 7), //
-                    entry(OneOrMore.class, 6), //
-                    entry(ZeroOrMore.class, 6), //
-                    entry(NotFollowedBy.class, 5), //
-                    entry(FollowedBy.class, 5), //
-                    entry(Optional.class, 4), //
-                    // astNodeLabel has precedence 3
-                    entry(Seq.class, 2), //
-                    entry(First.class, 1), //
-                    entry(Longest.class, 0) //
+                    entry(Terminal.class, 8), //
+                    entry(RuleRef.class, 8), //
+                    entry(OneOrMore.class, 7), //
+                    entry(ZeroOrMore.class, 7), //
+                    entry(NotFollowedBy.class, 6), //
+                    entry(FollowedBy.class, 6), //
+                    entry(Optional.class, 5), //
+                    // astNodeLabel has precedence 4 (everything above this precedence level
+                    // has only a single subclause, so no parentheses are necessary around
+                    // a labeled clause)
+                    entry(Seq.class, 3), //
+                    entry(First.class, 2), //
+                    entry(Longest.class, 1) //
             );
 
-    public static final int AST_NODE_LABEL_PRECEDENCE = 3;
+    public static final int AST_NODE_LABEL_PRECEDENCE = 4;
 
     // Rule names:
 
@@ -159,11 +163,11 @@ public class MetaGrammar {
                 // Define precedence order for clause sequences
 
                 // Parens
-                rule(CLAUSE, 8, /* associativity = */ null, //
+                rule(CLAUSE, 9, /* associativity = */ null, //
                         seq(c('('), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC), c(')'))), //
 
                 // Terminals
-                rule(CLAUSE, 7, /* associativity = */ null, //
+                rule(CLAUSE, 8, /* associativity = */ null, //
                         first( //
                                 ruleRef(ANY), //
                                 ruleRef(IDENT), // RuleRef
@@ -173,39 +177,39 @@ public class MetaGrammar {
                                 ruleRef(NOTHING))), //
 
                 // OneOrMore / ZeroOrMore
-                rule(CLAUSE, 6, /* associativity = */ null, //
+                rule(CLAUSE, 7, /* associativity = */ null, //
                         first( //
                                 seq(ast(ONE_OR_MORE_AST, ruleRef(CLAUSE)), ruleRef(WSC), c('+')),
                                 seq(ast(ZERO_OR_MORE_AST, ruleRef(CLAUSE)), ruleRef(WSC), c('*')))), //
 
                 // FollowedBy / NotFollowedBy
-                rule(CLAUSE, 5, /* associativity = */ null, //
+                rule(CLAUSE, 6, /* associativity = */ null, //
                         first( //
                                 seq(c('&'), ast(FOLLOWED_BY_AST, ruleRef(CLAUSE))), //
                                 seq(c('!'), ast(NOT_FOLLOWED_BY_AST, ruleRef(CLAUSE))))), //
 
                 // Optional
-                rule(CLAUSE, 4, /* associativity = */ null, //
+                rule(CLAUSE, 5, /* associativity = */ null, //
                         seq(ast(OPTIONAL_AST, ruleRef(CLAUSE)), ruleRef(WSC), c('?'))), //
 
                 // ASTNodeLabel
-                rule(CLAUSE, 3, /* associativity = */ null, //
+                rule(CLAUSE, 4, /* associativity = */ null, //
                         ast(LABEL_AST,
                                 seq(ast(LABEL_NAME_AST, ruleRef(IDENT)), ruleRef(WSC), c(':'), ruleRef(WSC),
                                         ast(LABEL_CLAUSE_AST, ruleRef(CLAUSE)), ruleRef(WSC)))), //
 
                 // Seq
-                rule(CLAUSE, 2, /* associativity = */ null, //
+                rule(CLAUSE, 3, /* associativity = */ null, //
                         ast(SEQ_AST,
                                 seq(ruleRef(CLAUSE), ruleRef(WSC), oneOrMore(seq(ruleRef(CLAUSE), ruleRef(WSC)))))),
 
                 // First
-                rule(CLAUSE, 1, /* associativity = */ null, //
+                rule(CLAUSE, 2, /* associativity = */ null, //
                         ast(FIRST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
                                 oneOrMore(seq(c(FIRST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC)))))),
 
                 // Longest
-                rule(CLAUSE, 0, /* associativity = */ null, //
+                rule(CLAUSE, 1, /* associativity = */ null, //
                         ast(LONGEST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
                                 oneOrMore(
                                         seq(c(LONGEST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC)))))),
@@ -527,6 +531,7 @@ public class MetaGrammar {
      */
     private static Clause expectOne(List<Clause> clauses, ASTNode astNode) {
         if (clauses.size() != 1) {
+            // TODO: improve error reporting
             throw new IllegalArgumentException("Expected one subclause, got " + clauses.size() + ": " + astNode);
         }
         return clauses.get(0);
@@ -595,9 +600,6 @@ public class MetaGrammar {
             break;
         default:
             throw new IllegalArgumentException("Unexpected grammar AST node label: " + astNode.label);
-        //            // Keep recursing for parens (the only type of AST node that doesn't have a label)
-        //            clause = expectOne(parseASTNodes(astNode.children), astNode);
-        //            break;
         }
         return clause;
     }
@@ -620,14 +622,14 @@ public class MetaGrammar {
     }
 
     /** Parse a grammar description in an input string, returning a new {@link Grammar} object. */
-    public static Grammar parse(String input) {
+    public static Grammar parse(String metaGrammarStr) {
         // Don't debug metagrammar parsing
         var oldDebug = Parser.DEBUG;
         Parser.DEBUG = false;
         // System.out.println(metaGrammar);
 
         var parser = new Parser(metaGrammar());
-        var topMatch = parser.parse(input);
+        var topMatch = parser.parse(metaGrammarStr);
 
         //		ParserInfo.printParseResult("GRAMMAR", memoTable, new String[] { "GRAMMAR", "RULE", "CLAUSE[1]" },
         //				/* showAllMatches = */ false);
@@ -637,9 +639,12 @@ public class MetaGrammar {
         //			System.out.println("    " + clause.toStringWithRuleNames());
         //		}
 
-        if (topMatch.len != input.length()) {
-            throw new IllegalArgumentException("Failed to match all input -- matched " + topMatch.len
-                    + " characters; input length: " + input.length()); // TODO: smarter error handling
+        if (topMatch.len != metaGrammarStr.length()) {
+            var syntaxErrLocation = MemoUtils.findMaxEndPos(parser);
+            // TODO: smarter error handling
+            throw new IllegalArgumentException(
+                    "Failed to match all input -- matched " + topMatch.len + " characters; syntax error location: "
+                            + syntaxErrLocation + "; input length: " + metaGrammarStr.length());
         }
 
         // System.out.println(topMatch.toStringWholeTree(input));
@@ -662,7 +667,7 @@ public class MetaGrammar {
         //            throw new IllegalArgumentException("Stopping");
         //        }
 
-        var topLevelASTNode = new ASTNode(topMatch, input);
+        var topLevelASTNode = new ASTNode(topMatch, metaGrammarStr);
 
         // System.out.println(topLevelASTNode.toStringWholeTree());
 
