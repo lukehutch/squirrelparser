@@ -54,6 +54,7 @@ public class Char extends Terminal {
 
     @Override
     public String toString() {
-        return labelClause((invert ? "!" : "") + "'" + StringUtils.escapeQuotedChar(chr) + "'");
+        return labelClause(
+                (invert ? "!(" : "") + "'" + StringUtils.escapeQuotedChar(chr) + "'" + (invert ? " _)" : ""));
     }
 }
