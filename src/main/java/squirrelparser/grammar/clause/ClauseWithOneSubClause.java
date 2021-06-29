@@ -45,6 +45,6 @@ public abstract class ClauseWithOneSubClause extends Clause {
 
     @Override
     public String toString() {
-        return labelClause(labelClause(toStringPrefix + subClauseToString(subClause) + toStringSuffix));
+        return labelClause(toStringPrefix + subClauseToString(subClause) + toStringSuffix);
     }
 }
