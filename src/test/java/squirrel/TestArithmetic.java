@@ -83,7 +83,7 @@ public class TestArithmetic {
         // tryParsing(MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'y' / A 'x');"), "xxyx");
 
         tryParsing(MetaGrammar.parse("A <- 'x'? (A 'y' / A / 'y');"), "xxyyy");
-        
+
         //        // Even though the subclauses take turns not matching, the length of the matching subclause gets longer
         //        // each time, so there's no problem. But for the Pika parser, it stops when (A 'y') can't mismatch,
         //        // due to memoization.
@@ -161,17 +161,17 @@ public class TestArithmetic {
         //        var grammar9 = MetaGrammar.parse("A <- (A 'y') / 'x';");
         //        tryParsing(grammar9, "xy");
 
-        //        // Example of multiple interlocking left recursive cycles, from:
-        //        // https://github.com/PhilippeSigaud/Pegged/wiki/Left-Recursion
-        //        var grammar10 = MetaGrammar.parse( //
-        //                "S <- E;\n" //
-        //                        + "E <- F 'n' / 'n';\n" //
-        //                        + "F <- E '+' I* / G '-';\n" //
-        //                        + "G <- H 'm' / E;\n" //
-        //                        + "H <- G 'l';\n" //
-        //                        + "I <- '(' A+ ')';\n" //
-        //                        + "A <- 'a';");
-        //        tryParsing(grammar10, "nlm-n+(aaa)n");
+        // Example of multiple interlocking left recursive cycles, from:
+        // https://github.com/PhilippeSigaud/Pegged/wiki/Left-Recursion
+        var grammar10 = MetaGrammar.parse( //
+                "S <- E;\n" //
+                        + "E <- F 'n' / 'n';\n" //
+                        + "F <- E '+' I* / G '-';\n" //
+                        + "G <- H 'm' / E;\n" //
+                        + "H <- G 'l';\n" //
+                        + "I <- '(' A+ ')';\n" //
+                        + "A <- 'a';");
+        tryParsing(grammar10, "nlm-n+(aaa)n");
         //        var grammar11 = MetaGrammar.parse( //
         //                "M <- L;" //
         //                        + "L <- P \".x\" / 'x';" //

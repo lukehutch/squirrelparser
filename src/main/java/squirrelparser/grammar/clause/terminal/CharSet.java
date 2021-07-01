@@ -25,8 +25,6 @@ package squirrelparser.grammar.clause.terminal;
 
 import java.util.BitSet;
 
-import squirrelparser.node.Match;
-import squirrelparser.parser.Parser;
 import squirrelparser.utils.StringUtils;
 
 /** Matches a character or sequence of characters. */
@@ -59,14 +57,14 @@ public class CharSet extends Terminal {
     }
 
     @Override
-    public Match match(Parser parser, int pos) {
-        if (pos < parser.input.length()) {
-            char c = parser.input.charAt(pos);
+    public int matchLen(String input, int pos) {
+        if (pos < input.length()) {
+            char c = input.charAt(pos);
             if ((!invert && chars.get(c)) || (invert && !chars.get(c))) {
-                return new Match(this, pos, 1);
+                return 1;
             }
         }
-        return Match.MISMATCH;
+        return -1;
     }
 
     @Override

@@ -23,9 +23,6 @@
 //
 package squirrelparser.grammar.clause.terminal;
 
-import squirrelparser.node.Match;
-import squirrelparser.parser.Parser;
-
 /**
  * Match a run of zero or more whitespace characters, defined by {@link Character#isWhitespace()}. (Always matches,
  * even if the character at the current position is not a whitespace character.)
@@ -37,17 +34,17 @@ public class Whitespace extends Terminal {
     }
 
     @Override
-    public Match match(Parser parser, int pos) {
+    public int matchLen(String input, int pos) {
         int currPos = pos;
-        while (currPos < parser.input.length()) {
-            if (Character.isWhitespace(parser.input.charAt(currPos))) {
+        while (currPos < input.length()) {
+            if (Character.isWhitespace(input.charAt(currPos))) {
                 currPos++;
             } else {
                 break;
             }
         }
         // Matches zero or more whitespace characters (always matches)
-        return new Match(this, pos, currPos - pos);
+        return currPos - pos;
     }
 
     @Override

@@ -18,7 +18,6 @@ import squirrelparser.grammar.Grammar;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.ClauseUtils;
-import squirrelparser.utils.MemoUtils;
 import squirrelparser.utils.MetaGrammar;
 
 public class JavaParsers {
@@ -147,7 +146,7 @@ public class JavaParsers {
         }
     }
 
-    public static long benchmarkMouse_Java14(String input) {
+    public static long benchmarkMouse23_Java14(String input) {
         var startTime = System.nanoTime();
         var parser = new MouseJava14Parser();
         boolean ok = parser.parse(new SourceString(input));
@@ -160,7 +159,7 @@ public class JavaParsers {
 
     private static Grammar squirrelGrammar_Parboiled_java6 = SquirrelParboiledJavaGrammar.grammar;
     static {
-        ClauseUtils.optimize(squirrelGrammar_Parboiled_java6);
+        ClauseUtils.inlineTerminalClauseTrees(squirrelGrammar_Parboiled_java6);
     }
 
     public static long benchmarkSquirrel_Parboiled_java6(String input) {
@@ -177,7 +176,7 @@ public class JavaParsers {
     private static Grammar squirrelGrammar_Mouse_java8 = MetaGrammar
             .parse(TestUtils.loadResourceFile("javaparse/squirrel/Mouse_Java.1.8.peg"));
     static {
-        ClauseUtils.optimize(squirrelGrammar_Mouse_java8);
+        ClauseUtils.inlineTerminalClauseTrees(squirrelGrammar_Mouse_java8);
     }
 
     public static long benchmarkSquirrel_Mouse_java8(String input) {
@@ -194,7 +193,7 @@ public class JavaParsers {
     private static Grammar squirrelGrammar_Mouse_java14 = MetaGrammar
             .parse(TestUtils.loadResourceFile("javaparse/squirrel/Mouse_Java.14.peg"));
     static {
-        ClauseUtils.optimize(squirrelGrammar_Mouse_java14);
+        ClauseUtils.inlineTerminalClauseTrees(squirrelGrammar_Mouse_java14);
     }
 
     public static long benchmarkSquirrel_Mouse_java14(String input) {

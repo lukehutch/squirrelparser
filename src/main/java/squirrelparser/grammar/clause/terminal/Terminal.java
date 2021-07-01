@@ -24,7 +24,23 @@
 package squirrelparser.grammar.clause.terminal;
 
 import squirrelparser.grammar.clause.Clause;
+import squirrelparser.node.Match;
+import squirrelparser.parser.Parser;
 
 /** A termial {@link Clause}. */
 public abstract class Terminal extends Clause {
+    @Override
+    public Match match(Parser parser, int pos) {
+        var matchLen = matchLen(parser.input, pos);
+        return matchLen < 0 ? Match.MISMATCH : new Match(this, pos, matchLen);
+    }
+
+    /**
+     * Match this terminal clause at the given position in the input, returning the length of the match.
+     * 
+     * @param input The input string.
+     * @param pos   The start position to try matching from.
+     * @return The match length, or -1 if this clause did not match at this position.
+     */
+    public abstract int matchLen(String input, int pos);
 }

@@ -47,6 +47,7 @@ import squirrelparser.grammar.clause.terminal.Char;
 import squirrelparser.grammar.clause.terminal.CharRange;
 import squirrelparser.grammar.clause.terminal.CharSeq;
 import squirrelparser.grammar.clause.terminal.CharSet;
+import squirrelparser.grammar.clause.terminal.Collect;
 import squirrelparser.grammar.clause.terminal.Nothing;
 import squirrelparser.grammar.clause.terminal.Terminal;
 import squirrelparser.grammar.clause.terminal.Whitespace;
@@ -74,7 +75,9 @@ public class MetaGrammar {
 
     public static char LONGEST_SEPARATOR = '|';
 
-    public static String AND_SEPARATOR = "&&";
+    public static char COLLECT_START = '{';
+
+    public static char COLLECT_END = '}';
 
     // -------------------------------------------------------------------------------------------------------------
 
@@ -147,6 +150,7 @@ public class MetaGrammar {
     private static final String NOTHING_AST = "Nothing";
     private static final String WHITESPACE_AST = "Whitespace";
     private static final String ANY_AST = "Any";
+    private static final String COLLECT_AST = "Collect";
 
     /** Metagrammar. */
     public static Grammar metaGrammar() {
@@ -162,9 +166,12 @@ public class MetaGrammar {
 
                 // Define precedence order for clause sequences
 
-                // Parens
+                // Parens / Collect
                 rule(CLAUSE, 9, /* associativity = */ null, //
-                        seq(c('('), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC), c(')'))), //
+                        first(seq(c('('), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC), c(')')), //
+                                ast(COLLECT_AST,
+                                        seq(c(COLLECT_START), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC),
+                                                c(COLLECT_END))))), //
 
                 // Terminals
                 rule(CLAUSE, 8, /* associativity = */ null, //
@@ -345,6 +352,12 @@ public class MetaGrammar {
         return clause;
     }
 
+    /** Set the AST node label of a clause, then return the clause. */
+    public static Clause ast(String astNodeLabel, Clause clause) {
+        clause.astNodeLabel = astNodeLabel;
+        return clause;
+    }
+
     /** Construct a {@link Seq} clause. */
     public static Clause seq(Clause... subClauses) {
         return new Seq(subClauses);
@@ -507,12 +520,6 @@ public class MetaGrammar {
         return new CharSet(bs, invert);
     }
 
-    /** Set the AST node label of a clause, then return the clause. */
-    public static Clause ast(String astNodeLabel, Clause clause) {
-        clause.astNodeLabel = astNodeLabel;
-        return clause;
-    }
-
     /** Construct a new {@link RuleRef}. */
     public static Clause ruleRef(String ruleName) {
         return new RuleRef(ruleName);
@@ -521,6 +528,11 @@ public class MetaGrammar {
     /** Construct a new {@link AnyChar}. */
     public static Clause any() {
         return new AnyChar();
+    }
+
+    /** Construct a new {@link Collect}. */
+    public static Clause collect(Clause terminalClauseTree) {
+        return new Collect(terminalClauseTree);
     }
 
     // -------------------------------------------------------------------------------------------------------------
@@ -597,6 +609,9 @@ public class MetaGrammar {
             break;
         case ANY_AST:
             clause = any();
+            break;
+        case COLLECT_AST:
+            clause = collect(expectOne(parseASTNodes(astNode.children), astNode));
             break;
         default:
             throw new IllegalArgumentException("Unexpected grammar AST node label: " + astNode.label);

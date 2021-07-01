@@ -23,8 +23,6 @@
 //
 package squirrelparser.grammar.clause.terminal;
 
-import squirrelparser.node.Match;
-import squirrelparser.parser.Parser;
 import squirrelparser.utils.StringUtils;
 
 /** Matches a sequence of characters (i.e. a fixed string). */
@@ -42,12 +40,12 @@ public class CharSeq extends Terminal {
     }
 
     @Override
-    public Match match(Parser parser, int pos) {
-        if (pos <= parser.input.length() - seq.length()
-                && parser.input.regionMatches(ignoreCase, pos, seq, 0, seq.length())) {
-            return new Match(this, pos, seq.length());
+    public int matchLen(String input, int pos) {
+        if (pos <= input.length() - seq.length()
+                && input.regionMatches(ignoreCase, pos, seq, 0, seq.length())) {
+            return seq.length();
         } else {
-            return Match.MISMATCH;
+            return -1;
         }
     }
 

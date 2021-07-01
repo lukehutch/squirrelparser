@@ -31,7 +31,7 @@ import squirrelparser.parser.Parser;
 public class RuleRef extends Clause {
     /** The name of the referenced rule. */
     public String refdRuleName;
-    
+
     /** The top clause in the referenced rule. */
     public Clause refdRule;
 

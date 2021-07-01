@@ -23,6 +23,8 @@
 //
 package squirrelparser.grammar.clause;
 
+import org.parboiled2.Rule;
+
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 import squirrelparser.utils.ClauseUtils;

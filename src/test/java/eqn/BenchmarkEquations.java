@@ -1,15 +1,6 @@
 package eqn;
 
-import static squirrelparser.utils.MetaGrammar.assignRuleName;
-import static squirrelparser.utils.MetaGrammar.c;
-import static squirrelparser.utils.MetaGrammar.cRange;
-import static squirrelparser.utils.MetaGrammar.first;
-import static squirrelparser.utils.MetaGrammar.oneOrMore;
-import static squirrelparser.utils.MetaGrammar.ruleRef;
-import static squirrelparser.utils.MetaGrammar.seq;
-
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -20,10 +11,14 @@ import org.parboiled.annotations.BuildParseTree;
 import org.parboiled.parserunners.ReportingParseRunner;
 
 import eqn.antlr4.EquationLexer;
+import eqn.mouse.MouseEqnLeftRecParser;
+import eqn.mouse.MouseEqnParser;
 import eqn.parboiled2.Parboiled2EqnParser;
+import mouse.runtime.SourceString;
 import squirrelparser.grammar.Grammar;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
+import squirrelparser.utils.MetaGrammar;
 
 public class BenchmarkEquations {
 
@@ -103,17 +98,58 @@ public class BenchmarkEquations {
         //        return -1;
     }
 
-    public static long benchmarkSquirrel(String input) {
-        var grammar = new Grammar(Arrays.asList( //
-                assignRuleName("Eqn", ruleRef("Prec0")), //
-                assignRuleName("Prec4", seq(c('('), ruleRef("Prec0"), c(')'))), //
-                assignRuleName("Prec3", first(oneOrMore(cRange('0', '9')), ruleRef("Prec4"))), //
-                assignRuleName("Prec2", first(seq(c('-'), ruleRef("Prec3")), ruleRef("Prec3"))), //
-                assignRuleName("Prec1",
-                        first(seq(ruleRef("Prec2"), first(c('*'), c('/')), ruleRef("Prec2")), ruleRef("Prec2"))),
-                assignRuleName("Prec0",
-                        first(seq(ruleRef("Prec1"), first(c('+'), c('-')), ruleRef("Prec1")), ruleRef("Prec1")))));
+    public static long benchmarkMouse23(String input) {
+        var startTime = System.nanoTime();
+        var parser = new MouseEqnParser();
+        boolean ok = parser.parse(new SourceString(input));
+        if (!ok) {
+            return -1;
+        }
+        var elapsedTime = System.nanoTime() - startTime;
+        return elapsedTime;
+    }
 
+    public static long benchmarkMouse23LeftRec(String input) {
+        var startTime = System.nanoTime();
+        var parser = new MouseEqnLeftRecParser();
+        boolean ok = parser.parse(new SourceString(input));
+        if (!ok) {
+            return -1;
+        }
+        var elapsedTime = System.nanoTime() - startTime;
+        return elapsedTime;
+    }
+
+    private static final Grammar SQUIRREL_GRAMMAR = MetaGrammar.parse( //
+            "Eqn <- Prec0;\n" //
+                    + "Prec4 <- '(' Prec0 ')';\n" //
+                    + "Prec3 <- [0-9]+ / Prec4;\n" //
+                    + "Prec2 <- ('-' Prec3) / Prec3;\n" //
+                    + "Prec1 <- (Prec2 ('*' / '/') Prec2) / Prec2;\n" //
+                    + "Prec0 <- (Prec1 ('+' / '-') Prec1) / Prec1;");
+
+    private static final Grammar SQUIRREL_GRAMMAR_LEFT_REC = MetaGrammar.parse( //
+            "Eqn <- Prec0;\n" //
+                    + "Prec4 <- '(' Prec0 ')';\n" //
+                    + "Prec3 <- [0-9]+ / Prec4;\n" //
+                    + "Prec2 <- ('-' (Prec2 / Prec3)) / Prec3;\n" //
+                    + "Prec1 <- (Prec1 ('*' / '/') Prec2) / Prec2;\n" //
+                    + "Prec0 <- (Prec0 ('+' / '-') Prec1) / Prec1;");
+
+    public static long benchmarkSquirrel(String input) {
+        var grammar = SQUIRREL_GRAMMAR;
+        var startTime = System.nanoTime();
+        var parser = new Parser(grammar);
+        var match = parser.parse(input);
+        if (match == Match.MISMATCH || match.len < input.length()) {
+            return -1;
+        }
+        var elapsedTime = System.nanoTime() - startTime;
+        return elapsedTime;
+    }
+
+    public static long benchmarkSquirrelLeftRec(String input) {
+        var grammar = SQUIRREL_GRAMMAR_LEFT_REC;
         var startTime = System.nanoTime();
         var parser = new Parser(grammar);
         var match = parser.parse(input);
@@ -125,14 +161,18 @@ public class BenchmarkEquations {
     }
 
     public static void main(String[] args) throws IOException {
+        var maxDepth = 10;
         var totSquirrel = 0.0;
+        var totSquirrelLeftRec = 0.0;
+        var totMouse = 0.0;
+        var totMouseLeftRec = 0.0;
         var totAntlr4 = 0.0;
         var totParb1 = 0.0;
         var totParb2 = 0.0;
         {
             System.out.println("\nSquirrel: ======================");
             var eq = new EquationGenerator();
-            for (int depth = 0; depth < 20; depth++) {
+            for (int depth = 0; depth < maxDepth; depth++) {
                 for (int i = 0; i < 100; i++) {
                     var input = eq.generateEquation(depth);
                     var time = benchmarkSquirrel(input);
@@ -141,43 +181,85 @@ public class BenchmarkEquations {
                 }
             }
         }
+        {
+            // Squirrel runs at 0.6x the speed with the left recursive grammar on the same inputs
+            // (this is the overhead of expanding every left argument one extra time in every position)
+            // -- when left recursion is rare, the overhead will be lower.
+            System.out.println("\nSquirrel Left Rec: ======================");
+            var eq = new EquationGenerator();
+            for (int depth = 0; depth < maxDepth; depth++) {
+                for (int i = 0; i < 100; i++) {
+                    var input = eq.generateEquation(depth);
+                    var time = benchmarkSquirrelLeftRec(input);
+                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+                    totSquirrelLeftRec += time;
+                }
+            }
+        }
+        {
+            System.out.println("\nMouse: ======================");
+            var eq = new EquationGenerator();
+            for (int depth = 0; depth < maxDepth; depth++) {
+                for (int i = 0; i < 100; i++) {
+                    var input = eq.generateEquation(depth);
+                    var time = benchmarkMouse23(input);
+                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+                    totMouse += time;
+                }
+            }
+        }
+        {
+            // Mouse runs 1.06x faster with the left recursive grammar on the same inputs.. no idea why.
+            // Memoization makes no difference for this example.
+            System.out.println("\nMouse Left Rec: ======================");
+            var eq = new EquationGenerator();
+            for (int depth = 0; depth < maxDepth; depth++) {
+                for (int i = 0; i < 100; i++) {
+                    var input = eq.generateEquation(depth);
+                    var time = benchmarkMouse23LeftRec(input);
+                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+                    totMouseLeftRec += time;
+                }
+            }
+        }
         //        {
         //            System.out.println("\nAntlr: ======================");
         //            var eq = new EquationGenerator();
-        //            for (int depth = 0; depth < 20; depth++) {
+        //            for (int depth = 0; depth < maxDepth; depth++) {
         //                for (int i = 0; i < 100; i++) {
         //                    var input = eq.generateEquation(depth);
-        //                    var time = benchmarkAntlr(input);
+        //                    var time = benchmarkAntlr4(input);
         //                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
         //                    totAntlr4 += time;
         //                }
         //            }
         //        }
         //        {
-        //      System.out.println("\nParboiled1: ======================");
-        //      var eq = new EquationGenerator();
-        //      for (int depth = 0; depth < 14; depth++) {
-        //          for (int i = 0; i < 100; i++) {
-        //              var input = eq.generateEquation(depth);
-        //              var time = benchmarkParboiled1(input);
-        //              System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
-        //              totParb1 += time;
-        //          }
-        //      }
-        //  }
-        {
-            System.out.println("\nParboiled2: ======================");
-            var eq = new EquationGenerator();
-            for (int depth = 0; depth < 14; depth++) {
-                for (int i = 0; i < 100; i++) {
-                    var input = eq.generateEquation(depth);
-                    var time = benchmarkParboiled2(input);
-                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
-                    totParb2 += time;
-                }
-            }
-        }
-        System.out.println("\nTOT:\n\n" + totSquirrel * 1.0e-9 + "\t" + totAntlr4 * 1.0e-9 + "\t"
+        //            System.out.println("\nParboiled1: ======================");
+        //            var eq = new EquationGenerator();
+        //            for (int depth = 0; depth < maxDepth; depth++) {
+        //                for (int i = 0; i < 100; i++) {
+        //                    var input = eq.generateEquation(depth);
+        //                    var time = benchmarkParboiled1(input);
+        //                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+        //                    totParb1 += time;
+        //                }
+        //            }
+        //        }
+        //        {
+        //            System.out.println("\nParboiled2: ======================");
+        //            var eq = new EquationGenerator();
+        //            for (int depth = 0; depth < maxDepth; depth++) {
+        //                for (int i = 0; i < 100; i++) {
+        //                    var input = eq.generateEquation(depth);
+        //                    var time = benchmarkParboiled2(input);
+        //                    System.out.println(depth + "\t" + input.length() + "\t" + time * 1.0e-9);
+        //                    totParb2 += time;
+        //                }
+        //            }
+        //        }
+        System.out.println("\nTOT:\n\n" + totSquirrel * 1.0e-9 + "\t" + totSquirrelLeftRec * 1.0e-9 + "\t"
+                + totMouse * 1.0e-9 + "\t" + totMouseLeftRec * 1.0e-9 + "\t" + totAntlr4 * 1.0e-9 + "\t"
                 + totParb1 * 1.0e-9 + "\t" + totParb2 * 1.0e-9);
     }
 }

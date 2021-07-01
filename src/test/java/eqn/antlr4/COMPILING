@@ -1,4 +1,4 @@
 
-- Download antlr-complete from https://www.antlr.org/download.html
+- Download antlr-complete from https://www.antlr.org/download.html (click "ANTLR tool itself")
 - java -jar ~/Downloads/antlr-4.9.2-complete.jar Equation.g4
 - javac -cp ~/Downloads/antlr-4.9.2-complete.jar *.java

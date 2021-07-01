@@ -23,8 +23,6 @@
 //
 package squirrelparser.grammar.clause.terminal;
 
-import squirrelparser.node.Match;
-import squirrelparser.parser.Parser;
 import squirrelparser.utils.MetaGrammar;
 
 /**
@@ -39,11 +37,11 @@ import squirrelparser.utils.MetaGrammar;
  */
 public class AnyChar extends Terminal {
     @Override
-    public Match match(Parser parser, int pos) {
-        if (pos < parser.input.length()) {
-            return new Match(this, pos, 1);
+    public int matchLen(String input, int pos) {
+        if (pos < input.length()) {
+            return 1;
         }
-        return Match.MISMATCH;
+        return -1;
     }
 
     @Override

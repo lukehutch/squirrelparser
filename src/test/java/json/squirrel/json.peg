@@ -1,0 +1,16 @@
+
+JSONDoc <- S JSON;
+
+S <- { [\t\n\r ]* };
+
+JSON <- ( obj:Object / arr:Array / str:String / bool:"true" / bool:"false" / nullval:"null" / num:Number ) S;
+
+Object <- '{' S ( entry:(key:String S ':' S val:JSON) (entry:( ',' S key:String S ':'  JSON ))* )? '}';
+
+Array <- '[' S ( elt:JSON ( ',' S elt:JSON )* )? ']';
+
+String <- { '"' ( [^\\"\u0000-\u001f]
+                  / ('\\' ( ["/\\bfnrt] / 'u' [0-9A-Fa-f] [0-9A-Fa-f] [0-9A-Fa-f] [0-9A-Fa-f] ) )
+                )* '"' };
+
+Number <- { '-'? ('0' / [1-9] [0-9]*) ('.' [0-9]+)? (( 'e' / 'E' ) ( '+' / '-' )? [0-9]+)? };

@@ -146,7 +146,6 @@ public class ParsingWorkbench {
             @Override
             public void undoableEditHappened(UndoableEditEvent e) {
                 undoManager.addEdit(e.getEdit());
-                System.out.println(e);
             }
         });
         area.getActionMap().put("Undo", new AbstractAction("Undo") {
@@ -159,7 +158,6 @@ public class ParsingWorkbench {
                         undoManager.undo();
                     }
                 } catch (CannotUndoException e) {
-                    System.out.println(e);
                 }
             }
         });
@@ -174,7 +172,6 @@ public class ParsingWorkbench {
                         undoManager.redo();
                     }
                 } catch (CannotRedoException e) {
-                    System.out.println(e);
                 }
             }
         });

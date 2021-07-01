@@ -42,7 +42,8 @@ public class OneOrMore extends ClauseWithOneSubClause {
     @Override
     public Match match(Parser parser, int pos) {
         ArrayList<Match> subClauseMatches = null;
-        for (int currPos = pos;;) {
+        var currPos = pos;
+        while (true) {
             var subClauseMatch = subClause.match(parser, currPos);
             if (subClauseMatch == Match.MISMATCH) {
                 break;
@@ -59,7 +60,7 @@ public class OneOrMore extends ClauseWithOneSubClause {
         }
         if (subClauseMatches != null) {
             subClauseMatches.trimToSize();
-            return new Match(this, pos, subClauseMatches);
+            return new Match(this, pos, currPos - pos, subClauseMatches);
         } else {
             return Match.MISMATCH;
         }

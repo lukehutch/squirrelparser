@@ -31,6 +31,7 @@ import java.util.Map;
 
 import squirrelparser.grammar.Grammar;
 import squirrelparser.grammar.clause.Clause;
+import squirrelparser.node.ASTNode;
 import squirrelparser.node.Match;
 
 /** The parser (holds the memo table and other parsing information). */
@@ -69,7 +70,7 @@ public class Parser {
     public static boolean DEBUG = false;
 
     // -------------------------------------------------------------------------------------------------------------
-    
+
     /** Construct a parser. */
     public Parser(Grammar grammar) {
         this.grammar = grammar;
@@ -153,5 +154,18 @@ public class Parser {
             rulePosRecycler = null;
         }
         return topMatch;
+    }
+
+    /**
+     * Start parsing from the top rule at the beginning of the input. Parses directly to AST form, rather than
+     * returning the raw parse tree.
+     */
+    public ASTNode parseToAST(String input) {
+        var topMatch = parse(input);
+        if (topMatch.len < input.length()) {
+            // TODO: better error reporting
+            throw new IllegalArgumentException("Did not parse all of input");
+        }
+        return new ASTNode(topMatch, input);
     }
 }

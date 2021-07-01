@@ -42,39 +42,39 @@ public class BenchmarkJavaParsing {
             // to fail to parse a file (the other common reason is the presence of lambdas)
             input = input.replace("<>", "");
 
-            var timeParb1 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkParboiled1_java, input);
+            var timeParb1 = 0L;//JavaParsers.benchmarkParboiled1_java(input);
             if (timeParb1 < 0) {
                 continue; // Skips source files with Java 7+ features
             }
 
-            var timeParb2 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkParboiled2_java, input);
+            var timeParb2 = 0L;//JavaParsers.benchmarkParboiled2_java(input);
             if (timeParb2 < 0) {
                 continue; // Skips source files with Java 7+ features
             }
 
             // Run Antlr parse just once, because Antlr has very high cold startup times (taking the minimum
             // across 5 runs is not representative of normal parsing times)
-            var timeAntlr_java = 0L;//JavaParsers.benchmarkAntlr_java(input);
+            var timeAntlr_java = 0L;//JavaParsers.benchmarkAntlr4_java(input);
             if (timeAntlr_java < 0) {
                 continue;
             }
-            var timeAntlr_java8 = 0L;//JavaParsers.benchmarkAntlr_java8(input);
+            var timeAntlr_java8 = 0L;//JavaParsers.benchmarkAntlr4_java8(input);
             if (timeAntlr_java8 < 0) {
                 continue;
             }
-            var timeAntlr_java9 = 0L;//JavaParsers.benchmarkAntlr_java9(input);
+            var timeAntlr_java9 = 0L;//JavaParsers.benchmarkAntlr4_java9(input);
             if (timeAntlr_java9 < 0) {
                 continue;
             }
-            var timeMouse_Java14 = JavaParsers.benchmarkMouse_Java14(input);
+            var timeMouse_Java14 = 0L;//JavaParsers.benchmarkMouse23_Java14(input);
             if (timeMouse_Java14 < 0) {
                 continue;
             }
-            var timeSquirrel_Parb1_java6 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkSquirrel_Parboiled_java1p6, input);
+            var timeSquirrel_Parb1_java6 = JavaParsers.benchmarkSquirrel_Parboiled_java6(input);
             if (timeSquirrel_Parb1_java6 < 0) {
                 continue;
             }
-            var timeSquirrel_Mouse8 = 0L;//TestUtils.findMinTime(JavaParsers::benchmarkSquirrel_Mouse_java1p8, input);
+            var timeSquirrel_Mouse8 = JavaParsers.benchmarkSquirrel_Mouse_java8(input);
             if (timeSquirrel_Mouse8 < 0) {
                 continue;
             }
@@ -85,8 +85,8 @@ public class BenchmarkJavaParsing {
             numFilesParsed++;
             System.out.println(path + "\t" + input.length() + "\t" + timeParb1 * 1.0e-9 + "\t" + timeParb2 * 1.0e-9
                     + "\t" + timeAntlr_java * 1.0e-9 + "\t" + timeAntlr_java8 * 1.0e-9 + "\t"
-                    + timeAntlr_java9 * 1.0e-9 + "\t" + timeSquirrel_Parb1_java6 * 1.0e-9 + "\t"
-                    + timeMouse_Java14 * 1.0e-9 + "\t" + +timeSquirrel_Mouse8 * 1.0e-9 + "\t"
+                    + timeAntlr_java9 * 1.0e-9 + "\t" + timeMouse_Java14 * 1.0e-9 + "\t"
+                    + timeSquirrel_Parb1_java6 * 1.0e-9 + "\t" + +timeSquirrel_Mouse8 * 1.0e-9 + "\t"
                     + +timeSquirrel_Mouse14 * 1.0e-9);
         }
         System.out.println("Parsed " + numFilesParsed + " files");

@@ -1,3 +1,5 @@
+// The Mouse PEG grammar for Java 14, ported to Squirrel's PEG rules
+
 //===========================================================================
 //
 //  Parsing Expression Grammar of Java for Mouse 2.2.

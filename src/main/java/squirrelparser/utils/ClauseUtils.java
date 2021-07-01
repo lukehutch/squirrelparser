@@ -65,8 +65,11 @@ public class ClauseUtils {
         return subClausePrec < /* astNodeLabel precedence */ MetaGrammar.AST_NODE_LABEL_PRECEDENCE;
     }
 
-    /** Optimize a grammar by inlining clauses that do not contain any RuleRefs. */
-    public static void optimize(Grammar grammar) {
+    /**
+     * Optimize a grammar by repeatedly inlining clauses that do not contain any RuleRefs, until no more clauses can
+     * be inlined.
+     */
+    public static void inlineTerminalClauseTrees(Grammar grammar) {
         var numInlined = new AtomicInteger(0);
         var numInlinePasses = new AtomicInteger(0);
         for (;;) {
@@ -84,16 +87,24 @@ public class ClauseUtils {
                     inlineableRules.add(rule.ruleName);
                 }
             }
-            // Inline RuleRefs if they refer to inlineable rules, as long as there is no AST node label
+            // Inline rules that contain no RuleRefs
             var inlinedRule = new AtomicBoolean(false);
             var rewrittenRules = new ArrayList<Clause>();
             for (var rule : grammar.rules) {
                 rewrittenRules.add(rule.visit(clause -> {
-                    if (clause.astNodeLabel == null && clause instanceof RuleRef
-                            && inlineableRules.contains(((RuleRef) clause).refdRuleName)) {
+                    if (clause instanceof RuleRef && inlineableRules.contains(((RuleRef) clause).refdRuleName)) {
                         inlinedRule.set(true);
                         numInlined.incrementAndGet();
-                        return ((RuleRef) clause).refdRule;
+                        var refdRule = ((RuleRef) clause).refdRule;
+                        if (clause.astNodeLabel == null) {
+                            // If RuleRef clause has an AST node label, preserve that by
+                            // inserting a Seq clause with just one subclause to hold the label
+                            var wrapperSeq = new Seq(refdRule);
+                            wrapperSeq.astNodeLabel = clause.astNodeLabel;
+                            return wrapperSeq;
+                        } else {
+                            return refdRule;
+                        }
                     }
                     return clause;
                 }));

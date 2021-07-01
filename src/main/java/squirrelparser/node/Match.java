@@ -65,18 +65,9 @@ public class Match {
         this.subClauseMatches = subClauseMatches;
     }
 
-    /** Find total length (in characters) of a list of subclause matches. */
-    private static int totLen(List<Match> subClauseMatches) {
-        var totLen = 0;
-        for (int i = 0; i < subClauseMatches.size(); i++) {
-            totLen += subClauseMatches.get(i).len;
-        }
-        return totLen;
-    }
-
     /** A match with zero or more subclause matches. */
-    public Match(Clause clause, int pos, List<Match> subClauseMatches) {
-        this(clause, pos, totLen(subClauseMatches), 0, subClauseMatches);
+    public Match(Clause clause, int pos, int len, List<Match> subClauseMatches) {
+        this(clause, pos, len, 0, subClauseMatches);
     }
 
     /** A match with a single subclause match. */
@@ -97,7 +88,7 @@ public class Match {
     }
 
     /** A match of a {@link Terminal}. */
-    public Match(Terminal clause, int pos, int len) {
+    public Match(Clause clause, int pos, int len) {
         this(clause, pos, len, 0, Collections.emptyList());
     }
 

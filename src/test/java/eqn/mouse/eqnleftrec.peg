@@ -1,0 +1,6 @@
+Eqn = Prec0;
+Prec4 = "(" Prec0 ")";
+Prec3 = [0-9]+ / Prec4;
+Prec2 = ("-" (Prec2 / Prec3)) / Prec3;
+Prec1 = (Prec1 ("*" / "/") Prec2) / Prec2;
+Prec0 = (Prec0 ("+" / "-") Prec1) / Prec1;

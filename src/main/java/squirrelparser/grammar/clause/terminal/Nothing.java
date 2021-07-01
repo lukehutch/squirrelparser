@@ -23,15 +23,12 @@
 //
 package squirrelparser.grammar.clause.terminal;
 
-import squirrelparser.node.Match;
-import squirrelparser.parser.Parser;
-
 /** Always matches, consuming zero characters. */
 public class Nothing extends Terminal {
     @Override
-    public Match match(Parser parser, int pos) {
+    public int matchLen(String input, int pos) {
         // Zero-width match (always matches)
-        return new Match(this, pos);
+        return 0;
     }
 
     @Override
