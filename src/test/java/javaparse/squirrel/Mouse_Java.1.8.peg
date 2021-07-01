@@ -39,19 +39,18 @@
 Compilation
     <- Spacing CompilationUnit SUB? EOT;
 
-_ <- [\u0000-\uFFFF] ;
 SUB <- '\u001a' ;
 EOT <- !_ ;
-WS <- [ \t\r\n\u000C] ;
+WS <- { [ \t\r\n\u000C] } ;
 
 Spacing
-    <- ( WS+
+    <- { ( WS+
          / "/**/"
          / "/*" (_ !"*/")* _ "*/"
          / "//" [^\r\n]*
-       )* ;
+       )* } ;
 
-Identifier  <- !Keyword Letter LetterOrDigit* Spacing ;
+Identifier  <- { !Keyword Letter LetterOrDigit* } Spacing ;
 
 Letter <- [a-z] / [A-Z] / [_$] ;
 
@@ -176,11 +175,11 @@ Literal
     ;
 
 IntegerLiteral
-    <- ( HexNumeral
+    <- { ( HexNumeral
       / BinaryNumeral
       / OctalNumeral
       / DecimalNumeral
-      ) [lL]? Spacing
+      ) [lL]? } Spacing
     ;
 
 DecimalNumeral
@@ -189,18 +188,18 @@ DecimalNumeral
     ;
 
 HexNumeral
-    <- ("0x" / "0X") HexDigits ;
+    <- ("0x" / "0X") HexDigits;
 
 OctalNumeral
-    <- "0" ([_]*[0-7])+ ;
+    <- "0" ([_]*[0-7])+;
 
 BinaryNumeral
-    <- ("0b" / "0B") [01]([_]*[01])* ;
+    <- ("0b" / "0B") [01]([_]*[01])*;
 
 FloatLiteral
-    <- ( HexadecimalFloatingPointLiteral
+    <- { ( HexadecimalFloatingPointLiteral
       / DecimalFloatingPointLiteral
-      ) Spacing
+      ) } Spacing
     ;
 
 DecimalFloatingPointLiteral
@@ -239,11 +238,11 @@ BooleanLiteral
     ;
 
 CharLiteral
-    <- "'" (Escape / !['\\\n\r] _) "'" Spacing
+    <- { "'" (Escape / !['\\\n\r] _) "'" } Spacing
     ;
 
 StringLiteral
-    <- "\"" (Escape / !["\\\n\r] _)* "\"" Spacing
+    <- { "\"" (Escape / !["\\\n\r] _)* "\"" } Spacing
     ;
 
 Escape

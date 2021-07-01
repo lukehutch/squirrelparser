@@ -50,7 +50,7 @@ public class BenchmarkJSONParsing {
     private static Grammar squirrel_JSONGrammar = MetaGrammar
             .parse(TestUtils.loadResourceFile("json/squirrel/json.peg"));
     static {
-        ClauseUtils.inlineTerminalClauseTrees(squirrel_JSONGrammar);
+        // ClauseUtils.inlineTerminalClauseTrees(squirrel_JSONGrammar);
     }
 
     public static long benchmarkSquirrel_JSON(String input) {

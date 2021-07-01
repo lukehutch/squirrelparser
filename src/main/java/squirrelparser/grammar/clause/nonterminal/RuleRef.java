@@ -24,6 +24,7 @@
 package squirrelparser.grammar.clause.nonterminal;
 
 import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.SubClauseVisitor;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
@@ -54,6 +55,11 @@ public class RuleRef extends Clause {
         }
     }
 
+    @Override
+    protected void visitSubclauses(SubClauseVisitor visitor) {
+        // Don't traverse RuleRef reference when visiting clauses
+    }
+    
     @Override
     public String toString() {
         return labelClause(refdRuleName);

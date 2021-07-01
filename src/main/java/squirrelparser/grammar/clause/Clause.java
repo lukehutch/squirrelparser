@@ -62,8 +62,7 @@ public abstract class Clause {
     }
 
     /** Visit the subclauses of this clause. */
-    protected void visitSubclauses(SubClauseVisitor visitor) {
-    }
+    protected abstract void visitSubclauses(SubClauseVisitor visitor);
 
     /**
      * Prepend the AST node label of this clause to the {@link #toString()} representation of this clause, if this

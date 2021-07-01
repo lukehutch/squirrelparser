@@ -28,6 +28,7 @@ import java.util.List;
 
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
+import squirrelparser.grammar.clause.terminal.Collect;
 import squirrelparser.utils.MetaGrammar;
 
 /** A collection of {@link Rule} instances. */
@@ -50,14 +51,18 @@ public class Grammar {
         }
         this.rules = rules;
 
-        // Look up rule reference for all RuleRef instances in rule clauses
+        // Index rules by name
         var ruleMap = new HashMap<String, Clause>();
         for (var rule : rules) {
             if (rule.ruleName == null) {
                 throw new IllegalArgumentException("Rule is not named: " + rule);
             }
-            ruleMap.put(rule.ruleName, rule);
+            if (ruleMap.put(rule.ruleName, rule) != null) {
+                throw new IllegalArgumentException("Two rules with the same name: " + rule.ruleName);
+            }
         }
+
+        // Look up rule reference for all RuleRef instances in rule clauses
         for (var i = 0; i < rules.size(); i++) {
             var rule = rules.get(i);
             rule.visit(clause -> {
@@ -72,6 +77,17 @@ public class Grammar {
                 return clause;
             });
             rule.ruleIdx = i;
+        }
+
+        // Convert any Collect nodes into a tree of Terminal clauses that match much faster by not allocating
+        // intermediate Match nodes. (Must be done after RuleRef refs have been resolved.)
+        for (Clause rule : rules) {
+            rule.visit(clause -> {
+                if (clause instanceof Collect) {
+                    ((Collect) clause).convert();
+                }
+                return clause;
+            });
         }
 
         // Look up top rule of grammar

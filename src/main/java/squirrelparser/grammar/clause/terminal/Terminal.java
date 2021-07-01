@@ -24,6 +24,7 @@
 package squirrelparser.grammar.clause.terminal;
 
 import squirrelparser.grammar.clause.Clause;
+import squirrelparser.grammar.clause.SubClauseVisitor;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
 
@@ -43,4 +44,8 @@ public abstract class Terminal extends Clause {
      * @return The match length, or -1 if this clause did not match at this position.
      */
     public abstract int matchLen(String input, int pos);
+    
+    @Override
+    protected void visitSubclauses(SubClauseVisitor visitor) {
+    }
 }

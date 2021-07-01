@@ -214,20 +214,20 @@ EOT <- !_ ;
 //-------------------------------------------------------------------------
 
 Spacing
-    <- ( [ \t\r\n\u000C]+  // WhiteSpace
+    <- { ( [ \t\r\n\u000C]+  // WhiteSpace
       / "/*" (!"*/" _)* "*/"     // TraditionalComment
       / "//" (![\r\n] _)* [\r\n]   // EndOfLineComment
-      )* ;
+      )* };
 
 //-------------------------------------------------------------------------
 //  JLS 3.8  Identifiers
 //-------------------------------------------------------------------------
 
-Word <- Letter LetterOrDigit* ;
+Word <- { Letter LetterOrDigit* } ;
 
-Identifier  <- (!(Reserved !LetterOrDigit) Word) Spacing ;
+Identifier  <- { (!(Reserved !LetterOrDigit) Word) } Spacing ;
 
-TypeIdentifier  <- (!((Reserved / "var" / "yield") !LetterOrDigit) Word) Spacing ;
+TypeIdentifier  <- { (!((Reserved / "var" / "yield") !LetterOrDigit) Word) } Spacing ;
 
 Letter <- [a-z] / [A-Z] / [_$] ;
 
@@ -394,11 +394,11 @@ Literal
 //-------------------------------------------------------------------------
 
 IntegerLiteral
-    <- ( HexNumeral
+    <- { ( HexNumeral
       / BinaryNumeral
       / OctalNumeral            // May be a prefix of HexNumeral or BinaryNumeral
       / DecimalNumeral          // May be a prefix of OctalNumeral
-      ) [lL]? Spacing
+      ) [lL]? } Spacing
     ;
 
 DecimalNumeral
@@ -420,9 +420,9 @@ BinaryNumeral
 //-------------------------------------------------------------------------
 
 FloatLiteral
-    <- ( HexadecimalFloatingPointLiteral
+    <- { ( HexadecimalFloatingPointLiteral
       / DecimalFloatingPointLiteral   // May be a prefix of above
-      ) Spacing
+      ) } Spacing
     ;
 
 DecimalFloatingPointLiteral
@@ -469,7 +469,7 @@ BooleanLiteral
 //-------------------------------------------------------------------------
 
 CharLiteral
-    <- "'" (Escape / [^'\\\n\r]) "'" Spacing             // this " keeps the editor happy
+    <- { "'" (Escape / [^'\\\n\r]) "'" } Spacing             // this " keeps the editor happy
     ;
 
 //-------------------------------------------------------------------------
@@ -477,7 +477,7 @@ CharLiteral
 //-------------------------------------------------------------------------
 
 StringLiteral
-    <- "\"" (Escape / [^"\\\n\r])* "\"" Spacing          // this " keeps the editor happy
+    <- { "\"" (Escape / [^"\\\n\r])* "\"" } Spacing          // this " keeps the editor happy
     ;
 
 Escape

@@ -5,6 +5,7 @@ import static squirrelparser.utils.MetaGrammar.c;
 import static squirrelparser.utils.MetaGrammar.cInStr;
 import static squirrelparser.utils.MetaGrammar.cRange;
 import static squirrelparser.utils.MetaGrammar.cSet;
+import static squirrelparser.utils.MetaGrammar.collect;
 import static squirrelparser.utils.MetaGrammar.first;
 import static squirrelparser.utils.MetaGrammar.notFollowedBy;
 import static squirrelparser.utils.MetaGrammar.oneOrMore;
@@ -140,7 +141,7 @@ public class SquirrelParboiledJavaGrammar {
     }
 
     static Clause terminal(String string, Clause mustNotFollow) {
-        return seq(str(string), notFollowedBy(mustNotFollow), ruleRef("Spacing"));//.label('\'' + string + '\'')
+        return seq(collect(seq(str(string), notFollowedBy(mustNotFollow))), ruleRef("Spacing"));//.label('\'' + string + '\'')
     }
 
     //-------------------------------------------------------------------------
@@ -619,7 +620,7 @@ public class SquirrelParboiledJavaGrammar {
             //-------------------------------------------------------------------------
 
             //@SuppressNode
-            rule("Spacing", zeroOrMore(first(
+            rule("Spacing", collect(zeroOrMore(first(
 
                     // whitespace
                     oneOrMore(cInStr(" \t\r\n\f")),
@@ -629,7 +630,7 @@ public class SquirrelParboiledJavaGrammar {
 
                     // end of line comment
                     seq(str("//"), zeroOrMore(seq(notFollowedBy(cInStr("\r\n")), ANY)),
-                            optional(first(str("\r\n"), c('\r'), c('\n') /* , EOI */)))))),
+                            optional(first(str("\r\n"), c('\r'), c('\n') /* , EOI */))))))),
 
             //-------------------------------------------------------------------------
             //  JLS 3.8  Identifiers
@@ -638,8 +639,8 @@ public class SquirrelParboiledJavaGrammar {
             //@SuppressSubnodes
             //@MemoMismatches
             rule("Identifier",
-                    seq(notFollowedBy(ruleRef("Keyword")), ruleRef("Letter"), zeroOrMore(ruleRef("LetterOrDigit")),
-                            ruleRef("Spacing"))),
+                    collect(seq(notFollowedBy(ruleRef("Keyword")), ruleRef("Letter"),
+                            zeroOrMore(ruleRef("LetterOrDigit")), ruleRef("Spacing")))),
 
             // JLS defines letters and digits as Unicode characters recognized
             // as such by special Java procedures.
@@ -660,14 +661,14 @@ public class SquirrelParboiledJavaGrammar {
             //  JLS 3.9  Keywords
             //-------------------------------------------------------------------------
 
-            rule("Keyword",
-                    seq(first(str("assert"), str("break"), str("case"), str("catch"), str("class"), str("const"),
+            rule("Keyword", collect(seq(
+                    first(str("assert"), str("break"), str("case"), str("catch"), str("class"), str("const"),
                             str("continue"), str("default"), str("do"), str("else"), str("enum"), str("extends"),
                             str("finally"), str("final"), str("for"), str("goto"), str("if"), str("implements"),
                             str("import"), str("interface"), str("instanceof"), str("new"), str("package"),
                             str("return"), str("static"), str("super"), str("switch"), str("synchronized"),
                             str("this"), str("throws"), str("throw"), str("try"), str("void"), str("while")),
-                            notFollowedBy(ruleRef("LetterOrDigit")))),
+                    notFollowedBy(ruleRef("LetterOrDigit"))))),
 
             //-------------------------------------------------------------------------
             //  JLS 3.10  Literals
@@ -681,8 +682,8 @@ public class SquirrelParboiledJavaGrammar {
 
             //@SuppressSubnodes
             rule("IntegerLiteral",
-                    seq(first(ruleRef("HexNumeral"), ruleRef("OctalNumeral"), ruleRef("DecimalNumeral")),
-                            optional(cInStr("lL")))),
+                    collect(seq(first(ruleRef("HexNumeral"), ruleRef("OctalNumeral"), ruleRef("DecimalNumeral")),
+                            optional(cInStr("lL"))))),
 
             //@SuppressSubnodes
             rule("DecimalNumeral", first(c('0'), seq(cRange('1', '9'), zeroOrMore(ruleRef("Digit"))))),
@@ -697,7 +698,7 @@ public class SquirrelParboiledJavaGrammar {
             //@SuppressSubnodes
             rule("OctalNumeral", seq(c('0'), oneOrMore(cRange('0', '7')))),
 
-            rule("FloatLiteral", first(ruleRef("HexFloat"), ruleRef("DecimalFloat"))),
+            rule("FloatLiteral", collect(first(ruleRef("HexFloat"), ruleRef("DecimalFloat")))),
 
             //@SuppressSubnodes
             rule("DecimalFloat",
@@ -721,12 +722,14 @@ public class SquirrelParboiledJavaGrammar {
 
             rule("BinaryExponent", seq(cInStr("pP"), optional(cInStr("+-")), oneOrMore(ruleRef("Digit")))),
 
-            rule("CharLiteral", seq(c('\''), first(ruleRef("Escape"), seq(notFollowedBy(cInStr("'\\")), ANY)), //.ruleRef("suppressSubnodes"),
-                    c('\''))),
+            rule("CharLiteral",
+                    collect(seq(c('\''), first(ruleRef("Escape"), seq(notFollowedBy(cInStr("'\\")), ANY)), //.ruleRef("suppressSubnodes"),
+                            c('\'')))),
 
             rule("StringLiteral",
-                    seq(c('"'), zeroOrMore(first(ruleRef("Escape"), seq(notFollowedBy(cInStr("\r\n\"\\")), ANY))), //.ruleRef("suppressSubnodes"),
-                            c('"'))),
+                    collect(seq(c('"'),
+                            zeroOrMore(first(ruleRef("Escape"), seq(notFollowedBy(cInStr("\r\n\"\\")), ANY))), //.ruleRef("suppressSubnodes"),
+                            c('"')))),
 
             rule("Escape",
                     seq(c('\\'), first(cInStr("btnfr\"\'\\"), ruleRef("OctalEscape"), ruleRef("UnicodeEscape")))),
@@ -865,12 +868,13 @@ public class SquirrelParboiledJavaGrammar {
         System.out.print(")");
     }
 
+    @SuppressWarnings("unused")
     private static void convertToParboiled2() {
         System.out.println("package javaparse.parboiled2;\n\n" //
                 + "import org.parboiled2._\n\n" //
                 + "class Parboiled2JavaParser(val input: ParserInput) extends Parser {\n" //
-                + "    import Parboiled2JavaParser._\n"
-                + "    def TopRule = rule { " + grammar.rules.get(0).ruleName + " ~ EOI }");
+                + "    import Parboiled2JavaParser._\n" + "    def TopRule = rule { "
+                + grammar.rules.get(0).ruleName + " ~ EOI }");
         for (int i = 0; i < grammar.rules.size(); i++) {
             var rule = grammar.rules.get(i);
             System.out.print("    def " + rule.ruleName + " " + (i == 0 ? ": Rule1[Node] " : "") + "= rule { ");
@@ -895,7 +899,7 @@ public class SquirrelParboiledJavaGrammar {
                 + "}");
     }
 
-    public static void main(String[] args) {
-        convertToParboiled2();
-    }
+    //    public static void main(String[] args) {
+    //        convertToParboiled2();
+    //    }
 }
