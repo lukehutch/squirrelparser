@@ -101,4 +101,19 @@ public class CharSet extends Terminal {
         }
         return labelClause(buf.toString());
     }
+
+    @Override
+    protected String getConstructorParameters() {
+        var buf = new StringBuilder();
+        if (invert) {
+            buf.append("true");
+        }
+        for (int i = chars.nextSetBit(0); i >= 0; i = chars.nextSetBit(i + 1)) {
+            if (buf.length() > 0) {
+                buf.append(", ");
+            }
+            buf.append("'" + StringUtils.escapeQuotedChar((char) i) + "'");
+        }
+        return buf.toString();
+    }
 }

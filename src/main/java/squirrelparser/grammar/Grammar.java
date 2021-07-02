@@ -30,7 +30,9 @@ import org.parboiled2.Rule;
 
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
+import squirrelparser.grammar.clause.nonterminal.Seq;
 import squirrelparser.grammar.clause.terminal.Collect;
+import squirrelparser.grammar.clause.terminal.Terminal;
 import squirrelparser.utils.MetaGrammar;
 
 /** A collection of {@link Rule} instances. */
@@ -106,6 +108,27 @@ public class Grammar {
             buf.append(rule.toString());
             buf.append(MetaGrammar.RULE_END_SYMBOL);
         }
+        return buf.toString();
+    }
+
+    /** Convert a grammar to Java source. */
+    public String toJavaSource() {
+        var buf = new StringBuilder();
+        buf.append("import " + Seq.class.getPackageName() + ".*;\n");
+        buf.append("import " + Terminal.class.getPackageName() + ".*;\n");
+        buf.append("import static " + MetaGrammar.class.getName() + ".rule;\n");
+        buf.append("import java.util.Arrays;\n\n");
+        buf.append("public class Parse {\n    public static void main(String[] args) {\n");
+        buf.append("        var grammar = new Grammar(Arrays.asList(\n");
+        for (int i = 0; i < rules.size(); i++) {
+            var rule = rules.get(i);
+            buf.append("            rule(\"" + rule.ruleName + "\", " + rule.toJavaSource() + ")");
+            if (i < rules.size() - 1) {
+                buf.append(',');
+            }
+            buf.append('\n');
+        }
+        buf.append("        ));\n    }\n}");
         return buf.toString();
     }
 }

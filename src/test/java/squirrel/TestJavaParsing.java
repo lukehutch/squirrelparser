@@ -3,6 +3,7 @@ package squirrel;
 import java.io.IOException;
 
 import javaparse.JavaParsers;
+import squirrelparser.utils.MetaGrammar;
 
 public class TestJavaParsing {
     @SuppressWarnings("unused")
@@ -40,6 +41,8 @@ public class TestJavaParsing {
 //                + timeAntlr_java * 1.0e-9 + "\t" + timeAntlr_java8 * 1.0e-9 + "\t" + timeAntlr_java9 * 1.0e-9 + "\t"
 //                + timeSquirrelParb * 1.0e-9 + "\t" + +timeSquirrel_Mouse8 * 1.0e-9);
 
+        System.out.println(MetaGrammar.metaGrammar().toJavaSource());
+        
         System.out.println("Finished");
     }
 }

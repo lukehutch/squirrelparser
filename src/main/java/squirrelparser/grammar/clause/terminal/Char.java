@@ -52,7 +52,11 @@ public class Char extends Terminal {
 
     @Override
     public String toString() {
-        return labelClause(
-                (invert ? "!(" : "") + "'" + StringUtils.escapeQuotedChar(chr) + "'" + (invert ? " _)" : ""));
+        return labelClause((invert ? "[^" : "'") + StringUtils.escapeQuotedChar(chr) + (invert ? "]" : "'"));
+    }
+
+    @Override
+    protected String getConstructorParameters() {
+        return "'" + StringUtils.escapeQuotedChar(chr) + "'" + (invert ? ", true" : "");
     }
 }

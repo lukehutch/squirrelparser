@@ -10,7 +10,7 @@ import static squirrelparser.utils.MetaGrammar.first;
 import static squirrelparser.utils.MetaGrammar.notFollowedBy;
 import static squirrelparser.utils.MetaGrammar.oneOrMore;
 import static squirrelparser.utils.MetaGrammar.optional;
-import static squirrelparser.utils.MetaGrammar.rule;
+import static squirrelparser.utils.MetaGrammar.predAssocRule;
 import static squirrelparser.utils.MetaGrammar.ruleRef;
 import static squirrelparser.utils.MetaGrammar.seq;
 import static squirrelparser.utils.MetaGrammar.str;
@@ -152,39 +152,40 @@ public class SquirrelParboiledJavaGrammar {
 
     public static Grammar grammar = new Grammar(PrecAssocRuleRewriter.rewrite(Arrays.asList(
 
-            rule("CompilationUnit", seq(ruleRef("Spacing"), optional(ruleRef("PackageDeclaration")),
+            predAssocRule("CompilationUnit", seq(ruleRef("Spacing"), optional(ruleRef("PackageDeclaration")),
                     zeroOrMore(ruleRef("ImportDeclaration")), zeroOrMore(ruleRef("TypeDeclaration")) //,
             //EOI
             )),
 
-            rule("PackageDeclaration",
+            predAssocRule("PackageDeclaration",
                     seq(zeroOrMore(ruleRef("Annotation")), seq(PACKAGE, ruleRef("QualifiedIdentifier"), SEMI))),
 
-            rule("ImportDeclaration",
+            predAssocRule("ImportDeclaration",
                     seq(IMPORT, optional(STATIC), ruleRef("QualifiedIdentifier"), optional(seq(DOT, STAR)), SEMI)),
 
-            rule("TypeDeclaration",
-                    first(seq(zeroOrMore(ruleRef("Modifier")),
-                            first(ruleRef("ClassDeclaration"), ruleRef("EnumDeclaration"),
-                                    ruleRef("InterfaceDeclaration"), ruleRef("AnnotationTypeDeclaration"))),
+            predAssocRule(
+                    "TypeDeclaration", first(
+                            seq(zeroOrMore(ruleRef("Modifier")),
+                                    first(ruleRef("ClassDeclaration"), ruleRef("EnumDeclaration"),
+                                            ruleRef("InterfaceDeclaration"), ruleRef("AnnotationTypeDeclaration"))),
                             SEMI)),
 
             //-------------------------------------------------------------------------
             //  Class Declaration
             //-------------------------------------------------------------------------
 
-            rule("ClassDeclaration",
+            predAssocRule("ClassDeclaration",
                     seq(CLASS, ruleRef("Identifier"), optional(ruleRef("TypeParameters")),
                             optional(seq(EXTENDS, ruleRef("ClassType"))),
                             optional(seq(IMPLEMENTS, ruleRef("ClassTypeList"))), ruleRef("ClassBody"))),
 
-            rule("ClassBody", seq(LWING, zeroOrMore(ruleRef("ClassBodyDeclaration")), RWING)),
+            predAssocRule("ClassBody", seq(LWING, zeroOrMore(ruleRef("ClassBodyDeclaration")), RWING)),
 
-            rule("ClassBodyDeclaration",
+            predAssocRule("ClassBodyDeclaration",
                     first(SEMI, seq(optional(STATIC), ruleRef("Block")),
                             seq(zeroOrMore(ruleRef("Modifier")), ruleRef("MemberDecl")))),
 
-            rule("MemberDecl",
+            predAssocRule("MemberDecl",
                     first(seq(ruleRef("TypeParameters"), ruleRef("GenericMethodOrConstructorRest")),
                             seq(ruleRef("Type"), ruleRef("Identifier"), ruleRef("MethodDeclaratorRest")),
                             seq(ruleRef("Type"), ruleRef("VariableDeclarators"), SEMI),
@@ -193,99 +194,101 @@ public class SquirrelParboiledJavaGrammar {
                             ruleRef("InterfaceDeclaration"), ruleRef("ClassDeclaration"),
                             ruleRef("EnumDeclaration"), ruleRef("AnnotationTypeDeclaration"))),
 
-            rule("GenericMethodOrConstructorRest",
+            predAssocRule("GenericMethodOrConstructorRest",
                     first(seq(first(ruleRef("Type"), VOID), ruleRef("Identifier"), ruleRef("MethodDeclaratorRest")),
                             seq(ruleRef("Identifier"), ruleRef("ConstructorDeclaratorRest")))),
 
-            rule("MethodDeclaratorRest",
+            predAssocRule("MethodDeclaratorRest",
                     seq(ruleRef("FormalParameters"), zeroOrMore(ruleRef("Dim")),
                             optional(seq(THROWS, ruleRef("ClassTypeList"))), first(ruleRef("MethodBody"), SEMI))),
 
-            rule("VoidMethodDeclaratorRest",
+            predAssocRule("VoidMethodDeclaratorRest",
                     seq(ruleRef("FormalParameters"), optional(seq(THROWS, ruleRef("ClassTypeList"))),
                             first(ruleRef("MethodBody"), SEMI))),
 
-            rule("ConstructorDeclaratorRest",
+            predAssocRule("ConstructorDeclaratorRest",
                     seq(ruleRef("FormalParameters"), optional(seq(THROWS, ruleRef("ClassTypeList"))),
                             ruleRef("MethodBody"))),
 
-            rule("MethodBody", ruleRef("Block")),
+            predAssocRule("MethodBody", ruleRef("Block")),
 
             //-------------------------------------------------------------------------
             //  Interface Declaration
             //-------------------------------------------------------------------------
 
-            rule("InterfaceDeclaration",
+            predAssocRule("InterfaceDeclaration",
                     seq(INTERFACE, ruleRef("Identifier"), optional(ruleRef("TypeParameters")),
                             optional(seq(EXTENDS, ruleRef("ClassTypeList"))), ruleRef("InterfaceBody"))),
 
-            rule("InterfaceBody", seq(LWING, zeroOrMore(ruleRef("InterfaceBodyDeclaration")), RWING)),
+            predAssocRule("InterfaceBody", seq(LWING, zeroOrMore(ruleRef("InterfaceBodyDeclaration")), RWING)),
 
-            rule("InterfaceBodyDeclaration",
+            predAssocRule("InterfaceBodyDeclaration",
                     first(seq(zeroOrMore(ruleRef("Modifier")), ruleRef("InterfaceMemberDecl")), SEMI)),
 
-            rule("InterfaceMemberDecl",
+            predAssocRule("InterfaceMemberDecl",
                     first(ruleRef("InterfaceMethodOrFieldDecl"), ruleRef("InterfaceGenericMethodDecl"),
                             seq(VOID, ruleRef("Identifier"), ruleRef("VoidInterfaceMethodDeclaratorsRest")),
                             ruleRef("InterfaceDeclaration"), ruleRef("AnnotationTypeDeclaration"),
                             ruleRef("ClassDeclaration"), ruleRef("EnumDeclaration"))),
 
-            rule("InterfaceMethodOrFieldDecl",
+            predAssocRule("InterfaceMethodOrFieldDecl",
                     seq(seq(ruleRef("Type"), ruleRef("Identifier")), ruleRef("InterfaceMethodOrFieldRest"))),
 
-            rule("InterfaceMethodOrFieldRest",
+            predAssocRule("InterfaceMethodOrFieldRest",
                     first(seq(ruleRef("ConstantDeclaratorsRest"), SEMI), ruleRef("InterfaceMethodDeclaratorRest"))),
 
-            rule("InterfaceMethodDeclaratorRest",
+            predAssocRule("InterfaceMethodDeclaratorRest",
                     seq(ruleRef("FormalParameters"), zeroOrMore(ruleRef("Dim")),
                             optional(seq(THROWS, ruleRef("ClassTypeList"))), SEMI)),
 
-            rule("InterfaceGenericMethodDecl",
+            predAssocRule("InterfaceGenericMethodDecl",
                     seq(ruleRef("TypeParameters"), first(ruleRef("Type"), VOID), ruleRef("Identifier"),
                             ruleRef("InterfaceMethodDeclaratorRest"))),
 
-            rule("VoidInterfaceMethodDeclaratorsRest",
+            predAssocRule("VoidInterfaceMethodDeclaratorsRest",
                     seq(ruleRef("FormalParameters"), optional(seq(THROWS, ruleRef("ClassTypeList"))), SEMI)),
 
-            rule("ConstantDeclaratorsRest",
+            predAssocRule("ConstantDeclaratorsRest",
                     seq(ruleRef("ConstantDeclaratorRest"), zeroOrMore(seq(COMMA, ruleRef("ConstantDeclarator"))))),
 
-            rule("ConstantDeclarator", seq(ruleRef("Identifier"), ruleRef("ConstantDeclaratorRest"))),
+            predAssocRule("ConstantDeclarator", seq(ruleRef("Identifier"), ruleRef("ConstantDeclaratorRest"))),
 
-            rule("ConstantDeclaratorRest", seq(zeroOrMore(ruleRef("Dim")), EQU, ruleRef("VariableInitializer"))),
+            predAssocRule("ConstantDeclaratorRest",
+                    seq(zeroOrMore(ruleRef("Dim")), EQU, ruleRef("VariableInitializer"))),
 
             //-------------------------------------------------------------------------
             //  Enum Declaration
             //-------------------------------------------------------------------------
 
-            rule("EnumDeclaration",
+            predAssocRule("EnumDeclaration",
                     seq(ENUM, ruleRef("Identifier"), optional(seq(IMPLEMENTS, ruleRef("ClassTypeList"))),
                             ruleRef("EnumBody"))),
 
-            rule("EnumBody",
+            predAssocRule("EnumBody",
                     seq(LWING, optional(ruleRef("EnumConstants")), optional(COMMA),
                             optional(ruleRef("EnumBodyDeclarations")), RWING)),
 
-            rule("EnumConstants", seq(ruleRef("EnumConstant"), zeroOrMore(seq(COMMA, ruleRef("EnumConstant"))))),
+            predAssocRule("EnumConstants",
+                    seq(ruleRef("EnumConstant"), zeroOrMore(seq(COMMA, ruleRef("EnumConstant"))))),
 
-            rule("EnumConstant",
+            predAssocRule("EnumConstant",
                     seq(zeroOrMore(ruleRef("Annotation")), ruleRef("Identifier"), optional(ruleRef("Arguments")),
                             optional(ruleRef("ClassBody")))),
 
-            rule("EnumBodyDeclarations", seq(SEMI, zeroOrMore(ruleRef("ClassBodyDeclaration")))),
+            predAssocRule("EnumBodyDeclarations", seq(SEMI, zeroOrMore(ruleRef("ClassBodyDeclaration")))),
 
             //-------------------------------------------------------------------------
             //  Variable Declarations
             //-------------------------------------------------------------------------
 
-            rule("LocalVariableDeclarationStatement",
+            predAssocRule("LocalVariableDeclarationStatement",
                     seq(zeroOrMore(first(FINAL, ruleRef("Annotation"))), ruleRef("Type"),
                             ruleRef("VariableDeclarators"), SEMI)),
 
-            rule("VariableDeclarators",
+            predAssocRule("VariableDeclarators",
                     seq(ruleRef("VariableDeclarator"), zeroOrMore(seq(COMMA, ruleRef("VariableDeclarator"))))),
 
-            rule("VariableDeclarator",
+            predAssocRule("VariableDeclarator",
                     seq(ruleRef("Identifier"), zeroOrMore(ruleRef("Dim")),
                             optional(seq(EQU, ruleRef("VariableInitializer"))))),
 
@@ -293,37 +296,37 @@ public class SquirrelParboiledJavaGrammar {
             //  Formal Parameters
             //-------------------------------------------------------------------------
 
-            rule("FormalParameters", seq(LPAR, optional(ruleRef("FormalParameterDecls")), RPAR)),
+            predAssocRule("FormalParameters", seq(LPAR, optional(ruleRef("FormalParameterDecls")), RPAR)),
 
-            rule("FormalParameter",
+            predAssocRule("FormalParameter",
                     seq(zeroOrMore(first(FINAL, ruleRef("Annotation"))), ruleRef("Type"),
                             ruleRef("VariableDeclaratorId"))),
 
-            rule("FormalParameterDecls",
+            predAssocRule("FormalParameterDecls",
                     seq(zeroOrMore(first(FINAL, ruleRef("Annotation"))), ruleRef("Type"),
                             ruleRef("FormalParameterDeclsRest"))),
 
-            rule("FormalParameterDeclsRest",
+            predAssocRule("FormalParameterDeclsRest",
                     first(seq(ruleRef("VariableDeclaratorId"),
                             optional(seq(COMMA, ruleRef("FormalParameterDecls")))),
                             seq(ELLIPSIS, ruleRef("VariableDeclaratorId")))),
 
-            rule("VariableDeclaratorId", seq(ruleRef("Identifier"), zeroOrMore(ruleRef("Dim")))),
+            predAssocRule("VariableDeclaratorId", seq(ruleRef("Identifier"), zeroOrMore(ruleRef("Dim")))),
 
             //-------------------------------------------------------------------------
             //  Statements
             //-------------------------------------------------------------------------
 
-            rule("Block", seq(LWING, ruleRef("BlockStatements"), RWING)),
+            predAssocRule("Block", seq(LWING, ruleRef("BlockStatements"), RWING)),
 
-            rule("BlockStatements", zeroOrMore(ruleRef("BlockStatement"))),
+            predAssocRule("BlockStatements", zeroOrMore(ruleRef("BlockStatement"))),
 
-            rule("BlockStatement", first(ruleRef("LocalVariableDeclarationStatement"),
+            predAssocRule("BlockStatement", first(ruleRef("LocalVariableDeclarationStatement"),
                     seq(zeroOrMore(ruleRef("Modifier")),
                             first(ruleRef("ClassDeclaration"), ruleRef("EnumDeclaration"))),
                     ruleRef("Statement"))),
 
-            rule("Statement", first(ruleRef("Block"),
+            predAssocRule("Statement", first(ruleRef("Block"),
                     seq(ASSERT, ruleRef("Expression"), optional(seq(COLON, ruleRef("Expression"))), SEMI),
                     seq(IF, ruleRef("ParExpression"), ruleRef("Statement"),
                             optional(seq(ELSE, ruleRef("Statement")))),
@@ -344,27 +347,27 @@ public class SquirrelParboiledJavaGrammar {
                     seq(seq(ruleRef("Identifier"), COLON), ruleRef("Statement")),
                     seq(ruleRef("StatementExpression"), SEMI), SEMI)),
 
-            rule("Catch_", seq(CATCH, LPAR, ruleRef("FormalParameter"), RPAR, ruleRef("Block"))),
+            predAssocRule("Catch_", seq(CATCH, LPAR, ruleRef("FormalParameter"), RPAR, ruleRef("Block"))),
 
-            rule("Finally_", seq(FINALLY, ruleRef("Block"))),
+            predAssocRule("Finally_", seq(FINALLY, ruleRef("Block"))),
 
-            rule("SwitchBlockStatementGroups", zeroOrMore(ruleRef("SwitchBlockStatementGroup"))),
+            predAssocRule("SwitchBlockStatementGroups", zeroOrMore(ruleRef("SwitchBlockStatementGroup"))),
 
-            rule("SwitchBlockStatementGroup", seq(ruleRef("SwitchLabel"), ruleRef("BlockStatements"))),
+            predAssocRule("SwitchBlockStatementGroup", seq(ruleRef("SwitchLabel"), ruleRef("BlockStatements"))),
 
-            rule("SwitchLabel",
+            predAssocRule("SwitchLabel",
                     first(seq(CASE, ruleRef("ConstantExpression"), COLON),
                             seq(CASE, ruleRef("EnumConstantName"), COLON), seq(DEFAULT, COLON))),
 
-            rule("ForInit", first(
+            predAssocRule("ForInit", first(
                     seq(zeroOrMore(first(FINAL, ruleRef("Annotation"))), ruleRef("Type"),
                             ruleRef("VariableDeclarators")),
                     seq(ruleRef("StatementExpression"), zeroOrMore(seq(COMMA, ruleRef("StatementExpression")))))),
 
-            rule("ForUpdate",
+            predAssocRule("ForUpdate",
                     seq(ruleRef("StatementExpression"), zeroOrMore(seq(COMMA, ruleRef("StatementExpression"))))),
 
-            rule("EnumConstantName", ruleRef("Identifier")),
+            predAssocRule("EnumConstantName", ruleRef("Identifier")),
 
             //-------------------------------------------------------------------------
             //  Expressions
@@ -373,9 +376,9 @@ public class SquirrelParboiledJavaGrammar {
             // The following is more generous than the definition in section 14.8,
             // which allows only specific forms of Expression.
 
-            rule("StatementExpression", ruleRef("Expression")),
+            predAssocRule("StatementExpression", ruleRef("Expression")),
 
-            rule("ConstantExpression", ruleRef("Expression")),
+            predAssocRule("ConstantExpression", ruleRef("Expression")),
 
             // The following definition is part of the modification in JLS Chapter 18
             // to minimize look ahead. In JLS Chapter 15.27, Expression is defined
@@ -384,64 +387,64 @@ public class SquirrelParboiledJavaGrammar {
             // The following is obtained by allowing ANY ConditionalExpression
             // as LeftHandSide, which results in accepting statements like 5 = a.
 
-            rule("Expression",
+            predAssocRule("Expression",
                     seq(ruleRef("ConditionalExpression"),
                             zeroOrMore(seq(ruleRef("AssignmentOperator"), ruleRef("ConditionalExpression"))))),
 
-            rule("AssignmentOperator",
+            predAssocRule("AssignmentOperator",
                     first(EQU, PLUSEQU, MINUSEQU, STAREQU, DIVEQU, ANDEQU, OREQU, HATEQU, MODEQU, SLEQU, SREQU,
                             BSREQU)),
 
-            rule("ConditionalExpression",
+            predAssocRule("ConditionalExpression",
                     seq(ruleRef("ConditionalOrExpression"),
                             zeroOrMore(
                                     seq(QUERY, ruleRef("Expression"), COLON, ruleRef("ConditionalOrExpression"))))),
 
-            rule("ConditionalOrExpression",
+            predAssocRule("ConditionalOrExpression",
                     seq(ruleRef("ConditionalAndExpression"),
                             zeroOrMore(seq(OROR, ruleRef("ConditionalAndExpression"))))),
 
-            rule("ConditionalAndExpression",
+            predAssocRule("ConditionalAndExpression",
                     seq(ruleRef("InclusiveOrExpression"),
                             zeroOrMore(seq(ANDAND, ruleRef("InclusiveOrExpression"))))),
 
-            rule("InclusiveOrExpression",
+            predAssocRule("InclusiveOrExpression",
                     seq(ruleRef("ExclusiveOrExpression"), zeroOrMore(seq(OR, ruleRef("ExclusiveOrExpression"))))),
 
-            rule("ExclusiveOrExpression",
+            predAssocRule("ExclusiveOrExpression",
                     seq(ruleRef("AndExpression"), zeroOrMore(seq(HAT, ruleRef("AndExpression"))))),
 
-            rule("AndExpression",
+            predAssocRule("AndExpression",
                     seq(ruleRef("EqualityExpression"), zeroOrMore(seq(AND, ruleRef("EqualityExpression"))))),
 
-            rule("EqualityExpression",
+            predAssocRule("EqualityExpression",
                     seq(ruleRef("RelationalExpression"),
                             zeroOrMore(seq(first(EQUAL, NOTEQUAL), ruleRef("RelationalExpression"))))),
 
-            rule("RelationalExpression",
+            predAssocRule("RelationalExpression",
                     seq(ruleRef("ShiftExpression"),
                             zeroOrMore(first(seq(first(LE, GE, LT, GT), ruleRef("ShiftExpression")),
                                     seq(INSTANCEOF, ruleRef("ReferenceType")))))),
 
-            rule("ShiftExpression",
+            predAssocRule("ShiftExpression",
                     seq(ruleRef("AdditiveExpression"),
                             zeroOrMore(seq(first(SL, SR, BSR), ruleRef("AdditiveExpression"))))),
 
-            rule("AdditiveExpression",
+            predAssocRule("AdditiveExpression",
                     seq(ruleRef("MultiplicativeExpression"),
                             zeroOrMore(seq(first(PLUS, MINUS), ruleRef("MultiplicativeExpression"))))),
 
-            rule("MultiplicativeExpression",
+            predAssocRule("MultiplicativeExpression",
                     seq(ruleRef("UnaryExpression"),
                             zeroOrMore(seq(first(STAR, DIV, MOD), ruleRef("UnaryExpression"))))),
 
-            rule("UnaryExpression",
+            predAssocRule("UnaryExpression",
                     first(seq(ruleRef("PrefixOp"), ruleRef("UnaryExpression")),
                             seq(LPAR, ruleRef("Type"), RPAR, ruleRef("UnaryExpression")),
                             seq(ruleRef("Primary"), zeroOrMore(ruleRef("Selector")),
                                     zeroOrMore(ruleRef("PostFixOp"))))),
 
-            rule("Primary", first(ruleRef("ParExpression"),
+            predAssocRule("Primary", first(ruleRef("ParExpression"),
                     seq(ruleRef("NonWildcardTypeArguments"),
                             first(ruleRef("ExplicitGenericInvocationSuffix"), seq(THIS, ruleRef("Arguments")))),
                     seq(THIS, optional(ruleRef("Arguments"))), seq(SUPER, ruleRef("SuperSuffix")),
@@ -449,7 +452,7 @@ public class SquirrelParboiledJavaGrammar {
                     seq(ruleRef("QualifiedIdentifier"), optional(ruleRef("IdentifierSuffix"))),
                     seq(ruleRef("BasicType"), zeroOrMore(ruleRef("Dim")), DOT, CLASS), seq(VOID, DOT, CLASS))),
 
-            rule("IdentifierSuffix", first(
+            predAssocRule("IdentifierSuffix", first(
                     seq(LBRK, first(
                             seq(RBRK, zeroOrMore(ruleRef("Dim")), DOT, CLASS), seq(ruleRef("Expression"), RBRK))),
                     ruleRef("Arguments"),
@@ -457,111 +460,113 @@ public class SquirrelParboiledJavaGrammar {
                             seq(SUPER, ruleRef("Arguments")),
                             seq(NEW, optional(ruleRef("NonWildcardTypeArguments")), ruleRef("InnerCreator")))))),
 
-            rule("ExplicitGenericInvocation",
+            predAssocRule("ExplicitGenericInvocation",
                     seq(ruleRef("NonWildcardTypeArguments"), ruleRef("ExplicitGenericInvocationSuffix"))),
 
-            rule("NonWildcardTypeArguments",
+            predAssocRule("NonWildcardTypeArguments",
                     seq(LPOINT, ruleRef("ReferenceType"), zeroOrMore(seq(COMMA, ruleRef("ReferenceType"))),
                             RPOINT)),
 
-            rule("ExplicitGenericInvocationSuffix",
+            predAssocRule("ExplicitGenericInvocationSuffix",
                     first(seq(SUPER, ruleRef("SuperSuffix")), seq(ruleRef("Identifier"), ruleRef("Arguments")))),
 
-            rule("PrefixOp", first(INC, DEC, BANG, TILDA, PLUS, MINUS)),
+            predAssocRule("PrefixOp", first(INC, DEC, BANG, TILDA, PLUS, MINUS)),
 
-            rule("PostFixOp", first(INC, DEC)),
+            predAssocRule("PostFixOp", first(INC, DEC)),
 
-            rule("Selector",
+            predAssocRule("Selector",
                     first(seq(DOT, ruleRef("Identifier"), optional(ruleRef("Arguments"))),
                             seq(DOT, ruleRef("ExplicitGenericInvocation")), seq(DOT, THIS),
                             seq(DOT, SUPER, ruleRef("SuperSuffix")),
                             seq(DOT, NEW, optional(ruleRef("NonWildcardTypeArguments")), ruleRef("InnerCreator")),
                             ruleRef("DimExpr"))),
 
-            rule("SuperSuffix",
+            predAssocRule("SuperSuffix",
                     first(ruleRef("Arguments"), seq(DOT, ruleRef("Identifier"), optional(ruleRef("Arguments"))))),
 
             //@MemoMismatches
-            rule("BasicType",
+            predAssocRule("BasicType",
                     seq(first(str("byte"), str("short"), str("char"), str("int"), str("long"), str("float"),
                             str("double"), str("boolean")), notFollowedBy(ruleRef("LetterOrDigit")),
                             ruleRef("Spacing"))),
 
-            rule("Arguments",
+            predAssocRule("Arguments",
                     seq(LPAR, optional(seq(ruleRef("Expression"), zeroOrMore(seq(COMMA, ruleRef("Expression"))))),
                             RPAR)),
 
-            rule("Creator", first(
+            predAssocRule("Creator", first(
                     seq(optional(ruleRef("NonWildcardTypeArguments")), ruleRef("CreatedName"),
                             ruleRef("ClassCreatorRest")),
                     seq(optional(ruleRef("NonWildcardTypeArguments")),
                             first(ruleRef("ClassType"), ruleRef("BasicType")), ruleRef("ArrayCreatorRest")))),
 
-            rule("CreatedName", seq(ruleRef("Identifier"), optional(ruleRef("NonWildcardTypeArguments")),
+            predAssocRule("CreatedName", seq(ruleRef("Identifier"), optional(ruleRef("NonWildcardTypeArguments")),
                     zeroOrMore(seq(DOT, ruleRef("Identifier"), optional(ruleRef("NonWildcardTypeArguments")))))),
 
-            rule("InnerCreator", seq(ruleRef("Identifier"), ruleRef("ClassCreatorRest"))),
+            predAssocRule("InnerCreator", seq(ruleRef("Identifier"), ruleRef("ClassCreatorRest"))),
 
             // The following is more generous than JLS 15.10. According to that definition,
             // BasicType must be followed by at least one DimExpr or by ArrayInitializer.
-            rule("ArrayCreatorRest",
+            predAssocRule("ArrayCreatorRest",
                     seq(LBRK,
                             first(seq(RBRK, zeroOrMore(ruleRef("Dim")), ruleRef("ArrayInitializer")),
                                     seq(ruleRef("Expression"), RBRK, zeroOrMore(ruleRef("DimExpr")),
                                             zeroOrMore(ruleRef("Dim")))))),
 
-            rule("ClassCreatorRest", seq(ruleRef("Arguments"), optional(ruleRef("ClassBody")))),
+            predAssocRule("ClassCreatorRest", seq(ruleRef("Arguments"), optional(ruleRef("ClassBody")))),
 
-            rule("ArrayInitializer", seq(LWING,
+            predAssocRule("ArrayInitializer", seq(LWING,
                     optional(seq(ruleRef("VariableInitializer"),
                             zeroOrMore(seq(COMMA, ruleRef("VariableInitializer"))))),
                     optional(COMMA), RWING)),
 
-            rule("VariableInitializer", first(ruleRef("ArrayInitializer"), ruleRef("Expression"))),
+            predAssocRule("VariableInitializer", first(ruleRef("ArrayInitializer"), ruleRef("Expression"))),
 
-            rule("ParExpression", seq(LPAR, ruleRef("Expression"), RPAR)),
+            predAssocRule("ParExpression", seq(LPAR, ruleRef("Expression"), RPAR)),
 
-            rule("QualifiedIdentifier", seq(ruleRef("Identifier"), zeroOrMore(seq(DOT, ruleRef("Identifier"))))),
+            predAssocRule("QualifiedIdentifier",
+                    seq(ruleRef("Identifier"), zeroOrMore(seq(DOT, ruleRef("Identifier"))))),
 
-            rule("Dim", seq(LBRK, RBRK)),
+            predAssocRule("Dim", seq(LBRK, RBRK)),
 
-            rule("DimExpr", seq(LBRK, ruleRef("Expression"), RBRK)),
+            predAssocRule("DimExpr", seq(LBRK, ruleRef("Expression"), RBRK)),
 
             //-------------------------------------------------------------------------
             //  Types and Modifiers
             //-------------------------------------------------------------------------
 
-            rule("Type", seq(first(ruleRef("BasicType"), ruleRef("ClassType")), zeroOrMore(ruleRef("Dim")))),
+            predAssocRule("Type",
+                    seq(first(ruleRef("BasicType"), ruleRef("ClassType")), zeroOrMore(ruleRef("Dim")))),
 
-            rule("ReferenceType",
+            predAssocRule("ReferenceType",
                     first(seq(ruleRef("BasicType"), oneOrMore(ruleRef("Dim"))),
                             seq(ruleRef("ClassType"), zeroOrMore(ruleRef("Dim"))))),
 
-            rule("ClassType",
+            predAssocRule("ClassType",
                     seq(ruleRef("Identifier"), optional(ruleRef("TypeArguments")),
                             zeroOrMore(seq(DOT, ruleRef("Identifier"), optional(ruleRef("TypeArguments")))))),
 
-            rule("ClassTypeList", seq(ruleRef("ClassType"), zeroOrMore(seq(COMMA, ruleRef("ClassType"))))),
+            predAssocRule("ClassTypeList", seq(ruleRef("ClassType"), zeroOrMore(seq(COMMA, ruleRef("ClassType"))))),
 
-            rule("TypeArguments",
+            predAssocRule("TypeArguments",
                     seq(LPOINT, ruleRef("TypeArgument"), zeroOrMore(seq(COMMA, ruleRef("TypeArgument"))), RPOINT)),
 
-            rule("TypeArgument",
+            predAssocRule("TypeArgument",
                     first(ruleRef("ReferenceType"),
                             seq(QUERY, optional(seq(first(EXTENDS, SUPER), ruleRef("ReferenceType")))))),
 
-            rule("TypeParameters",
+            predAssocRule("TypeParameters",
                     seq(LPOINT, ruleRef("TypeParameter"), zeroOrMore(seq(COMMA, ruleRef("TypeParameter"))),
                             RPOINT)),
 
-            rule("TypeParameter", seq(ruleRef("Identifier"), optional(seq(EXTENDS, ruleRef("Bound"))))),
+            predAssocRule("TypeParameter", seq(ruleRef("Identifier"), optional(seq(EXTENDS, ruleRef("Bound"))))),
 
-            rule("Bound", seq(ruleRef("ClassType"), zeroOrMore(seq(AND, ruleRef("ClassType"))))),
+            predAssocRule("Bound", seq(ruleRef("ClassType"), zeroOrMore(seq(AND, ruleRef("ClassType"))))),
 
             // the following common definition of Modifier is part of the modification
             // in JLS Chapter 18 to minimize look ahead. The main body of JLS has
             // different lists of modifiers for different language elements.
-            rule("Modifier", first(ruleRef("Annotation"),
+            predAssocRule("Modifier", first(ruleRef("Annotation"),
                     seq(first(str("public"), str("protected"), str("private"), str("static"), str("abstract"),
                             str("final"), str("native"), str("synchronized"), str("transient"), str("volatile"),
                             str("strictfp")), notFollowedBy(ruleRef("LetterOrDigit")), ruleRef("Spacing")))),
@@ -570,57 +575,62 @@ public class SquirrelParboiledJavaGrammar {
             //  Annotations
             //-------------------------------------------------------------------------
 
-            rule("AnnotationTypeDeclaration",
+            predAssocRule("AnnotationTypeDeclaration",
                     seq(AT, INTERFACE, ruleRef("Identifier"), ruleRef("AnnotationTypeBody"))),
 
-            rule("AnnotationTypeBody", seq(LWING, zeroOrMore(ruleRef("AnnotationTypeElementDeclaration")), RWING)),
+            predAssocRule("AnnotationTypeBody",
+                    seq(LWING, zeroOrMore(ruleRef("AnnotationTypeElementDeclaration")), RWING)),
 
-            rule("AnnotationTypeElementDeclaration",
+            predAssocRule("AnnotationTypeElementDeclaration",
                     first(seq(zeroOrMore(ruleRef("Modifier")), ruleRef("AnnotationTypeElementRest")), SEMI)),
 
-            rule("AnnotationTypeElementRest",
+            predAssocRule("AnnotationTypeElementRest",
                     first(seq(ruleRef("Type"), ruleRef("AnnotationMethodOrConstantRest"), SEMI),
                             ruleRef("ClassDeclaration"), ruleRef("EnumDeclaration"),
                             ruleRef("InterfaceDeclaration"), ruleRef("AnnotationTypeDeclaration"))),
 
-            rule("AnnotationMethodOrConstantRest",
+            predAssocRule("AnnotationMethodOrConstantRest",
                     first(ruleRef("AnnotationMethodRest"), ruleRef("AnnotationConstantRest"))),
 
-            rule("AnnotationMethodRest", seq(ruleRef("Identifier"), LPAR, RPAR, optional(ruleRef("DefaultValue")))),
+            predAssocRule("AnnotationMethodRest",
+                    seq(ruleRef("Identifier"), LPAR, RPAR, optional(ruleRef("DefaultValue")))),
 
-            rule("AnnotationConstantRest", ruleRef("VariableDeclarators")),
+            predAssocRule("AnnotationConstantRest", ruleRef("VariableDeclarators")),
 
-            rule("DefaultValue", seq(DEFAULT, ruleRef("ElementValue"))),
+            predAssocRule("DefaultValue", seq(DEFAULT, ruleRef("ElementValue"))),
 
             //@MemoMismatches
-            rule("Annotation", seq(AT, ruleRef("QualifiedIdentifier"), optional(ruleRef("AnnotationRest")))),
+            predAssocRule("Annotation",
+                    seq(AT, ruleRef("QualifiedIdentifier"), optional(ruleRef("AnnotationRest")))),
 
-            rule("AnnotationRest", first(ruleRef("NormalAnnotationRest"), ruleRef("SingleElementAnnotationRest"))),
+            predAssocRule("AnnotationRest",
+                    first(ruleRef("NormalAnnotationRest"), ruleRef("SingleElementAnnotationRest"))),
 
-            rule("NormalAnnotationRest", seq(LPAR, optional(ruleRef("ElementValuePairs")), RPAR)),
+            predAssocRule("NormalAnnotationRest", seq(LPAR, optional(ruleRef("ElementValuePairs")), RPAR)),
 
-            rule("ElementValuePairs",
+            predAssocRule("ElementValuePairs",
                     seq(ruleRef("ElementValuePair"), zeroOrMore(seq(COMMA, ruleRef("ElementValuePair"))))),
 
-            rule("ElementValuePair", seq(ruleRef("Identifier"), EQU, ruleRef("ElementValue"))),
+            predAssocRule("ElementValuePair", seq(ruleRef("Identifier"), EQU, ruleRef("ElementValue"))),
 
-            rule("ElementValue",
+            predAssocRule("ElementValue",
                     first(ruleRef("ConditionalExpression"), ruleRef("Annotation"),
                             ruleRef("ElementValueArrayInitializer"))),
 
-            rule("ElementValueArrayInitializer",
+            predAssocRule("ElementValueArrayInitializer",
                     seq(LWING, optional(ruleRef("ElementValues")), optional(COMMA), RWING)),
 
-            rule("ElementValues", seq(ruleRef("ElementValue"), zeroOrMore(seq(COMMA, ruleRef("ElementValue"))))),
+            predAssocRule("ElementValues",
+                    seq(ruleRef("ElementValue"), zeroOrMore(seq(COMMA, ruleRef("ElementValue"))))),
 
-            rule("SingleElementAnnotationRest", seq(LPAR, ruleRef("ElementValue"), RPAR)),
+            predAssocRule("SingleElementAnnotationRest", seq(LPAR, ruleRef("ElementValue"), RPAR)),
 
             //-------------------------------------------------------------------------
             //  JLS 3.6-7  Spacing
             //-------------------------------------------------------------------------
 
             //@SuppressNode
-            rule("Spacing", collect(zeroOrMore(first(
+            predAssocRule("Spacing", collect(zeroOrMore(first(
 
                     // whitespace
                     oneOrMore(cInStr(" \t\r\n\f")),
@@ -638,20 +648,20 @@ public class SquirrelParboiledJavaGrammar {
 
             //@SuppressSubnodes
             //@MemoMismatches
-            rule("Identifier",
+            predAssocRule("Identifier",
                     collect(seq(notFollowedBy(ruleRef("Keyword")), ruleRef("Letter"),
                             zeroOrMore(ruleRef("LetterOrDigit")), ruleRef("Spacing")))),
 
             // JLS defines letters and digits as Unicode characters recognized
             // as such by special Java procedures.
 
-            rule("Letter",
+            predAssocRule("Letter",
                     // switch to this "reduced" character space version for a ~10% parser performance speedup
                     first(cRange('a', 'z'), cRange('A', 'Z'), c('_'), c('$'))
             //return first(seq(c('\\'), ruleRef("UnicodeEscape")), new ruleRef("JavaLetterMatcher")),
             ),
 
-            rule("LetterOrDigit",
+            predAssocRule("LetterOrDigit",
                     // switch to this "reduced" character space version for a ~10% parser performance speedup
                     first(cRange('a', 'z'), cRange('A', 'Z'), cRange('0', '9'), c('_'), c('$'))
             //return first(seq('\\', ruleRef("UnicodeEscape")), new ruleRef("JavaLetterOrDigitMatcher")),
@@ -661,7 +671,7 @@ public class SquirrelParboiledJavaGrammar {
             //  JLS 3.9  Keywords
             //-------------------------------------------------------------------------
 
-            rule("Keyword", collect(seq(
+            predAssocRule("Keyword", collect(seq(
                     first(str("assert"), str("break"), str("case"), str("catch"), str("class"), str("const"),
                             str("continue"), str("default"), str("do"), str("else"), str("enum"), str("extends"),
                             str("finally"), str("final"), str("for"), str("goto"), str("if"), str("implements"),
@@ -674,34 +684,34 @@ public class SquirrelParboiledJavaGrammar {
             //  JLS 3.10  Literals
             //-------------------------------------------------------------------------
 
-            rule("Literal",
+            predAssocRule("Literal",
                     seq(first(ruleRef("FloatLiteral"), ruleRef("IntegerLiteral"), ruleRef("CharLiteral"),
                             ruleRef("StringLiteral"), seq(str("true"), notFollowedBy(ruleRef("LetterOrDigit"))),
                             seq(str("false"), notFollowedBy(ruleRef("LetterOrDigit"))),
                             seq(str("null"), notFollowedBy(ruleRef("LetterOrDigit")))), ruleRef("Spacing"))),
 
             //@SuppressSubnodes
-            rule("IntegerLiteral",
+            predAssocRule("IntegerLiteral",
                     collect(seq(first(ruleRef("HexNumeral"), ruleRef("OctalNumeral"), ruleRef("DecimalNumeral")),
                             optional(cInStr("lL"))))),
 
             //@SuppressSubnodes
-            rule("DecimalNumeral", first(c('0'), seq(cRange('1', '9'), zeroOrMore(ruleRef("Digit"))))),
+            predAssocRule("DecimalNumeral", first(c('0'), seq(cRange('1', '9'), zeroOrMore(ruleRef("Digit"))))),
 
             //@SuppressSubnodes
 
             //@MemoMismatches
-            rule("HexNumeral", seq(c('0'), cSet('x', 'X'), oneOrMore(ruleRef("HexDigit")))),
+            predAssocRule("HexNumeral", seq(c('0'), cSet('x', 'X'), oneOrMore(ruleRef("HexDigit")))),
 
-            rule("HexDigit", first(cRange('a', 'f'), cRange('A', 'F'), cRange('0', '9'))),
-
-            //@SuppressSubnodes
-            rule("OctalNumeral", seq(c('0'), oneOrMore(cRange('0', '7')))),
-
-            rule("FloatLiteral", collect(first(ruleRef("HexFloat"), ruleRef("DecimalFloat")))),
+            predAssocRule("HexDigit", first(cRange('a', 'f'), cRange('A', 'F'), cRange('0', '9'))),
 
             //@SuppressSubnodes
-            rule("DecimalFloat",
+            predAssocRule("OctalNumeral", seq(c('0'), oneOrMore(cRange('0', '7')))),
+
+            predAssocRule("FloatLiteral", collect(first(ruleRef("HexFloat"), ruleRef("DecimalFloat")))),
+
+            //@SuppressSubnodes
+            predAssocRule("DecimalFloat",
                     first(seq(oneOrMore(ruleRef("Digit")), c('.'), zeroOrMore(ruleRef("Digit")),
                             optional(ruleRef("Exponent")), optional(cInStr("fFdD"))),
                             seq(c('.'), oneOrMore(ruleRef("Digit")), optional(ruleRef("Exponent")),
@@ -709,36 +719,37 @@ public class SquirrelParboiledJavaGrammar {
                             seq(oneOrMore(ruleRef("Digit")), ruleRef("Exponent"), optional(cInStr("fFdD"))),
                             seq(oneOrMore(ruleRef("Digit")), optional(ruleRef("Exponent")), cInStr("fFdD")))),
 
-            rule("Exponent", seq(cInStr("eE"), optional(cInStr("+-")), oneOrMore(ruleRef("Digit")))),
+            predAssocRule("Exponent", seq(cInStr("eE"), optional(cInStr("+-")), oneOrMore(ruleRef("Digit")))),
 
-            rule("Digit", cRange('0', '9')),
+            predAssocRule("Digit", cRange('0', '9')),
 
             //@SuppressSubnodes
-            rule("HexFloat", seq(ruleRef("HexSignificant"), ruleRef("BinaryExponent"), optional(cInStr("fFdD")))),
+            predAssocRule("HexFloat",
+                    seq(ruleRef("HexSignificant"), ruleRef("BinaryExponent"), optional(cInStr("fFdD")))),
 
-            rule("HexSignificant",
+            predAssocRule("HexSignificant",
                     first(seq(first(str("0x"), str("0X")), zeroOrMore(ruleRef("HexDigit")), c('.'),
                             oneOrMore(ruleRef("HexDigit"))), seq(ruleRef("HexNumeral"), optional(c('.'))))),
 
-            rule("BinaryExponent", seq(cInStr("pP"), optional(cInStr("+-")), oneOrMore(ruleRef("Digit")))),
+            predAssocRule("BinaryExponent", seq(cInStr("pP"), optional(cInStr("+-")), oneOrMore(ruleRef("Digit")))),
 
-            rule("CharLiteral",
+            predAssocRule("CharLiteral",
                     collect(seq(c('\''), first(ruleRef("Escape"), seq(notFollowedBy(cInStr("'\\")), ANY)), //.ruleRef("suppressSubnodes"),
                             c('\'')))),
 
-            rule("StringLiteral",
+            predAssocRule("StringLiteral",
                     collect(seq(c('"'),
                             zeroOrMore(first(ruleRef("Escape"), seq(notFollowedBy(cInStr("\r\n\"\\")), ANY))), //.ruleRef("suppressSubnodes"),
                             c('"')))),
 
-            rule("Escape",
+            predAssocRule("Escape",
                     seq(c('\\'), first(cInStr("btnfr\"\'\\"), ruleRef("OctalEscape"), ruleRef("UnicodeEscape")))),
 
-            rule("OctalEscape",
+            predAssocRule("OctalEscape",
                     first(seq(cRange('0', '3'), cRange('0', '7'), cRange('0', '7')),
                             seq(cRange('0', '7'), cRange('0', '7')), cRange('0', '7'))),
 
-            rule("UnicodeEscape", seq(oneOrMore(c('u')), ruleRef("HexDigit"), ruleRef("HexDigit"),
+            predAssocRule("UnicodeEscape", seq(oneOrMore(c('u')), ruleRef("HexDigit"), ruleRef("HexDigit"),
                     ruleRef("HexDigit"), ruleRef("HexDigit")))
 
     )));

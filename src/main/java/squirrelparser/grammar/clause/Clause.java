@@ -83,4 +83,7 @@ public abstract class Clause {
         return ClauseUtils.needToAddParensAroundSubClause(this, subClause) ? "(" + subClause + ")"
                 : subClause.toString();
     }
+    
+    /** Convert clause to Java code. */
+    public abstract String toJavaSource();
 }

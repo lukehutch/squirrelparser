@@ -57,4 +57,10 @@ public class CharRange extends Terminal {
         return labelClause("[" + (invert ? "^" : "") + StringUtils.escapeCharRangeChar(minChar) + "-"
                 + StringUtils.escapeCharRangeChar(maxChar) + "]");
     }
+
+    @Override
+    protected String getConstructorParameters() {
+        return "'" + StringUtils.escapeQuotedChar(minChar) + "', '" + StringUtils.escapeQuotedChar(maxChar) + "'"
+                + (invert ? ", true" : "");
+    }
 }

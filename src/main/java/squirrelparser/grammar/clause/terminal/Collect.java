@@ -71,6 +71,11 @@ public class Collect extends Terminal {
     public String toString() {
         return labelClause(origClauseTree.toString());
     }
+    
+    @Override
+    public String toJavaSource() {
+        return origClauseTree.toJavaSource();
+    }
 
     // -------------------------------------------------------------------------------------------------------------
     // Replicate the logic of the nonterminal clauses, but return only the match length, rather than allocating

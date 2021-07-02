@@ -155,10 +155,10 @@ public class MetaGrammar {
     /** Metagrammar. */
     public static Grammar metaGrammar() {
         return new Grammar(PrecAssocRuleRewriter.rewrite(Arrays.asList(//
-                rule(GRAMMAR, //
+                predAssocRule(GRAMMAR, //
                         seq(ruleRef(WSC), oneOrMore(ruleRef(RULE)))), //
 
-                rule(RULE, //
+                predAssocRule(RULE, //
                         ast(RULE_AST, seq(ruleRef(IDENT), ruleRef(WSC), //
                                 optional(ruleRef(PREC)), //
                                 str(RULE_DECL_SYMBOL), ruleRef(WSC), //
@@ -167,14 +167,14 @@ public class MetaGrammar {
                 // Define precedence order for clause sequences
 
                 // Parens / Collect
-                rule(CLAUSE, 9, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 9, /* associativity = */ null, //
                         first(seq(c('('), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC), c(')')), //
                                 ast(COLLECT_AST,
                                         seq(c(COLLECT_START), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC),
                                                 c(COLLECT_END))))), //
 
                 // Terminals
-                rule(CLAUSE, 8, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 8, /* associativity = */ null, //
                         first( //
                                 ruleRef(ANY), //
                                 ruleRef(IDENT), // RuleRef
@@ -184,76 +184,76 @@ public class MetaGrammar {
                                 ruleRef(NOTHING))), //
 
                 // OneOrMore / ZeroOrMore
-                rule(CLAUSE, 7, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 7, /* associativity = */ null, //
                         first( //
                                 seq(ast(ONE_OR_MORE_AST, ruleRef(CLAUSE)), ruleRef(WSC), c('+')),
                                 seq(ast(ZERO_OR_MORE_AST, ruleRef(CLAUSE)), ruleRef(WSC), c('*')))), //
 
                 // FollowedBy / NotFollowedBy
-                rule(CLAUSE, 6, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 6, /* associativity = */ null, //
                         first( //
                                 seq(c('&'), ast(FOLLOWED_BY_AST, ruleRef(CLAUSE))), //
                                 seq(c('!'), ast(NOT_FOLLOWED_BY_AST, ruleRef(CLAUSE))))), //
 
                 // Optional
-                rule(CLAUSE, 5, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 5, /* associativity = */ null, //
                         seq(ast(OPTIONAL_AST, ruleRef(CLAUSE)), ruleRef(WSC), c('?'))), //
 
                 // ASTNodeLabel
-                rule(CLAUSE, 4, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 4, /* associativity = */ null, //
                         ast(LABEL_AST,
                                 seq(ast(LABEL_NAME_AST, ruleRef(IDENT)), ruleRef(WSC), c(':'), ruleRef(WSC),
                                         ast(LABEL_CLAUSE_AST, ruleRef(CLAUSE)), ruleRef(WSC)))), //
 
                 // Seq
-                rule(CLAUSE, 3, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 3, /* associativity = */ null, //
                         ast(SEQ_AST,
                                 seq(ruleRef(CLAUSE), ruleRef(WSC), oneOrMore(seq(ruleRef(CLAUSE), ruleRef(WSC)))))),
 
                 // First
-                rule(CLAUSE, 2, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 2, /* associativity = */ null, //
                         ast(FIRST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
                                 oneOrMore(seq(c(FIRST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC)))))),
 
                 // Longest
-                rule(CLAUSE, 1, /* associativity = */ null, //
+                predAssocRule(CLAUSE, 1, /* associativity = */ null, //
                         ast(LONGEST_AST, seq(ruleRef(CLAUSE), ruleRef(WSC), //
                                 oneOrMore(
                                         seq(c(LONGEST_SEPARATOR), ruleRef(WSC), ruleRef(CLAUSE), ruleRef(WSC)))))),
 
                 // A whitespace-matching terminal
-                rule(WHITESPACE, //
+                predAssocRule(WHITESPACE, //
                         ast(WHITESPACE_AST, str(Whitespace.WS_DISPLAY_STR))),
 
                 // Whitespace or comment in the grammar description
-                rule(WSC, //
+                predAssocRule(WSC, //
                         zeroOrMore(
                                 first(cSet(' ', '\n', '\r', '\t'), ruleRef(LINE_COMMENT), ruleRef(BLOCK_COMMENT)))),
 
                 // Line comment
-                rule(LINE_COMMENT, //
+                predAssocRule(LINE_COMMENT, //
                         seq(str(LINE_COMMENT_PREFIX), zeroOrMore(cNot('\n')))),
 
                 // Block comment
-                rule(BLOCK_COMMENT, //
+                predAssocRule(BLOCK_COMMENT, //
                         seq(str(BLOCK_COMMENT_PREFIX),
                                 zeroOrMore(seq(notFollowedBy(str(BLOCK_COMMENT_SUFFIX)), any())))),
 
                 // Identifier
-                rule(IDENT, //
+                predAssocRule(IDENT, //
                         ast(IDENT_AST,
                                 seq(ruleRef(NAME_CHAR), zeroOrMore(first(ruleRef(NAME_CHAR), cRange('0', '9')))))), //
 
                 // Number
-                rule(NUM, //
+                predAssocRule(NUM, //
                         oneOrMore(cRange('0', '9'))), //
 
                 // Name character
-                rule(NAME_CHAR, //
+                predAssocRule(NAME_CHAR, //
                         first(cRange('a', 'z'), cRange('A', 'Z'), cSet('_', '-'))),
 
                 // Precedence and optional associativity modifiers for rule name
-                rule(PREC, //
+                predAssocRule(PREC, //
                         seq(c('['), ruleRef(WSC), //
                                 ast(PREC_AST, ruleRef(NUM)), ruleRef(WSC), //
                                 optional(seq(c(','), ruleRef(WSC), //
@@ -263,7 +263,7 @@ public class MetaGrammar {
                                 c(']'), ruleRef(WSC))), //
 
                 // Character set
-                rule(CHAR_SET, //
+                predAssocRule(CHAR_SET, //
                         first( //
                                 seq(c('\''), ast(SINGLE_QUOTED_CHAR_AST, ruleRef(SINGLE_QUOTED_CHAR)), c('\'')), //
                                 seq(c('['), //
@@ -274,17 +274,17 @@ public class MetaGrammar {
                                         c(']')))), //
 
                 // Single quoted character
-                rule(SINGLE_QUOTED_CHAR, //
+                predAssocRule(SINGLE_QUOTED_CHAR, //
                         first( //
                                 ruleRef(ESCAPED_CTRL_CHAR), //
                                 cNot('\''))),
 
                 // Char range
-                rule(CHAR_RANGE, //
+                predAssocRule(CHAR_RANGE, //
                         seq(ruleRef(CHAR_RANGE_CHAR), c('-'), ruleRef(CHAR_RANGE_CHAR))), //
 
                 // Char range character
-                rule(CHAR_RANGE_CHAR, //
+                predAssocRule(CHAR_RANGE_CHAR, //
                         first( //
                                 cSet(true, '\\', ']'), //
                                 ruleRef(ESCAPED_CTRL_CHAR), //
@@ -294,21 +294,21 @@ public class MetaGrammar {
                                 str("\\^"))),
 
                 // Quoted string
-                rule(QUOTED_STRING, //
+                predAssocRule(QUOTED_STRING, //
                         seq(c('"'), ast(QUOTED_STRING_AST, zeroOrMore(ruleRef(STR_QUOTED_CHAR))), c('"'))), //
 
                 // Character within quoted string
-                rule(STR_QUOTED_CHAR, //
+                predAssocRule(STR_QUOTED_CHAR, //
                         first( //
                                 ruleRef(ESCAPED_CTRL_CHAR), //
                                 cSet(true, '"', '\\') //
                         )), //
 
                 // Hex digit
-                rule(HEX, first(cRange('0', '9'), cRange('a', 'f'), cRange('A', 'F'))), //
+                predAssocRule(HEX, first(cRange('0', '9'), cRange('a', 'f'), cRange('A', 'F'))), //
 
                 // Escaped control character
-                rule(ESCAPED_CTRL_CHAR, //
+                predAssocRule(ESCAPED_CTRL_CHAR, //
                         first( //
                                 str("\\t"), //
                                 str("\\b"), //
@@ -321,11 +321,11 @@ public class MetaGrammar {
                                 seq(str("\\u"), ruleRef(HEX), ruleRef(HEX), ruleRef(HEX), ruleRef(HEX)))), //
 
                 // Nothing (empty string match)
-                rule(NOTHING, //
+                predAssocRule(NOTHING, //
                         ast(NOTHING_AST, seq(c('('), ruleRef(WSC), c(')')))), //
 
                 // Match any character
-                rule(ANY, //
+                predAssocRule(ANY, //
                         ast(ANY_AST, str(ANY_CHAR_SYMBOL))) //
         )));
     }
@@ -335,19 +335,20 @@ public class MetaGrammar {
     // Object construction methods for shorter notation:
 
     /** Construct a {@link PrecAssocRule}. */
-    public static PrecAssocRule rule(String ruleName, Clause clause) {
+    public static PrecAssocRule predAssocRule(String ruleName, Clause clause) {
         // Use -1 as precedence if rule group has only one precedence
-        return rule(ruleName, -1, /* associativity = */ null, clause);
+        return predAssocRule(ruleName, -1, /* associativity = */ null, clause);
     }
 
     /** Construct a {@link PrecAssocRule} with the given precedence and associativity. */
-    public static PrecAssocRule rule(String ruleName, int precedence, Associativity associativity, Clause clause) {
+    public static PrecAssocRule predAssocRule(String ruleName, int precedence, Associativity associativity,
+            Clause clause) {
         var rule = new PrecAssocRule(ruleName, precedence, associativity, clause);
         return rule;
     }
 
     /** Assign a rule name to a {@link Clause} (which should be the toplevel clause of a rule). */
-    public static Clause assignRuleName(String ruleName, Clause clause) {
+    public static Clause rule(String ruleName, Clause clause) {
         clause.ruleName = ruleName;
         return clause;
     }
@@ -633,7 +634,7 @@ public class MetaGrammar {
         }
         var astNode = ruleNode.getChild(ruleNode.children.size() - 1);
         Clause clause = parseASTNode(astNode);
-        return rule(ruleName, precedence, associativity, clause);
+        return predAssocRule(ruleName, precedence, associativity, clause);
     }
 
     /** Parse a grammar description in an input string, returning a new {@link Grammar} object. */

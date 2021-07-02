@@ -64,4 +64,9 @@ public class RuleRef extends Clause {
     public String toString() {
         return labelClause(refdRuleName);
     }
+
+    @Override
+    public String toJavaSource() {
+        return "new " + getClass().getSimpleName() + "(\"" + refdRuleName + "\")";
+    }
 }

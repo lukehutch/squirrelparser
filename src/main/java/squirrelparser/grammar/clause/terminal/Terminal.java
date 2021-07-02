@@ -47,5 +47,15 @@ public abstract class Terminal extends Clause {
 
     @Override
     protected void visitSubclauses(SubClauseVisitor visitor) {
+        // Overridden by Collect
+    }
+
+    protected String getConstructorParameters() {
+        return "";
+    }
+
+    @Override
+    public String toJavaSource() {
+        return "new " + getClass().getSimpleName() + "(" + getConstructorParameters() + ")";
     }
 }

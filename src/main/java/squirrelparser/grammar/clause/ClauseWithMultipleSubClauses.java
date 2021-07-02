@@ -53,4 +53,18 @@ public abstract class ClauseWithMultipleSubClauses extends Clause {
         }
         return labelClause(buf.toString());
     }
+    
+    @Override
+    public String toJavaSource() {
+        var buf = new StringBuilder();
+        buf.append("new " + getClass().getSimpleName() + "(");
+        for (int i = 0; i < subClauses.length; i++) {
+            if (i > 0) {
+                buf.append(", ");
+            }
+            buf.append(subClauses[i].toJavaSource());
+        }
+        buf.append(')');
+        return buf.toString();
+    }
 }

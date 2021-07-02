@@ -41,8 +41,7 @@ public class CharSeq extends Terminal {
 
     @Override
     public int matchLen(String input, int pos) {
-        if (pos <= input.length() - seq.length()
-                && input.regionMatches(ignoreCase, pos, seq, 0, seq.length())) {
+        if (pos <= input.length() - seq.length() && input.regionMatches(ignoreCase, pos, seq, 0, seq.length())) {
             return seq.length();
         } else {
             return -1;
@@ -52,5 +51,10 @@ public class CharSeq extends Terminal {
     @Override
     public String toString() {
         return labelClause('"' + StringUtils.escapeString(seq) + '"');
+    }
+
+    @Override
+    protected String getConstructorParameters() {
+        return "\"" + StringUtils.escapeString(seq) + "\"" + (ignoreCase ? ", true" : "");
     }
 }

@@ -47,4 +47,13 @@ public abstract class ClauseWithOneSubClause extends Clause {
     public String toString() {
         return labelClause(toStringPrefix + subClauseToString(subClause) + toStringSuffix);
     }
+    
+    @Override
+    public String toJavaSource() {
+        var buf = new StringBuilder();
+        buf.append("new " + getClass().getSimpleName() + "(");
+        buf.append(subClause.toJavaSource());
+        buf.append(')');
+        return buf.toString();
+    }
 }
