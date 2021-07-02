@@ -62,8 +62,8 @@ public class EquationGenerator {
         return buf.toString();
     }
 
-    public void main(String[] args) {
-        var eq = generateEquation(10);
-        System.out.println(eq.length());
-    }
+    //    public static void main(String[] args) {
+    //        var eq = new EquationGenerator().generateEquation(10);
+    //        System.out.println(eq.length());
+    //    }
 }

@@ -38,13 +38,13 @@ public abstract class Terminal extends Clause {
 
     /**
      * Match this terminal clause at the given position in the input, returning the length of the match.
-     * 
+     *
      * @param input The input string.
      * @param pos   The start position to try matching from.
      * @return The match length, or -1 if this clause did not match at this position.
      */
     public abstract int matchLen(String input, int pos);
-    
+
     @Override
     protected void visitSubclauses(SubClauseVisitor visitor) {
     }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import javaparse.JavaParsers;
 
 public class TestJavaParsing {
+    @SuppressWarnings("unused")
     public static void main(String[] args) throws IOException {
         var input = TestUtils.loadResourceFile("TestJavaClass.java");
         //var input = "class X { List<String> xs = new ArrayList<>(); }";

@@ -105,8 +105,8 @@ public class Collect extends Terminal {
 
                     @Override
                     public int matchLen(String input, int pos) {
-                        for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
-                            var subClauseMatchLen = subClauses[subClauseIdx].matchLen(input, pos);
+                        for (Terminal element : subClauses) {
+                            var subClauseMatchLen = element.matchLen(input, pos);
                             if (subClauseMatchLen != -1) {
                                 return subClauseMatchLen;
                             }
@@ -133,8 +133,8 @@ public class Collect extends Terminal {
                     @Override
                     public int matchLen(String input, int pos) {
                         var longestMatchLen = -1;
-                        for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
-                            var subClauseMatchLen = subClauses[subClauseIdx].matchLen(input, pos);
+                        for (Terminal element : subClauses) {
+                            var subClauseMatchLen = element.matchLen(input, pos);
                             if (subClauseMatchLen != -1 && subClauseMatchLen > longestMatchLen) {
                                 longestMatchLen = subClauseMatchLen;
                             }
@@ -207,8 +207,8 @@ public class Collect extends Terminal {
                     @Override
                     public int matchLen(String input, int pos) {
                         var currPos = pos;
-                        for (int i = 0; i < subClauses.length; i++) {
-                            var subClauseMatchLen = subClauses[i].matchLen(input, currPos);
+                        for (Terminal element : subClauses) {
+                            var subClauseMatchLen = element.matchLen(input, currPos);
                             if (subClauseMatchLen == -1) {
                                 return -1;
                             }

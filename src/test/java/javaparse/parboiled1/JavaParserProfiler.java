@@ -16,8 +16,8 @@
 
 package javaparse.parboiled1;
 
-import org.parboiled.parserunners.ProfilingParseRunner;
 import org.parboiled.Rule;
+import org.parboiled.parserunners.ProfilingParseRunner;
 import org.parboiled.support.ParsingResult;
 
 @SuppressWarnings("rawtypes")

@@ -41,8 +41,8 @@ public class Seq extends ClauseWithMultipleSubClauses {
     public Match match(Parser parser, int pos) {
         List<Match> subClauseMatches = null;
         var currPos = pos;
-        for (int i = 0; i < subClauses.length; i++) {
-            var subClauseMatch = subClauses[i].match(parser, currPos);
+        for (Clause element : subClauses) {
+            var subClauseMatch = element.match(parser, currPos);
             if (subClauseMatch == Match.MISMATCH) {
                 return Match.MISMATCH;
             }

@@ -58,11 +58,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec4() {
         if (saved("Prec4", Prec4))
             return reuse();
-        if (!next('('))
-            return reject();
-        if (!Prec0())
-            return reject();
-        if (!next(')'))
+        if (!next('(') || !Prec0() || !next(')'))
             return reject();
         return accept();
     }
@@ -75,9 +71,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec3() {
         if (saved("Prec3", Prec3))
             return reuse();
-        if (Prec3_0())
-            return accept();
-        if (Prec4())
+        if (Prec3_0() || Prec4())
             return accept();
         return reject();
     }
@@ -105,9 +99,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec2() {
         if (saved("Prec2", Prec2))
             return reuse();
-        if (Prec2_0())
-            return accept();
-        if (Prec3())
+        if (Prec2_0() || Prec3())
             return accept();
         return reject();
     }
@@ -120,9 +112,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec2_0() {
         if (saved("Prec2_0", Prec2_0))
             return reuseInner();
-        if (!next('-'))
-            return rejectInner();
-        if (!Prec3())
+        if (!next('-') || !Prec3())
             return rejectInner();
         return acceptInner();
     }
@@ -135,9 +125,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec1() {
         if (saved("Prec1", Prec1))
             return reuse();
-        if (Prec1_0())
-            return accept();
-        if (Prec2())
+        if (Prec1_0() || Prec2())
             return accept();
         return reject();
     }
@@ -150,11 +138,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec1_0() {
         if (saved("Prec1_0", Prec1_0))
             return reuseInner();
-        if (!Prec2())
-            return rejectInner();
-        if (!next('*') && !next('/'))
-            return rejectInner();
-        if (!Prec2())
+        if (!Prec2() || (!next('*') && !next('/')) || !Prec2())
             return rejectInner();
         return acceptInner();
     }
@@ -167,9 +151,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec0() {
         if (saved("Prec0", Prec0))
             return reuse();
-        if (Prec0_0())
-            return accept();
-        if (Prec1())
+        if (Prec0_0() || Prec1())
             return accept();
         return reject();
     }
@@ -182,11 +164,7 @@ public class MouseEqnLeftRecParser extends mouse.runtime.ParserMemo {
     boolean Prec0_0() {
         if (saved("Prec0_0", Prec0_0))
             return reuseInner();
-        if (!Prec1())
-            return rejectInner();
-        if (!next('+') && !next('-'))
-            return rejectInner();
-        if (!Prec1())
+        if (!Prec1() || (!next('+') && !next('-')) || !Prec1())
             return rejectInner();
         return acceptInner();
     }

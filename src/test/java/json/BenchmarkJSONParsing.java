@@ -10,10 +10,8 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import squirrel.TestUtils;
 import squirrelparser.grammar.Grammar;
-import squirrelparser.node.ASTNode;
 import squirrelparser.node.Match;
 import squirrelparser.parser.Parser;
-import squirrelparser.utils.ClauseUtils;
 import squirrelparser.utils.MemoUtils;
 import squirrelparser.utils.MetaGrammar;
 
@@ -56,39 +54,42 @@ public class BenchmarkJSONParsing {
     public static long benchmarkSquirrel_JSON(String input) {
         var startTime = System.nanoTime();
         var parser = new Parser(squirrel_JSONGrammar);
-
         var match = parser.parse(input);
         if (match == Match.MISMATCH || match.len < input.length()) {
             System.out.println(MemoUtils.findMaxEndPos(parser));
             return -1;
         }
-        // System.out.println(match.toStringWholeTree(input));
-        //var ast = new ASTNode(match, input);                    // TODO: why does this call take so long?? ***********************
-        //        var ast = parser.parseToAST(input);
-        
-        //System.out.println(ast.toStringWholeTree());
-
         var elapsedTime = System.nanoTime() - startTime;
         return elapsedTime;
     }
 
     public static void main(String[] args) throws IOException {
-        var json = TestUtils.loadResourceFile("json-parse-benchmark.json");
-        var json2 = "{\n" + "    \"glossary\": {\n" + "        \"title\": \"example glossary\",\n"
-                + "        \"GlossDiv\": {\n" + "            \"title\": \"S\",\n" + "            \"GlossList\": {\n"
-                + "                \"GlossEntry\": {\n" + "                    \"ID\": \"SGML\",\n"
-                + "                    \"SortAs\": \"SGML\",\n"
-                + "                    \"GlossTerm\": \"Standard Generalized Markup Language\",\n"
-                + "                    \"Acronym\": \"SGML\",\n"
-                + "                    \"Abbrev\": \"ISO 8879:1986\",\n" + "                    \"GlossDef\": {\n"
-                + "                        \"para\": \"A meta-markup language, used to create markup languages such as DocBook.\",\n"
-                + "                        \"GlossSeeAlso\": [\"GML\", \"XML\"]\n" + "                    },\n"
-                + "                    \"GlossSee\": \"markup\"\n" + "                }\n" + "            }\n"
-                + "        }\n" + "    }\n" + "}";
+        var googleJson = TestUtils.loadResourceFile("json-parse-benchmark.json");
+        System.out.println(BenchmarkJSONParsing.benchmarkSquirrel_JSON(googleJson) * 1.0e-9 + "\t"
+                + BenchmarkJSONParsing.benchmarkAntlr4_json(googleJson) * 1.0e-9);
 
-        System.out.println(BenchmarkJSONParsing.benchmarkSquirrel_JSON(json) * 1.0e-9);
-
-        System.out.println(BenchmarkJSONParsing.benchmarkAntlr4_json(json) * 1.0e-9);
-
+        var maxDepth = 10; // For small JSON test: 2
+        var numIter = 100; // For small JSON test: 1000
+        var timeSquirrel = 0L;
+        var timeAntlr = 0L;
+        var totBytes = 0;
+        {
+            var jsonGenerator = new JSONGenerator();
+            for (int i = 0; i < numIter; i++) {
+                var json = jsonGenerator.generateJSON(maxDepth);
+                totBytes += json.length();
+                // timeSquirrel += TestUtils.findMinTime(BenchmarkJSONParsing::benchmarkSquirrel_JSON, json);
+                timeSquirrel += BenchmarkJSONParsing.benchmarkSquirrel_JSON(json);
+            }
+        }
+        {
+            var jsonGenerator = new JSONGenerator();
+            for (int i = 0; i < numIter; i++) {
+                var json = jsonGenerator.generateJSON(maxDepth);
+                // timeAntlr += TestUtils.findMinTime(BenchmarkJSONParsing::benchmarkAntlr4_json, json);
+                timeAntlr += BenchmarkJSONParsing.benchmarkAntlr4_json(json);
+            }
+        }
+        System.out.println(timeSquirrel * 1.0e-9 + "\t" + timeAntlr * 1.0e-9 + totBytes);
     }
 }

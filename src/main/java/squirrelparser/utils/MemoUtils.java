@@ -40,11 +40,11 @@ public class MemoUtils {
     }
 
     private static final int SYTAX_ERROR_CONTEXT_WINDOW_SIZE = 60;
-    
+
     /** Display the syntax error position after the last successful match */
     public static void printSyntaxError(Parser parser) {
         var endPos = findMaxEndPos(parser);
-        
+
         // Find line/col number in input corresponding to endPos
         int line = 0;
         int col = 0;

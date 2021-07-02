@@ -59,7 +59,7 @@ public class RuleRef extends Clause {
     protected void visitSubclauses(SubClauseVisitor visitor) {
         // Don't traverse RuleRef reference when visiting clauses
     }
-    
+
     @Override
     public String toString() {
         return labelClause(refdRuleName);

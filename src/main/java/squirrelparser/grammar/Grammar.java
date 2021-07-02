@@ -26,6 +26,8 @@ package squirrelparser.grammar;
 import java.util.HashMap;
 import java.util.List;
 
+import org.parboiled2.Rule;
+
 import squirrelparser.grammar.clause.Clause;
 import squirrelparser.grammar.clause.nonterminal.RuleRef;
 import squirrelparser.grammar.clause.terminal.Collect;
@@ -41,7 +43,7 @@ public class Grammar {
 
     /**
      * Create a grammar.
-     * 
+     *
      * @param rules The list of grammar rules. The first rule should be the top rule of the grammar (i.e. the entry
      *              point for recursion).
      */

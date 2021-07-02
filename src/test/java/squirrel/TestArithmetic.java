@@ -111,7 +111,7 @@ public class TestArithmetic {
         //        var grammar6 = MetaGrammar.parse("A <- a:(B / 'x'); B <- b:(A 'x');");
         //        tryParsing(grammar6, "xxx");
 
-        //        // This grammar requires monotonic length increase, and does not work with unique lengths when there's at least one '?' 
+        //        // This grammar requires monotonic length increase, and does not work with unique lengths when there's at least one '?'
         //        var grammar = MetaGrammar.parse("A <- a:(B 'y'); B <- b:((B / seed:\"x?\") '?') / f:'x';");
         //        tryParsing(grammar, "xy");
         //        tryParsing(grammar, "x?y");

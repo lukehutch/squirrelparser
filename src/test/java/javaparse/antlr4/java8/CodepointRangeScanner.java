@@ -49,16 +49,16 @@ class CodepointRangeScanner {
     }
 
     static String printRanges(boolean[] a) {
-        ArrayList<String> s = new ArrayList<String>();
+        ArrayList<String> s = new ArrayList<>();
         boolean last = false;
         int start = -1;
         for (int p = 0; p <= a.length; p++) {
-            if (p == a.length && last == false) {
+            if (p == a.length && !last) {
                 // Do nothing
-            } else if ((p == a.length || a[p] == false) && last == true) {
+            } else if ((p == a.length || !a[p]) && last) {
                 s.add(printRange(start, p - 1));
                 last = false;
-            } else if (a[p] == true && last == false) {
+            } else if (a[p] && !last) {
                 start = p;
                 last = true;
             }

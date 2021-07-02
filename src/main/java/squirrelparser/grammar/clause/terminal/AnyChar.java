@@ -30,9 +30,9 @@ import squirrelparser.utils.MetaGrammar;
  *
  * <p>
  * May be used as, for example: {@code
- * 
+ *
  * SkipToEOL <- (!'\n' _)+ '\n'?;
- * 
+ *
  * }
  */
 public class AnyChar extends Terminal {

@@ -75,7 +75,7 @@ public class ASTNode {
 
     /**
      * @return The only child of this AST node.
-     * 
+     *
      * @throws IllegalArgumentException if this AST node does not have exactly one child.
      */
     public ASTNode getOnlyChild() {
@@ -87,7 +87,7 @@ public class ASTNode {
 
     /**
      * @return The first child of this AST node.
-     * 
+     *
      * @throws IllegalArgumentException if this AST node does not have at least one child.
      */
     public ASTNode getFirstChild() {
@@ -96,7 +96,7 @@ public class ASTNode {
 
     /**
      * @return The second child of this AST node.
-     * 
+     *
      * @throws IllegalArgumentException if this AST node does not have at least two children.
      */
     public ASTNode getSecondChild() {
@@ -105,7 +105,7 @@ public class ASTNode {
 
     /**
      * @return The third child of this AST node.
-     * 
+     *
      * @throws IllegalArgumentException if this AST node does not have at least three children.
      */
     public ASTNode getThirdChild() {
@@ -114,7 +114,7 @@ public class ASTNode {
 
     /**
      * @return The i-th child of this AST node (zero-indexed).
-     * 
+     *
      * @throws IllegalArgumentException if this AST node does not have at least i+1 children.
      */
     public ASTNode getChild(int i) {

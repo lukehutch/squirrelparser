@@ -207,7 +207,7 @@ public class ParsingWorkbench {
 
         var wCol0 = .45;
         var hRow0 = .35;
-        
+
         c.gridx = 0;
         c.gridy = 0;
         c.weightx = wCol0;

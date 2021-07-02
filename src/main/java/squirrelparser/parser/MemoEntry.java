@@ -147,11 +147,11 @@ public class MemoEntry {
                     // was set, above. If inLeftRecCycle has been set to true, keep iteratively matching
                     // (growing the parse tree downwards from the current point), incorporating lower matches
                     // for this rule at this position as successively higher subtrees of the match tree,
-                    // until the match can no longer be improved. 
+                    // until the match can no longer be improved.
                     if (!inLeftRecCycle) {
                         break;
                     }
-                    
+
                     // Increment cycleDepthForPos[pos], and update cycleDepth of the new match
                     cycleDepth = ++(parser.cycleDepthForPos[pos]);
                     if (Parser.DEBUG) {
@@ -160,7 +160,7 @@ public class MemoEntry {
                 }
 
                 // On exit from this frame of recursion, mark this rule and position as is no longer being part of
-                // the recursion path. (This is paired with "inRecPath = true;" before the while loop.) 
+                // the recursion path. (This is paired with "inRecPath = true;" before the while loop.)
                 inRecPath = false;
             }
 
@@ -168,7 +168,7 @@ public class MemoEntry {
             // to avoid duplicating work in "cousin clauses" (where the same RuleRef occurs
             // multiple times within the clause tree of a single rule). This "upgrades" the
             // cycleDepth of the match or mismatch, in keeping with the logic that a memo should
-            // only be updated if the match gets longer -- i.e. once a clause goes from matching 
+            // only be updated if the match gets longer -- i.e. once a clause goes from matching
             // to mismatching, its longest match is always considered the current best match.
             cycleDepth = parser.cycleDepthForPos[pos];
 

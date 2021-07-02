@@ -7,8 +7,8 @@
 
 package javaparse.mouse23;
 
-import mouse.runtime.Source;
 import mouse.runtime.FuncVV;
+import mouse.runtime.Source;
 
 public class MouseJava14Parser extends mouse.runtime.ParserMemo
 {
@@ -26,7 +26,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       super.sem = sem;
       caches = cacheList;
     }
-  
+
   //-------------------------------------------------------------------
   //  Run the parser
   //-------------------------------------------------------------------
@@ -37,7 +37,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       closeParser(result);
       return result;
     }
-  
+
   //=======================================================================
   //
   //  Parsing procedures
@@ -55,9 +55,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!EOT()) return reject();
       return accept();
     }
-  
+
   Cache Compilation = new Cache();
-  
+
   //=====================================================================
   //  SUB = "\u001a" ;
   //=====================================================================
@@ -67,9 +67,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!next('\u001a')) return reject();
       return accept();
     }
-  
+
   Cache SUB = new Cache();
-  
+
   //=====================================================================
   //  EOT = !_ ;
   //=====================================================================
@@ -79,9 +79,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!aheadNot()) return reject();
       return accept();
     }
-  
+
   Cache EOT = new Cache();
-  
+
   //=====================================================================
   //  Spacing = ([ \t\r\n\f]+ / "/*" _*+ "*/" / "//" _*+ [\r\n])* ;
   //=====================================================================
@@ -91,23 +91,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (Spacing_1());
       return accept();
     }
-  
+
   Cache Spacing = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  Spacing_1 = [ \t\r\n\f]+ / "/*" _*+ "*/" / "//" _*+ [\r\n]
   //-------------------------------------------------------------------
   boolean Spacing_1()
     {
       if (saved("Spacing_1",Spacing_1)) return reuseInner();
-      if (Spacing_2()) return acceptInner();
-      if (Spacing_4()) return acceptInner();
-      if (Spacing_9()) return acceptInner();
+      if (Spacing_2() || Spacing_4() || Spacing_9()) return acceptInner();
       return rejectInner();
     }
-  
+
   Cache Spacing_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  Spacing_2 = [ \t\r\n\f]+
   //-------------------------------------------------------------------
@@ -118,9 +116,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (nextIn(" \t\r\n\f"));
       return acceptInner();
     }
-  
+
   Cache Spacing_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  Spacing_4 = "/*" _*+ "*/"
   //-------------------------------------------------------------------
@@ -132,9 +130,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
         if (!next()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache Spacing_4 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  Spacing_9 = "//" _*+ [\r\n]
   //-------------------------------------------------------------------
@@ -146,9 +144,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
         if (!next()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache Spacing_9 = new Cache();
-  
+
   //=====================================================================
   //  Word = Letter LetterOrDigit* ;
   //=====================================================================
@@ -159,9 +157,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (LetterOrDigit());
       return accept();
     }
-  
+
   Cache Word = new Cache();
-  
+
   //=====================================================================
   //  Identifier = Word:!Reserved Spacing ;
   //=====================================================================
@@ -172,9 +170,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache Identifier = new Cache();
-  
+
   //=====================================================================
   //  TypeIdentifier = Word:!(Reserved / "var" / "yield") Spacing ;
   //=====================================================================
@@ -185,52 +183,45 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache TypeIdentifier = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeIdentifier_2 = Reserved / "var" / "yield"
   //-------------------------------------------------------------------
   boolean TypeIdentifier_2()
     {
       if (saved("TypeIdentifier_2",TypeIdentifier_2)) return reuseInner();
-      if (Reserved()) return acceptInner();
-      if (next("var")) return acceptInner();
-      if (next("yield")) return acceptInner();
+      if (Reserved() || next("var") || next("yield")) return acceptInner();
       return rejectInner();
     }
-  
+
   Cache TypeIdentifier_2 = new Cache();
-  
+
   //=====================================================================
   //  Letter = [a-z] / [A-Z] / [_$] ;
   //=====================================================================
   boolean Letter()
     {
       if (saved("Letter",Letter)) return reuse();
-      if (nextIn('a','z')) return accept();
-      if (nextIn('A','Z')) return accept();
-      if (nextIn("_$")) return accept();
+      if (nextIn('a','z') || nextIn('A','Z') || nextIn("_$")) return accept();
       return reject();
     }
-  
+
   Cache Letter = new Cache();
-  
+
   //=====================================================================
   //  LetterOrDigit = [a-z] / [A-Z] / [0-9] / [_$] ;
   //=====================================================================
   boolean LetterOrDigit()
     {
       if (saved("LetterOrDigit",LetterOrDigit)) return reuse();
-      if (nextIn('a','z')) return accept();
-      if (nextIn('A','Z')) return accept();
-      if (nextIn('0','9')) return accept();
-      if (nextIn("_$")) return accept();
+      if (nextIn('a','z') || nextIn('A','Z') || nextIn('0','9') || nextIn("_$")) return accept();
       return reject();
     }
-  
+
   Cache LetterOrDigit = new Cache();
-  
+
   //=====================================================================
   //  Reserved = "abstract" / "assert" / "boolean" / "break" / "byte" /
   //    "case" / "catch" / "char" / "class" / "const" / "continue" /
@@ -246,10 +237,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean Reserved()
     {
       if (saved("Reserved",Reserved)) return reuse();
-      if (next("abstract")) return accept();
-      if (next("assert")) return accept();
-      if (next("boolean")) return accept();
-      if (next("break")) return accept();
+      if (next("abstract") || next("assert") || next("boolean") || next("break")) return accept();
       if (next("byte")) return accept();
       if (next("case")) return accept();
       if (next("catch")) return accept();
@@ -302,9 +290,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (next('_')) return accept();
       return reject();
     }
-  
+
   Cache Reserved = new Cache();
-  
+
   //=====================================================================
   //  ABSTRACT = Word:"abstract" Spacing ;
   //=====================================================================
@@ -315,9 +303,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ABSTRACT = new Cache();
-  
+
   //=====================================================================
   //  ASSERT = Word:"assert" Spacing ;
   //=====================================================================
@@ -328,9 +316,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ASSERT = new Cache();
-  
+
   //=====================================================================
   //  BOOLEAN = Word:"boolean" Spacing ;
   //=====================================================================
@@ -341,9 +329,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache BOOLEAN = new Cache();
-  
+
   //=====================================================================
   //  BREAK = Word:"break" Spacing ;
   //=====================================================================
@@ -354,9 +342,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache BREAK = new Cache();
-  
+
   //=====================================================================
   //  BYTE = Word:"byte" Spacing ;
   //=====================================================================
@@ -367,9 +355,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache BYTE = new Cache();
-  
+
   //=====================================================================
   //  CASE = Word:"case" Spacing ;
   //=====================================================================
@@ -380,9 +368,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache CASE = new Cache();
-  
+
   //=====================================================================
   //  CATCH = Word:"catch" Spacing ;
   //=====================================================================
@@ -393,9 +381,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache CATCH = new Cache();
-  
+
   //=====================================================================
   //  CHAR = Word:"char" Spacing ;
   //=====================================================================
@@ -406,9 +394,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache CHAR = new Cache();
-  
+
   //=====================================================================
   //  CLASS = Word:"class" Spacing ;
   //=====================================================================
@@ -419,9 +407,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache CLASS = new Cache();
-  
+
   //=====================================================================
   //  CONTINUE = Word:"continue" Spacing ;
   //=====================================================================
@@ -432,9 +420,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache CONTINUE = new Cache();
-  
+
   //=====================================================================
   //  DEFAULT = Word:"default" Spacing ;
   //=====================================================================
@@ -445,9 +433,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache DEFAULT = new Cache();
-  
+
   //=====================================================================
   //  DOUBLE = Word:"double" Spacing ;
   //=====================================================================
@@ -458,9 +446,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache DOUBLE = new Cache();
-  
+
   //=====================================================================
   //  DO = Word:"do" Spacing ;
   //=====================================================================
@@ -471,9 +459,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache DO = new Cache();
-  
+
   //=====================================================================
   //  ELSE = Word:"else" Spacing ;
   //=====================================================================
@@ -484,9 +472,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ELSE = new Cache();
-  
+
   //=====================================================================
   //  ENUM = Word:"enum" Spacing ;
   //=====================================================================
@@ -497,9 +485,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ENUM = new Cache();
-  
+
   //=====================================================================
   //  EXTENDS = Word:"extends" Spacing ;
   //=====================================================================
@@ -510,9 +498,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache EXTENDS = new Cache();
-  
+
   //=====================================================================
   //  FALSE = Word:"false" Spacing ;
   //=====================================================================
@@ -523,9 +511,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache FALSE = new Cache();
-  
+
   //=====================================================================
   //  FINALLY = Word:"finally" Spacing ;
   //=====================================================================
@@ -536,9 +524,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache FINALLY = new Cache();
-  
+
   //=====================================================================
   //  FINAL = Word:"final" Spacing ;
   //=====================================================================
@@ -549,9 +537,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache FINAL = new Cache();
-  
+
   //=====================================================================
   //  FLOAT = Word:"float" Spacing ;
   //=====================================================================
@@ -562,9 +550,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache FLOAT = new Cache();
-  
+
   //=====================================================================
   //  FOR = Word:"for" Spacing ;
   //=====================================================================
@@ -575,9 +563,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache FOR = new Cache();
-  
+
   //=====================================================================
   //  IF = Word:"if" Spacing ;
   //=====================================================================
@@ -588,9 +576,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache IF = new Cache();
-  
+
   //=====================================================================
   //  IMPLEMENTS = Word:"implements" Spacing ;
   //=====================================================================
@@ -601,9 +589,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache IMPLEMENTS = new Cache();
-  
+
   //=====================================================================
   //  IMPORT = Word:"import" Spacing ;
   //=====================================================================
@@ -614,9 +602,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache IMPORT = new Cache();
-  
+
   //=====================================================================
   //  INTERFACE = Word:"interface" Spacing ;
   //=====================================================================
@@ -627,9 +615,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache INTERFACE = new Cache();
-  
+
   //=====================================================================
   //  INT = Word:"int" Spacing ;
   //=====================================================================
@@ -640,9 +628,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache INT = new Cache();
-  
+
   //=====================================================================
   //  INSTANCEOF = Word:"instanceof" Spacing ;
   //=====================================================================
@@ -653,9 +641,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache INSTANCEOF = new Cache();
-  
+
   //=====================================================================
   //  LONG = Word:"long" Spacing ;
   //=====================================================================
@@ -666,9 +654,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache LONG = new Cache();
-  
+
   //=====================================================================
   //  NATIVE = Word:"native" Spacing ;
   //=====================================================================
@@ -679,9 +667,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache NATIVE = new Cache();
-  
+
   //=====================================================================
   //  NEW = Word:"new" Spacing ;
   //=====================================================================
@@ -692,9 +680,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache NEW = new Cache();
-  
+
   //=====================================================================
   //  NULL = Word:"null" Spacing ;
   //=====================================================================
@@ -705,9 +693,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache NULL = new Cache();
-  
+
   //=====================================================================
   //  PACKAGE = Word:"package" Spacing ;
   //=====================================================================
@@ -718,9 +706,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache PACKAGE = new Cache();
-  
+
   //=====================================================================
   //  PRIVATE = Word:"private" Spacing ;
   //=====================================================================
@@ -731,9 +719,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache PRIVATE = new Cache();
-  
+
   //=====================================================================
   //  PROTECTED = Word:"protected" Spacing ;
   //=====================================================================
@@ -744,9 +732,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache PROTECTED = new Cache();
-  
+
   //=====================================================================
   //  PUBLIC = Word:"public" Spacing ;
   //=====================================================================
@@ -757,9 +745,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache PUBLIC = new Cache();
-  
+
   //=====================================================================
   //  RETURN = Word:"return" Spacing ;
   //=====================================================================
@@ -770,9 +758,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache RETURN = new Cache();
-  
+
   //=====================================================================
   //  SHORT = Word:"short" Spacing ;
   //=====================================================================
@@ -783,9 +771,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache SHORT = new Cache();
-  
+
   //=====================================================================
   //  STATIC = Word:"static" Spacing ;
   //=====================================================================
@@ -796,9 +784,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache STATIC = new Cache();
-  
+
   //=====================================================================
   //  STRICTFP = Word:"strictfp" Spacing ;
   //=====================================================================
@@ -809,9 +797,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache STRICTFP = new Cache();
-  
+
   //=====================================================================
   //  SUPER = Word:"super" Spacing ;
   //=====================================================================
@@ -822,9 +810,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache SUPER = new Cache();
-  
+
   //=====================================================================
   //  SWITCH = Word:"switch" Spacing ;
   //=====================================================================
@@ -835,9 +823,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache SWITCH = new Cache();
-  
+
   //=====================================================================
   //  SYNCHRONIZED = Word:"synchronized" Spacing ;
   //=====================================================================
@@ -848,9 +836,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache SYNCHRONIZED = new Cache();
-  
+
   //=====================================================================
   //  THIS = Word:"this" Spacing ;
   //=====================================================================
@@ -861,9 +849,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache THIS = new Cache();
-  
+
   //=====================================================================
   //  THROWS = Word:"throws" Spacing ;
   //=====================================================================
@@ -874,9 +862,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache THROWS = new Cache();
-  
+
   //=====================================================================
   //  THROW = Word:"throw" Spacing ;
   //=====================================================================
@@ -887,9 +875,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache THROW = new Cache();
-  
+
   //=====================================================================
   //  TRANSIENT = Word:"transient" Spacing ;
   //=====================================================================
@@ -900,9 +888,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache TRANSIENT = new Cache();
-  
+
   //=====================================================================
   //  TRUE = Word:"true" Spacing ;
   //=====================================================================
@@ -913,9 +901,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache TRUE = new Cache();
-  
+
   //=====================================================================
   //  TRY = Word:"try" Spacing ;
   //=====================================================================
@@ -926,9 +914,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache TRY = new Cache();
-  
+
   //=====================================================================
   //  VOID = Word:"void" Spacing ;
   //=====================================================================
@@ -939,9 +927,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache VOID = new Cache();
-  
+
   //=====================================================================
   //  VOLATILE = Word:"volatile" Spacing ;
   //=====================================================================
@@ -952,9 +940,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache VOLATILE = new Cache();
-  
+
   //=====================================================================
   //  WHILE = Word:"while" Spacing ;
   //=====================================================================
@@ -965,9 +953,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache WHILE = new Cache();
-  
+
   //=====================================================================
   //  OPEN = Word:"open" Spacing ;
   //=====================================================================
@@ -978,9 +966,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache OPEN = new Cache();
-  
+
   //=====================================================================
   //  MODULE = Word:"module" Spacing ;
   //=====================================================================
@@ -991,9 +979,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache MODULE = new Cache();
-  
+
   //=====================================================================
   //  REQUIRES = Word:"requires" Spacing ;
   //=====================================================================
@@ -1004,9 +992,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache REQUIRES = new Cache();
-  
+
   //=====================================================================
   //  TRANSITIVE = Word:"transitive" Spacing ;
   //=====================================================================
@@ -1017,9 +1005,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache TRANSITIVE = new Cache();
-  
+
   //=====================================================================
   //  EXPORTS = Word:"exports" Spacing ;
   //=====================================================================
@@ -1030,9 +1018,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache EXPORTS = new Cache();
-  
+
   //=====================================================================
   //  OPENS = Word:"opens" Spacing ;
   //=====================================================================
@@ -1043,9 +1031,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache OPENS = new Cache();
-  
+
   //=====================================================================
   //  TO = Word:"to" Spacing ;
   //=====================================================================
@@ -1056,9 +1044,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache TO = new Cache();
-  
+
   //=====================================================================
   //  USES = Word:"uses" Spacing ;
   //=====================================================================
@@ -1069,9 +1057,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache USES = new Cache();
-  
+
   //=====================================================================
   //  PROVIDES = Word:"provides" Spacing ;
   //=====================================================================
@@ -1082,9 +1070,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache PROVIDES = new Cache();
-  
+
   //=====================================================================
   //  WITH = Word:"with" Spacing ;
   //=====================================================================
@@ -1095,9 +1083,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache WITH = new Cache();
-  
+
   //=====================================================================
   //  VAR = Word:"var" Spacing ;
   //=====================================================================
@@ -1108,9 +1096,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache VAR = new Cache();
-  
+
   //=====================================================================
   //  YIELD = Word:"yield" Spacing ;
   //=====================================================================
@@ -1121,9 +1109,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache YIELD = new Cache();
-  
+
   //=====================================================================
   //  Literal = FloatLiteral / IntegerLiteral / BooleanLiteral /
   //    CharLiteral / StringLiteral / NullLiteral ;
@@ -1131,17 +1119,14 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean Literal()
     {
       if (saved("Literal",Literal)) return reuse();
-      if (FloatLiteral()) return accept();
-      if (IntegerLiteral()) return accept();
-      if (BooleanLiteral()) return accept();
-      if (CharLiteral()) return accept();
+      if (FloatLiteral() || IntegerLiteral() || BooleanLiteral() || CharLiteral()) return accept();
       if (StringLiteral()) return accept();
       if (NullLiteral()) return accept();
       return reject();
     }
-  
+
   Cache Literal = new Cache();
-  
+
   //=====================================================================
   //  IntegerLiteral = (HexNumeral / BinaryNumeral / OctalNumeral /
   //    DecimalNumeral) [lL]? Spacing ;
@@ -1158,22 +1143,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache IntegerLiteral = new Cache();
-  
+
   //=====================================================================
   //  DecimalNumeral = "0" / [1-9] ([_]* [0-9])* ;
   //=====================================================================
   boolean DecimalNumeral()
     {
       if (saved("DecimalNumeral",DecimalNumeral)) return reuse();
-      if (next('0')) return accept();
-      if (DecimalNumeral_1()) return accept();
+      if (next('0') || DecimalNumeral_1()) return accept();
       return reject();
     }
-  
+
   Cache DecimalNumeral = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  DecimalNumeral_1 = [1-9] ([_]* [0-9])*
   //-------------------------------------------------------------------
@@ -1184,9 +1168,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (DecimalNumeral_4());
       return acceptInner();
     }
-  
+
   Cache DecimalNumeral_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  DecimalNumeral_4 = [_]* [0-9]
   //-------------------------------------------------------------------
@@ -1197,38 +1181,35 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!nextIn('0','9')) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache DecimalNumeral_4 = new Cache();
-  
+
   //=====================================================================
   //  HexNumeral = ("0x" / "0X") HexDigits ;
   //=====================================================================
   boolean HexNumeral()
     {
       if (saved("HexNumeral",HexNumeral)) return reuse();
-      if (!next("0x")
-       && !next("0X")
-         ) return reject();
-      if (!HexDigits()) return reject();
+      if ((!next("0x")
+       && !next("0X")) || !HexDigits()) return reject();
       return accept();
     }
-  
+
   Cache HexNumeral = new Cache();
-  
+
   //=====================================================================
   //  OctalNumeral = "0" ([_]* [0-7])+ ;
   //=====================================================================
   boolean OctalNumeral()
     {
       if (saved("OctalNumeral",OctalNumeral)) return reuse();
-      if (!next('0')) return reject();
-      if (!OctalNumeral_3()) return reject();
+      if (!next('0') || !OctalNumeral_3()) return reject();
       while (OctalNumeral_3());
       return accept();
     }
-  
+
   Cache OctalNumeral = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  OctalNumeral_3 = [_]* [0-7]
   //-------------------------------------------------------------------
@@ -1239,25 +1220,23 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!nextIn('0','7')) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache OctalNumeral_3 = new Cache();
-  
+
   //=====================================================================
   //  BinaryNumeral = ("0b" / "0B") [01] ([_]* [01])* ;
   //=====================================================================
   boolean BinaryNumeral()
     {
       if (saved("BinaryNumeral",BinaryNumeral)) return reuse();
-      if (!next("0b")
-       && !next("0B")
-         ) return reject();
-      if (!nextIn("01")) return reject();
+      if ((!next("0b")
+       && !next("0B")) || !nextIn("01")) return reject();
       while (BinaryNumeral_6());
       return accept();
     }
-  
+
   Cache BinaryNumeral = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  BinaryNumeral_6 = [_]* [01]
   //-------------------------------------------------------------------
@@ -1268,9 +1247,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!nextIn("01")) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache BinaryNumeral_6 = new Cache();
-  
+
   //=====================================================================
   //  FloatLiteral = (HexadecimalFloatingPointLiteral /
   //    DecimalFloatingPointLiteral) Spacing ;
@@ -1284,9 +1263,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache FloatLiteral = new Cache();
-  
+
   //=====================================================================
   //  DecimalFloatingPointLiteral = Digits "." Digits? Exponent? [fFdD]?
   //    / "." Digits Exponent? [fFdD]? / Digits Exponent [fFdD]? / Digits
@@ -1295,15 +1274,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean DecimalFloatingPointLiteral()
     {
       if (saved("DecimalFloatingPointLiteral",DecimalFloatingPointLiteral)) return reuse();
-      if (DecimalFloatingPointLiteral_0()) return accept();
-      if (DecimalFloatingPointLiteral_6()) return accept();
-      if (DecimalFloatingPointLiteral_11()) return accept();
-      if (DecimalFloatingPointLiteral_14()) return accept();
+      if (DecimalFloatingPointLiteral_0() || DecimalFloatingPointLiteral_6() || DecimalFloatingPointLiteral_11() || DecimalFloatingPointLiteral_14()) return accept();
       return reject();
     }
-  
+
   Cache DecimalFloatingPointLiteral = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  DecimalFloatingPointLiteral_0 = Digits "." Digits? Exponent?
   //    [fFdD]?
@@ -1311,45 +1287,42 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean DecimalFloatingPointLiteral_0()
     {
       if (saved("DecimalFloatingPointLiteral_0",DecimalFloatingPointLiteral_0)) return reuseInner();
-      if (!Digits()) return rejectInner();
-      if (!next('.')) return rejectInner();
+      if (!Digits() || !next('.')) return rejectInner();
       Digits();
       Exponent();
       nextIn("fFdD");
       return acceptInner();
     }
-  
+
   Cache DecimalFloatingPointLiteral_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  DecimalFloatingPointLiteral_6 = "." Digits Exponent? [fFdD]?
   //-------------------------------------------------------------------
   boolean DecimalFloatingPointLiteral_6()
     {
       if (saved("DecimalFloatingPointLiteral_6",DecimalFloatingPointLiteral_6)) return reuseInner();
-      if (!next('.')) return rejectInner();
-      if (!Digits()) return rejectInner();
+      if (!next('.') || !Digits()) return rejectInner();
       Exponent();
       nextIn("fFdD");
       return acceptInner();
     }
-  
+
   Cache DecimalFloatingPointLiteral_6 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  DecimalFloatingPointLiteral_11 = Digits Exponent [fFdD]?
   //-------------------------------------------------------------------
   boolean DecimalFloatingPointLiteral_11()
     {
       if (saved("DecimalFloatingPointLiteral_11",DecimalFloatingPointLiteral_11)) return reuseInner();
-      if (!Digits()) return rejectInner();
-      if (!Exponent()) return rejectInner();
+      if (!Digits() || !Exponent()) return rejectInner();
       nextIn("fFdD");
       return acceptInner();
     }
-  
+
   Cache DecimalFloatingPointLiteral_11 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  DecimalFloatingPointLiteral_14 = Digits Exponent? [fFdD]
   //-------------------------------------------------------------------
@@ -1361,9 +1334,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!nextIn("fFdD")) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache DecimalFloatingPointLiteral_14 = new Cache();
-  
+
   //=====================================================================
   //  Exponent = [eE] [+-]? Digits ;
   //=====================================================================
@@ -1375,9 +1348,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Digits()) return reject();
       return accept();
     }
-  
+
   Cache Exponent = new Cache();
-  
+
   //=====================================================================
   //  HexadecimalFloatingPointLiteral = HexSignificand BinaryExponent
   //    [fFdD]? ;
@@ -1385,14 +1358,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean HexadecimalFloatingPointLiteral()
     {
       if (saved("HexadecimalFloatingPointLiteral",HexadecimalFloatingPointLiteral)) return reuse();
-      if (!HexSignificand()) return reject();
-      if (!BinaryExponent()) return reject();
+      if (!HexSignificand() || !BinaryExponent()) return reject();
       nextIn("fFdD");
       return accept();
     }
-  
+
   Cache HexadecimalFloatingPointLiteral = new Cache();
-  
+
   //=====================================================================
   //  HexSignificand = ("0x" / "0X") HexDigits? "." HexDigits /
   //    HexNumeral "."? ;
@@ -1400,13 +1372,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean HexSignificand()
     {
       if (saved("HexSignificand",HexSignificand)) return reuse();
-      if (HexSignificand_0()) return accept();
-      if (HexSignificand_6()) return accept();
+      if (HexSignificand_0() || HexSignificand_6()) return accept();
       return reject();
     }
-  
+
   Cache HexSignificand = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  HexSignificand_0 = ("0x" / "0X") HexDigits? "." HexDigits
   //-------------------------------------------------------------------
@@ -1417,13 +1388,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
        && !next("0X")
          ) return rejectInner();
       HexDigits();
-      if (!next('.')) return rejectInner();
-      if (!HexDigits()) return rejectInner();
+      if (!next('.') || !HexDigits()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache HexSignificand_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  HexSignificand_6 = HexNumeral "."?
   //-------------------------------------------------------------------
@@ -1434,9 +1404,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       next('.');
       return acceptInner();
     }
-  
+
   Cache HexSignificand_6 = new Cache();
-  
+
   //=====================================================================
   //  HexDigits = HexDigit ([_]* HexDigit)* ;
   //=====================================================================
@@ -1447,9 +1417,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (HexDigits_2());
       return accept();
     }
-  
+
   Cache HexDigits = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  HexDigits_2 = [_]* HexDigit
   //-------------------------------------------------------------------
@@ -1460,23 +1430,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!HexDigit()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache HexDigits_2 = new Cache();
-  
+
   //=====================================================================
   //  HexDigit = [a-f] / [A-F] / [0-9] ;
   //=====================================================================
   boolean HexDigit()
     {
       if (saved("HexDigit",HexDigit)) return reuse();
-      if (nextIn('a','f')) return accept();
-      if (nextIn('A','F')) return accept();
-      if (nextIn('0','9')) return accept();
+      if (nextIn('a','f') || nextIn('A','F') || nextIn('0','9')) return accept();
       return reject();
     }
-  
+
   Cache HexDigit = new Cache();
-  
+
   //=====================================================================
   //  BinaryExponent = [pP] [+-]? Digits ;
   //=====================================================================
@@ -1488,9 +1456,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Digits()) return reject();
       return accept();
     }
-  
+
   Cache BinaryExponent = new Cache();
-  
+
   //=====================================================================
   //  Digits = [0-9] ([_]* [0-9])* ;
   //=====================================================================
@@ -1501,39 +1469,35 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (DecimalNumeral_4());
       return accept();
     }
-  
+
   Cache Digits = new Cache();
-  
+
   //=====================================================================
   //  BooleanLiteral = TRUE / FALSE ;
   //=====================================================================
   boolean BooleanLiteral()
     {
       if (saved("BooleanLiteral",BooleanLiteral)) return reuse();
-      if (TRUE()) return accept();
-      if (FALSE()) return accept();
+      if (TRUE() || FALSE()) return accept();
       return reject();
     }
-  
+
   Cache BooleanLiteral = new Cache();
-  
+
   //=====================================================================
   //  CharLiteral = "'" (Escape / ^['\\n\r]) "'" Spacing ;
   //=====================================================================
   boolean CharLiteral()
     {
       if (saved("CharLiteral",CharLiteral)) return reuse();
-      if (!next('\'')) return reject();
-      if (!Escape()
-       && !nextNotIn("'\\\n\r")
-         ) return reject();
-      if (!next('\'')) return reject();
+      if (!next('\'') || (!Escape()
+       && !nextNotIn("'\\\n\r")) || !next('\'')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache CharLiteral = new Cache();
-  
+
   //=====================================================================
   //  StringLiteral = """ (Escape / ^["\\n\r])* """ Spacing ;
   //=====================================================================
@@ -1546,79 +1510,72 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache StringLiteral = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  StringLiteral_3 = Escape / ^["\\n\r]
   //-------------------------------------------------------------------
   boolean StringLiteral_3()
     {
       if (saved("StringLiteral_3",StringLiteral_3)) return reuseInner();
-      if (Escape()) return acceptInner();
-      if (nextNotIn("\"\\\n\r")) return acceptInner();
+      if (Escape() || nextNotIn("\"\\\n\r")) return acceptInner();
       return rejectInner();
     }
-  
+
   Cache StringLiteral_3 = new Cache();
-  
+
   //=====================================================================
   //  Escape = "\" ([btnfr"'\] / OctalEscape / UnicodeEscape) ;
   //=====================================================================
   boolean Escape()
     {
       if (saved("Escape",Escape)) return reuse();
-      if (!next('\\')) return reject();
-      if (!nextIn("btnfr\"'\\")
+      if (!next('\\') || (!nextIn("btnfr\"'\\")
        && !OctalEscape()
-       && !UnicodeEscape()
+       && !UnicodeEscape())
          ) return reject();
       return accept();
     }
-  
+
   Cache Escape = new Cache();
-  
+
   //=====================================================================
   //  OctalEscape = [0-3] [0-7] [0-7] / [0-7] [0-7] / [0-7] ;
   //=====================================================================
   boolean OctalEscape()
     {
       if (saved("OctalEscape",OctalEscape)) return reuse();
-      if (OctalEscape_0()) return accept();
-      if (OctalEscape_4()) return accept();
-      if (nextIn('0','7')) return accept();
+      if (OctalEscape_0() || OctalEscape_4() || nextIn('0','7')) return accept();
       return reject();
     }
-  
+
   Cache OctalEscape = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  OctalEscape_0 = [0-3] [0-7] [0-7]
   //-------------------------------------------------------------------
   boolean OctalEscape_0()
     {
       if (saved("OctalEscape_0",OctalEscape_0)) return reuseInner();
-      if (!nextIn('0','3')) return rejectInner();
-      if (!nextIn('0','7')) return rejectInner();
-      if (!nextIn('0','7')) return rejectInner();
+      if (!nextIn('0','3') || !nextIn('0','7') || !nextIn('0','7')) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache OctalEscape_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  OctalEscape_4 = [0-7] [0-7]
   //-------------------------------------------------------------------
   boolean OctalEscape_4()
     {
       if (saved("OctalEscape_4",OctalEscape_4)) return reuseInner();
-      if (!nextIn('0','7')) return rejectInner();
-      if (!nextIn('0','7')) return rejectInner();
+      if (!nextIn('0','7') || !nextIn('0','7')) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache OctalEscape_4 = new Cache();
-  
+
   //=====================================================================
   //  UnicodeEscape = "u"+ HexDigit HexDigit HexDigit HexDigit ;
   //=====================================================================
@@ -1627,15 +1584,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("UnicodeEscape",UnicodeEscape)) return reuse();
       if (!next('u')) return reject();
       while (next('u'));
-      if (!HexDigit()) return reject();
-      if (!HexDigit()) return reject();
-      if (!HexDigit()) return reject();
-      if (!HexDigit()) return reject();
+      if (!HexDigit() || !HexDigit() || !HexDigit() || !HexDigit()) return reject();
       return accept();
     }
-  
+
   Cache UnicodeEscape = new Cache();
-  
+
   //=====================================================================
   //  NullLiteral = NULL ;
   //=====================================================================
@@ -1645,9 +1599,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!NULL()) return reject();
       return accept();
     }
-  
+
   Cache NullLiteral = new Cache();
-  
+
   //=====================================================================
   //  AT = "@" Spacing ;
   //=====================================================================
@@ -1658,9 +1612,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache AT = new Cache();
-  
+
   //=====================================================================
   //  COLONCOLON = "::" Spacing ;
   //=====================================================================
@@ -1671,9 +1625,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache COLONCOLON = new Cache();
-  
+
   //=====================================================================
   //  COMMA = "," Spacing ;
   //=====================================================================
@@ -1684,23 +1638,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache COMMA = new Cache();
-  
+
   //=====================================================================
   //  DOT = "." !".." Spacing ;
   //=====================================================================
   boolean DOT()
     {
       if (saved("DOT",DOT)) return reuse();
-      if (!next('.')) return reject();
-      if (!aheadNot("..")) return reject();
+      if (!next('.') || !aheadNot("..")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache DOT = new Cache();
-  
+
   //=====================================================================
   //  ELLIPSIS = "..." Spacing ;
   //=====================================================================
@@ -1711,9 +1664,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ELLIPSIS = new Cache();
-  
+
   //=====================================================================
   //  LPAR = "(" Spacing ;
   //=====================================================================
@@ -1724,9 +1677,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache LPAR = new Cache();
-  
+
   //=====================================================================
   //  LBRK = "[" Spacing ;
   //=====================================================================
@@ -1737,9 +1690,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache LBRK = new Cache();
-  
+
   //=====================================================================
   //  RBRK = "]" Spacing ;
   //=====================================================================
@@ -1750,9 +1703,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache RBRK = new Cache();
-  
+
   //=====================================================================
   //  RPAR = ")" Spacing ;
   //=====================================================================
@@ -1763,9 +1716,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache RPAR = new Cache();
-  
+
   //=====================================================================
   //  LWING = "{" Spacing ;
   //=====================================================================
@@ -1776,9 +1729,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache LWING = new Cache();
-  
+
   //=====================================================================
   //  RWING = "}" Spacing ;
   //=====================================================================
@@ -1789,9 +1742,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache RWING = new Cache();
-  
+
   //=====================================================================
   //  SEMI = ";" Spacing ;
   //=====================================================================
@@ -1802,23 +1755,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache SEMI = new Cache();
-  
+
   //=====================================================================
   //  AND = "&" ![=&] Spacing ;
   //=====================================================================
   boolean AND()
     {
       if (saved("AND",AND)) return reuse();
-      if (!next('&')) return reject();
-      if (!aheadNotIn("=&")) return reject();
+      if (!next('&') || !aheadNotIn("=&")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache AND = new Cache();
-  
+
   //=====================================================================
   //  ANDAND = "&&" Spacing ;
   //=====================================================================
@@ -1829,9 +1781,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ANDAND = new Cache();
-  
+
   //=====================================================================
   //  ANDEQU = "&=" Spacing ;
   //=====================================================================
@@ -1842,9 +1794,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ANDEQU = new Cache();
-  
+
   //=====================================================================
   //  ARROW = "->" Spacing ;
   //=====================================================================
@@ -1855,37 +1807,35 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache ARROW = new Cache();
-  
+
   //=====================================================================
   //  BANG = "!" ![=] Spacing ;
   //=====================================================================
   boolean BANG()
     {
       if (saved("BANG",BANG)) return reuse();
-      if (!next('!')) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next('!') || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache BANG = new Cache();
-  
+
   //=====================================================================
   //  BSR = ">>>" ![=] Spacing ;
   //=====================================================================
   boolean BSR()
     {
       if (saved("BSR",BSR)) return reuse();
-      if (!next(">>>")) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next(">>>") || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache BSR = new Cache();
-  
+
   //=====================================================================
   //  BSREQU = ">>>=" Spacing ;
   //=====================================================================
@@ -1896,23 +1846,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache BSREQU = new Cache();
-  
+
   //=====================================================================
   //  COLON = ":" ![:] Spacing ;
   //=====================================================================
   boolean COLON()
     {
       if (saved("COLON",COLON)) return reuse();
-      if (!next(':')) return reject();
-      if (!aheadNot(':')) return reject();
+      if (!next(':') || !aheadNot(':')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache COLON = new Cache();
-  
+
   //=====================================================================
   //  DEC = "--" Spacing ;
   //=====================================================================
@@ -1923,23 +1872,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache DEC = new Cache();
-  
+
   //=====================================================================
   //  DIV = "/" ![=] Spacing ;
   //=====================================================================
   boolean DIV()
     {
       if (saved("DIV",DIV)) return reuse();
-      if (!next('/')) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next('/') || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache DIV = new Cache();
-  
+
   //=====================================================================
   //  DIVEQU = "/=" Spacing ;
   //=====================================================================
@@ -1950,23 +1898,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache DIVEQU = new Cache();
-  
+
   //=====================================================================
   //  EQU = "=" ![=] Spacing ;
   //=====================================================================
   boolean EQU()
     {
       if (saved("EQU",EQU)) return reuse();
-      if (!next('=')) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next('=') || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache EQU = new Cache();
-  
+
   //=====================================================================
   //  EQUAL = "==" Spacing ;
   //=====================================================================
@@ -1977,9 +1924,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache EQUAL = new Cache();
-  
+
   //=====================================================================
   //  GE = ">=" Spacing ;
   //=====================================================================
@@ -1990,37 +1937,35 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache GE = new Cache();
-  
+
   //=====================================================================
   //  GT = ">" ![=>] Spacing ;
   //=====================================================================
   boolean GT()
     {
       if (saved("GT",GT)) return reuse();
-      if (!next('>')) return reject();
-      if (!aheadNotIn("=>")) return reject();
+      if (!next('>') || !aheadNotIn("=>")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache GT = new Cache();
-  
+
   //=====================================================================
   //  HAT = "^" ![=] Spacing ;
   //=====================================================================
   boolean HAT()
     {
       if (saved("HAT",HAT)) return reuse();
-      if (!next('^')) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next('^') || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache HAT = new Cache();
-  
+
   //=====================================================================
   //  HATEQU = "^=" Spacing ;
   //=====================================================================
@@ -2031,9 +1976,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache HATEQU = new Cache();
-  
+
   //=====================================================================
   //  INC = "++" Spacing ;
   //=====================================================================
@@ -2044,9 +1989,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache INC = new Cache();
-  
+
   //=====================================================================
   //  LE = "<=" Spacing ;
   //=====================================================================
@@ -2057,9 +2002,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache LE = new Cache();
-  
+
   //=====================================================================
   //  LPOINT = "<" Spacing ;
   //=====================================================================
@@ -2070,37 +2015,35 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache LPOINT = new Cache();
-  
+
   //=====================================================================
   //  LT = "<" ![=<] Spacing ;
   //=====================================================================
   boolean LT()
     {
       if (saved("LT",LT)) return reuse();
-      if (!next('<')) return reject();
-      if (!aheadNotIn("=<")) return reject();
+      if (!next('<') || !aheadNotIn("=<")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache LT = new Cache();
-  
+
   //=====================================================================
   //  MINUS = "-" ![=->] Spacing ;
   //=====================================================================
   boolean MINUS()
     {
       if (saved("MINUS",MINUS)) return reuse();
-      if (!next('-')) return reject();
-      if (!aheadNotIn("=->")) return reject();
+      if (!next('-') || !aheadNotIn("=->")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache MINUS = new Cache();
-  
+
   //=====================================================================
   //  MINUSEQU = "-=" Spacing ;
   //=====================================================================
@@ -2111,23 +2054,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache MINUSEQU = new Cache();
-  
+
   //=====================================================================
   //  MOD = "%" ![=] Spacing ;
   //=====================================================================
   boolean MOD()
     {
       if (saved("MOD",MOD)) return reuse();
-      if (!next('%')) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next('%') || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache MOD = new Cache();
-  
+
   //=====================================================================
   //  MODEQU = "%=" Spacing ;
   //=====================================================================
@@ -2138,9 +2080,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache MODEQU = new Cache();
-  
+
   //=====================================================================
   //  NOTEQUAL = "!=" Spacing ;
   //=====================================================================
@@ -2151,23 +2093,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache NOTEQUAL = new Cache();
-  
+
   //=====================================================================
   //  OR = "|" ![=|] Spacing ;
   //=====================================================================
   boolean OR()
     {
       if (saved("OR",OR)) return reuse();
-      if (!next('|')) return reject();
-      if (!aheadNotIn("=|")) return reject();
+      if (!next('|') || !aheadNotIn("=|")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache OR = new Cache();
-  
+
   //=====================================================================
   //  OREQU = "|=" Spacing ;
   //=====================================================================
@@ -2178,9 +2119,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache OREQU = new Cache();
-  
+
   //=====================================================================
   //  OROR = "||" Spacing ;
   //=====================================================================
@@ -2191,23 +2132,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache OROR = new Cache();
-  
+
   //=====================================================================
   //  PLUS = "+" ![=+] Spacing ;
   //=====================================================================
   boolean PLUS()
     {
       if (saved("PLUS",PLUS)) return reuse();
-      if (!next('+')) return reject();
-      if (!aheadNotIn("=+")) return reject();
+      if (!next('+') || !aheadNotIn("=+")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache PLUS = new Cache();
-  
+
   //=====================================================================
   //  PLUSEQU = "+=" Spacing ;
   //=====================================================================
@@ -2218,9 +2158,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache PLUSEQU = new Cache();
-  
+
   //=====================================================================
   //  QUERY = "?" Spacing ;
   //=====================================================================
@@ -2231,9 +2171,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache QUERY = new Cache();
-  
+
   //=====================================================================
   //  RPOINT = ">" Spacing ;
   //=====================================================================
@@ -2244,23 +2184,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache RPOINT = new Cache();
-  
+
   //=====================================================================
   //  SL = "<<" ![=] Spacing ;
   //=====================================================================
   boolean SL()
     {
       if (saved("SL",SL)) return reuse();
-      if (!next("<<")) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next("<<") || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache SL = new Cache();
-  
+
   //=====================================================================
   //  SLEQU = "<<=" Spacing ;
   //=====================================================================
@@ -2271,23 +2210,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache SLEQU = new Cache();
-  
+
   //=====================================================================
   //  SR = ">>" ![=>] Spacing ;
   //=====================================================================
   boolean SR()
     {
       if (saved("SR",SR)) return reuse();
-      if (!next(">>")) return reject();
-      if (!aheadNotIn("=>")) return reject();
+      if (!next(">>") || !aheadNotIn("=>")) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache SR = new Cache();
-  
+
   //=====================================================================
   //  SREQU = ">>=" Spacing ;
   //=====================================================================
@@ -2298,23 +2236,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache SREQU = new Cache();
-  
+
   //=====================================================================
   //  STAR = "*" ![=] Spacing ;
   //=====================================================================
   boolean STAR()
     {
       if (saved("STAR",STAR)) return reuse();
-      if (!next('*')) return reject();
-      if (!aheadNot('=')) return reject();
+      if (!next('*') || !aheadNot('=')) return reject();
       Spacing();
       return accept();
     }
-  
+
   Cache STAR = new Cache();
-  
+
   //=====================================================================
   //  STAREQU = "*=" Spacing ;
   //=====================================================================
@@ -2325,9 +2262,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache STAREQU = new Cache();
-  
+
   //=====================================================================
   //  TILDE = "~" Spacing ;
   //=====================================================================
@@ -2338,22 +2275,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Spacing();
       return accept();
     }
-  
+
   Cache TILDE = new Cache();
-  
+
   //=====================================================================
   //  PrimitiveType = Annotation* NumericType / Annotation* BOOLEAN ;
   //=====================================================================
   boolean PrimitiveType()
     {
       if (saved("PrimitiveType",PrimitiveType)) return reuse();
-      if (PrimitiveType_0()) return accept();
-      if (PrimitiveType_2()) return accept();
+      if (PrimitiveType_0() || PrimitiveType_2()) return accept();
       return reject();
     }
-  
+
   Cache PrimitiveType = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  PrimitiveType_0 = Annotation* NumericType
   //-------------------------------------------------------------------
@@ -2364,9 +2300,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!NumericType()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache PrimitiveType_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  PrimitiveType_2 = Annotation* BOOLEAN
   //-------------------------------------------------------------------
@@ -2377,65 +2313,58 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!BOOLEAN()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache PrimitiveType_2 = new Cache();
-  
+
   //=====================================================================
   //  NumericType = IntegralType / FloatingPointType ;
   //=====================================================================
   boolean NumericType()
     {
       if (saved("NumericType",NumericType)) return reuse();
-      if (IntegralType()) return accept();
-      if (FloatingPointType()) return accept();
+      if (IntegralType() || FloatingPointType()) return accept();
       return reject();
     }
-  
+
   Cache NumericType = new Cache();
-  
+
   //=====================================================================
   //  IntegralType = BYTE / SHORT / INT / LONG / CHAR ;
   //=====================================================================
   boolean IntegralType()
     {
       if (saved("IntegralType",IntegralType)) return reuse();
-      if (BYTE()) return accept();
-      if (SHORT()) return accept();
-      if (INT()) return accept();
-      if (LONG()) return accept();
+      if (BYTE() || SHORT() || INT() || LONG()) return accept();
       if (CHAR()) return accept();
       return reject();
     }
-  
+
   Cache IntegralType = new Cache();
-  
+
   //=====================================================================
   //  FloatingPointType = FLOAT / DOUBLE ;
   //=====================================================================
   boolean FloatingPointType()
     {
       if (saved("FloatingPointType",FloatingPointType)) return reuse();
-      if (FLOAT()) return accept();
-      if (DOUBLE()) return accept();
+      if (FLOAT() || DOUBLE()) return accept();
       return reject();
     }
-  
+
   Cache FloatingPointType = new Cache();
-  
+
   //=====================================================================
   //  ReferenceType = ArrayType / ClassType / TypeVariable ;
   //=====================================================================
   boolean ReferenceType()
     {
       if (saved("ReferenceType",ReferenceType)) return reuse();
-      if (ArrayType()) return accept();
-      if (ClassType()) return accept();
-      if (TypeVariable()) return accept();
+      if (ArrayType() || ClassType() || TypeVariable()) return accept();
       return reject();
     }
-  
+
   Cache ReferenceType = new Cache();
-  
+
   //=====================================================================
   //  ClassType = (Annotation* TypeIdentifier TypeArguments? / Name DOT
   //    Annotation* TypeIdentifier TypeArguments?) (DOT Annotation*
@@ -2450,9 +2379,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ClassType_9());
       return accept();
     }
-  
+
   Cache ClassType = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassType_2 = Annotation* TypeIdentifier TypeArguments?
   //-------------------------------------------------------------------
@@ -2464,25 +2393,24 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       TypeArguments();
       return acceptInner();
     }
-  
+
   Cache ClassType_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassType_5 = Name DOT Annotation* TypeIdentifier TypeArguments?
   //-------------------------------------------------------------------
   boolean ClassType_5()
     {
       if (saved("ClassType_5",ClassType_5)) return reuseInner();
-      if (!Name()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!Name() || !DOT()) return rejectInner();
       while (Annotation());
       if (!TypeIdentifier()) return rejectInner();
       TypeArguments();
       return acceptInner();
     }
-  
+
   Cache ClassType_5 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassType_9 = DOT Annotation* TypeIdentifier TypeArguments?
   //-------------------------------------------------------------------
@@ -2495,9 +2423,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       TypeArguments();
       return acceptInner();
     }
-  
+
   Cache ClassType_9 = new Cache();
-  
+
   //=====================================================================
   //  TypeVariable = Annotation* TypeIdentifier ;
   //=====================================================================
@@ -2508,9 +2436,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!TypeIdentifier()) return reject();
       return accept();
     }
-  
+
   Cache TypeVariable = new Cache();
-  
+
   //=====================================================================
   //  ArrayType = PrimitiveType Dims / ClassType Dims / TypeVariable Dims
   //    ;
@@ -2518,53 +2446,48 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ArrayType()
     {
       if (saved("ArrayType",ArrayType)) return reuse();
-      if (ArrayType_0()) return accept();
-      if (ArrayType_1()) return accept();
-      if (ArrayType_2()) return accept();
+      if (ArrayType_0() || ArrayType_1() || ArrayType_2()) return accept();
       return reject();
     }
-  
+
   Cache ArrayType = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayType_0 = PrimitiveType Dims
   //-------------------------------------------------------------------
   boolean ArrayType_0()
     {
       if (saved("ArrayType_0",ArrayType_0)) return reuseInner();
-      if (!PrimitiveType()) return rejectInner();
-      if (!Dims()) return rejectInner();
+      if (!PrimitiveType() || !Dims()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayType_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayType_1 = ClassType Dims
   //-------------------------------------------------------------------
   boolean ArrayType_1()
     {
       if (saved("ArrayType_1",ArrayType_1)) return reuseInner();
-      if (!ClassType()) return rejectInner();
-      if (!Dims()) return rejectInner();
+      if (!ClassType() || !Dims()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayType_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayType_2 = TypeVariable Dims
   //-------------------------------------------------------------------
   boolean ArrayType_2()
     {
       if (saved("ArrayType_2",ArrayType_2)) return reuseInner();
-      if (!TypeVariable()) return rejectInner();
-      if (!Dims()) return rejectInner();
+      if (!TypeVariable() || !Dims()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayType_2 = new Cache();
-  
+
   //=====================================================================
   //  Dims = Annotation* LBRK RBRK (Annotation* LBRK RBRK)* ;
   //=====================================================================
@@ -2572,14 +2495,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("Dims",Dims)) return reuse();
       while (Annotation());
-      if (!LBRK()) return reject();
-      if (!RBRK()) return reject();
+      if (!LBRK() || !RBRK()) return reject();
       while (Dims_3());
       return accept();
     }
-  
+
   Cache Dims = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  Dims_3 = Annotation* LBRK RBRK
   //-------------------------------------------------------------------
@@ -2587,13 +2509,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("Dims_3",Dims_3)) return reuseInner();
       while (Annotation());
-      if (!LBRK()) return rejectInner();
-      if (!RBRK()) return rejectInner();
+      if (!LBRK() || !RBRK()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache Dims_3 = new Cache();
-  
+
   //=====================================================================
   //  TypeParameter = TypeParameterModifier* Identifier TypeBound? ;
   //=====================================================================
@@ -2605,9 +2526,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       TypeBound();
       return accept();
     }
-  
+
   Cache TypeParameter = new Cache();
-  
+
   //=====================================================================
   //  TypeParameterModifier = Annotation ;
   //=====================================================================
@@ -2617,9 +2538,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Annotation()) return reject();
       return accept();
     }
-  
+
   Cache TypeParameterModifier = new Cache();
-  
+
   //=====================================================================
   //  TypeBound = EXTENDS ClassType AdditionalBound* / EXTENDS
   //    TypeVariable ;
@@ -2627,67 +2548,61 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean TypeBound()
     {
       if (saved("TypeBound",TypeBound)) return reuse();
-      if (TypeBound_0()) return accept();
-      if (TypeBound_2()) return accept();
+      if (TypeBound_0() || TypeBound_2()) return accept();
       return reject();
     }
-  
+
   Cache TypeBound = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeBound_0 = EXTENDS ClassType AdditionalBound*
   //-------------------------------------------------------------------
   boolean TypeBound_0()
     {
       if (saved("TypeBound_0",TypeBound_0)) return reuseInner();
-      if (!EXTENDS()) return rejectInner();
-      if (!ClassType()) return rejectInner();
+      if (!EXTENDS() || !ClassType()) return rejectInner();
       while (AdditionalBound());
       return acceptInner();
     }
-  
+
   Cache TypeBound_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeBound_2 = EXTENDS TypeVariable
   //-------------------------------------------------------------------
   boolean TypeBound_2()
     {
       if (saved("TypeBound_2",TypeBound_2)) return reuseInner();
-      if (!EXTENDS()) return rejectInner();
-      if (!TypeVariable()) return rejectInner();
+      if (!EXTENDS() || !TypeVariable()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache TypeBound_2 = new Cache();
-  
+
   //=====================================================================
   //  AdditionalBound = AND ClassType ;
   //=====================================================================
   boolean AdditionalBound()
     {
       if (saved("AdditionalBound",AdditionalBound)) return reuse();
-      if (!AND()) return reject();
-      if (!ClassType()) return reject();
+      if (!AND() || !ClassType()) return reject();
       return accept();
     }
-  
+
   Cache AdditionalBound = new Cache();
-  
+
   //=====================================================================
   //  TypeArguments = LPOINT TypeArgumentList RPOINT ;
   //=====================================================================
   boolean TypeArguments()
     {
       if (saved("TypeArguments",TypeArguments)) return reuse();
-      if (!LPOINT()) return reject();
-      if (!TypeArgumentList()) return reject();
-      if (!RPOINT()) return reject();
+      if (!LPOINT() || !TypeArgumentList() || !RPOINT()) return reject();
       return accept();
     }
-  
+
   Cache TypeArguments = new Cache();
-  
+
   //=====================================================================
   //  TypeArgumentList = TypeArgument (COMMA TypeArgument)* ;
   //=====================================================================
@@ -2698,35 +2613,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (TypeArgumentList_2());
       return accept();
     }
-  
+
   Cache TypeArgumentList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeArgumentList_2 = COMMA TypeArgument
   //-------------------------------------------------------------------
   boolean TypeArgumentList_2()
     {
       if (saved("TypeArgumentList_2",TypeArgumentList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!TypeArgument()) return rejectInner();
+      if (!COMMA() || !TypeArgument()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache TypeArgumentList_2 = new Cache();
-  
+
   //=====================================================================
   //  TypeArgument = ReferenceType / Wildcard ;
   //=====================================================================
   boolean TypeArgument()
     {
       if (saved("TypeArgument",TypeArgument)) return reuse();
-      if (ReferenceType()) return accept();
-      if (Wildcard()) return accept();
+      if (ReferenceType() || Wildcard()) return accept();
       return reject();
     }
-  
+
   Cache TypeArgument = new Cache();
-  
+
   //=====================================================================
   //  Wildcard = Annotation* QUERY WildcardBounds? ;
   //=====================================================================
@@ -2738,48 +2651,45 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       WildcardBounds();
       return accept();
     }
-  
+
   Cache Wildcard = new Cache();
-  
+
   //=====================================================================
   //  WildcardBounds = EXTENDS ReferenceType / SUPER ReferenceType ;
   //=====================================================================
   boolean WildcardBounds()
     {
       if (saved("WildcardBounds",WildcardBounds)) return reuse();
-      if (WildcardBounds_0()) return accept();
-      if (WildcardBounds_1()) return accept();
+      if (WildcardBounds_0() || WildcardBounds_1()) return accept();
       return reject();
     }
-  
+
   Cache WildcardBounds = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  WildcardBounds_0 = EXTENDS ReferenceType
   //-------------------------------------------------------------------
   boolean WildcardBounds_0()
     {
       if (saved("WildcardBounds_0",WildcardBounds_0)) return reuseInner();
-      if (!EXTENDS()) return rejectInner();
-      if (!ReferenceType()) return rejectInner();
+      if (!EXTENDS() || !ReferenceType()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache WildcardBounds_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  WildcardBounds_1 = SUPER ReferenceType
   //-------------------------------------------------------------------
   boolean WildcardBounds_1()
     {
       if (saved("WildcardBounds_1",WildcardBounds_1)) return reuseInner();
-      if (!SUPER()) return rejectInner();
-      if (!ReferenceType()) return rejectInner();
+      if (!SUPER() || !ReferenceType()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache WildcardBounds_1 = new Cache();
-  
+
   //=====================================================================
   //  Name = Identifier (DOT Identifier)* ;
   //=====================================================================
@@ -2790,22 +2700,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (Name_2());
       return accept();
     }
-  
+
   Cache Name = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  Name_2 = DOT Identifier
   //-------------------------------------------------------------------
   boolean Name_2()
     {
       if (saved("Name_2",Name_2)) return reuseInner();
-      if (!DOT()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!DOT() || !Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache Name_2 = new Cache();
-  
+
   //=====================================================================
   //  TypeName = TypeIdentifier (DOT TypeIdentifier)* ;
   //=====================================================================
@@ -2816,22 +2725,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (TypeName_2());
       return accept();
     }
-  
+
   Cache TypeName = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeName_2 = DOT TypeIdentifier
   //-------------------------------------------------------------------
   boolean TypeName_2()
     {
       if (saved("TypeName_2",TypeName_2)) return reuseInner();
-      if (!DOT()) return rejectInner();
-      if (!TypeIdentifier()) return rejectInner();
+      if (!DOT() || !TypeIdentifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache TypeName_2 = new Cache();
-  
+
   //=====================================================================
   //  CompilationUnit = ModularCompilationUnit / OrdinaryCompilationUnit
   //    ;
@@ -2839,13 +2747,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean CompilationUnit()
     {
       if (saved("CompilationUnit",CompilationUnit)) return reuse();
-      if (ModularCompilationUnit()) return accept();
-      if (OrdinaryCompilationUnit()) return accept();
+      if (ModularCompilationUnit() || OrdinaryCompilationUnit()) return accept();
       return reject();
     }
-  
+
   Cache CompilationUnit = new Cache();
-  
+
   //=====================================================================
   //  OrdinaryCompilationUnit = PackageDeclaration? ImportDeclaration*
   //    TypeDeclaration* ;
@@ -2858,9 +2765,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (TypeDeclaration());
       return accept();
     }
-  
+
   Cache OrdinaryCompilationUnit = new Cache();
-  
+
   //=====================================================================
   //  ModularCompilationUnit = ImportDeclaration* ModuleDeclaration ;
   //=====================================================================
@@ -2871,9 +2778,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!ModuleDeclaration()) return reject();
       return accept();
     }
-  
+
   Cache ModularCompilationUnit = new Cache();
-  
+
   //=====================================================================
   //  PackageDeclaration = PackageModifier* PACKAGE Identifier (DOT
   //    Identifier)* SEMI ;
@@ -2882,15 +2789,14 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("PackageDeclaration",PackageDeclaration)) return reuse();
       while (PackageModifier());
-      if (!PACKAGE()) return reject();
-      if (!Identifier()) return reject();
+      if (!PACKAGE() || !Identifier()) return reject();
       while (Name_2());
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache PackageDeclaration = new Cache();
-  
+
   //=====================================================================
   //  PackageModifier = Annotation ;
   //=====================================================================
@@ -2900,9 +2806,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Annotation()) return reject();
       return accept();
     }
-  
+
   Cache PackageModifier = new Cache();
-  
+
   //=====================================================================
   //  ImportDeclaration = SingleTypeImportDeclaration /
   //    TypeImportOnDemandDeclaration / SingleStaticImportDeclaration /
@@ -2911,46 +2817,38 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ImportDeclaration()
     {
       if (saved("ImportDeclaration",ImportDeclaration)) return reuse();
-      if (SingleTypeImportDeclaration()) return accept();
-      if (TypeImportOnDemandDeclaration()) return accept();
-      if (SingleStaticImportDeclaration()) return accept();
-      if (StaticImportOnDemandDeclaration()) return accept();
+      if (SingleTypeImportDeclaration() || TypeImportOnDemandDeclaration() || SingleStaticImportDeclaration() || StaticImportOnDemandDeclaration()) return accept();
       if (SEMI()) return accept();
       return reject();
     }
-  
+
   Cache ImportDeclaration = new Cache();
-  
+
   //=====================================================================
   //  SingleTypeImportDeclaration = IMPORT TypeName SEMI ;
   //=====================================================================
   boolean SingleTypeImportDeclaration()
     {
       if (saved("SingleTypeImportDeclaration",SingleTypeImportDeclaration)) return reuse();
-      if (!IMPORT()) return reject();
-      if (!TypeName()) return reject();
-      if (!SEMI()) return reject();
+      if (!IMPORT() || !TypeName() || !SEMI()) return reject();
       return accept();
     }
-  
+
   Cache SingleTypeImportDeclaration = new Cache();
-  
+
   //=====================================================================
   //  TypeImportOnDemandDeclaration = IMPORT Name DOT STAR SEMI ;
   //=====================================================================
   boolean TypeImportOnDemandDeclaration()
     {
       if (saved("TypeImportOnDemandDeclaration",TypeImportOnDemandDeclaration)) return reuse();
-      if (!IMPORT()) return reject();
-      if (!Name()) return reject();
-      if (!DOT()) return reject();
-      if (!STAR()) return reject();
+      if (!IMPORT() || !Name() || !DOT() || !STAR()) return reject();
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache TypeImportOnDemandDeclaration = new Cache();
-  
+
   //=====================================================================
   //  SingleStaticImportDeclaration = IMPORT STATIC TypeName (DOT
   //    Identifier)? SEMI ;
@@ -2958,16 +2856,14 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean SingleStaticImportDeclaration()
     {
       if (saved("SingleStaticImportDeclaration",SingleStaticImportDeclaration)) return reuse();
-      if (!IMPORT()) return reject();
-      if (!STATIC()) return reject();
-      if (!TypeName()) return reject();
+      if (!IMPORT() || !STATIC() || !TypeName()) return reject();
       Name_2();
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache SingleStaticImportDeclaration = new Cache();
-  
+
   //=====================================================================
   //  StaticImportOnDemandDeclaration = IMPORT STATIC TypeName DOT STAR
   //    SEMI ;
@@ -2975,31 +2871,26 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean StaticImportOnDemandDeclaration()
     {
       if (saved("StaticImportOnDemandDeclaration",StaticImportOnDemandDeclaration)) return reuse();
-      if (!IMPORT()) return reject();
-      if (!STATIC()) return reject();
-      if (!TypeName()) return reject();
-      if (!DOT()) return reject();
+      if (!IMPORT() || !STATIC() || !TypeName() || !DOT()) return reject();
       if (!STAR()) return reject();
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache StaticImportOnDemandDeclaration = new Cache();
-  
+
   //=====================================================================
   //  TypeDeclaration = ClassDeclaration / InterfaceDeclaration / SEMI ;
   //=====================================================================
   boolean TypeDeclaration()
     {
       if (saved("TypeDeclaration",TypeDeclaration)) return reuse();
-      if (ClassDeclaration()) return accept();
-      if (InterfaceDeclaration()) return accept();
-      if (SEMI()) return accept();
+      if (ClassDeclaration() || InterfaceDeclaration() || SEMI()) return accept();
       return reject();
     }
-  
+
   Cache TypeDeclaration = new Cache();
-  
+
   //=====================================================================
   //  ModuleDeclaration = Annotation* OPEN? MODULE Identifier (DOT
   //    Identifier)* LWING ModuleDirective* RWING ;
@@ -3009,17 +2900,16 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("ModuleDeclaration",ModuleDeclaration)) return reuse();
       while (Annotation());
       OPEN();
-      if (!MODULE()) return reject();
-      if (!Identifier()) return reject();
+      if (!MODULE() || !Identifier()) return reject();
       while (Name_2());
       if (!LWING()) return reject();
       while (ModuleDirective());
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache ModuleDeclaration = new Cache();
-  
+
   //=====================================================================
   //  ModuleDirective = REQUIRES RequiresModifier* Name SEMI / EXPORTS
   //    Name (TO Name (COMMA Name)*)? SEMI / OPENS Name (TO Name (COMMA
@@ -3029,16 +2919,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ModuleDirective()
     {
       if (saved("ModuleDirective",ModuleDirective)) return reuse();
-      if (ModuleDirective_0()) return accept();
-      if (ModuleDirective_2()) return accept();
-      if (ModuleDirective_7()) return accept();
-      if (ModuleDirective_12()) return accept();
+      if (ModuleDirective_0() || ModuleDirective_2() || ModuleDirective_7() || ModuleDirective_12()) return accept();
       if (ModuleDirective_13()) return accept();
       return reject();
     }
-  
+
   Cache ModuleDirective = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_0 = REQUIRES RequiresModifier* Name SEMI
   //-------------------------------------------------------------------
@@ -3047,57 +2934,52 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("ModuleDirective_0",ModuleDirective_0)) return reuseInner();
       if (!REQUIRES()) return rejectInner();
       while (RequiresModifier());
-      if (!Name()) return rejectInner();
-      if (!SEMI()) return rejectInner();
+      if (!Name() || !SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_2 = EXPORTS Name (TO Name (COMMA Name)*)? SEMI
   //-------------------------------------------------------------------
   boolean ModuleDirective_2()
     {
       if (saved("ModuleDirective_2",ModuleDirective_2)) return reuseInner();
-      if (!EXPORTS()) return rejectInner();
-      if (!Name()) return rejectInner();
+      if (!EXPORTS() || !Name()) return rejectInner();
       ModuleDirective_4();
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_7 = OPENS Name (TO Name (COMMA Name)*)? SEMI
   //-------------------------------------------------------------------
   boolean ModuleDirective_7()
     {
       if (saved("ModuleDirective_7",ModuleDirective_7)) return reuseInner();
-      if (!OPENS()) return rejectInner();
-      if (!Name()) return rejectInner();
+      if (!OPENS() || !Name()) return rejectInner();
       ModuleDirective_4();
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_7 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_12 = USES TypeName SEMI
   //-------------------------------------------------------------------
   boolean ModuleDirective_12()
     {
       if (saved("ModuleDirective_12",ModuleDirective_12)) return reuseInner();
-      if (!USES()) return rejectInner();
-      if (!TypeName()) return rejectInner();
-      if (!SEMI()) return rejectInner();
+      if (!USES() || !TypeName() || !SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_12 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_13 = PROVIDES TypeName WITH TypeName (COMMA
   //    TypeName)* SEMI
@@ -3105,83 +2987,75 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ModuleDirective_13()
     {
       if (saved("ModuleDirective_13",ModuleDirective_13)) return reuseInner();
-      if (!PROVIDES()) return rejectInner();
-      if (!TypeName()) return rejectInner();
-      if (!WITH()) return rejectInner();
-      if (!TypeName()) return rejectInner();
+      if (!PROVIDES() || !TypeName() || !WITH() || !TypeName()) return rejectInner();
       while (ModuleDirective_15());
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_13 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_4 = TO Name (COMMA Name)*
   //-------------------------------------------------------------------
   boolean ModuleDirective_4()
     {
       if (saved("ModuleDirective_4",ModuleDirective_4)) return reuseInner();
-      if (!TO()) return rejectInner();
-      if (!Name()) return rejectInner();
+      if (!TO() || !Name()) return rejectInner();
       while (ModuleDirective_6());
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_4 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_15 = COMMA TypeName
   //-------------------------------------------------------------------
   boolean ModuleDirective_15()
     {
       if (saved("ModuleDirective_15",ModuleDirective_15)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!TypeName()) return rejectInner();
+      if (!COMMA() || !TypeName()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_15 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ModuleDirective_6 = COMMA Name
   //-------------------------------------------------------------------
   boolean ModuleDirective_6()
     {
       if (saved("ModuleDirective_6",ModuleDirective_6)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!Name()) return rejectInner();
+      if (!COMMA() || !Name()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ModuleDirective_6 = new Cache();
-  
+
   //=====================================================================
   //  RequiresModifier = TRANSITIVE / STATIC ;
   //=====================================================================
   boolean RequiresModifier()
     {
       if (saved("RequiresModifier",RequiresModifier)) return reuse();
-      if (TRANSITIVE()) return accept();
-      if (STATIC()) return accept();
+      if (TRANSITIVE() || STATIC()) return accept();
       return reject();
     }
-  
+
   Cache RequiresModifier = new Cache();
-  
+
   //=====================================================================
   //  ClassDeclaration = NormalClassDeclaration / EnumDeclaration ;
   //=====================================================================
   boolean ClassDeclaration()
     {
       if (saved("ClassDeclaration",ClassDeclaration)) return reuse();
-      if (NormalClassDeclaration()) return accept();
-      if (EnumDeclaration()) return accept();
+      if (NormalClassDeclaration() || EnumDeclaration()) return accept();
       return reject();
     }
-  
+
   Cache ClassDeclaration = new Cache();
-  
+
   //=====================================================================
   //  NormalClassDeclaration = ClassModifier* CLASS Identifier
   //    TypeParameters? Superclass? Superinterfaces? ClassBody ;
@@ -3190,17 +3064,16 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("NormalClassDeclaration",NormalClassDeclaration)) return reuse();
       while (ClassModifier());
-      if (!CLASS()) return reject();
-      if (!Identifier()) return reject();
+      if (!CLASS() || !Identifier()) return reject();
       TypeParameters();
       Superclass();
       Superinterfaces();
       if (!ClassBody()) return reject();
       return accept();
     }
-  
+
   Cache NormalClassDeclaration = new Cache();
-  
+
   //=====================================================================
   //  ClassModifier = Annotation / PUBLIC / PROTECTED / PRIVATE /
   //    ABSTRACT / STATIC / FINAL / STRICTFP ;
@@ -3208,33 +3081,28 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ClassModifier()
     {
       if (saved("ClassModifier",ClassModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (PROTECTED()) return accept();
-      if (PRIVATE()) return accept();
+      if (Annotation() || PUBLIC() || PROTECTED() || PRIVATE()) return accept();
       if (ABSTRACT()) return accept();
       if (STATIC()) return accept();
       if (FINAL()) return accept();
       if (STRICTFP()) return accept();
       return reject();
     }
-  
+
   Cache ClassModifier = new Cache();
-  
+
   //=====================================================================
   //  TypeParameters = LPOINT TypeParameterList RPOINT ;
   //=====================================================================
   boolean TypeParameters()
     {
       if (saved("TypeParameters",TypeParameters)) return reuse();
-      if (!LPOINT()) return reject();
-      if (!TypeParameterList()) return reject();
-      if (!RPOINT()) return reject();
+      if (!LPOINT() || !TypeParameterList() || !RPOINT()) return reject();
       return accept();
     }
-  
+
   Cache TypeParameters = new Cache();
-  
+
   //=====================================================================
   //  TypeParameterList = TypeParameter (COMMA TypeParameter)* ;
   //=====================================================================
@@ -3245,48 +3113,45 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (TypeParameterList_2());
       return accept();
     }
-  
+
   Cache TypeParameterList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeParameterList_2 = COMMA TypeParameter
   //-------------------------------------------------------------------
   boolean TypeParameterList_2()
     {
       if (saved("TypeParameterList_2",TypeParameterList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!TypeParameter()) return rejectInner();
+      if (!COMMA() || !TypeParameter()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache TypeParameterList_2 = new Cache();
-  
+
   //=====================================================================
   //  Superclass = EXTENDS ClassType ;
   //=====================================================================
   boolean Superclass()
     {
       if (saved("Superclass",Superclass)) return reuse();
-      if (!EXTENDS()) return reject();
-      if (!ClassType()) return reject();
+      if (!EXTENDS() || !ClassType()) return reject();
       return accept();
     }
-  
+
   Cache Superclass = new Cache();
-  
+
   //=====================================================================
   //  Superinterfaces = IMPLEMENTS InterfaceTypeList ;
   //=====================================================================
   boolean Superinterfaces()
     {
       if (saved("Superinterfaces",Superinterfaces)) return reuse();
-      if (!IMPLEMENTS()) return reject();
-      if (!InterfaceTypeList()) return reject();
+      if (!IMPLEMENTS() || !InterfaceTypeList()) return reject();
       return accept();
     }
-  
+
   Cache Superinterfaces = new Cache();
-  
+
   //=====================================================================
   //  InterfaceTypeList = ClassType (COMMA ClassType)* ;
   //=====================================================================
@@ -3297,22 +3162,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (InterfaceTypeList_2());
       return accept();
     }
-  
+
   Cache InterfaceTypeList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  InterfaceTypeList_2 = COMMA ClassType
   //-------------------------------------------------------------------
   boolean InterfaceTypeList_2()
     {
       if (saved("InterfaceTypeList_2",InterfaceTypeList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!ClassType()) return rejectInner();
+      if (!COMMA() || !ClassType()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache InterfaceTypeList_2 = new Cache();
-  
+
   //=====================================================================
   //  ClassBody = LWING ClassBodyDeclaration* RWING ;
   //=====================================================================
@@ -3324,9 +3188,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache ClassBody = new Cache();
-  
+
   //=====================================================================
   //  ClassBodyDeclaration = ClassMemberDeclaration / InstanceInitializer
   //    / StaticInitializer / ConstructorDeclaration ;
@@ -3334,15 +3198,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ClassBodyDeclaration()
     {
       if (saved("ClassBodyDeclaration",ClassBodyDeclaration)) return reuse();
-      if (ClassMemberDeclaration()) return accept();
-      if (InstanceInitializer()) return accept();
-      if (StaticInitializer()) return accept();
-      if (ConstructorDeclaration()) return accept();
+      if (ClassMemberDeclaration() || InstanceInitializer() || StaticInitializer() || ConstructorDeclaration()) return accept();
       return reject();
     }
-  
+
   Cache ClassBodyDeclaration = new Cache();
-  
+
   //=====================================================================
   //  ClassMemberDeclaration = FieldDeclaration / MethodDeclaration /
   //    ClassDeclaration / InterfaceDeclaration / SEMI ;
@@ -3350,16 +3211,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ClassMemberDeclaration()
     {
       if (saved("ClassMemberDeclaration",ClassMemberDeclaration)) return reuse();
-      if (FieldDeclaration()) return accept();
-      if (MethodDeclaration()) return accept();
-      if (ClassDeclaration()) return accept();
-      if (InterfaceDeclaration()) return accept();
+      if (FieldDeclaration() || MethodDeclaration() || ClassDeclaration() || InterfaceDeclaration()) return accept();
       if (SEMI()) return accept();
       return reject();
     }
-  
+
   Cache ClassMemberDeclaration = new Cache();
-  
+
   //=====================================================================
   //  FieldDeclaration = FieldModifier* UnannType VariableDeclaratorList
   //    SEMI ;
@@ -3368,14 +3226,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("FieldDeclaration",FieldDeclaration)) return reuse();
       while (FieldModifier());
-      if (!UnannType()) return reject();
-      if (!VariableDeclaratorList()) return reject();
-      if (!SEMI()) return reject();
+      if (!UnannType() || !VariableDeclaratorList() || !SEMI()) return reject();
       return accept();
     }
-  
+
   Cache FieldDeclaration = new Cache();
-  
+
   //=====================================================================
   //  VariableDeclaratorList = VariableDeclarator (COMMA
   //    VariableDeclarator)* ;
@@ -3387,22 +3243,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (VariableDeclaratorList_2());
       return accept();
     }
-  
+
   Cache VariableDeclaratorList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  VariableDeclaratorList_2 = COMMA VariableDeclarator
   //-------------------------------------------------------------------
   boolean VariableDeclaratorList_2()
     {
       if (saved("VariableDeclaratorList_2",VariableDeclaratorList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!VariableDeclarator()) return rejectInner();
+      if (!COMMA() || !VariableDeclarator()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache VariableDeclaratorList_2 = new Cache();
-  
+
   //=====================================================================
   //  VariableDeclarator = VariableDeclaratorId (EQU
   //    VariableInitializer)? ;
@@ -3414,22 +3269,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       VariableDeclarator_2();
       return accept();
     }
-  
+
   Cache VariableDeclarator = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  VariableDeclarator_2 = EQU VariableInitializer
   //-------------------------------------------------------------------
   boolean VariableDeclarator_2()
     {
       if (saved("VariableDeclarator_2",VariableDeclarator_2)) return reuseInner();
-      if (!EQU()) return rejectInner();
-      if (!VariableInitializer()) return rejectInner();
+      if (!EQU() || !VariableInitializer()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache VariableDeclarator_2 = new Cache();
-  
+
   //=====================================================================
   //  VariableDeclaratorId = Identifier Dims? ;
   //=====================================================================
@@ -3440,48 +3294,45 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       Dims();
       return accept();
     }
-  
+
   Cache VariableDeclaratorId = new Cache();
-  
+
   //=====================================================================
   //  VariableInitializer = Expression / ArrayInitializer ;
   //=====================================================================
   boolean VariableInitializer()
     {
       if (saved("VariableInitializer",VariableInitializer)) return reuse();
-      if (Expression()) return accept();
-      if (ArrayInitializer()) return accept();
+      if (Expression() || ArrayInitializer()) return accept();
       return reject();
     }
-  
+
   Cache VariableInitializer = new Cache();
-  
+
   //=====================================================================
   //  UnannType = UnannReferenceType / UnannPrimitiveType ;
   //=====================================================================
   boolean UnannType()
     {
       if (saved("UnannType",UnannType)) return reuse();
-      if (UnannReferenceType()) return accept();
-      if (UnannPrimitiveType()) return accept();
+      if (UnannReferenceType() || UnannPrimitiveType()) return accept();
       return reject();
     }
-  
+
   Cache UnannType = new Cache();
-  
+
   //=====================================================================
   //  UnannPrimitiveType = NumericType / BOOLEAN ;
   //=====================================================================
   boolean UnannPrimitiveType()
     {
       if (saved("UnannPrimitiveType",UnannPrimitiveType)) return reuse();
-      if (NumericType()) return accept();
-      if (BOOLEAN()) return accept();
+      if (NumericType() || BOOLEAN()) return accept();
       return reject();
     }
-  
+
   Cache UnannPrimitiveType = new Cache();
-  
+
   //=====================================================================
   //  UnannReferenceType = UnannArrayType / UnannClassType /
   //    UnannTypeVariable ;
@@ -3489,14 +3340,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean UnannReferenceType()
     {
       if (saved("UnannReferenceType",UnannReferenceType)) return reuse();
-      if (UnannArrayType()) return accept();
-      if (UnannClassType()) return accept();
-      if (UnannTypeVariable()) return accept();
+      if (UnannArrayType() || UnannClassType() || UnannTypeVariable()) return accept();
       return reject();
     }
-  
+
   Cache UnannReferenceType = new Cache();
-  
+
   //=====================================================================
   //  UnannClassType = (TypeIdentifier TypeArguments? / Name DOT
   //    Annotation* TypeIdentifier TypeArguments?) (DOT Annotation*
@@ -3511,9 +3360,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ClassType_9());
       return accept();
     }
-  
+
   Cache UnannClassType = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnannClassType_2 = TypeIdentifier TypeArguments?
   //-------------------------------------------------------------------
@@ -3524,9 +3373,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       TypeArguments();
       return acceptInner();
     }
-  
+
   Cache UnannClassType_2 = new Cache();
-  
+
   //=====================================================================
   //  UnannTypeVariable = TypeIdentifier ;
   //=====================================================================
@@ -3536,9 +3385,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!TypeIdentifier()) return reject();
       return accept();
     }
-  
+
   Cache UnannTypeVariable = new Cache();
-  
+
   //=====================================================================
   //  UnannArrayType = UnannPrimitiveType Dims / UnannClassType Dims /
   //    UnannTypeVariable Dims ;
@@ -3546,53 +3395,48 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean UnannArrayType()
     {
       if (saved("UnannArrayType",UnannArrayType)) return reuse();
-      if (UnannArrayType_0()) return accept();
-      if (UnannArrayType_1()) return accept();
-      if (UnannArrayType_2()) return accept();
+      if (UnannArrayType_0() || UnannArrayType_1() || UnannArrayType_2()) return accept();
       return reject();
     }
-  
+
   Cache UnannArrayType = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnannArrayType_0 = UnannPrimitiveType Dims
   //-------------------------------------------------------------------
   boolean UnannArrayType_0()
     {
       if (saved("UnannArrayType_0",UnannArrayType_0)) return reuseInner();
-      if (!UnannPrimitiveType()) return rejectInner();
-      if (!Dims()) return rejectInner();
+      if (!UnannPrimitiveType() || !Dims()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache UnannArrayType_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnannArrayType_1 = UnannClassType Dims
   //-------------------------------------------------------------------
   boolean UnannArrayType_1()
     {
       if (saved("UnannArrayType_1",UnannArrayType_1)) return reuseInner();
-      if (!UnannClassType()) return rejectInner();
-      if (!Dims()) return rejectInner();
+      if (!UnannClassType() || !Dims()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache UnannArrayType_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnannArrayType_2 = UnannTypeVariable Dims
   //-------------------------------------------------------------------
   boolean UnannArrayType_2()
     {
       if (saved("UnannArrayType_2",UnannArrayType_2)) return reuseInner();
-      if (!UnannTypeVariable()) return rejectInner();
-      if (!Dims()) return rejectInner();
+      if (!UnannTypeVariable() || !Dims()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache UnannArrayType_2 = new Cache();
-  
+
   //=====================================================================
   //  FieldModifier = Annotation / PUBLIC / PROTECTED / PRIVATE / STATIC
   //    / FINAL / TRANSIENT / VOLATILE ;
@@ -3600,19 +3444,16 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean FieldModifier()
     {
       if (saved("FieldModifier",FieldModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (PROTECTED()) return accept();
-      if (PRIVATE()) return accept();
+      if (Annotation() || PUBLIC() || PROTECTED() || PRIVATE()) return accept();
       if (STATIC()) return accept();
       if (FINAL()) return accept();
       if (TRANSIENT()) return accept();
       if (VOLATILE()) return accept();
       return reject();
     }
-  
+
   Cache FieldModifier = new Cache();
-  
+
   //=====================================================================
   //  MethodDeclaration = MethodModifier* MethodHeader MethodBody ;
   //=====================================================================
@@ -3620,13 +3461,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("MethodDeclaration",MethodDeclaration)) return reuse();
       while (MethodModifier());
-      if (!MethodHeader()) return reject();
-      if (!MethodBody()) return reject();
+      if (!MethodHeader() || !MethodBody()) return reject();
       return accept();
     }
-  
+
   Cache MethodDeclaration = new Cache();
-  
+
   //=====================================================================
   //  MethodHeader = Result MethodDeclarator Throws? / TypeParameters
   //    Annotation* Result MethodDeclarator Throws? ;
@@ -3634,27 +3474,25 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodHeader()
     {
       if (saved("MethodHeader",MethodHeader)) return reuse();
-      if (MethodHeader_0()) return accept();
-      if (MethodHeader_2()) return accept();
+      if (MethodHeader_0() || MethodHeader_2()) return accept();
       return reject();
     }
-  
+
   Cache MethodHeader = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  MethodHeader_0 = Result MethodDeclarator Throws?
   //-------------------------------------------------------------------
   boolean MethodHeader_0()
     {
       if (saved("MethodHeader_0",MethodHeader_0)) return reuseInner();
-      if (!Result()) return rejectInner();
-      if (!MethodDeclarator()) return rejectInner();
+      if (!Result() || !MethodDeclarator()) return rejectInner();
       Throws();
       return acceptInner();
     }
-  
+
   Cache MethodHeader_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  MethodHeader_2 = TypeParameters Annotation* Result
   //    MethodDeclarator Throws?
@@ -3664,14 +3502,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("MethodHeader_2",MethodHeader_2)) return reuseInner();
       if (!TypeParameters()) return rejectInner();
       while (Annotation());
-      if (!Result()) return rejectInner();
-      if (!MethodDeclarator()) return rejectInner();
+      if (!Result() || !MethodDeclarator()) return rejectInner();
       Throws();
       return acceptInner();
     }
-  
+
   Cache MethodHeader_2 = new Cache();
-  
+
   //=====================================================================
   //  MethodDeclarator = Identifier LPAR FormalParametersWithReceiver
   //    RPAR Dims? ;
@@ -3679,16 +3516,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodDeclarator()
     {
       if (saved("MethodDeclarator",MethodDeclarator)) return reuse();
-      if (!Identifier()) return reject();
-      if (!LPAR()) return reject();
+      if (!Identifier() || !LPAR()) return reject();
       FormalParametersWithReceiver();
       if (!RPAR()) return reject();
       Dims();
       return accept();
     }
-  
+
   Cache MethodDeclarator = new Cache();
-  
+
   //=====================================================================
   //  FormalParametersWithReceiver = ReceiverParameter (COMMA
   //    FormalParameterList)? / FormalParameterList? ;
@@ -3696,13 +3532,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean FormalParametersWithReceiver()
     {
       if (saved("FormalParametersWithReceiver",FormalParametersWithReceiver)) return reuse();
-      if (FormalParametersWithReceiver_0()) return accept();
-      if (FormalParametersWithReceiver_3()) return accept();
+      if (FormalParametersWithReceiver_0() || FormalParametersWithReceiver_3()) return accept();
       return reject();
     }
-  
+
   Cache FormalParametersWithReceiver = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FormalParametersWithReceiver_0 = ReceiverParameter (COMMA
   //    FormalParameterList)?
@@ -3714,9 +3549,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       FormalParametersWithReceiver_2();
       return acceptInner();
     }
-  
+
   Cache FormalParametersWithReceiver_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FormalParametersWithReceiver_3 = FormalParameterList?
   //-------------------------------------------------------------------
@@ -3726,22 +3561,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       FormalParameterList();
       return acceptInner();
     }
-  
+
   Cache FormalParametersWithReceiver_3 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FormalParametersWithReceiver_2 = COMMA FormalParameterList
   //-------------------------------------------------------------------
   boolean FormalParametersWithReceiver_2()
     {
       if (saved("FormalParametersWithReceiver_2",FormalParametersWithReceiver_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!FormalParameterList()) return rejectInner();
+      if (!COMMA() || !FormalParameterList()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache FormalParametersWithReceiver_2 = new Cache();
-  
+
   //=====================================================================
   //  ReceiverParameter = Annotation* UnannType (Identifier DOT)? THIS ;
   //=====================================================================
@@ -3754,22 +3588,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!THIS()) return reject();
       return accept();
     }
-  
+
   Cache ReceiverParameter = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ReceiverParameter_3 = Identifier DOT
   //-------------------------------------------------------------------
   boolean ReceiverParameter_3()
     {
       if (saved("ReceiverParameter_3",ReceiverParameter_3)) return reuseInner();
-      if (!Identifier()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!Identifier() || !DOT()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ReceiverParameter_3 = new Cache();
-  
+
   //=====================================================================
   //  FormalParameterList = FormalParameter (COMMA FormalParameter)* ;
   //=====================================================================
@@ -3780,22 +3613,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (FormalParameterList_2());
       return accept();
     }
-  
+
   Cache FormalParameterList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FormalParameterList_2 = COMMA FormalParameter
   //-------------------------------------------------------------------
   boolean FormalParameterList_2()
     {
       if (saved("FormalParameterList_2",FormalParameterList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!FormalParameter()) return rejectInner();
+      if (!COMMA() || !FormalParameter()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache FormalParameterList_2 = new Cache();
-  
+
   //=====================================================================
   //  FormalParameter = VariableModifier* UnannType VariableDeclaratorId
   //    / VariableArityParameter !COMMA ;
@@ -3803,13 +3635,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean FormalParameter()
     {
       if (saved("FormalParameter",FormalParameter)) return reuse();
-      if (FormalParameter_0()) return accept();
-      if (FormalParameter_2()) return accept();
+      if (FormalParameter_0() || FormalParameter_2()) return accept();
       return reject();
     }
-  
+
   Cache FormalParameter = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FormalParameter_0 = VariableModifier* UnannType
   //    VariableDeclaratorId
@@ -3818,26 +3649,24 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("FormalParameter_0",FormalParameter_0)) return reuseInner();
       while (VariableModifier());
-      if (!UnannType()) return rejectInner();
-      if (!VariableDeclaratorId()) return rejectInner();
+      if (!UnannType() || !VariableDeclaratorId()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache FormalParameter_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FormalParameter_2 = VariableArityParameter !COMMA
   //-------------------------------------------------------------------
   boolean FormalParameter_2()
     {
       if (saved("FormalParameter_2",FormalParameter_2)) return reuseInner();
-      if (!VariableArityParameter()) return rejectInner();
-      if (!FormalParameter_3()) return rejectInner();
+      if (!VariableArityParameter() || !FormalParameter_3()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache FormalParameter_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FormalParameter_3 = !COMMA
   //-------------------------------------------------------------------
@@ -3847,9 +3676,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (COMMA()) return rejectPred();
       return acceptPred();
     }
-  
+
   Cache FormalParameter_3 = new Cache();
-  
+
   //=====================================================================
   //  VariableArityParameter = VariableModifier* UnannType Annotation*
   //    ELLIPSIS Identifier ;
@@ -3860,26 +3689,24 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (VariableModifier());
       if (!UnannType()) return reject();
       while (Annotation());
-      if (!ELLIPSIS()) return reject();
-      if (!Identifier()) return reject();
+      if (!ELLIPSIS() || !Identifier()) return reject();
       return accept();
     }
-  
+
   Cache VariableArityParameter = new Cache();
-  
+
   //=====================================================================
   //  VariableModifier = Annotation / FINAL ;
   //=====================================================================
   boolean VariableModifier()
     {
       if (saved("VariableModifier",VariableModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (FINAL()) return accept();
+      if (Annotation() || FINAL()) return accept();
       return reject();
     }
-  
+
   Cache VariableModifier = new Cache();
-  
+
   //=====================================================================
   //  MethodModifier = Annotation / PUBLIC / PROTECTED / PRIVATE /
   //    ABSTRACT / STATIC / FINAL / SYNCHRONIZED / NATIVE / STRICTFP ;
@@ -3887,10 +3714,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodModifier()
     {
       if (saved("MethodModifier",MethodModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (PROTECTED()) return accept();
-      if (PRIVATE()) return accept();
+      if (Annotation() || PUBLIC() || PROTECTED() || PRIVATE()) return accept();
       if (ABSTRACT()) return accept();
       if (STATIC()) return accept();
       if (FINAL()) return accept();
@@ -3899,35 +3723,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (STRICTFP()) return accept();
       return reject();
     }
-  
+
   Cache MethodModifier = new Cache();
-  
+
   //=====================================================================
   //  Result = UnannType / VOID ;
   //=====================================================================
   boolean Result()
     {
       if (saved("Result",Result)) return reuse();
-      if (UnannType()) return accept();
-      if (VOID()) return accept();
+      if (UnannType() || VOID()) return accept();
       return reject();
     }
-  
+
   Cache Result = new Cache();
-  
+
   //=====================================================================
   //  Throws = THROWS ExceptionTypeList ;
   //=====================================================================
   boolean Throws()
     {
       if (saved("Throws",Throws)) return reuse();
-      if (!THROWS()) return reject();
-      if (!ExceptionTypeList()) return reject();
+      if (!THROWS() || !ExceptionTypeList()) return reject();
       return accept();
     }
-  
+
   Cache Throws = new Cache();
-  
+
   //=====================================================================
   //  ExceptionTypeList = ExceptionType (COMMA ExceptionType)* ;
   //=====================================================================
@@ -3938,48 +3760,45 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ExceptionTypeList_2());
       return accept();
     }
-  
+
   Cache ExceptionTypeList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ExceptionTypeList_2 = COMMA ExceptionType
   //-------------------------------------------------------------------
   boolean ExceptionTypeList_2()
     {
       if (saved("ExceptionTypeList_2",ExceptionTypeList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!ExceptionType()) return rejectInner();
+      if (!COMMA() || !ExceptionType()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ExceptionTypeList_2 = new Cache();
-  
+
   //=====================================================================
   //  ExceptionType = ClassType / TypeVariable ;
   //=====================================================================
   boolean ExceptionType()
     {
       if (saved("ExceptionType",ExceptionType)) return reuse();
-      if (ClassType()) return accept();
-      if (TypeVariable()) return accept();
+      if (ClassType() || TypeVariable()) return accept();
       return reject();
     }
-  
+
   Cache ExceptionType = new Cache();
-  
+
   //=====================================================================
   //  MethodBody = Block / SEMI ;
   //=====================================================================
   boolean MethodBody()
     {
       if (saved("MethodBody",MethodBody)) return reuse();
-      if (Block()) return accept();
-      if (SEMI()) return accept();
+      if (Block() || SEMI()) return accept();
       return reject();
     }
-  
+
   Cache MethodBody = new Cache();
-  
+
   //=====================================================================
   //  InstanceInitializer = Block ;
   //=====================================================================
@@ -3989,22 +3808,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Block()) return reject();
       return accept();
     }
-  
+
   Cache InstanceInitializer = new Cache();
-  
+
   //=====================================================================
   //  StaticInitializer = STATIC Block ;
   //=====================================================================
   boolean StaticInitializer()
     {
       if (saved("StaticInitializer",StaticInitializer)) return reuse();
-      if (!STATIC()) return reject();
-      if (!Block()) return reject();
+      if (!STATIC() || !Block()) return reject();
       return accept();
     }
-  
+
   Cache StaticInitializer = new Cache();
-  
+
   //=====================================================================
   //  ConstructorDeclaration = ConstructorModifier* ConstructorDeclarator
   //    Throws? ConstructorBody ;
@@ -4018,9 +3836,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!ConstructorBody()) return reject();
       return accept();
     }
-  
+
   Cache ConstructorDeclaration = new Cache();
-  
+
   //=====================================================================
   //  ConstructorDeclarator = TypeParameters? SimpleTypeName LPAR
   //    FormalParametersWithReceiver RPAR ;
@@ -4029,15 +3847,14 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("ConstructorDeclarator",ConstructorDeclarator)) return reuse();
       TypeParameters();
-      if (!SimpleTypeName()) return reject();
-      if (!LPAR()) return reject();
+      if (!SimpleTypeName() || !LPAR()) return reject();
       FormalParametersWithReceiver();
       if (!RPAR()) return reject();
       return accept();
     }
-  
+
   Cache ConstructorDeclarator = new Cache();
-  
+
   //=====================================================================
   //  SimpleTypeName = TypeIdentifier ;
   //=====================================================================
@@ -4047,24 +3864,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!TypeIdentifier()) return reject();
       return accept();
     }
-  
+
   Cache SimpleTypeName = new Cache();
-  
+
   //=====================================================================
   //  ConstructorModifier = Annotation / PUBLIC / PROTECTED / PRIVATE ;
   //=====================================================================
   boolean ConstructorModifier()
     {
       if (saved("ConstructorModifier",ConstructorModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (PROTECTED()) return accept();
-      if (PRIVATE()) return accept();
+      if (Annotation() || PUBLIC() || PROTECTED() || PRIVATE()) return accept();
       return reject();
     }
-  
+
   Cache ConstructorModifier = new Cache();
-  
+
   //=====================================================================
   //  ConstructorBody = LWING ExplicitConstructorInvocation?
   //    BlockStatements? RWING ;
@@ -4078,9 +3892,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache ConstructorBody = new Cache();
-  
+
   //=====================================================================
   //  ExplicitConstructorInvocation = TypeArguments? THIS LPAR
   //    ArgumentList? RPAR SEMI / TypeArguments? SUPER LPAR ArgumentList?
@@ -4091,15 +3905,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ExplicitConstructorInvocation()
     {
       if (saved("ExplicitConstructorInvocation",ExplicitConstructorInvocation)) return reuse();
-      if (ExplicitConstructorInvocation_0()) return accept();
-      if (ExplicitConstructorInvocation_3()) return accept();
-      if (ExplicitConstructorInvocation_6()) return accept();
-      if (ExplicitConstructorInvocation_9()) return accept();
+      if (ExplicitConstructorInvocation_0() || ExplicitConstructorInvocation_3() || ExplicitConstructorInvocation_6() || ExplicitConstructorInvocation_9()) return accept();
       return reject();
     }
-  
+
   Cache ExplicitConstructorInvocation = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ExplicitConstructorInvocation_0 = TypeArguments? THIS LPAR
   //    ArgumentList? RPAR SEMI
@@ -4108,16 +3919,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("ExplicitConstructorInvocation_0",ExplicitConstructorInvocation_0)) return reuseInner();
       TypeArguments();
-      if (!THIS()) return rejectInner();
-      if (!LPAR()) return rejectInner();
+      if (!THIS() || !LPAR()) return rejectInner();
       ArgumentList();
       if (!RPAR()) return rejectInner();
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ExplicitConstructorInvocation_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ExplicitConstructorInvocation_3 = TypeArguments? SUPER LPAR
   //    ArgumentList? RPAR SEMI
@@ -4126,16 +3936,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("ExplicitConstructorInvocation_3",ExplicitConstructorInvocation_3)) return reuseInner();
       TypeArguments();
-      if (!SUPER()) return rejectInner();
-      if (!LPAR()) return rejectInner();
+      if (!SUPER() || !LPAR()) return rejectInner();
       ArgumentList();
       if (!RPAR()) return rejectInner();
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ExplicitConstructorInvocation_3 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ExplicitConstructorInvocation_6 = Primary DOT TypeArguments?
   //    SUPER LPAR ArgumentList? RPAR SEMI
@@ -4143,8 +3952,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ExplicitConstructorInvocation_6()
     {
       if (saved("ExplicitConstructorInvocation_6",ExplicitConstructorInvocation_6)) return reuseInner();
-      if (!Primary()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!Primary() || !DOT()) return rejectInner();
       TypeArguments();
       if (!SUPER()) return rejectInner();
       if (!LPAR()) return rejectInner();
@@ -4153,9 +3961,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ExplicitConstructorInvocation_6 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ExplicitConstructorInvocation_9 = Name DOT TypeArguments? SUPER
   //    LPAR ArgumentList? RPAR SEMI
@@ -4163,8 +3971,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ExplicitConstructorInvocation_9()
     {
       if (saved("ExplicitConstructorInvocation_9",ExplicitConstructorInvocation_9)) return reuseInner();
-      if (!Name()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!Name() || !DOT()) return rejectInner();
       TypeArguments();
       if (!SUPER()) return rejectInner();
       if (!LPAR()) return rejectInner();
@@ -4173,9 +3980,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ExplicitConstructorInvocation_9 = new Cache();
-  
+
   //=====================================================================
   //  EnumDeclaration = ClassModifier* ENUM TypeIdentifier
   //    Superinterfaces? EnumBody ;
@@ -4184,15 +3991,14 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("EnumDeclaration",EnumDeclaration)) return reuse();
       while (ClassModifier());
-      if (!ENUM()) return reject();
-      if (!TypeIdentifier()) return reject();
+      if (!ENUM() || !TypeIdentifier()) return reject();
       Superinterfaces();
       if (!EnumBody()) return reject();
       return accept();
     }
-  
+
   Cache EnumDeclaration = new Cache();
-  
+
   //=====================================================================
   //  EnumBody = LWING EnumConstantList? COMMA? EnumBodyDeclarations?
   //    RWING ;
@@ -4207,9 +4013,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache EnumBody = new Cache();
-  
+
   //=====================================================================
   //  EnumConstantList = EnumConstant (COMMA EnumConstant)* ;
   //=====================================================================
@@ -4220,22 +4026,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (EnumConstantList_2());
       return accept();
     }
-  
+
   Cache EnumConstantList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  EnumConstantList_2 = COMMA EnumConstant
   //-------------------------------------------------------------------
   boolean EnumConstantList_2()
     {
       if (saved("EnumConstantList_2",EnumConstantList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!EnumConstant()) return rejectInner();
+      if (!COMMA() || !EnumConstant()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache EnumConstantList_2 = new Cache();
-  
+
   //=====================================================================
   //  EnumConstant = EnumConstantModifier* Identifier (LPAR ArgumentList?
   //    RPAR)? ClassBody? ;
@@ -4249,9 +4054,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       ClassBody();
       return accept();
     }
-  
+
   Cache EnumConstant = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  EnumConstant_3 = LPAR ArgumentList? RPAR
   //-------------------------------------------------------------------
@@ -4263,9 +4068,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache EnumConstant_3 = new Cache();
-  
+
   //=====================================================================
   //  EnumConstantModifier = Annotation ;
   //=====================================================================
@@ -4275,9 +4080,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Annotation()) return reject();
       return accept();
     }
-  
+
   Cache EnumConstantModifier = new Cache();
-  
+
   //=====================================================================
   //  EnumBodyDeclarations = SEMI ClassBodyDeclaration* ;
   //=====================================================================
@@ -4288,9 +4093,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ClassBodyDeclaration());
       return accept();
     }
-  
+
   Cache EnumBodyDeclarations = new Cache();
-  
+
   //=====================================================================
   //  InterfaceDeclaration = NormalInterfaceDeclaration /
   //    AnnotationTypeDeclaration ;
@@ -4298,13 +4103,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean InterfaceDeclaration()
     {
       if (saved("InterfaceDeclaration",InterfaceDeclaration)) return reuse();
-      if (NormalInterfaceDeclaration()) return accept();
-      if (AnnotationTypeDeclaration()) return accept();
+      if (NormalInterfaceDeclaration() || AnnotationTypeDeclaration()) return accept();
       return reject();
     }
-  
+
   Cache InterfaceDeclaration = new Cache();
-  
+
   //=====================================================================
   //  NormalInterfaceDeclaration = InterfaceModifier* INTERFACE
   //    TypeIdentifier TypeParameters? ExtendsInterfaces? InterfaceBody
@@ -4314,16 +4118,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("NormalInterfaceDeclaration",NormalInterfaceDeclaration)) return reuse();
       while (InterfaceModifier());
-      if (!INTERFACE()) return reject();
-      if (!TypeIdentifier()) return reject();
+      if (!INTERFACE() || !TypeIdentifier()) return reject();
       TypeParameters();
       ExtendsInterfaces();
       if (!InterfaceBody()) return reject();
       return accept();
     }
-  
+
   Cache NormalInterfaceDeclaration = new Cache();
-  
+
   //=====================================================================
   //  InterfaceModifier = Annotation / PUBLIC / PROTECTED / PRIVATE /
   //    ABSTRACT / STATIC / STRICTFP ;
@@ -4331,31 +4134,27 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean InterfaceModifier()
     {
       if (saved("InterfaceModifier",InterfaceModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (PROTECTED()) return accept();
-      if (PRIVATE()) return accept();
+      if (Annotation() || PUBLIC() || PROTECTED() || PRIVATE()) return accept();
       if (ABSTRACT()) return accept();
       if (STATIC()) return accept();
       if (STRICTFP()) return accept();
       return reject();
     }
-  
+
   Cache InterfaceModifier = new Cache();
-  
+
   //=====================================================================
   //  ExtendsInterfaces = EXTENDS InterfaceTypeList ;
   //=====================================================================
   boolean ExtendsInterfaces()
     {
       if (saved("ExtendsInterfaces",ExtendsInterfaces)) return reuse();
-      if (!EXTENDS()) return reject();
-      if (!InterfaceTypeList()) return reject();
+      if (!EXTENDS() || !InterfaceTypeList()) return reject();
       return accept();
     }
-  
+
   Cache ExtendsInterfaces = new Cache();
-  
+
   //=====================================================================
   //  InterfaceBody = LWING InterfaceMemberDeclaration* RWING ;
   //=====================================================================
@@ -4367,9 +4166,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache InterfaceBody = new Cache();
-  
+
   //=====================================================================
   //  InterfaceMemberDeclaration = ConstantDeclaration /
   //    InterfaceMethodDeclaration / ClassDeclaration /
@@ -4378,16 +4177,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean InterfaceMemberDeclaration()
     {
       if (saved("InterfaceMemberDeclaration",InterfaceMemberDeclaration)) return reuse();
-      if (ConstantDeclaration()) return accept();
-      if (InterfaceMethodDeclaration()) return accept();
-      if (ClassDeclaration()) return accept();
-      if (InterfaceDeclaration()) return accept();
+      if (ConstantDeclaration() || InterfaceMethodDeclaration() || ClassDeclaration() || InterfaceDeclaration()) return accept();
       if (SEMI()) return accept();
       return reject();
     }
-  
+
   Cache InterfaceMemberDeclaration = new Cache();
-  
+
   //=====================================================================
   //  ConstantDeclaration = ConstantModifier* UnannType
   //    VariableDeclaratorList SEMI ;
@@ -4396,29 +4192,24 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("ConstantDeclaration",ConstantDeclaration)) return reuse();
       while (ConstantModifier());
-      if (!UnannType()) return reject();
-      if (!VariableDeclaratorList()) return reject();
-      if (!SEMI()) return reject();
+      if (!UnannType() || !VariableDeclaratorList() || !SEMI()) return reject();
       return accept();
     }
-  
+
   Cache ConstantDeclaration = new Cache();
-  
+
   //=====================================================================
   //  ConstantModifier = Annotation / PUBLIC / STATIC / FINAL ;
   //=====================================================================
   boolean ConstantModifier()
     {
       if (saved("ConstantModifier",ConstantModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (STATIC()) return accept();
-      if (FINAL()) return accept();
+      if (Annotation() || PUBLIC() || STATIC() || FINAL()) return accept();
       return reject();
     }
-  
+
   Cache ConstantModifier = new Cache();
-  
+
   //=====================================================================
   //  InterfaceMethodDeclaration = InterfaceMethodModifier* MethodHeader
   //    MethodBody ;
@@ -4427,13 +4218,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("InterfaceMethodDeclaration",InterfaceMethodDeclaration)) return reuse();
       while (InterfaceMethodModifier());
-      if (!MethodHeader()) return reject();
-      if (!MethodBody()) return reject();
+      if (!MethodHeader() || !MethodBody()) return reject();
       return accept();
     }
-  
+
   Cache InterfaceMethodDeclaration = new Cache();
-  
+
   //=====================================================================
   //  InterfaceMethodModifier = Annotation / PUBLIC / PRIVATE / ABSTRACT
   //    / DEFAULT / STATIC / STRICTFP ;
@@ -4441,18 +4231,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean InterfaceMethodModifier()
     {
       if (saved("InterfaceMethodModifier",InterfaceMethodModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (PRIVATE()) return accept();
-      if (ABSTRACT()) return accept();
+      if (Annotation() || PUBLIC() || PRIVATE() || ABSTRACT()) return accept();
       if (DEFAULT()) return accept();
       if (STATIC()) return accept();
       if (STRICTFP()) return accept();
       return reject();
     }
-  
+
   Cache InterfaceMethodModifier = new Cache();
-  
+
   //=====================================================================
   //  AnnotationTypeDeclaration = InterfaceModifier* AT INTERFACE
   //    TypeIdentifier AnnotationTypeBody ;
@@ -4461,15 +4248,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("AnnotationTypeDeclaration",AnnotationTypeDeclaration)) return reuse();
       while (InterfaceModifier());
-      if (!AT()) return reject();
-      if (!INTERFACE()) return reject();
-      if (!TypeIdentifier()) return reject();
-      if (!AnnotationTypeBody()) return reject();
+      if (!AT() || !INTERFACE() || !TypeIdentifier() || !AnnotationTypeBody()) return reject();
       return accept();
     }
-  
+
   Cache AnnotationTypeDeclaration = new Cache();
-  
+
   //=====================================================================
   //  AnnotationTypeBody = LWING AnnotationTypeMemberDeclaration* RWING
   //    ;
@@ -4482,9 +4266,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache AnnotationTypeBody = new Cache();
-  
+
   //=====================================================================
   //  AnnotationTypeMemberDeclaration = AnnotationTypeElementDeclaration
   //    / ConstantDeclaration / ClassDeclaration / InterfaceDeclaration /
@@ -4493,16 +4277,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean AnnotationTypeMemberDeclaration()
     {
       if (saved("AnnotationTypeMemberDeclaration",AnnotationTypeMemberDeclaration)) return reuse();
-      if (AnnotationTypeElementDeclaration()) return accept();
-      if (ConstantDeclaration()) return accept();
-      if (ClassDeclaration()) return accept();
-      if (InterfaceDeclaration()) return accept();
+      if (AnnotationTypeElementDeclaration() || ConstantDeclaration() || ClassDeclaration() || InterfaceDeclaration()) return accept();
       if (SEMI()) return accept();
       return reject();
     }
-  
+
   Cache AnnotationTypeMemberDeclaration = new Cache();
-  
+
   //=====================================================================
   //  AnnotationTypeElementDeclaration = AnnotationTypeElementModifier*
   //    UnannType Identifier LPAR RPAR Dims* DefaultValue? SEMI ;
@@ -4511,45 +4292,39 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("AnnotationTypeElementDeclaration",AnnotationTypeElementDeclaration)) return reuse();
       while (AnnotationTypeElementModifier());
-      if (!UnannType()) return reject();
-      if (!Identifier()) return reject();
-      if (!LPAR()) return reject();
-      if (!RPAR()) return reject();
+      if (!UnannType() || !Identifier() || !LPAR() || !RPAR()) return reject();
       while (Dims());
       DefaultValue();
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache AnnotationTypeElementDeclaration = new Cache();
-  
+
   //=====================================================================
   //  AnnotationTypeElementModifier = Annotation / PUBLIC / ABSTRACT ;
   //=====================================================================
   boolean AnnotationTypeElementModifier()
     {
       if (saved("AnnotationTypeElementModifier",AnnotationTypeElementModifier)) return reuse();
-      if (Annotation()) return accept();
-      if (PUBLIC()) return accept();
-      if (ABSTRACT()) return accept();
+      if (Annotation() || PUBLIC() || ABSTRACT()) return accept();
       return reject();
     }
-  
+
   Cache AnnotationTypeElementModifier = new Cache();
-  
+
   //=====================================================================
   //  DefaultValue = DEFAULT ElementValue ;
   //=====================================================================
   boolean DefaultValue()
     {
       if (saved("DefaultValue",DefaultValue)) return reuse();
-      if (!DEFAULT()) return reject();
-      if (!ElementValue()) return reject();
+      if (!DEFAULT() || !ElementValue()) return reject();
       return accept();
     }
-  
+
   Cache DefaultValue = new Cache();
-  
+
   //=====================================================================
   //  Annotation = NormalAnnotation / SingleElementAnnotation /
   //    MarkerAnnotation ;
@@ -4557,30 +4332,26 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean Annotation()
     {
       if (saved("Annotation",Annotation)) return reuse();
-      if (NormalAnnotation()) return accept();
-      if (SingleElementAnnotation()) return accept();
-      if (MarkerAnnotation()) return accept();
+      if (NormalAnnotation() || SingleElementAnnotation() || MarkerAnnotation()) return accept();
       return reject();
     }
-  
+
   Cache Annotation = new Cache();
-  
+
   //=====================================================================
   //  NormalAnnotation = AT TypeName LPAR ElementValuePairList? RPAR ;
   //=====================================================================
   boolean NormalAnnotation()
     {
       if (saved("NormalAnnotation",NormalAnnotation)) return reuse();
-      if (!AT()) return reject();
-      if (!TypeName()) return reject();
-      if (!LPAR()) return reject();
+      if (!AT() || !TypeName() || !LPAR()) return reject();
       ElementValuePairList();
       if (!RPAR()) return reject();
       return accept();
     }
-  
+
   Cache NormalAnnotation = new Cache();
-  
+
   //=====================================================================
   //  ElementValuePairList = ElementValuePair (COMMA ElementValuePair)*
   //    ;
@@ -4592,36 +4363,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ElementValuePairList_2());
       return accept();
     }
-  
+
   Cache ElementValuePairList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ElementValuePairList_2 = COMMA ElementValuePair
   //-------------------------------------------------------------------
   boolean ElementValuePairList_2()
     {
       if (saved("ElementValuePairList_2",ElementValuePairList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!ElementValuePair()) return rejectInner();
+      if (!COMMA() || !ElementValuePair()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ElementValuePairList_2 = new Cache();
-  
+
   //=====================================================================
   //  ElementValuePair = Identifier EQU ElementValue ;
   //=====================================================================
   boolean ElementValuePair()
     {
       if (saved("ElementValuePair",ElementValuePair)) return reuse();
-      if (!Identifier()) return reject();
-      if (!EQU()) return reject();
-      if (!ElementValue()) return reject();
+      if (!Identifier() || !EQU() || !ElementValue()) return reject();
       return accept();
     }
-  
+
   Cache ElementValuePair = new Cache();
-  
+
   //=====================================================================
   //  ElementValue = ConditionalExpression / ElementValueArrayInitializer
   //    / Annotation ;
@@ -4629,14 +4397,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ElementValue()
     {
       if (saved("ElementValue",ElementValue)) return reuse();
-      if (ConditionalExpression()) return accept();
-      if (ElementValueArrayInitializer()) return accept();
-      if (Annotation()) return accept();
+      if (ConditionalExpression() || ElementValueArrayInitializer() || Annotation()) return accept();
       return reject();
     }
-  
+
   Cache ElementValue = new Cache();
-  
+
   //=====================================================================
   //  ElementValueArrayInitializer = LWING ElementValueList? COMMA? RWING
   //    ;
@@ -4650,9 +4416,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache ElementValueArrayInitializer = new Cache();
-  
+
   //=====================================================================
   //  ElementValueList = ElementValue (COMMA ElementValue)* ;
   //=====================================================================
@@ -4663,51 +4429,46 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ElementValueList_2());
       return accept();
     }
-  
+
   Cache ElementValueList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ElementValueList_2 = COMMA ElementValue
   //-------------------------------------------------------------------
   boolean ElementValueList_2()
     {
       if (saved("ElementValueList_2",ElementValueList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!ElementValue()) return rejectInner();
+      if (!COMMA() || !ElementValue()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ElementValueList_2 = new Cache();
-  
+
   //=====================================================================
   //  MarkerAnnotation = AT TypeName ;
   //=====================================================================
   boolean MarkerAnnotation()
     {
       if (saved("MarkerAnnotation",MarkerAnnotation)) return reuse();
-      if (!AT()) return reject();
-      if (!TypeName()) return reject();
+      if (!AT() || !TypeName()) return reject();
       return accept();
     }
-  
+
   Cache MarkerAnnotation = new Cache();
-  
+
   //=====================================================================
   //  SingleElementAnnotation = AT TypeName LPAR ElementValue RPAR ;
   //=====================================================================
   boolean SingleElementAnnotation()
     {
       if (saved("SingleElementAnnotation",SingleElementAnnotation)) return reuse();
-      if (!AT()) return reject();
-      if (!TypeName()) return reject();
-      if (!LPAR()) return reject();
-      if (!ElementValue()) return reject();
+      if (!AT() || !TypeName() || !LPAR() || !ElementValue()) return reject();
       if (!RPAR()) return reject();
       return accept();
     }
-  
+
   Cache SingleElementAnnotation = new Cache();
-  
+
   //=====================================================================
   //  ArrayInitializer = LWING VariableInitializerList? COMMA? RWING ;
   //=====================================================================
@@ -4720,9 +4481,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache ArrayInitializer = new Cache();
-  
+
   //=====================================================================
   //  VariableInitializerList = VariableInitializer (COMMA
   //    VariableInitializer)* ;
@@ -4734,22 +4495,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (VariableInitializerList_2());
       return accept();
     }
-  
+
   Cache VariableInitializerList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  VariableInitializerList_2 = COMMA VariableInitializer
   //-------------------------------------------------------------------
   boolean VariableInitializerList_2()
     {
       if (saved("VariableInitializerList_2",VariableInitializerList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!VariableInitializer()) return rejectInner();
+      if (!COMMA() || !VariableInitializer()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache VariableInitializerList_2 = new Cache();
-  
+
   //=====================================================================
   //  Block = LWING BlockStatements? RWING ;
   //=====================================================================
@@ -4761,9 +4521,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return reject();
       return accept();
     }
-  
+
   Cache Block = new Cache();
-  
+
   //=====================================================================
   //  BlockStatements = BlockStatement BlockStatement* ;
   //=====================================================================
@@ -4774,9 +4534,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (BlockStatement());
       return accept();
     }
-  
+
   Cache BlockStatements = new Cache();
-  
+
   //=====================================================================
   //  BlockStatement = LocalVariableDeclarationStatement /
   //    ClassDeclaration / Statement ;
@@ -4784,14 +4544,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean BlockStatement()
     {
       if (saved("BlockStatement",BlockStatement)) return reuse();
-      if (LocalVariableDeclarationStatement()) return accept();
-      if (ClassDeclaration()) return accept();
-      if (Statement()) return accept();
+      if (LocalVariableDeclarationStatement() || ClassDeclaration() || Statement()) return accept();
       return reject();
     }
-  
+
   Cache BlockStatement = new Cache();
-  
+
   //=====================================================================
   //  LocalVariableDeclarationStatement = LocalVariableDeclaration SEMI
   //    ;
@@ -4799,13 +4557,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean LocalVariableDeclarationStatement()
     {
       if (saved("LocalVariableDeclarationStatement",LocalVariableDeclarationStatement)) return reuse();
-      if (!LocalVariableDeclaration()) return reject();
-      if (!SEMI()) return reject();
+      if (!LocalVariableDeclaration() || !SEMI()) return reject();
       return accept();
     }
-  
+
   Cache LocalVariableDeclarationStatement = new Cache();
-  
+
   //=====================================================================
   //  LocalVariableDeclaration = VariableModifier* LocalVariableType
   //    VariableDeclaratorList ;
@@ -4814,26 +4571,24 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("LocalVariableDeclaration",LocalVariableDeclaration)) return reuse();
       while (VariableModifier());
-      if (!LocalVariableType()) return reject();
-      if (!VariableDeclaratorList()) return reject();
+      if (!LocalVariableType() || !VariableDeclaratorList()) return reject();
       return accept();
     }
-  
+
   Cache LocalVariableDeclaration = new Cache();
-  
+
   //=====================================================================
   //  LocalVariableType = UnannType / VAR ;
   //=====================================================================
   boolean LocalVariableType()
     {
       if (saved("LocalVariableType",LocalVariableType)) return reuse();
-      if (UnannType()) return accept();
-      if (VAR()) return accept();
+      if (UnannType() || VAR()) return accept();
       return reject();
     }
-  
+
   Cache LocalVariableType = new Cache();
-  
+
   //=====================================================================
   //  Statement = Block / EmptyStatement / ExpressionStatement /
   //    AssertStatement / SwitchStatement / LabeledStatement /
@@ -4845,10 +4600,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean Statement()
     {
       if (saved("Statement",Statement)) return reuse();
-      if (Block()) return accept();
-      if (EmptyStatement()) return accept();
-      if (ExpressionStatement()) return accept();
-      if (AssertStatement()) return accept();
+      if (Block() || EmptyStatement() || ExpressionStatement() || AssertStatement()) return accept();
       if (SwitchStatement()) return accept();
       if (LabeledStatement()) return accept();
       if (IfThenElseStatement()) return accept();
@@ -4865,9 +4617,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (YieldStatement()) return accept();
       return reject();
     }
-  
+
   Cache Statement = new Cache();
-  
+
   //=====================================================================
   //  EmptyStatement = SEMI ;
   //=====================================================================
@@ -4877,36 +4629,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache EmptyStatement = new Cache();
-  
+
   //=====================================================================
   //  LabeledStatement = Identifier COLON Statement ;
   //=====================================================================
   boolean LabeledStatement()
     {
       if (saved("LabeledStatement",LabeledStatement)) return reuse();
-      if (!Identifier()) return reject();
-      if (!COLON()) return reject();
-      if (!Statement()) return reject();
+      if (!Identifier() || !COLON() || !Statement()) return reject();
       return accept();
     }
-  
+
   Cache LabeledStatement = new Cache();
-  
+
   //=====================================================================
   //  ExpressionStatement = StatementExpression SEMI ;
   //=====================================================================
   boolean ExpressionStatement()
     {
       if (saved("ExpressionStatement",ExpressionStatement)) return reuse();
-      if (!StatementExpression()) return reject();
-      if (!SEMI()) return reject();
+      if (!StatementExpression() || !SEMI()) return reject();
       return accept();
     }
-  
+
   Cache ExpressionStatement = new Cache();
-  
+
   //=====================================================================
   //  StatementExpression = Assignment / PreIncrementExpression /
   //    PreDecrementExpression / PostfixExpression / MethodInvocation /
@@ -4915,33 +4664,27 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean StatementExpression()
     {
       if (saved("StatementExpression",StatementExpression)) return reuse();
-      if (Assignment()) return accept();
-      if (PreIncrementExpression()) return accept();
-      if (PreDecrementExpression()) return accept();
-      if (PostfixExpression()) return accept();
+      if (Assignment() || PreIncrementExpression() || PreDecrementExpression() || PostfixExpression()) return accept();
       if (MethodInvocation()) return accept();
       if (ClassInstanceCreationExpression()) return accept();
       return reject();
     }
-  
+
   Cache StatementExpression = new Cache();
-  
+
   //=====================================================================
   //  IfThenStatement = IF LPAR Expression RPAR Statement ;
   //=====================================================================
   boolean IfThenStatement()
     {
       if (saved("IfThenStatement",IfThenStatement)) return reuse();
-      if (!IF()) return reject();
-      if (!LPAR()) return reject();
-      if (!Expression()) return reject();
-      if (!RPAR()) return reject();
+      if (!IF() || !LPAR() || !Expression() || !RPAR()) return reject();
       if (!Statement()) return reject();
       return accept();
     }
-  
+
   Cache IfThenStatement = new Cache();
-  
+
   //=====================================================================
   //  IfThenElseStatement = IF LPAR Expression RPAR Statement ELSE
   //    Statement ;
@@ -4949,18 +4692,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean IfThenElseStatement()
     {
       if (saved("IfThenElseStatement",IfThenElseStatement)) return reuse();
-      if (!IF()) return reject();
-      if (!LPAR()) return reject();
-      if (!Expression()) return reject();
-      if (!RPAR()) return reject();
+      if (!IF() || !LPAR() || !Expression() || !RPAR()) return reject();
       if (!Statement()) return reject();
       if (!ELSE()) return reject();
       if (!Statement()) return reject();
       return accept();
     }
-  
+
   Cache IfThenElseStatement = new Cache();
-  
+
   //=====================================================================
   //  AssertStatement = ASSERT Expression SEMI / ASSERT Expression COLON
   //    Expression SEMI ;
@@ -4968,59 +4708,50 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean AssertStatement()
     {
       if (saved("AssertStatement",AssertStatement)) return reuse();
-      if (AssertStatement_0()) return accept();
-      if (AssertStatement_1()) return accept();
+      if (AssertStatement_0() || AssertStatement_1()) return accept();
       return reject();
     }
-  
+
   Cache AssertStatement = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  AssertStatement_0 = ASSERT Expression SEMI
   //-------------------------------------------------------------------
   boolean AssertStatement_0()
     {
       if (saved("AssertStatement_0",AssertStatement_0)) return reuseInner();
-      if (!ASSERT()) return rejectInner();
-      if (!Expression()) return rejectInner();
-      if (!SEMI()) return rejectInner();
+      if (!ASSERT() || !Expression() || !SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache AssertStatement_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  AssertStatement_1 = ASSERT Expression COLON Expression SEMI
   //-------------------------------------------------------------------
   boolean AssertStatement_1()
     {
       if (saved("AssertStatement_1",AssertStatement_1)) return reuseInner();
-      if (!ASSERT()) return rejectInner();
-      if (!Expression()) return rejectInner();
-      if (!COLON()) return rejectInner();
-      if (!Expression()) return rejectInner();
+      if (!ASSERT() || !Expression() || !COLON() || !Expression()) return rejectInner();
       if (!SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache AssertStatement_1 = new Cache();
-  
+
   //=====================================================================
   //  SwitchStatement = SWITCH LPAR Expression RPAR SwitchBlock ;
   //=====================================================================
   boolean SwitchStatement()
     {
       if (saved("SwitchStatement",SwitchStatement)) return reuse();
-      if (!SWITCH()) return reject();
-      if (!LPAR()) return reject();
-      if (!Expression()) return reject();
-      if (!RPAR()) return reject();
+      if (!SWITCH() || !LPAR() || !Expression() || !RPAR()) return reject();
       if (!SwitchBlock()) return reject();
       return accept();
     }
-  
+
   Cache SwitchStatement = new Cache();
-  
+
   //=====================================================================
   //  SwitchBlock = LWING SwitchRule+ RWING / LWING
   //    SwitchBlockStatementGroup* RWING ;
@@ -5028,28 +4759,26 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean SwitchBlock()
     {
       if (saved("SwitchBlock",SwitchBlock)) return reuse();
-      if (SwitchBlock_0()) return accept();
-      if (SwitchBlock_2()) return accept();
+      if (SwitchBlock_0() || SwitchBlock_2()) return accept();
       return reject();
     }
-  
+
   Cache SwitchBlock = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchBlock_0 = LWING SwitchRule+ RWING
   //-------------------------------------------------------------------
   boolean SwitchBlock_0()
     {
       if (saved("SwitchBlock_0",SwitchBlock_0)) return reuseInner();
-      if (!LWING()) return rejectInner();
-      if (!SwitchRule()) return rejectInner();
+      if (!LWING() || !SwitchRule()) return rejectInner();
       while (SwitchRule());
       if (!RWING()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache SwitchBlock_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchBlock_2 = LWING SwitchBlockStatementGroup* RWING
   //-------------------------------------------------------------------
@@ -5061,9 +4790,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RWING()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache SwitchBlock_2 = new Cache();
-  
+
   //=====================================================================
   //  SwitchRule = SwitchLabel ARROW Expression SEMI / SwitchLabel ARROW
   //    Block / SwitchLabel ARROW ThrowStatement ;
@@ -5071,57 +4800,48 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean SwitchRule()
     {
       if (saved("SwitchRule",SwitchRule)) return reuse();
-      if (SwitchRule_0()) return accept();
-      if (SwitchRule_1()) return accept();
-      if (SwitchRule_2()) return accept();
+      if (SwitchRule_0() || SwitchRule_1() || SwitchRule_2()) return accept();
       return reject();
     }
-  
+
   Cache SwitchRule = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchRule_0 = SwitchLabel ARROW Expression SEMI
   //-------------------------------------------------------------------
   boolean SwitchRule_0()
     {
       if (saved("SwitchRule_0",SwitchRule_0)) return reuseInner();
-      if (!SwitchLabel()) return rejectInner();
-      if (!ARROW()) return rejectInner();
-      if (!Expression()) return rejectInner();
-      if (!SEMI()) return rejectInner();
+      if (!SwitchLabel() || !ARROW() || !Expression() || !SEMI()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache SwitchRule_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchRule_1 = SwitchLabel ARROW Block
   //-------------------------------------------------------------------
   boolean SwitchRule_1()
     {
       if (saved("SwitchRule_1",SwitchRule_1)) return reuseInner();
-      if (!SwitchLabel()) return rejectInner();
-      if (!ARROW()) return rejectInner();
-      if (!Block()) return rejectInner();
+      if (!SwitchLabel() || !ARROW() || !Block()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache SwitchRule_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchRule_2 = SwitchLabel ARROW ThrowStatement
   //-------------------------------------------------------------------
   boolean SwitchRule_2()
     {
       if (saved("SwitchRule_2",SwitchRule_2)) return reuseInner();
-      if (!SwitchLabel()) return rejectInner();
-      if (!ARROW()) return rejectInner();
-      if (!ThrowStatement()) return rejectInner();
+      if (!SwitchLabel() || !ARROW() || !ThrowStatement()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache SwitchRule_2 = new Cache();
-  
+
   //=====================================================================
   //  SwitchBlockStatementGroup = (SwitchLabel COLON)+ BlockStatements?
   //    ;
@@ -5134,62 +4854,58 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       BlockStatements();
       return accept();
     }
-  
+
   Cache SwitchBlockStatementGroup = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchBlockStatementGroup_2 = SwitchLabel COLON
   //-------------------------------------------------------------------
   boolean SwitchBlockStatementGroup_2()
     {
       if (saved("SwitchBlockStatementGroup_2",SwitchBlockStatementGroup_2)) return reuseInner();
-      if (!SwitchLabel()) return rejectInner();
-      if (!COLON()) return rejectInner();
+      if (!SwitchLabel() || !COLON()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache SwitchBlockStatementGroup_2 = new Cache();
-  
+
   //=====================================================================
   //  SwitchLabel = CASE CaseConstant (COMMA CaseConstant)* / DEFAULT ;
   //=====================================================================
   boolean SwitchLabel()
     {
       if (saved("SwitchLabel",SwitchLabel)) return reuse();
-      if (SwitchLabel_0()) return accept();
-      if (DEFAULT()) return accept();
+      if (SwitchLabel_0() || DEFAULT()) return accept();
       return reject();
     }
-  
+
   Cache SwitchLabel = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchLabel_0 = CASE CaseConstant (COMMA CaseConstant)*
   //-------------------------------------------------------------------
   boolean SwitchLabel_0()
     {
       if (saved("SwitchLabel_0",SwitchLabel_0)) return reuseInner();
-      if (!CASE()) return rejectInner();
-      if (!CaseConstant()) return rejectInner();
+      if (!CASE() || !CaseConstant()) return rejectInner();
       while (SwitchLabel_2());
       return acceptInner();
     }
-  
+
   Cache SwitchLabel_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  SwitchLabel_2 = COMMA CaseConstant
   //-------------------------------------------------------------------
   boolean SwitchLabel_2()
     {
       if (saved("SwitchLabel_2",SwitchLabel_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!CaseConstant()) return rejectInner();
+      if (!COMMA() || !CaseConstant()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache SwitchLabel_2 = new Cache();
-  
+
   //=====================================================================
   //  CaseConstant = ConditionalExpression ;
   //=====================================================================
@@ -5199,55 +4915,48 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!ConditionalExpression()) return reject();
       return accept();
     }
-  
+
   Cache CaseConstant = new Cache();
-  
+
   //=====================================================================
   //  WhileStatement = WHILE LPAR Expression RPAR Statement ;
   //=====================================================================
   boolean WhileStatement()
     {
       if (saved("WhileStatement",WhileStatement)) return reuse();
-      if (!WHILE()) return reject();
-      if (!LPAR()) return reject();
-      if (!Expression()) return reject();
-      if (!RPAR()) return reject();
+      if (!WHILE() || !LPAR() || !Expression() || !RPAR()) return reject();
       if (!Statement()) return reject();
       return accept();
     }
-  
+
   Cache WhileStatement = new Cache();
-  
+
   //=====================================================================
   //  DoStatement = DO Statement WHILE LPAR Expression RPAR ;
   //=====================================================================
   boolean DoStatement()
     {
       if (saved("DoStatement",DoStatement)) return reuse();
-      if (!DO()) return reject();
-      if (!Statement()) return reject();
-      if (!WHILE()) return reject();
-      if (!LPAR()) return reject();
+      if (!DO() || !Statement() || !WHILE() || !LPAR()) return reject();
       if (!Expression()) return reject();
       if (!RPAR()) return reject();
       return accept();
     }
-  
+
   Cache DoStatement = new Cache();
-  
+
   //=====================================================================
   //  ForStatement = BasicForStatement / EnhancedForStatement ;
   //=====================================================================
   boolean ForStatement()
     {
       if (saved("ForStatement",ForStatement)) return reuse();
-      if (BasicForStatement()) return accept();
-      if (EnhancedForStatement()) return accept();
+      if (BasicForStatement() || EnhancedForStatement()) return accept();
       return reject();
     }
-  
+
   Cache ForStatement = new Cache();
-  
+
   //=====================================================================
   //  BasicForStatement = FOR LPAR ForInit? SEMI Expression? SEMI
   //    ForUpdate? RPAR Statement ;
@@ -5255,8 +4964,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean BasicForStatement()
     {
       if (saved("BasicForStatement",BasicForStatement)) return reuse();
-      if (!FOR()) return reject();
-      if (!LPAR()) return reject();
+      if (!FOR() || !LPAR()) return reject();
       ForInit();
       if (!SEMI()) return reject();
       Expression();
@@ -5266,22 +4974,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Statement()) return reject();
       return accept();
     }
-  
+
   Cache BasicForStatement = new Cache();
-  
+
   //=====================================================================
   //  ForInit = LocalVariableDeclaration / StatementExpressionList ;
   //=====================================================================
   boolean ForInit()
     {
       if (saved("ForInit",ForInit)) return reuse();
-      if (LocalVariableDeclaration()) return accept();
-      if (StatementExpressionList()) return accept();
+      if (LocalVariableDeclaration() || StatementExpressionList()) return accept();
       return reject();
     }
-  
+
   Cache ForInit = new Cache();
-  
+
   //=====================================================================
   //  ForUpdate = StatementExpressionList ;
   //=====================================================================
@@ -5291,9 +4998,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!StatementExpressionList()) return reject();
       return accept();
     }
-  
+
   Cache ForUpdate = new Cache();
-  
+
   //=====================================================================
   //  StatementExpressionList = StatementExpression (COMMA
   //    StatementExpression)* ;
@@ -5305,22 +5012,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (StatementExpressionList_2());
       return accept();
     }
-  
+
   Cache StatementExpressionList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  StatementExpressionList_2 = COMMA StatementExpression
   //-------------------------------------------------------------------
   boolean StatementExpressionList_2()
     {
       if (saved("StatementExpressionList_2",StatementExpressionList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!StatementExpression()) return rejectInner();
+      if (!COMMA() || !StatementExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache StatementExpressionList_2 = new Cache();
-  
+
   //=====================================================================
   //  EnhancedForStatement = FOR LPAR VariableModifier* LocalVariableType
   //    VariableDeclaratorId COLON Expression RPAR Statement ;
@@ -5328,8 +5034,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean EnhancedForStatement()
     {
       if (saved("EnhancedForStatement",EnhancedForStatement)) return reuse();
-      if (!FOR()) return reject();
-      if (!LPAR()) return reject();
+      if (!FOR() || !LPAR()) return reject();
       while (VariableModifier());
       if (!LocalVariableType()) return reject();
       if (!VariableDeclaratorId()) return reject();
@@ -5339,9 +5044,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!Statement()) return reject();
       return accept();
     }
-  
+
   Cache EnhancedForStatement = new Cache();
-  
+
   //=====================================================================
   //  BreakStatement = BREAK Identifier? SEMI ;
   //=====================================================================
@@ -5353,9 +5058,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache BreakStatement = new Cache();
-  
+
   //=====================================================================
   //  ContinueStatement = CONTINUE Identifier? SEMI ;
   //=====================================================================
@@ -5367,9 +5072,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache ContinueStatement = new Cache();
-  
+
   //=====================================================================
   //  ReturnStatement = RETURN Expression? SEMI ;
   //=====================================================================
@@ -5381,39 +5086,34 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!SEMI()) return reject();
       return accept();
     }
-  
+
   Cache ReturnStatement = new Cache();
-  
+
   //=====================================================================
   //  ThrowStatement = THROW Expression SEMI ;
   //=====================================================================
   boolean ThrowStatement()
     {
       if (saved("ThrowStatement",ThrowStatement)) return reuse();
-      if (!THROW()) return reject();
-      if (!Expression()) return reject();
-      if (!SEMI()) return reject();
+      if (!THROW() || !Expression() || !SEMI()) return reject();
       return accept();
     }
-  
+
   Cache ThrowStatement = new Cache();
-  
+
   //=====================================================================
   //  SynchronizedStatement = SYNCHRONIZED LPAR Expression RPAR Block ;
   //=====================================================================
   boolean SynchronizedStatement()
     {
       if (saved("SynchronizedStatement",SynchronizedStatement)) return reuse();
-      if (!SYNCHRONIZED()) return reject();
-      if (!LPAR()) return reject();
-      if (!Expression()) return reject();
-      if (!RPAR()) return reject();
+      if (!SYNCHRONIZED() || !LPAR() || !Expression() || !RPAR()) return reject();
       if (!Block()) return reject();
       return accept();
     }
-  
+
   Cache SynchronizedStatement = new Cache();
-  
+
   //=====================================================================
   //  TryStatement = TRY Block Catches? Finally / TRY Block Catches /
   //    TryWithResourcesStatement ;
@@ -5421,43 +5121,38 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean TryStatement()
     {
       if (saved("TryStatement",TryStatement)) return reuse();
-      if (TryStatement_0()) return accept();
-      if (TryStatement_2()) return accept();
-      if (TryWithResourcesStatement()) return accept();
+      if (TryStatement_0() || TryStatement_2() || TryWithResourcesStatement()) return accept();
       return reject();
     }
-  
+
   Cache TryStatement = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TryStatement_0 = TRY Block Catches? Finally
   //-------------------------------------------------------------------
   boolean TryStatement_0()
     {
       if (saved("TryStatement_0",TryStatement_0)) return reuseInner();
-      if (!TRY()) return rejectInner();
-      if (!Block()) return rejectInner();
+      if (!TRY() || !Block()) return rejectInner();
       Catches();
       if (!Finally()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache TryStatement_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TryStatement_2 = TRY Block Catches
   //-------------------------------------------------------------------
   boolean TryStatement_2()
     {
       if (saved("TryStatement_2",TryStatement_2)) return reuseInner();
-      if (!TRY()) return rejectInner();
-      if (!Block()) return rejectInner();
-      if (!Catches()) return rejectInner();
+      if (!TRY() || !Block() || !Catches()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache TryStatement_2 = new Cache();
-  
+
   //=====================================================================
   //  Catches = CatchClause CatchClause* ;
   //=====================================================================
@@ -5468,25 +5163,22 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (CatchClause());
       return accept();
     }
-  
+
   Cache Catches = new Cache();
-  
+
   //=====================================================================
   //  CatchClause = CATCH LPAR CatchFormalParameter RPAR Block ;
   //=====================================================================
   boolean CatchClause()
     {
       if (saved("CatchClause",CatchClause)) return reuse();
-      if (!CATCH()) return reject();
-      if (!LPAR()) return reject();
-      if (!CatchFormalParameter()) return reject();
-      if (!RPAR()) return reject();
+      if (!CATCH() || !LPAR() || !CatchFormalParameter() || !RPAR()) return reject();
       if (!Block()) return reject();
       return accept();
     }
-  
+
   Cache CatchClause = new Cache();
-  
+
   //=====================================================================
   //  CatchFormalParameter = VariableModifier* CatchType
   //    VariableDeclaratorId ;
@@ -5495,13 +5187,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("CatchFormalParameter",CatchFormalParameter)) return reuse();
       while (VariableModifier());
-      if (!CatchType()) return reject();
-      if (!VariableDeclaratorId()) return reject();
+      if (!CatchType() || !VariableDeclaratorId()) return reject();
       return accept();
     }
-  
+
   Cache CatchFormalParameter = new Cache();
-  
+
   //=====================================================================
   //  CatchType = UnannClassType (OR ClassType)* ;
   //=====================================================================
@@ -5512,35 +5203,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (CatchType_2());
       return accept();
     }
-  
+
   Cache CatchType = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  CatchType_2 = OR ClassType
   //-------------------------------------------------------------------
   boolean CatchType_2()
     {
       if (saved("CatchType_2",CatchType_2)) return reuseInner();
-      if (!OR()) return rejectInner();
-      if (!ClassType()) return rejectInner();
+      if (!OR() || !ClassType()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache CatchType_2 = new Cache();
-  
+
   //=====================================================================
   //  Finally = FINALLY Block ;
   //=====================================================================
   boolean Finally()
     {
       if (saved("Finally",Finally)) return reuse();
-      if (!FINALLY()) return reject();
-      if (!Block()) return reject();
+      if (!FINALLY() || !Block()) return reject();
       return accept();
     }
-  
+
   Cache Finally = new Cache();
-  
+
   //=====================================================================
   //  TryWithResourcesStatement = TRY ResourceSpecification Block
   //    Catches? Finally? ;
@@ -5548,31 +5237,28 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean TryWithResourcesStatement()
     {
       if (saved("TryWithResourcesStatement",TryWithResourcesStatement)) return reuse();
-      if (!TRY()) return reject();
-      if (!ResourceSpecification()) return reject();
-      if (!Block()) return reject();
+      if (!TRY() || !ResourceSpecification() || !Block()) return reject();
       Catches();
       Finally();
       return accept();
     }
-  
+
   Cache TryWithResourcesStatement = new Cache();
-  
+
   //=====================================================================
   //  ResourceSpecification = LPAR ResourceList SEMI? RPAR ;
   //=====================================================================
   boolean ResourceSpecification()
     {
       if (saved("ResourceSpecification",ResourceSpecification)) return reuse();
-      if (!LPAR()) return reject();
-      if (!ResourceList()) return reject();
+      if (!LPAR() || !ResourceList()) return reject();
       SEMI();
       if (!RPAR()) return reject();
       return accept();
     }
-  
+
   Cache ResourceSpecification = new Cache();
-  
+
   //=====================================================================
   //  ResourceList = Resource (SEMI Resource)* ;
   //=====================================================================
@@ -5583,22 +5269,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ResourceList_2());
       return accept();
     }
-  
+
   Cache ResourceList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ResourceList_2 = SEMI Resource
   //-------------------------------------------------------------------
   boolean ResourceList_2()
     {
       if (saved("ResourceList_2",ResourceList_2)) return reuseInner();
-      if (!SEMI()) return rejectInner();
-      if (!Resource()) return rejectInner();
+      if (!SEMI() || !Resource()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ResourceList_2 = new Cache();
-  
+
   //=====================================================================
   //  Resource = VariableModifier* LocalVariableType Identifier EQU
   //    Expression / VariableAccess ;
@@ -5606,13 +5291,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean Resource()
     {
       if (saved("Resource",Resource)) return reuse();
-      if (Resource_0()) return accept();
-      if (VariableAccess()) return accept();
+      if (Resource_0() || VariableAccess()) return accept();
       return reject();
     }
-  
+
   Cache Resource = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  Resource_0 = VariableModifier* LocalVariableType Identifier EQU
   //    Expression
@@ -5621,42 +5305,36 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("Resource_0",Resource_0)) return reuseInner();
       while (VariableModifier());
-      if (!LocalVariableType()) return rejectInner();
-      if (!Identifier()) return rejectInner();
-      if (!EQU()) return rejectInner();
-      if (!Expression()) return rejectInner();
+      if (!LocalVariableType() || !Identifier() || !EQU() || !Expression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache Resource_0 = new Cache();
-  
+
   //=====================================================================
   //  VariableAccess = Name / FieldAccess ;
   //=====================================================================
   boolean VariableAccess()
     {
       if (saved("VariableAccess",VariableAccess)) return reuse();
-      if (Name()) return accept();
-      if (FieldAccess()) return accept();
+      if (Name() || FieldAccess()) return accept();
       return reject();
     }
-  
+
   Cache VariableAccess = new Cache();
-  
+
   //=====================================================================
   //  YieldStatement = YIELD Expression SEMI ;
   //=====================================================================
   boolean YieldStatement()
     {
       if (saved("YieldStatement",YieldStatement)) return reuse();
-      if (!YIELD()) return reject();
-      if (!Expression()) return reject();
-      if (!SEMI()) return reject();
+      if (!YIELD() || !Expression() || !SEMI()) return reject();
       return accept();
     }
-  
+
   Cache YieldStatement = new Cache();
-  
+
   //=====================================================================
   //  Expression = LambdaExpression / Assignment / ConditionalExpression
   //    ;
@@ -5664,14 +5342,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean Expression()
     {
       if (saved("Expression",Expression)) return reuse();
-      if (LambdaExpression()) return accept();
-      if (Assignment()) return accept();
-      if (ConditionalExpression()) return accept();
+      if (LambdaExpression() || Assignment() || ConditionalExpression()) return accept();
       return reject();
     }
-  
+
   Cache Expression = new Cache();
-  
+
   //=====================================================================
   //  ClassLiteral = TypeName (LBRK RBRK)* DOT CLASS / NumericType (LBRK
   //    RBRK)* DOT CLASS / BOOLEAN (LBRK RBRK)* DOT CLASS / VOID DOT
@@ -5680,15 +5356,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ClassLiteral()
     {
       if (saved("ClassLiteral",ClassLiteral)) return reuse();
-      if (ClassLiteral_0()) return accept();
-      if (ClassLiteral_3()) return accept();
-      if (ClassLiteral_6()) return accept();
-      if (ClassLiteral_9()) return accept();
+      if (ClassLiteral_0() || ClassLiteral_3() || ClassLiteral_6() || ClassLiteral_9()) return accept();
       return reject();
     }
-  
+
   Cache ClassLiteral = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassLiteral_0 = TypeName (LBRK RBRK)* DOT CLASS
   //-------------------------------------------------------------------
@@ -5697,13 +5370,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("ClassLiteral_0",ClassLiteral_0)) return reuseInner();
       if (!TypeName()) return rejectInner();
       while (ClassLiteral_2());
-      if (!DOT()) return rejectInner();
-      if (!CLASS()) return rejectInner();
+      if (!DOT() || !CLASS()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ClassLiteral_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassLiteral_3 = NumericType (LBRK RBRK)* DOT CLASS
   //-------------------------------------------------------------------
@@ -5712,13 +5384,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("ClassLiteral_3",ClassLiteral_3)) return reuseInner();
       if (!NumericType()) return rejectInner();
       while (ClassLiteral_2());
-      if (!DOT()) return rejectInner();
-      if (!CLASS()) return rejectInner();
+      if (!DOT() || !CLASS()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ClassLiteral_3 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassLiteral_6 = BOOLEAN (LBRK RBRK)* DOT CLASS
   //-------------------------------------------------------------------
@@ -5727,40 +5398,36 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("ClassLiteral_6",ClassLiteral_6)) return reuseInner();
       if (!BOOLEAN()) return rejectInner();
       while (ClassLiteral_2());
-      if (!DOT()) return rejectInner();
-      if (!CLASS()) return rejectInner();
+      if (!DOT() || !CLASS()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ClassLiteral_6 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassLiteral_9 = VOID DOT CLASS
   //-------------------------------------------------------------------
   boolean ClassLiteral_9()
     {
       if (saved("ClassLiteral_9",ClassLiteral_9)) return reuseInner();
-      if (!VOID()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!CLASS()) return rejectInner();
+      if (!VOID() || !DOT() || !CLASS()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ClassLiteral_9 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassLiteral_2 = LBRK RBRK
   //-------------------------------------------------------------------
   boolean ClassLiteral_2()
     {
       if (saved("ClassLiteral_2",ClassLiteral_2)) return reuseInner();
-      if (!LBRK()) return rejectInner();
-      if (!RBRK()) return rejectInner();
+      if (!LBRK() || !RBRK()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ClassLiteral_2 = new Cache();
-  
+
   //=====================================================================
   //  UnqualifiedClassInstanceCreationExpression = NEW TypeArguments?
   //    ClassOrInterfaceTypeToInstantiate LPAR ArgumentList* RPAR
@@ -5771,16 +5438,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (saved("UnqualifiedClassInstanceCreationExpression",UnqualifiedClassInstanceCreationExpression)) return reuse();
       if (!NEW()) return reject();
       TypeArguments();
-      if (!ClassOrInterfaceTypeToInstantiate()) return reject();
-      if (!LPAR()) return reject();
+      if (!ClassOrInterfaceTypeToInstantiate() || !LPAR()) return reject();
       while (ArgumentList());
       if (!RPAR()) return reject();
       ClassBody();
       return accept();
     }
-  
+
   Cache UnqualifiedClassInstanceCreationExpression = new Cache();
-  
+
   //=====================================================================
   //  ClassOrInterfaceTypeToInstantiate = Annotation* Identifier
   //    TypeArgumentsOrDiamond? (DOT Annotation* Identifier
@@ -5795,9 +5461,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ClassOrInterfaceTypeToInstantiate_4());
       return accept();
     }
-  
+
   Cache ClassOrInterfaceTypeToInstantiate = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ClassOrInterfaceTypeToInstantiate_4 = DOT Annotation* Identifier
   //    TypeArgumentsOrDiamond?
@@ -5811,36 +5477,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       TypeArgumentsOrDiamond();
       return acceptInner();
     }
-  
+
   Cache ClassOrInterfaceTypeToInstantiate_4 = new Cache();
-  
+
   //=====================================================================
   //  TypeArgumentsOrDiamond = TypeArguments / LPOINT RPOINT &LPAR ;
   //=====================================================================
   boolean TypeArgumentsOrDiamond()
     {
       if (saved("TypeArgumentsOrDiamond",TypeArgumentsOrDiamond)) return reuse();
-      if (TypeArguments()) return accept();
-      if (TypeArgumentsOrDiamond_0()) return accept();
+      if (TypeArguments() || TypeArgumentsOrDiamond_0()) return accept();
       return reject();
     }
-  
+
   Cache TypeArgumentsOrDiamond = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeArgumentsOrDiamond_0 = LPOINT RPOINT &LPAR
   //-------------------------------------------------------------------
   boolean TypeArgumentsOrDiamond_0()
     {
       if (saved("TypeArgumentsOrDiamond_0",TypeArgumentsOrDiamond_0)) return reuseInner();
-      if (!LPOINT()) return rejectInner();
-      if (!RPOINT()) return rejectInner();
-      if (!TypeArgumentsOrDiamond_1()) return rejectInner();
+      if (!LPOINT() || !RPOINT() || !TypeArgumentsOrDiamond_1()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache TypeArgumentsOrDiamond_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  TypeArgumentsOrDiamond_1 = &LPAR
   //-------------------------------------------------------------------
@@ -5850,9 +5513,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!LPAR()) return rejectPred();
       return acceptPred();
     }
-  
+
   Cache TypeArgumentsOrDiamond_1 = new Cache();
-  
+
   //=====================================================================
   //  ArrayCreationExpression = NEW PrimitiveType DimExprs Dims? / NEW
   //    ClassType DimExprs Dims? / NEW PrimitiveType Dims
@@ -5861,45 +5524,38 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ArrayCreationExpression()
     {
       if (saved("ArrayCreationExpression",ArrayCreationExpression)) return reuse();
-      if (ArrayCreationExpression_0()) return accept();
-      if (ArrayCreationExpression_2()) return accept();
-      if (ArrayCreationExpression_4()) return accept();
-      if (ArrayCreationExpression_5()) return accept();
+      if (ArrayCreationExpression_0() || ArrayCreationExpression_2() || ArrayCreationExpression_4() || ArrayCreationExpression_5()) return accept();
       return reject();
     }
-  
+
   Cache ArrayCreationExpression = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayCreationExpression_0 = NEW PrimitiveType DimExprs Dims?
   //-------------------------------------------------------------------
   boolean ArrayCreationExpression_0()
     {
       if (saved("ArrayCreationExpression_0",ArrayCreationExpression_0)) return reuseInner();
-      if (!NEW()) return rejectInner();
-      if (!PrimitiveType()) return rejectInner();
-      if (!DimExprs()) return rejectInner();
+      if (!NEW() || !PrimitiveType() || !DimExprs()) return rejectInner();
       Dims();
       return acceptInner();
     }
-  
+
   Cache ArrayCreationExpression_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayCreationExpression_2 = NEW ClassType DimExprs Dims?
   //-------------------------------------------------------------------
   boolean ArrayCreationExpression_2()
     {
       if (saved("ArrayCreationExpression_2",ArrayCreationExpression_2)) return reuseInner();
-      if (!NEW()) return rejectInner();
-      if (!ClassType()) return rejectInner();
-      if (!DimExprs()) return rejectInner();
+      if (!NEW() || !ClassType() || !DimExprs()) return rejectInner();
       Dims();
       return acceptInner();
     }
-  
+
   Cache ArrayCreationExpression_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayCreationExpression_4 = NEW PrimitiveType Dims
   //    ArrayInitializer
@@ -5907,30 +5563,24 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ArrayCreationExpression_4()
     {
       if (saved("ArrayCreationExpression_4",ArrayCreationExpression_4)) return reuseInner();
-      if (!NEW()) return rejectInner();
-      if (!PrimitiveType()) return rejectInner();
-      if (!Dims()) return rejectInner();
-      if (!ArrayInitializer()) return rejectInner();
+      if (!NEW() || !PrimitiveType() || !Dims() || !ArrayInitializer()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayCreationExpression_4 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayCreationExpression_5 = NEW ClassType Dims ArrayInitializer
   //-------------------------------------------------------------------
   boolean ArrayCreationExpression_5()
     {
       if (saved("ArrayCreationExpression_5",ArrayCreationExpression_5)) return reuseInner();
-      if (!NEW()) return rejectInner();
-      if (!ClassType()) return rejectInner();
-      if (!Dims()) return rejectInner();
-      if (!ArrayInitializer()) return rejectInner();
+      if (!NEW() || !ClassType() || !Dims() || !ArrayInitializer()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayCreationExpression_5 = new Cache();
-  
+
   //=====================================================================
   //  DimExprs = DimExpr DimExpr* ;
   //=====================================================================
@@ -5941,9 +5591,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (DimExpr());
       return accept();
     }
-  
+
   Cache DimExprs = new Cache();
-  
+
   //=====================================================================
   //  DimExpr = Annotation* LBRK Expression RBRK ;
   //=====================================================================
@@ -5951,14 +5601,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("DimExpr",DimExpr)) return reuse();
       while (Annotation());
-      if (!LBRK()) return reject();
-      if (!Expression()) return reject();
-      if (!RBRK()) return reject();
+      if (!LBRK() || !Expression() || !RBRK()) return reject();
       return accept();
     }
-  
+
   Cache DimExpr = new Cache();
-  
+
   //=====================================================================
   //  ArgumentList = Expression (COMMA Expression)* ;
   //=====================================================================
@@ -5969,22 +5617,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (ArgumentList_2());
       return accept();
     }
-  
+
   Cache ArgumentList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArgumentList_2 = COMMA Expression
   //-------------------------------------------------------------------
   boolean ArgumentList_2()
     {
       if (saved("ArgumentList_2",ArgumentList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!Expression()) return rejectInner();
+      if (!COMMA() || !Expression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArgumentList_2 = new Cache();
-  
+
   //=====================================================================
   //  FieldAccess = Primary DOT Identifier / SUPER DOT Identifier /
   //    TypeName DOT SUPER DOT Identifier ;
@@ -5992,71 +5639,61 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean FieldAccess()
     {
       if (saved("FieldAccess",FieldAccess)) return reuse();
-      if (FieldAccess_0()) return accept();
-      if (FieldAccess_1()) return accept();
-      if (FieldAccess_2()) return accept();
+      if (FieldAccess_0() || FieldAccess_1() || FieldAccess_2()) return accept();
       return reject();
     }
-  
+
   Cache FieldAccess = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FieldAccess_0 = Primary DOT Identifier
   //-------------------------------------------------------------------
   boolean FieldAccess_0()
     {
       if (saved("FieldAccess_0",FieldAccess_0)) return reuseInner();
-      if (!Primary()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!Primary() || !DOT() || !Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache FieldAccess_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FieldAccess_1 = SUPER DOT Identifier
   //-------------------------------------------------------------------
   boolean FieldAccess_1()
     {
       if (saved("FieldAccess_1",FieldAccess_1)) return reuseInner();
-      if (!SUPER()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!SUPER() || !DOT() || !Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache FieldAccess_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  FieldAccess_2 = TypeName DOT SUPER DOT Identifier
   //-------------------------------------------------------------------
   boolean FieldAccess_2()
     {
       if (saved("FieldAccess_2",FieldAccess_2)) return reuseInner();
-      if (!TypeName()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!SUPER()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!TypeName() || !DOT() || !SUPER() || !DOT()) return rejectInner();
       if (!Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache FieldAccess_2 = new Cache();
-  
+
   //=====================================================================
   //  PostfixExpression = Primary (INC / DEC)? / Name (INC / DEC)? ;
   //=====================================================================
   boolean PostfixExpression()
     {
       if (saved("PostfixExpression",PostfixExpression)) return reuse();
-      if (PostfixExpression_0()) return accept();
-      if (PostfixExpression_3()) return accept();
+      if (PostfixExpression_0() || PostfixExpression_3()) return accept();
       return reject();
     }
-  
+
   Cache PostfixExpression = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  PostfixExpression_0 = Primary (INC / DEC)?
   //-------------------------------------------------------------------
@@ -6067,9 +5704,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       PostfixExpression_2();
       return acceptInner();
     }
-  
+
   Cache PostfixExpression_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  PostfixExpression_3 = Name (INC / DEC)?
   //-------------------------------------------------------------------
@@ -6080,22 +5717,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       PostfixExpression_2();
       return acceptInner();
     }
-  
+
   Cache PostfixExpression_3 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  PostfixExpression_2 = INC / DEC
   //-------------------------------------------------------------------
   boolean PostfixExpression_2()
     {
       if (saved("PostfixExpression_2",PostfixExpression_2)) return reuseInner();
-      if (INC()) return acceptInner();
-      if (DEC()) return acceptInner();
+      if (INC() || DEC()) return acceptInner();
       return rejectInner();
     }
-  
+
   Cache PostfixExpression_2 = new Cache();
-  
+
   //=====================================================================
   //  UnaryExpression = PreIncrementExpression / PreDecrementExpression /
   //    PLUS UnaryExpression / MINUS UnaryExpression /
@@ -6104,68 +5740,61 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean UnaryExpression()
     {
       if (saved("UnaryExpression",UnaryExpression)) return reuse();
-      if (PreIncrementExpression()) return accept();
-      if (PreDecrementExpression()) return accept();
-      if (UnaryExpression_0()) return accept();
-      if (UnaryExpression_1()) return accept();
+      if (PreIncrementExpression() || PreDecrementExpression() || UnaryExpression_0() || UnaryExpression_1()) return accept();
       if (UnaryExpressionNotPlusMinus()) return accept();
       return reject();
     }
-  
+
   Cache UnaryExpression = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnaryExpression_0 = PLUS UnaryExpression
   //-------------------------------------------------------------------
   boolean UnaryExpression_0()
     {
       if (saved("UnaryExpression_0",UnaryExpression_0)) return reuseInner();
-      if (!PLUS()) return rejectInner();
-      if (!UnaryExpression()) return rejectInner();
+      if (!PLUS() || !UnaryExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache UnaryExpression_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnaryExpression_1 = MINUS UnaryExpression
   //-------------------------------------------------------------------
   boolean UnaryExpression_1()
     {
       if (saved("UnaryExpression_1",UnaryExpression_1)) return reuseInner();
-      if (!MINUS()) return rejectInner();
-      if (!UnaryExpression()) return rejectInner();
+      if (!MINUS() || !UnaryExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache UnaryExpression_1 = new Cache();
-  
+
   //=====================================================================
   //  PreIncrementExpression = INC UnaryExpression ;
   //=====================================================================
   boolean PreIncrementExpression()
     {
       if (saved("PreIncrementExpression",PreIncrementExpression)) return reuse();
-      if (!INC()) return reject();
-      if (!UnaryExpression()) return reject();
+      if (!INC() || !UnaryExpression()) return reject();
       return accept();
     }
-  
+
   Cache PreIncrementExpression = new Cache();
-  
+
   //=====================================================================
   //  PreDecrementExpression = DEC UnaryExpression ;
   //=====================================================================
   boolean PreDecrementExpression()
     {
       if (saved("PreDecrementExpression",PreDecrementExpression)) return reuse();
-      if (!DEC()) return reject();
-      if (!UnaryExpression()) return reject();
+      if (!DEC() || !UnaryExpression()) return reject();
       return accept();
     }
-  
+
   Cache PreDecrementExpression = new Cache();
-  
+
   //=====================================================================
   //  UnaryExpressionNotPlusMinus = CastExpression / PostfixExpression /
   //    TILDE UnaryExpression / BANG UnaryExpression / SwitchExpression
@@ -6174,42 +5803,37 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean UnaryExpressionNotPlusMinus()
     {
       if (saved("UnaryExpressionNotPlusMinus",UnaryExpressionNotPlusMinus)) return reuse();
-      if (CastExpression()) return accept();
-      if (PostfixExpression()) return accept();
-      if (UnaryExpressionNotPlusMinus_0()) return accept();
-      if (UnaryExpressionNotPlusMinus_1()) return accept();
+      if (CastExpression() || PostfixExpression() || UnaryExpressionNotPlusMinus_0() || UnaryExpressionNotPlusMinus_1()) return accept();
       if (SwitchExpression()) return accept();
       return reject();
     }
-  
+
   Cache UnaryExpressionNotPlusMinus = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnaryExpressionNotPlusMinus_0 = TILDE UnaryExpression
   //-------------------------------------------------------------------
   boolean UnaryExpressionNotPlusMinus_0()
     {
       if (saved("UnaryExpressionNotPlusMinus_0",UnaryExpressionNotPlusMinus_0)) return reuseInner();
-      if (!TILDE()) return rejectInner();
-      if (!UnaryExpression()) return rejectInner();
+      if (!TILDE() || !UnaryExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache UnaryExpressionNotPlusMinus_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  UnaryExpressionNotPlusMinus_1 = BANG UnaryExpression
   //-------------------------------------------------------------------
   boolean UnaryExpressionNotPlusMinus_1()
     {
       if (saved("UnaryExpressionNotPlusMinus_1",UnaryExpressionNotPlusMinus_1)) return reuseInner();
-      if (!BANG()) return rejectInner();
-      if (!UnaryExpression()) return rejectInner();
+      if (!BANG() || !UnaryExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache UnaryExpressionNotPlusMinus_1 = new Cache();
-  
+
   //=====================================================================
   //  CastExpression = LPAR ReferenceType AdditionalBound* RPAR
   //    LambdaExpression / LPAR ReferenceType AdditionalBound* RPAR
@@ -6219,14 +5843,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean CastExpression()
     {
       if (saved("CastExpression",CastExpression)) return reuse();
-      if (CastExpression_0()) return accept();
-      if (CastExpression_2()) return accept();
-      if (CastExpression_4()) return accept();
+      if (CastExpression_0() || CastExpression_2() || CastExpression_4()) return accept();
       return reject();
     }
-  
+
   Cache CastExpression = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  CastExpression_0 = LPAR ReferenceType AdditionalBound* RPAR
   //    LambdaExpression
@@ -6234,16 +5856,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean CastExpression_0()
     {
       if (saved("CastExpression_0",CastExpression_0)) return reuseInner();
-      if (!LPAR()) return rejectInner();
-      if (!ReferenceType()) return rejectInner();
+      if (!LPAR() || !ReferenceType()) return rejectInner();
       while (AdditionalBound());
       if (!RPAR()) return rejectInner();
       if (!LambdaExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache CastExpression_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  CastExpression_2 = LPAR ReferenceType AdditionalBound* RPAR
   //    UnaryExpressionNotPlusMinus
@@ -6251,31 +5872,27 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean CastExpression_2()
     {
       if (saved("CastExpression_2",CastExpression_2)) return reuseInner();
-      if (!LPAR()) return rejectInner();
-      if (!ReferenceType()) return rejectInner();
+      if (!LPAR() || !ReferenceType()) return rejectInner();
       while (AdditionalBound());
       if (!RPAR()) return rejectInner();
       if (!UnaryExpressionNotPlusMinus()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache CastExpression_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  CastExpression_4 = LPAR PrimitiveType RPAR UnaryExpression
   //-------------------------------------------------------------------
   boolean CastExpression_4()
     {
       if (saved("CastExpression_4",CastExpression_4)) return reuseInner();
-      if (!LPAR()) return rejectInner();
-      if (!PrimitiveType()) return rejectInner();
-      if (!RPAR()) return rejectInner();
-      if (!UnaryExpression()) return rejectInner();
+      if (!LPAR() || !PrimitiveType() || !RPAR() || !UnaryExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache CastExpression_4 = new Cache();
-  
+
   //=====================================================================
   //  InfixExpression = UnaryExpression (InfixOperator UnaryExpression /
   //    INSTANCEOF ReferenceType)* ;
@@ -6287,9 +5904,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (InfixExpression_2());
       return accept();
     }
-  
+
   Cache InfixExpression = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  InfixExpression_2 = InfixOperator UnaryExpression / INSTANCEOF
   //    ReferenceType
@@ -6297,39 +5914,36 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean InfixExpression_2()
     {
       if (saved("InfixExpression_2",InfixExpression_2)) return reuseInner();
-      if (InfixExpression_3()) return acceptInner();
-      if (InfixExpression_4()) return acceptInner();
+      if (InfixExpression_3() || InfixExpression_4()) return acceptInner();
       return rejectInner();
     }
-  
+
   Cache InfixExpression_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  InfixExpression_3 = InfixOperator UnaryExpression
   //-------------------------------------------------------------------
   boolean InfixExpression_3()
     {
       if (saved("InfixExpression_3",InfixExpression_3)) return reuseInner();
-      if (!InfixOperator()) return rejectInner();
-      if (!UnaryExpression()) return rejectInner();
+      if (!InfixOperator() || !UnaryExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache InfixExpression_3 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  InfixExpression_4 = INSTANCEOF ReferenceType
   //-------------------------------------------------------------------
   boolean InfixExpression_4()
     {
       if (saved("InfixExpression_4",InfixExpression_4)) return reuseInner();
-      if (!INSTANCEOF()) return rejectInner();
-      if (!ReferenceType()) return rejectInner();
+      if (!INSTANCEOF() || !ReferenceType()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache InfixExpression_4 = new Cache();
-  
+
   //=====================================================================
   //  InfixOperator = OROR / ANDAND / OR / HAT / AND / EQUAL / NOTEQUAL /
   //    LT / GT / LE / GE / SL / SR / BSR / PLUS / MINUS / STAR / DIV /
@@ -6338,10 +5952,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean InfixOperator()
     {
       if (saved("InfixOperator",InfixOperator)) return reuse();
-      if (OROR()) return accept();
-      if (ANDAND()) return accept();
-      if (OR()) return accept();
-      if (HAT()) return accept();
+      if (OROR() || ANDAND() || OR() || HAT()) return accept();
       if (AND()) return accept();
       if (EQUAL()) return accept();
       if (NOTEQUAL()) return accept();
@@ -6359,9 +5970,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (MOD()) return accept();
       return reject();
     }
-  
+
   Cache InfixOperator = new Cache();
-  
+
   //=====================================================================
   //  ConditionalExpression = InfixExpression QUERY Expression COLON
   //    (LambdaExpression / ConditionalExpression) / InfixExpression ;
@@ -6369,13 +5980,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ConditionalExpression()
     {
       if (saved("ConditionalExpression",ConditionalExpression)) return reuse();
-      if (ConditionalExpression_0()) return accept();
-      if (InfixExpression()) return accept();
+      if (ConditionalExpression_0() || InfixExpression()) return accept();
       return reject();
     }
-  
+
   Cache ConditionalExpression = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ConditionalExpression_0 = InfixExpression QUERY Expression COLON
   //    (LambdaExpression / ConditionalExpression)
@@ -6383,32 +5993,27 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ConditionalExpression_0()
     {
       if (saved("ConditionalExpression_0",ConditionalExpression_0)) return reuseInner();
-      if (!InfixExpression()) return rejectInner();
-      if (!QUERY()) return rejectInner();
-      if (!Expression()) return rejectInner();
-      if (!COLON()) return rejectInner();
+      if (!InfixExpression() || !QUERY() || !Expression() || !COLON()) return rejectInner();
       if (!LambdaExpression()
        && !ConditionalExpression()
          ) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ConditionalExpression_0 = new Cache();
-  
+
   //=====================================================================
   //  Assignment = LeftHandSide AssignmentOperator Expression ;
   //=====================================================================
   boolean Assignment()
     {
       if (saved("Assignment",Assignment)) return reuse();
-      if (!LeftHandSide()) return reject();
-      if (!AssignmentOperator()) return reject();
-      if (!Expression()) return reject();
+      if (!LeftHandSide() || !AssignmentOperator() || !Expression()) return reject();
       return accept();
     }
-  
+
   Cache Assignment = new Cache();
-  
+
   //=====================================================================
   //  LeftHandSide = ArrayOrFieldAccess / Name / LPAR LeftHandSide RPAR
   //    ;
@@ -6416,28 +6021,24 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean LeftHandSide()
     {
       if (saved("LeftHandSide",LeftHandSide)) return reuse();
-      if (ArrayOrFieldAccess()) return accept();
-      if (Name()) return accept();
-      if (LeftHandSide_0()) return accept();
+      if (ArrayOrFieldAccess() || Name() || LeftHandSide_0()) return accept();
       return reject();
     }
-  
+
   Cache LeftHandSide = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  LeftHandSide_0 = LPAR LeftHandSide RPAR
   //-------------------------------------------------------------------
   boolean LeftHandSide_0()
     {
       if (saved("LeftHandSide_0",LeftHandSide_0)) return reuseInner();
-      if (!LPAR()) return rejectInner();
-      if (!LeftHandSide()) return rejectInner();
-      if (!RPAR()) return rejectInner();
+      if (!LPAR() || !LeftHandSide() || !RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache LeftHandSide_0 = new Cache();
-  
+
   //=====================================================================
   //  AssignmentOperator = EQU / STAREQU / DIVEQU / MODEQU / PLUSEQU /
   //    MINUSEQU / SLEQU / SREQU / BSREQU / ANDEQU / HATEQU / OREQU ;
@@ -6445,10 +6046,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean AssignmentOperator()
     {
       if (saved("AssignmentOperator",AssignmentOperator)) return reuse();
-      if (EQU()) return accept();
-      if (STAREQU()) return accept();
-      if (DIVEQU()) return accept();
-      if (MODEQU()) return accept();
+      if (EQU() || STAREQU() || DIVEQU() || MODEQU()) return accept();
       if (PLUSEQU()) return accept();
       if (MINUSEQU()) return accept();
       if (SLEQU()) return accept();
@@ -6459,36 +6057,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (OREQU()) return accept();
       return reject();
     }
-  
+
   Cache AssignmentOperator = new Cache();
-  
+
   //=====================================================================
   //  LambdaExpression = LambdaParameters ARROW LambdaBody ;
   //=====================================================================
   boolean LambdaExpression()
     {
       if (saved("LambdaExpression",LambdaExpression)) return reuse();
-      if (!LambdaParameters()) return reject();
-      if (!ARROW()) return reject();
-      if (!LambdaBody()) return reject();
+      if (!LambdaParameters() || !ARROW() || !LambdaBody()) return reject();
       return accept();
     }
-  
+
   Cache LambdaExpression = new Cache();
-  
+
   //=====================================================================
   //  LambdaParameters = LPAR LambdaParameterList? RPAR / Identifier ;
   //=====================================================================
   boolean LambdaParameters()
     {
       if (saved("LambdaParameters",LambdaParameters)) return reuse();
-      if (LambdaParameters_0()) return accept();
-      if (Identifier()) return accept();
+      if (LambdaParameters_0() || Identifier()) return accept();
       return reject();
     }
-  
+
   Cache LambdaParameters = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  LambdaParameters_0 = LPAR LambdaParameterList? RPAR
   //-------------------------------------------------------------------
@@ -6500,9 +6095,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache LambdaParameters_0 = new Cache();
-  
+
   //=====================================================================
   //  LambdaParameterList = LambdaParameter (COMMA LambdaParameter)* /
   //    Identifier (COMMA Identifier)* ;
@@ -6510,13 +6105,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean LambdaParameterList()
     {
       if (saved("LambdaParameterList",LambdaParameterList)) return reuse();
-      if (LambdaParameterList_0()) return accept();
-      if (LambdaParameterList_3()) return accept();
+      if (LambdaParameterList_0() || LambdaParameterList_3()) return accept();
       return reject();
     }
-  
+
   Cache LambdaParameterList = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  LambdaParameterList_0 = LambdaParameter (COMMA LambdaParameter)*
   //-------------------------------------------------------------------
@@ -6527,9 +6121,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (LambdaParameterList_2());
       return acceptInner();
     }
-  
+
   Cache LambdaParameterList_0 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  LambdaParameterList_3 = Identifier (COMMA Identifier)*
   //-------------------------------------------------------------------
@@ -6540,35 +6134,33 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       while (LambdaParameterList_5());
       return acceptInner();
     }
-  
+
   Cache LambdaParameterList_3 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  LambdaParameterList_2 = COMMA LambdaParameter
   //-------------------------------------------------------------------
   boolean LambdaParameterList_2()
     {
       if (saved("LambdaParameterList_2",LambdaParameterList_2)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!LambdaParameter()) return rejectInner();
+      if (!COMMA() || !LambdaParameter()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache LambdaParameterList_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  LambdaParameterList_5 = COMMA Identifier
   //-------------------------------------------------------------------
   boolean LambdaParameterList_5()
     {
       if (saved("LambdaParameterList_5",LambdaParameterList_5)) return reuseInner();
-      if (!COMMA()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!COMMA() || !Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache LambdaParameterList_5 = new Cache();
-  
+
   //=====================================================================
   //  LambdaParameter = VariableModifier* LambdaParameterType
   //    VariableDeclaratorId / VariableArityParameter !COMMA ;
@@ -6576,13 +6168,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean LambdaParameter()
     {
       if (saved("LambdaParameter",LambdaParameter)) return reuse();
-      if (LambdaParameter_0()) return accept();
-      if (FormalParameter_2()) return accept();
+      if (LambdaParameter_0() || FormalParameter_2()) return accept();
       return reject();
     }
-  
+
   Cache LambdaParameter = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  LambdaParameter_0 = VariableModifier* LambdaParameterType
   //    VariableDeclaratorId
@@ -6591,55 +6182,49 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       if (saved("LambdaParameter_0",LambdaParameter_0)) return reuseInner();
       while (VariableModifier());
-      if (!LambdaParameterType()) return rejectInner();
-      if (!VariableDeclaratorId()) return rejectInner();
+      if (!LambdaParameterType() || !VariableDeclaratorId()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache LambdaParameter_0 = new Cache();
-  
+
   //=====================================================================
   //  LambdaParameterType = UnannType / VAR ;
   //=====================================================================
   boolean LambdaParameterType()
     {
       if (saved("LambdaParameterType",LambdaParameterType)) return reuse();
-      if (UnannType()) return accept();
-      if (VAR()) return accept();
+      if (UnannType() || VAR()) return accept();
       return reject();
     }
-  
+
   Cache LambdaParameterType = new Cache();
-  
+
   //=====================================================================
   //  LambdaBody = Expression / Block ;
   //=====================================================================
   boolean LambdaBody()
     {
       if (saved("LambdaBody",LambdaBody)) return reuse();
-      if (Expression()) return accept();
-      if (Block()) return accept();
+      if (Expression() || Block()) return accept();
       return reject();
     }
-  
+
   Cache LambdaBody = new Cache();
-  
+
   //=====================================================================
   //  SwitchExpression = SWITCH LPAR Expression RPAR SwitchBlock ;
   //=====================================================================
   boolean SwitchExpression()
     {
       if (saved("SwitchExpression",SwitchExpression)) return reuse();
-      if (!SWITCH()) return reject();
-      if (!LPAR()) return reject();
-      if (!Expression()) return reject();
-      if (!RPAR()) return reject();
+      if (!SWITCH() || !LPAR() || !Expression() || !RPAR()) return reject();
       if (!SwitchBlock()) return reject();
       return accept();
     }
-  
+
   Cache SwitchExpression = new Cache();
-  
+
   //=======================================================================
   //
   //  Parsing procedures for recursion class Primary
@@ -6676,7 +6261,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       endAsc();
       return ok;
     }
-  
+
   //=====================================================================
   //  Enter Primary in recursion class Primary
   //=====================================================================
@@ -6686,9 +6271,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($$Primary()) return accept();
       return reject();
     }
-  
+
   Cache Primary = new Cache();
-  
+
   //=====================================================================
   //  Enter ClassInstanceCreationExpression in recursion class Primary
   //=====================================================================
@@ -6698,9 +6283,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($$Primary()) return accept();
       return reject();
     }
-  
+
   Cache ClassInstanceCreationExpression = new Cache();
-  
+
   //=====================================================================
   //  Enter MethodInvocation in recursion class Primary
   //=====================================================================
@@ -6710,9 +6295,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($$Primary()) return accept();
       return reject();
     }
-  
+
   Cache MethodInvocation = new Cache();
-  
+
   //=====================================================================
   //  Enter ArrayOrFieldAccess in recursion class Primary
   //=====================================================================
@@ -6722,9 +6307,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($$Primary()) return accept();
       return reject();
     }
-  
+
   Cache ArrayOrFieldAccess = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed Literal via Primary.
   //=====================================================================
@@ -6735,7 +6320,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($Primary(empty$$)) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from seed ClassLiteral via Primary.
   //=====================================================================
@@ -6746,7 +6331,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($Primary(empty$$)) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from seed THIS via Primary.
   //=====================================================================
@@ -6757,7 +6342,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($Primary(empty$$)) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from seed TypeName DOT THIS via Primary.
   //=====================================================================
@@ -6768,21 +6353,19 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($Primary(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  Primary_0 = TypeName DOT THIS
   //-------------------------------------------------------------------
   boolean Primary_0()
     {
       if (saved("Primary_0",Primary_0)) return reuseInner();
-      if (!TypeName()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!THIS()) return rejectInner();
+      if (!TypeName() || !DOT() || !THIS()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache Primary_0 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed LPAR Expression RPAR via Primary.
   //=====================================================================
@@ -6793,21 +6376,19 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($Primary(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  Primary_1 = LPAR Expression RPAR
   //-------------------------------------------------------------------
   boolean Primary_1()
     {
       if (saved("Primary_1",Primary_1)) return reuseInner();
-      if (!LPAR()) return rejectInner();
-      if (!Expression()) return rejectInner();
-      if (!RPAR()) return rejectInner();
+      if (!LPAR() || !Expression() || !RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache Primary_1 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed ArrayCreationExpression via Primary.
   //=====================================================================
@@ -6818,7 +6399,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($Primary(empty$$)) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from seed Name DOT
   //    UnqualifiedClassInstanceCreationExpression via
@@ -6831,7 +6412,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($ClassInstanceCreationExpression(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  ClassInstanceCreationExpression_1 = Name DOT
   //    UnqualifiedClassInstanceCreationExpression
@@ -6839,14 +6420,12 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean ClassInstanceCreationExpression_1()
     {
       if (saved("ClassInstanceCreationExpression_1",ClassInstanceCreationExpression_1)) return reuseInner();
-      if (!Name()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!UnqualifiedClassInstanceCreationExpression()) return rejectInner();
+      if (!Name() || !DOT() || !UnqualifiedClassInstanceCreationExpression()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ClassInstanceCreationExpression_1 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed UnqualifiedClassInstanceCreationExpression via
   //    ClassInstanceCreationExpression.
@@ -6858,7 +6437,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($ClassInstanceCreationExpression(empty$$)) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from seed Name DOT TypeArguments Identifier LPAR
   //    ArgumentList? RPAR via MethodInvocation.
@@ -6870,7 +6449,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodInvocation(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodInvocation_3 = Name DOT TypeArguments Identifier LPAR
   //    ArgumentList? RPAR
@@ -6878,18 +6457,15 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodInvocation_3()
     {
       if (saved("MethodInvocation_3",MethodInvocation_3)) return reuseInner();
-      if (!Name()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!TypeArguments()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!Name() || !DOT() || !TypeArguments() || !Identifier()) return rejectInner();
       if (!LPAR()) return rejectInner();
       ArgumentList();
       if (!RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodInvocation_3 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed Name LPAR ArgumentList? RPAR via
   //    MethodInvocation.
@@ -6901,22 +6477,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodInvocation(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodInvocation_5 = Name LPAR ArgumentList? RPAR
   //-------------------------------------------------------------------
   boolean MethodInvocation_5()
     {
       if (saved("MethodInvocation_5",MethodInvocation_5)) return reuseInner();
-      if (!Name()) return rejectInner();
-      if (!LPAR()) return rejectInner();
+      if (!Name() || !LPAR()) return rejectInner();
       ArgumentList();
       if (!RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodInvocation_5 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed SUPER DOT TypeArguments? Identifier LPAR
   //    ArgumentList? RPAR via MethodInvocation.
@@ -6928,7 +6503,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodInvocation(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodInvocation_7 = SUPER DOT TypeArguments? Identifier LPAR
   //    ArgumentList? RPAR
@@ -6936,8 +6511,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodInvocation_7()
     {
       if (saved("MethodInvocation_7",MethodInvocation_7)) return reuseInner();
-      if (!SUPER()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!SUPER() || !DOT()) return rejectInner();
       TypeArguments();
       if (!Identifier()) return rejectInner();
       if (!LPAR()) return rejectInner();
@@ -6945,9 +6519,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodInvocation_7 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed TypeName DOT SUPER DOT TypeArguments? Identifier
   //    LPAR ArgumentList? RPAR via MethodInvocation.
@@ -6959,7 +6533,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodInvocation(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodInvocation_10 = TypeName DOT SUPER DOT TypeArguments?
   //    Identifier LPAR ArgumentList? RPAR
@@ -6967,10 +6541,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodInvocation_10()
     {
       if (saved("MethodInvocation_10",MethodInvocation_10)) return reuseInner();
-      if (!TypeName()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!SUPER()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!TypeName() || !DOT() || !SUPER() || !DOT()) return rejectInner();
       TypeArguments();
       if (!Identifier()) return rejectInner();
       if (!LPAR()) return rejectInner();
@@ -6978,9 +6549,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if (!RPAR()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodInvocation_10 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed Name COLONCOLON TypeArguments? Identifier via
   //    MethodReference.
@@ -6992,22 +6563,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodReference(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodReference_2 = Name COLONCOLON TypeArguments? Identifier
   //-------------------------------------------------------------------
   boolean MethodReference_2()
     {
       if (saved("MethodReference_2",MethodReference_2)) return reuseInner();
-      if (!Name()) return rejectInner();
-      if (!COLONCOLON()) return rejectInner();
+      if (!Name() || !COLONCOLON()) return rejectInner();
       TypeArguments();
       if (!Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodReference_2 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed ReferenceType COLONCOLON TypeArguments? Identifier
   //    via MethodReference.
@@ -7019,7 +6589,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodReference(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodReference_4 = ReferenceType COLONCOLON TypeArguments?
   //    Identifier
@@ -7027,15 +6597,14 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodReference_4()
     {
       if (saved("MethodReference_4",MethodReference_4)) return reuseInner();
-      if (!ReferenceType()) return rejectInner();
-      if (!COLONCOLON()) return rejectInner();
+      if (!ReferenceType() || !COLONCOLON()) return rejectInner();
       TypeArguments();
       if (!Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodReference_4 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed SUPER COLONCOLON TypeArguments? Identifier via
   //    MethodReference.
@@ -7047,22 +6616,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodReference(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodReference_6 = SUPER COLONCOLON TypeArguments? Identifier
   //-------------------------------------------------------------------
   boolean MethodReference_6()
     {
       if (saved("MethodReference_6",MethodReference_6)) return reuseInner();
-      if (!SUPER()) return rejectInner();
-      if (!COLONCOLON()) return rejectInner();
+      if (!SUPER() || !COLONCOLON()) return rejectInner();
       TypeArguments();
       if (!Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodReference_6 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed TypeName DOT SUPER COLONCOLON TypeArguments?
   //    Identifier via MethodReference.
@@ -7074,7 +6642,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodReference(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodReference_8 = TypeName DOT SUPER COLONCOLON TypeArguments?
   //    Identifier
@@ -7082,17 +6650,14 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean MethodReference_8()
     {
       if (saved("MethodReference_8",MethodReference_8)) return reuseInner();
-      if (!TypeName()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!SUPER()) return rejectInner();
-      if (!COLONCOLON()) return rejectInner();
+      if (!TypeName() || !DOT() || !SUPER() || !COLONCOLON()) return rejectInner();
       TypeArguments();
       if (!Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodReference_8 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed ArrayType COLONCOLON NEW via MethodReference.
   //=====================================================================
@@ -7103,21 +6668,19 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodReference(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodReference_10 = ArrayType COLONCOLON NEW
   //-------------------------------------------------------------------
   boolean MethodReference_10()
     {
       if (saved("MethodReference_10",MethodReference_10)) return reuseInner();
-      if (!ArrayType()) return rejectInner();
-      if (!COLONCOLON()) return rejectInner();
-      if (!NEW()) return rejectInner();
+      if (!ArrayType() || !COLONCOLON() || !NEW()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodReference_10 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed ClassType COLONCOLON TypeArguments? NEW via
   //    MethodReference.
@@ -7129,22 +6692,21 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($MethodReference(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodReference_11 = ClassType COLONCOLON TypeArguments? NEW
   //-------------------------------------------------------------------
   boolean MethodReference_11()
     {
       if (saved("MethodReference_11",MethodReference_11)) return reuseInner();
-      if (!ClassType()) return rejectInner();
-      if (!COLONCOLON()) return rejectInner();
+      if (!ClassType() || !COLONCOLON()) return rejectInner();
       TypeArguments();
       if (!NEW()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache MethodReference_11 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed Name LBRK Expression RBRK via ArrayOrFieldAccess.
   //=====================================================================
@@ -7155,22 +6717,19 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($ArrayOrFieldAccess(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  ArrayOrFieldAccess_4 = Name LBRK Expression RBRK
   //-------------------------------------------------------------------
   boolean ArrayOrFieldAccess_4()
     {
       if (saved("ArrayOrFieldAccess_4",ArrayOrFieldAccess_4)) return reuseInner();
-      if (!Name()) return rejectInner();
-      if (!LBRK()) return rejectInner();
-      if (!Expression()) return rejectInner();
-      if (!RBRK()) return rejectInner();
+      if (!Name() || !LBRK() || !Expression() || !RBRK()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayOrFieldAccess_4 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed SUPER DOT Identifier via ArrayOrFieldAccess.
   //=====================================================================
@@ -7181,21 +6740,19 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($ArrayOrFieldAccess(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  ArrayOrFieldAccess_5 = SUPER DOT Identifier
   //-------------------------------------------------------------------
   boolean ArrayOrFieldAccess_5()
     {
       if (saved("ArrayOrFieldAccess_5",ArrayOrFieldAccess_5)) return reuseInner();
-      if (!SUPER()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!SUPER() || !DOT() || !Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayOrFieldAccess_5 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from seed TypeName DOT SUPER DOT Identifier via
   //    ArrayOrFieldAccess.
@@ -7207,23 +6764,20 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($ArrayOrFieldAccess(empty$$)) return accept();
       return reject();
     }
-  
+
   //-------------------------------------------------------------------
   //  ArrayOrFieldAccess_6 = TypeName DOT SUPER DOT Identifier
   //-------------------------------------------------------------------
   boolean ArrayOrFieldAccess_6()
     {
       if (saved("ArrayOrFieldAccess_6",ArrayOrFieldAccess_6)) return reuseInner();
-      if (!TypeName()) return rejectInner();
-      if (!DOT()) return rejectInner();
-      if (!SUPER()) return rejectInner();
-      if (!DOT()) return rejectInner();
+      if (!TypeName() || !DOT() || !SUPER() || !DOT()) return rejectInner();
       if (!Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayOrFieldAccess_6 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from Primary via ClassInstanceCreationExpression_0 or
   //    MethodInvocation_0 or MethodReference_0 or ArrayOrFieldAccess_0.
@@ -7232,14 +6786,11 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       begin("$Primary","Primary");
       setAction(act);
-      if ($ClassInstanceCreationExpression_0()) return accept();
-      if ($MethodInvocation_0()) return accept();
-      if ($MethodReference_0()) return accept();
-      if ($ArrayOrFieldAccess_0()) return accept();
+      if ($ClassInstanceCreationExpression_0() || $MethodInvocation_0() || $MethodReference_0() || $ArrayOrFieldAccess_0()) return accept();
       if (endGrow()) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from ClassInstanceCreationExpression via Primary.
   //=====================================================================
@@ -7247,11 +6798,10 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       begin("$ClassInstanceCreationExpression","ClassInstanceCreationExpression");
       setAction(act);
-      if ($Primary(empty$$)) return accept();
-      if (endGrow()) return accept();
+      if ($Primary(empty$$) || endGrow()) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from MethodInvocation via Primary.
   //=====================================================================
@@ -7259,11 +6809,10 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       begin("$MethodInvocation","MethodInvocation");
       setAction(act);
-      if ($Primary(empty$$)) return accept();
-      if (endGrow()) return accept();
+      if ($Primary(empty$$) || endGrow()) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from MethodReference via Primary.
   //=====================================================================
@@ -7274,7 +6823,7 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($Primary(empty$$)) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from ArrayOrFieldAccess via Primary.
   //=====================================================================
@@ -7282,11 +6831,10 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
     {
       begin("$ArrayOrFieldAccess","ArrayOrFieldAccess");
       setAction(act);
-      if ($Primary(empty$$)) return accept();
-      if (endGrow()) return accept();
+      if ($Primary(empty$$) || endGrow()) return accept();
       return reject();
     }
-  
+
   //=====================================================================
   //  Ascent from ClassInstanceCreationExpression_0 = Primary DOT
   //    UnqualifiedClassInstanceCreationExpression via
@@ -7295,12 +6843,11 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean $ClassInstanceCreationExpression_0()
     {
       begin("$ClassInstanceCreationExpression_0","ClassInstanceCreationExpression_0");
-      if (!DOT()) return rejectInner();
-      if (!UnqualifiedClassInstanceCreationExpression()) return rejectInner();
+      if (!DOT() || !UnqualifiedClassInstanceCreationExpression()) return rejectInner();
       if ($ClassInstanceCreationExpression(empty$$)) return accept();
       return rejectInner();
     }
-  
+
   //=====================================================================
   //  Ascent from MethodInvocation_0 = Primary DOT TypeArguments?
   //    Identifier LPAR ArgumentList? RPAR via MethodInvocation.
@@ -7308,16 +6855,13 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean $MethodInvocation_0()
     {
       begin("$MethodInvocation_0","MethodInvocation_0");
-      if (!DOT()) return rejectInner();
-      if (!MethodInvocation_1()) return rejectInner();
-      if (!Identifier()) return rejectInner();
-      if (!LPAR()) return rejectInner();
+      if (!DOT() || !MethodInvocation_1() || !Identifier() || !LPAR()) return rejectInner();
       if (!MethodInvocation_2()) return rejectInner();
       if (!RPAR()) return rejectInner();
       if ($MethodInvocation(empty$$)) return accept();
       return rejectInner();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodInvocation_1 = TypeArguments?
   //-------------------------------------------------------------------
@@ -7327,9 +6871,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       TypeArguments();
       return acceptInner();
     }
-  
+
   Cache MethodInvocation_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  MethodInvocation_2 = ArgumentList?
   //-------------------------------------------------------------------
@@ -7339,9 +6883,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       ArgumentList();
       return acceptInner();
     }
-  
+
   Cache MethodInvocation_2 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from MethodReference_0 = Primary COLONCOLON TypeArguments?
   //    Identifier via MethodReference.
@@ -7349,13 +6893,11 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
   boolean $MethodReference_0()
     {
       begin("$MethodReference_0","MethodReference_0");
-      if (!COLONCOLON()) return rejectInner();
-      if (!MethodReference_1()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!COLONCOLON() || !MethodReference_1() || !Identifier()) return rejectInner();
       if ($MethodReference(empty$$)) return accept();
       return rejectInner();
     }
-  
+
   //-------------------------------------------------------------------
   //  MethodReference_1 = TypeArguments?
   //-------------------------------------------------------------------
@@ -7365,9 +6907,9 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       TypeArguments();
       return acceptInner();
     }
-  
+
   Cache MethodReference_1 = new Cache();
-  
+
   //=====================================================================
   //  Ascent from ArrayOrFieldAccess_0 = Primary (LBRK Expression RBRK /
   //    DOT Identifier) via ArrayOrFieldAccess.
@@ -7379,57 +6921,53 @@ public class MouseJava14Parser extends mouse.runtime.ParserMemo
       if ($ArrayOrFieldAccess(empty$$)) return accept();
       return rejectInner();
     }
-  
+
   //-------------------------------------------------------------------
   //  ArrayOrFieldAccess_1 = LBRK Expression RBRK / DOT Identifier
   //-------------------------------------------------------------------
   boolean ArrayOrFieldAccess_1()
     {
       if (saved("ArrayOrFieldAccess_1",ArrayOrFieldAccess_1)) return reuseInner();
-      if (ArrayOrFieldAccess_2()) return acceptInner();
-      if (ArrayOrFieldAccess_3()) return acceptInner();
+      if (ArrayOrFieldAccess_2() || ArrayOrFieldAccess_3()) return acceptInner();
       return rejectInner();
     }
-  
+
   Cache ArrayOrFieldAccess_1 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayOrFieldAccess_2 = LBRK Expression RBRK
   //-------------------------------------------------------------------
   boolean ArrayOrFieldAccess_2()
     {
       if (saved("ArrayOrFieldAccess_2",ArrayOrFieldAccess_2)) return reuseInner();
-      if (!LBRK()) return rejectInner();
-      if (!Expression()) return rejectInner();
-      if (!RBRK()) return rejectInner();
+      if (!LBRK() || !Expression() || !RBRK()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayOrFieldAccess_2 = new Cache();
-  
+
   //-------------------------------------------------------------------
   //  ArrayOrFieldAccess_3 = DOT Identifier
   //-------------------------------------------------------------------
   boolean ArrayOrFieldAccess_3()
     {
       if (saved("ArrayOrFieldAccess_3",ArrayOrFieldAccess_3)) return reuseInner();
-      if (!DOT()) return rejectInner();
-      if (!Identifier()) return rejectInner();
+      if (!DOT() || !Identifier()) return rejectInner();
       return acceptInner();
     }
-  
+
   Cache ArrayOrFieldAccess_3 = new Cache();
-  
+
   //=======================================================================
   //
   //  Caches
   //
   //=======================================================================
-  
+
   //-------------------------------------------------------------------
   //  List of Cache objects
   //-------------------------------------------------------------------
-  
+
   Cache[] cacheList =
   {
     Compilation,SUB,EOT,Spacing,Spacing_1,Spacing_2,Spacing_4,

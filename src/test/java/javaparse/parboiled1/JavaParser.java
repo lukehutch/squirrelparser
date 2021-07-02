@@ -44,7 +44,9 @@ package javaparse.parboiled1;
 
 import org.parboiled.BaseParser;
 import org.parboiled.Rule;
-import org.parboiled.annotations.*;
+import org.parboiled.annotations.BuildParseTree;
+import org.parboiled.annotations.DontLabel;
+import org.parboiled.annotations.MemoMismatches;
 
 @BuildParseTree
 public class JavaParser extends BaseParser<Object> {
@@ -200,7 +202,7 @@ public class JavaParser extends BaseParser<Object> {
 
     //-------------------------------------------------------------------------
     //  Variable Declarations
-    //-------------------------------------------------------------------------    
+    //-------------------------------------------------------------------------
 
     Rule LocalVariableDeclarationStatement() {
         return Sequence(ZeroOrMore(FirstOf(FINAL, Annotation())), Type(), VariableDeclarators(), SEMI);
@@ -241,7 +243,7 @@ public class JavaParser extends BaseParser<Object> {
 
     //-------------------------------------------------------------------------
     //  Statements
-    //-------------------------------------------------------------------------    
+    //-------------------------------------------------------------------------
 
     Rule Block() {
         return Sequence(LWING, BlockStatements(), RWING);
@@ -551,7 +553,7 @@ public class JavaParser extends BaseParser<Object> {
 
     //-------------------------------------------------------------------------
     //  Annotations
-    //-------------------------------------------------------------------------    
+    //-------------------------------------------------------------------------
 
     Rule AnnotationTypeDeclaration() {
         return Sequence(AT, INTERFACE, Identifier(), AnnotationTypeBody());

@@ -46,8 +46,8 @@ public class CharSet extends Terminal {
 
     public CharSet(boolean invert, char... chars) {
         this.chars = new BitSet(128);
-        for (int i = 0; i < chars.length; i++) {
-            this.chars.set(chars[i]);
+        for (char element : chars) {
+            this.chars.set(element);
         }
         this.invert = invert;
     }

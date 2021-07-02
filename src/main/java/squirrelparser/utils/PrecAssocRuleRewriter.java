@@ -36,20 +36,20 @@ import squirrelparser.grammar.clause.nonterminal.RuleRef;
 
 /**
  * Rewrite a grammar from precedence-associativity form into plain PEG rules.
- * 
+ *
  * <code>
         For all but the highest precedence level:
-        
-        E[0] <- E (Op E)+  =>  E[0] <- (E[1] (Op E[1])+) / E[1] 
-        E[0,L] <- E Op E   =>  E[0] <- (E[0] Op E[1]) / E[1] 
+
+        E[0] <- E (Op E)+  =>  E[0] <- (E[1] (Op E[1])+) / E[1]
+        E[0,L] <- E Op E   =>  E[0] <- (E[0] Op E[1]) / E[1]
         E[0,R] <- E Op E   =>  E[0] <- (E[1] Op E[0]) / E[1]
         E[3] <- '-' E      =>  E[3] <- '-' (E[3] / E[4]) / E[4]
-        
+
         For highest precedence level, next highest precedence wraps back to lowest precedence level:
-        
+
         E[5] <- '(' E ')'  =>  E[5] <- '(' E[0] ')'
  * </code>
- * 
+ *
  */
 public class PrecAssocRuleRewriter {
     /** Rewrite self-references in a precedence hierarchy into precedence-climbing form. */
@@ -132,7 +132,7 @@ public class PrecAssocRuleRewriter {
                                             new RuleRef(nextHighestPrecRuleName));
                                 } else {
                                     // Except for highest precedence, just defer back to lowest-prec level:
-                                    // E[N-1] <- '(' E ')'  =>  E[N-1] <- '(' E[0] ')'        
+                                    // E[N-1] <- '(' E ')'  =>  E[N-1] <- '(' E[0] ')'
                                     return new RuleRef(nextHighestPrecRuleName);
                                 }
                             }

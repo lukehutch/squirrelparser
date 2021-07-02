@@ -276,7 +276,7 @@ public class SquirrelParboiledJavaGrammar {
 
             //-------------------------------------------------------------------------
             //  Variable Declarations
-            //-------------------------------------------------------------------------    
+            //-------------------------------------------------------------------------
 
             rule("LocalVariableDeclarationStatement",
                     seq(zeroOrMore(first(FINAL, ruleRef("Annotation"))), ruleRef("Type"),
@@ -312,7 +312,7 @@ public class SquirrelParboiledJavaGrammar {
 
             //-------------------------------------------------------------------------
             //  Statements
-            //-------------------------------------------------------------------------    
+            //-------------------------------------------------------------------------
 
             rule("Block", seq(LWING, ruleRef("BlockStatements"), RWING)),
 
@@ -568,7 +568,7 @@ public class SquirrelParboiledJavaGrammar {
 
             //-------------------------------------------------------------------------
             //  Annotations
-            //-------------------------------------------------------------------------    
+            //-------------------------------------------------------------------------
 
             rule("AnnotationTypeDeclaration",
                     seq(AT, INTERFACE, ruleRef("Identifier"), ruleRef("AnnotationTypeBody"))),

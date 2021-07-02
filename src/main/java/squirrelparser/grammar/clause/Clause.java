@@ -43,7 +43,7 @@ public abstract class Clause {
 
     /**
      * Match this clause at the given position in the input.
-     * 
+     *
      * @param parser The {@link Parser}.
      * @param pos    The start position to try matching from.
      * @return The {@link Match}, or {@link Match#MISMATCH} if this clause did not match at this position.
@@ -69,7 +69,7 @@ public abstract class Clause {
      * clause is labeled.
      */
     protected String labelClause(String toString) {
-        return (ruleName == null ? "" : ruleName + " " + MetaGrammar.RULE_DECL_SYMBOL + " ") // 
+        return (ruleName == null ? "" : ruleName + " " + MetaGrammar.RULE_DECL_SYMBOL + " ") //
                 + (astNodeLabel == null ? toString
                         : ClauseUtils.needToAddParensAroundASTNodeLabel(this) ? astNodeLabel + ":(" + toString + ")"
                                 : astNodeLabel + ":" + toString);

@@ -31,7 +31,7 @@ import squirrelparser.utils.MetaGrammar;
 
 /**
  * This is a non-standard PEG operator.
- * 
+ *
  * Matches the same span as the longest subclause that is found to match.
  */
 public class Longest extends ClauseWithMultipleSubClauses {
@@ -43,8 +43,8 @@ public class Longest extends ClauseWithMultipleSubClauses {
     public Match match(Parser parser, int pos) {
         var longestMatch = Match.MISMATCH;
         var longestMatchSubClauseIdx = 0;
-        for (int subClauseIdx = 0; subClauseIdx < subClauses.length; subClauseIdx++) {
-            var subClauseMatch = subClauses[subClauseIdx].match(parser, pos);
+        for (Clause element : subClauses) {
+            var subClauseMatch = element.match(parser, pos);
             if (subClauseMatch != Match.MISMATCH && subClauseMatch.len > longestMatch.len) {
                 longestMatch = subClauseMatch;
             }
