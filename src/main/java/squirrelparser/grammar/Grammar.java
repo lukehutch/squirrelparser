@@ -98,6 +98,7 @@ public class Grammar {
         this.topRule = rules.get(0);
     }
 
+    /** Get the grammar in metagrammar notation. */
     @Override
     public String toString() {
         var buf = new StringBuilder();
@@ -111,7 +112,7 @@ public class Grammar {
         return buf.toString();
     }
 
-    /** Convert a grammar to Java source. */
+    /** Convert the grammar to Java source. */
     public String toJavaSource() {
         var buf = new StringBuilder();
         buf.append("import " + Seq.class.getPackageName() + ".*;\n");

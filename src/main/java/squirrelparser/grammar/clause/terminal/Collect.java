@@ -71,10 +71,10 @@ public class Collect extends Terminal {
     public String toString() {
         return labelClause(origClauseTree.toString());
     }
-    
+
     @Override
     public String toJavaSource() {
-        return origClauseTree.toJavaSource();
+        return "new " + getClass().getName() + "(" + origClauseTree.toJavaSource() + ")";
     }
 
     // -------------------------------------------------------------------------------------------------------------
