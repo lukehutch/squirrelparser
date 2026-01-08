@@ -167,28 +167,6 @@ class MyNode extends CSTNode {
 }
 ```
 
-### Direct API (Advanced)
-
-For advanced use cases, you can work directly with the rules map:
-
-```dart
-import 'package:squirrel_parser/squirrel_parser.dart';
-
-// Parse grammar
-final rules = MetaGrammar.parseGrammar(grammarText);
-
-// Create factories (same as before)
-final factories = [...];
-
-// Parse with rule map (internal API)
-final (cst, errors) = parseWithRuleMapForTesting(
-  rules,
-  'RuleName',
-  input,
-  factories,
-);
-```
-
 ## Grammar Syntax Reference
 
 ### Rules

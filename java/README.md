@@ -135,25 +135,6 @@ new CSTNodeFactory<MyNode>(
 )
 ```
 
-### Direct API (Advanced)
-
-For advanced use cases, you can work directly with the rules map:
-
-```java
-import com.squirrelparser.*;
-import java.util.List;
-import java.util.Map;
-
-// Parse grammar
-Map<String, Clause> rules = MetaGrammar.parseGrammar(grammarText);
-
-// Create factories (same as before)
-List<CSTNodeFactory<CSTNode>> factories = [...];
-
-// Parse with rule map (internal API)
-CSTNode cst = parseWithRuleMapForTesting(rules, "RuleName", input, factories);
-```
-
 ## Grammar Syntax Reference
 
 ### Rules

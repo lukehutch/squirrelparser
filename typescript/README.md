@@ -150,33 +150,6 @@ new CSTNodeFactory<MyNode>(
 )
 ```
 
-### Direct API (Advanced)
-
-For advanced use cases, you can work directly with the rules map:
-
-```typescript
-import {
-  MetaGrammar,
-  parseWithRuleMapForTesting,
-  type CSTNode,
-  type CSTNodeFactory,
-} from 'squirrelparser';
-
-// Parse grammar
-const rules = MetaGrammar.parseGrammar(grammarText);
-
-// Create factories (same as before)
-const factories: CSTNodeFactory<CSTNode>[] = [...];
-
-// Parse with rule map (internal API)
-const [cst, errors] = parseWithRuleMapForTesting(
-  rules,
-  'RuleName',
-  input,
-  factories
-);
-```
-
 ## Grammar Syntax Reference
 
 ### Rules

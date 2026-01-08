@@ -118,28 +118,6 @@ CSTNodeFactory(
 )
 ```
 
-### Direct API (Advanced)
-
-For advanced use cases, you can work directly with the rules map:
-
-```python
-from squirrelparser import MetaGrammar, parse_with_rule_map_for_testing
-
-# Parse grammar
-rules = MetaGrammar.parse_grammar(grammar_text)
-
-# Create factories (same as before)
-factories = [...]
-
-# Parse with rule map (internal API)
-cst, errors = parse_with_rule_map_for_testing(
-    rules,
-    'RuleName',
-    input_str,
-    factories,
-)
-```
-
 ## Grammar Syntax Reference
 
 ### Rules
