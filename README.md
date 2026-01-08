@@ -22,6 +22,6 @@ Isomorphic implementations are provided for four languages:
 
 ## The theory
 
-For the full derivation of the algorithm, see [the paper](paper/squirrel_parser.tex):
+For the full derivation of the algorithm, see [the paper](paper/squirrel_parser.pdf):
 
 > *The Squirrel Parser: A Linear-Time PEG Packrat Parser Capable of Left Recursion and Optimal Error Recovery*
