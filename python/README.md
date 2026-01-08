@@ -31,11 +31,14 @@ grammar = """
 from squirrelparser import squirrel_parse, CSTNode, CSTNodeFactory
 
 # 1. Define your grammar using PEG metagrammar syntax
+# Note: Operators are named rules (AddOp, MulOp) so we can capture which operator was used
 grammar = """
-  Expr <- Term (('+' / '-') Term)*;
-  Term <- Factor (('*' / '/') Factor)*;
+  Expr   <- Term (AddOp Term)*;
+  Term   <- Factor (MulOp Factor)*;
   Factor <- Number / '(' Expr ')';
   Number <- [0-9]+;
+  AddOp  <- '+' / '-';
+  MulOp  <- '*' / '/';
   ~_ <- [ \t\n\r]*;
 """
 
@@ -53,13 +56,20 @@ class CalcNode(CSTNode):
 # 3. Create factories for each NON-TRANSPARENT grammar rule
 factories = [
     CSTNodeFactory(
-        'Expr',
-        ['Term'],
+        'Number',
+        ['<Terminal>'],
+        lambda ruleName, expectedChildren, children: CalcNode(
+            ruleName, [], int(children[0].toString()) if children else 0
+        ),
+    ),
+    CSTNodeFactory(
+        'AddOp',
+        ['<Terminal>'],
         lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
     ),
     CSTNodeFactory(
-        'Term',
-        ['Factor'],
+        'MulOp',
+        ['<Terminal>'],
         lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
     ),
     CSTNodeFactory(
@@ -68,11 +78,14 @@ factories = [
         lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
     ),
     CSTNodeFactory(
-        'Number',
-        ['<Terminal>'],
-        lambda ruleName, expectedChildren, children: CalcNode(
-            ruleName, [], int(children[0].toString()) if children else 0
-        ),
+        'Term',
+        ['Factor', 'MulOp'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+    ),
+    CSTNodeFactory(
+        'Expr',
+        ['Term', 'AddOp'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
     ),
 ]
 

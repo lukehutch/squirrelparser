@@ -3,21 +3,21 @@
  */
 
 import type { Clause } from './clause';
-import { Str, Char, CharRange, AnyChar } from './terminals';
 import { Ref, getSyntaxErrors } from './combinators';
+import {
+  CSTConstructionException,
+  CSTFactoryValidationException,
+  CSTNode,
+  CSTNodeFactory,
+  DuplicateRuleNameException,
+} from './cstNode';
 import type { MatchResult, SyntaxError } from './matchResult';
 import { MetaGrammar } from './metaGrammar';
 import { Parser } from './parser';
-import {
-  CSTNode,
-  CSTNodeFactory,
-  CSTFactoryValidationException,
-  CSTConstructionException,
-  DuplicateRuleNameException,
-} from './cstNode';
+import { AnyChar, Char, CharRange, Str } from './terminals';
 
 // ============================================================================
-// Public API: CST-only parsing
+// Public CST API
 // ============================================================================
 
 /**

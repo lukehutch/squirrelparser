@@ -5,7 +5,7 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 // ============================================================================
-// Public API: CST-only parsing
+// Public CST API
 // ============================================================================
 
 /// Parse input and return a Concrete Syntax Tree (CST), and any syntax errors.

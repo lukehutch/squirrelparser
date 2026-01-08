@@ -36,11 +36,14 @@ import {
 } from 'squirrelparser';
 
 // 1. Define your grammar using PEG metagrammar syntax
+// Note: Operators are named rules (AddOp, MulOp) so we can capture which operator was used
 const grammar = `
-  Expr <- Term (('+' / '-') Term)*;
-  Term <- Factor (('*' / '/') Factor)*;
+  Expr   <- Term (AddOp Term)*;
+  Term   <- Factor (MulOp Factor)*;
   Factor <- Number / '(' Expr ')';
   Number <- [0-9]+;
+  AddOp  <- '+' / '-';
+  MulOp  <- '*' / '/';
   ~_ <- [ \t\n\r]*;
 `;
 
@@ -67,16 +70,26 @@ class CalcNode extends CSTNode {
 // 3. Create factories for each NON-TRANSPARENT grammar rule
 const factories = [
   new CSTNodeFactory<CalcNode>(
-    'Expr',
-    ['Term'],
+    'Number',
+    ['<Terminal>'],
     (ruleName, _expectedChildren, children) => {
+      const value = children.length > 0 ? parseInt(children[0].toString()) : 0;
+      return new CalcNode(ruleName, [], value);
+    }
+  ),
+  new CSTNodeFactory<CalcNode>(
+    'AddOp',
+    ['<Terminal>'],
+    (ruleName, _expectedChildren, children) => {
+      // Capture the operator symbol
       return new CalcNode(ruleName, children as CalcNode[]);
     }
   ),
   new CSTNodeFactory<CalcNode>(
-    'Term',
-    ['Factor'],
+    'MulOp',
+    ['<Terminal>'],
     (ruleName, _expectedChildren, children) => {
+      // Capture the operator symbol
       return new CalcNode(ruleName, children as CalcNode[]);
     }
   ),
@@ -88,12 +101,17 @@ const factories = [
     }
   ),
   new CSTNodeFactory<CalcNode>(
-    'Number',
-    ['<Terminal>'],
+    'Term',
+    ['Factor', 'MulOp'],
     (ruleName, _expectedChildren, children) => {
-      // Terminals don't have children, so we extract the value differently
-      const value = children.length > 0 ? parseInt(children[0].toString()) : 0;
-      return new CalcNode(ruleName, [], value);
+      return new CalcNode(ruleName, children as CalcNode[]);
+    }
+  ),
+  new CSTNodeFactory<CalcNode>(
+    'Expr',
+    ['Term', 'AddOp'],
+    (ruleName, _expectedChildren, children) => {
+      return new CalcNode(ruleName, children as CalcNode[]);
     }
   ),
 ];

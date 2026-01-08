@@ -31,11 +31,14 @@ final grammar = '''
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 // 1. Define your grammar using PEG metagrammar syntax
+// Note: Operators are named rules (AddOp, MulOp) so we can capture which operator was used
 final grammar = '''
-  Expr <- Term (('+' / '-') Term)*;
-  Term <- Factor (('*' / '/') Factor)*;
+  Expr   <- Term (AddOp Term)*;
+  Term   <- Factor (MulOp Factor)*;
   Factor <- Number / '(' Expr ')';
   Number <- [0-9]+;
+  AddOp  <- '+' / '-';
+  MulOp  <- '*' / '/';
   ~_ <- [ \t\n\r]*;
 ''';
 
@@ -57,16 +60,29 @@ class CalcNode extends CSTNode {
 // 3. Create factories for each NON-TRANSPARENT grammar rule
 final factories = [
   CSTNodeFactory<CalcNode>(
-    ruleName: 'Expr',
-    expectedChildren: ['Term'],
+    ruleName: 'Number',
+    expectedChildren: ['<Terminal>'],
     factory: (ruleName, expectedChildren, children) {
+      return CalcNode(
+        name: ruleName,
+        children: [],
+        value: int.parse(children.isEmpty ? '0' : children[0].toString()),
+      );
+    },
+  ),
+  CSTNodeFactory<CalcNode>(
+    ruleName: 'AddOp',
+    expectedChildren: ['<Terminal>'],
+    factory: (ruleName, expectedChildren, children) {
+      // Capture the operator symbol
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
-    ruleName: 'Term',
-    expectedChildren: ['Factor'],
+    ruleName: 'MulOp',
+    expectedChildren: ['<Terminal>'],
     factory: (ruleName, expectedChildren, children) {
+      // Capture the operator symbol
       return CalcNode(name: ruleName, children: children);
     },
   ),
@@ -78,15 +94,17 @@ final factories = [
     },
   ),
   CSTNodeFactory<CalcNode>(
-    ruleName: 'Number',
-    expectedChildren: ['<Terminal>'],
+    ruleName: 'Term',
+    expectedChildren: ['Factor', 'MulOp'],
     factory: (ruleName, expectedChildren, children) {
-      // Terminals don't have children, so we extract the value differently
-      return CalcNode(
-        name: ruleName,
-        children: [],
-        value: int.parse(children.isEmpty ? '0' : children[0].toString()),
-      );
+      return CalcNode(name: ruleName, children: children);
+    },
+  ),
+  CSTNodeFactory<CalcNode>(
+    ruleName: 'Expr',
+    expectedChildren: ['Term', 'AddOp'],
+    factory: (ruleName, expectedChildren, children) {
+      return CalcNode(name: ruleName, children: children);
     },
   ),
 ];

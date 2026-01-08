@@ -1,7 +1,6 @@
 package com.squirrelparser;
 
 import java.util.List;
-import java.util.function.BiFunction;
 
 /**
  * Metadata for creating a CST node from a parse tree node.
