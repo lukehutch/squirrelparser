@@ -1,0 +1,39 @@
+# TypeScript
+*.js
+*.js.map
+*.d.ts
+!jest.config.js
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+lib/
+*.tsbuildinfo
+
+.eslintrc.json
+package-lock.json
+
+.dart_tool/

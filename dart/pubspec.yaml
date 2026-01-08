@@ -1,0 +1,13 @@
+name: squirrel_parser
+description: A packrat parser capable of left recursion and error recovery
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  indent: ^2.0.0
+
+dev_dependencies:
+  test: ^1.24.0
+  lints: ^6.0.0

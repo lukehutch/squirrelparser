@@ -1,0 +1,47 @@
+{
+  "name": "squirrelparser",
+  "version": "1.0.0",
+  "description": "A packrat parser with left recursion and error recovery",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src tests --ext .ts",
+    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "parser",
+    "packrat",
+    "peg",
+    "left-recursion",
+    "error-recovery"
+  ],
+  "author": "Luke Hutchison <luke.hutch@alum.mit.edu>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukehutch/squirrelparser"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
+    "@typescript-eslint/parser": "^8.52.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^17.0.0",
+    "jest": "^30.2.0",
+    "jiti": "^2.6.1",
+    "prettier": "^3.1.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.52.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
