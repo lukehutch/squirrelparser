@@ -171,7 +171,7 @@
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
 \title[The Squirrel Parser]{The Squirrel Parser}
-\subtitle{A Linear-Time PEG Packrat Parser Capable of Left Recursion and Optimal Error Recovery}
+\subtitle{A Linear-Time PEG Parser Capable of Left Recursion and Optimal Error Recovery}
 
 %%
 %% The "author" command and its associated commands are used to define
@@ -196,7 +196,7 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-We present the squirrel parser, a PEG packrat parser that directly handles all forms of left recursion with optimal error recovery, while maintaining linear time complexity in the length of the input even in the presence of an arbitrary number of errors. Traditional approaches to handling left recursion in a recursive descent parser require grammar rewriting or complex algorithmic extensions. We derive a minimal algorithm from first principles: cycle detection via per-position state tracking and $O(1)$-per-LR-cycle communication from descendant to ancestor recursion frames, and fixed-point search via iterative expansion. For error recovery, we derived a set of four axioms and twelve constraints that must be imposed upon an optimal error recovery design to ensure completeness, correctness, optimality of performance, and intuitiveness of behavior. We utilized a constraint satisfaction mechanism to search the space of all possibilities, arriving at a provably optimal and robust error recovery strategy that maintains perfect performance linearity.
+We present the squirrel parser, a PEG parser that directly handles all forms of left recursion with optimal error recovery, while maintaining linear time complexity in the length of the input even in the presence of an arbitrary number of errors. Traditional approaches to handling left recursion in a recursive descent parser require grammar rewriting or complex algorithmic extensions. We derive a minimal algorithm from first principles: cycle detection via per-position state tracking and $O(1)$-per-LR-cycle communication from descendant to ancestor recursion frames, and fixed-point search via iterative expansion. For error recovery, we derived a set of four axioms and twelve constraints that must be imposed upon an optimal error recovery design to ensure completeness, correctness, optimality of performance, and intuitiveness of behavior. We utilized a constraint satisfaction mechanism to search the space of all possibilities, arriving at a provably optimal and robust error recovery strategy that maintains perfect performance linearity.
 \end{abstract}
 
 %%
@@ -872,6 +872,7 @@ Match parse(Parser parser, Clause topRule, String input) {
 }
 \end{lstlisting}
 \caption{Two-phase error recovery algorithm}
+\Description{Algorithm showing the two-phase structure: Phase 1 performs discovery without recovery, and if it fails, Phase 2 enables recovery and re-attempts parsing. The parser's state tracks the current phase to ensure correct cache validation and behavior.}
 \label{alg:two_phase}
 \end{figure}
 
