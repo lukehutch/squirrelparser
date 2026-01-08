@@ -78,3 +78,16 @@ class AnyChar extends Terminal {
   @override
   String toString() => '.';
 }
+
+/// Matches nothing - always succeeds without consuming any input.
+class Nothing extends Terminal {
+  const Nothing({super.transparent});
+
+  @override
+  MatchResult match(Parser parser, int pos, {Clause? bound}) {
+    return Match(this, pos, 0);
+  }
+
+  @override
+  String toString() => '∅';
+}

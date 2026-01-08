@@ -3,8 +3,22 @@
  */
 
 import type { MatchResult } from './matchResult';
+import type { Terminal } from './terminals';
+import type { Clause } from './clause';
 import { Ref } from './combinators';
 import { Str, Char, CharRange, AnyChar } from './terminals';
+
+/**
+ * Check if a clause is a Terminal.
+ */
+function isTerminal(clause: Clause | null): clause is Terminal {
+  return (
+    clause instanceof Str ||
+    clause instanceof Char ||
+    clause instanceof CharRange ||
+    clause instanceof AnyChar
+  );
+}
 
 /**
  * An AST node representing either a rule match or a terminal match.
@@ -123,12 +137,7 @@ export function buildASTNode(match: MatchResult, input: string): ASTNode | null 
   }
 
   // Handle terminal nodes - these become leaf AST nodes
-  if (
-    clause instanceof Str ||
-    clause instanceof Char ||
-    clause instanceof CharRange ||
-    clause instanceof AnyChar
-  ) {
+  if (isTerminal(clause)) {
     return new ASTNode(
       clause.constructor.name,
       match.pos,
@@ -156,13 +165,7 @@ function collectChildren(match: MatchResult, input: string): ASTNode[] {
     const clause = child.clause;
 
     // If child is a Ref or terminal, add it as an AST node
-    if (
-      clause instanceof Ref ||
-      clause instanceof Str ||
-      clause instanceof Char ||
-      clause instanceof CharRange ||
-      clause instanceof AnyChar
-    ) {
+    if (clause instanceof Ref || isTerminal(clause)) {
       const node = buildASTNode(child, input);
       if (node !== null) {
         result.push(node);

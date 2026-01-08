@@ -4,10 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.squirrelparser.Combinators.Ref;
-import com.squirrelparser.Terminals.AnyChar;
-import com.squirrelparser.Terminals.Char;
-import com.squirrelparser.Terminals.CharRange;
-import com.squirrelparser.Terminals.Str;
 import com.squirrelparser.Terminals.Terminal;
 
 /**
@@ -106,8 +102,7 @@ public class ASTNode {
         }
 
         // Handle terminal nodes - these become leaf AST nodes
-        if (clause instanceof Str || clause instanceof Char ||
-            clause instanceof CharRange || clause instanceof AnyChar) {
+        if (clause instanceof Terminal) {
             return new ASTNode(clause.getClass().getSimpleName(), match.pos(), match.len(), List.of(), input);
         }
 

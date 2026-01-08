@@ -110,10 +110,7 @@ ASTNode? _buildASTNode(MatchResult match, String input) {
   }
 
   // Handle terminal nodes - these become leaf AST nodes
-  if (clause is Str ||
-      clause is Char ||
-      clause is CharRange ||
-      clause is AnyChar) {
+  if (clause is Terminal) {
     return ASTNode(
       label: clause.runtimeType.toString(),
       pos: match.pos,

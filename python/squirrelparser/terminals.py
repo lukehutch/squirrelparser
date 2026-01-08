@@ -1,6 +1,7 @@
 """Terminal clause implementations for the Squirrel Parser."""
 
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -12,8 +13,24 @@ if TYPE_CHECKING:
     from .parser import Parser
 
 
+class Terminal(ABC):
+    """Base class for all terminal clause types."""
+
+    transparent: bool
+
+    @abstractmethod
+    def match(self, parser: Parser, pos: int, bound: Clause | None = None) -> MatchResult:
+        """Match this terminal against the input at the given position."""
+        pass
+
+    @abstractmethod
+    def __str__(self) -> str:
+        """Return a string representation of this terminal."""
+        pass
+
+
 @dataclass(frozen=True, slots=True)
-class Str:
+class Str(Terminal):
     """Matches a literal string."""
 
     text: str
@@ -32,7 +49,7 @@ class Str:
 
 
 @dataclass(frozen=True, slots=True)
-class Char:
+class Char(Terminal):
     """Matches a single character."""
 
     ch: str
@@ -54,7 +71,7 @@ class Char:
 
 
 @dataclass(frozen=True, slots=True)
-class CharRange:
+class CharRange(Terminal):
     """Matches a single character in a range [lo-hi]."""
 
     lo: str
@@ -78,7 +95,7 @@ class CharRange:
 
 
 @dataclass(frozen=True, slots=True)
-class AnyChar:
+class AnyChar(Terminal):
     """Matches any single character."""
 
     transparent: bool = False
@@ -90,3 +107,16 @@ class AnyChar:
 
     def __str__(self) -> str:
         return '.'
+
+
+@dataclass(frozen=True, slots=True)
+class Nothing(Terminal):
+    """Matches nothing - always succeeds without consuming any input."""
+
+    transparent: bool = False
+
+    def match(self, parser: Parser, pos: int, bound: Clause | None = None) -> MatchResult:
+        return Match(self, pos, 0)
+
+    def __str__(self) -> str:
+        return '∅'

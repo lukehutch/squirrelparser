@@ -17,7 +17,7 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 }
 
 /// Overload 2: With grammar rules map
-(ASTNode, List<SyntaxError>) squirrelParse(Map<String, Clause> rules, String topRule, String input) {
+(ASTNode, List<SyntaxError>) squirrelParseWithRuleMap(Map<String, Clause> rules, String topRule, String input) {
   return _squirrelParseInternal(rules, topRule, input);
 }
 

@@ -18,7 +18,7 @@ Syntax:
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from .squirrel_parse import squirrel_parse
+from .squirrel_parse import squirrel_parse_with_rule_map
 from .ast_node import ASTNode
 from .terminals import Str, Char, CharRange, AnyChar
 from .combinators import Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowedBy, FollowedBy, Ref
@@ -173,7 +173,7 @@ class MetaGrammar:
     @staticmethod
     def parse_grammar(grammar_text: str) -> dict[str, Clause]:
         """Parse a grammar specification and return the rules."""
-        ast, syntax_errors = squirrel_parse(MetaGrammar.rules, 'Grammar', grammar_text)
+        ast, syntax_errors = squirrel_parse_with_rule_map(MetaGrammar.rules, 'Grammar', grammar_text)
 
         if syntax_errors:
             error_msgs = '\n'.join(str(e) for e in syntax_errors)

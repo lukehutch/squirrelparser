@@ -49,7 +49,7 @@ var toprule = "expr";
 var input = "1+2+3";
 
 // Parse input
-final (ast, syntaxErrors) = squirrelParse(rules, toprule, input);
+final (ast, syntaxErrors) = squirrelParseWithRuleMap(rules, toprule, input);
 
 if (ast != null) {
   print("AST:");
@@ -155,6 +155,14 @@ Rule <- . ;
 ```
 
 Matches any single character.
+
+### Nothing
+
+```
+Rule <- ∅ ;
+```
+
+Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions.
 
 ### Escape Sequences
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .match_result import MatchResult
 
-from .terminals import Str, Char, CharRange, AnyChar
+from .terminals import Terminal
 from .combinators import Ref
 from .match_result import SyntaxError as SyntaxErrorNode
 
@@ -116,7 +116,7 @@ def _build_ast_node(match: MatchResult, input_str: str) -> ASTNode | None:
         )
 
     # Handle terminal nodes - these become leaf AST nodes
-    if isinstance(clause, (Str, Char, CharRange, AnyChar)):
+    if isinstance(clause, Terminal):
         return ASTNode(
             label=type(clause).__name__,
             pos=match.pos,
@@ -143,7 +143,7 @@ def _collect_children(match: MatchResult, input_str: str) -> list[ASTNode]:
         clause = child.clause
 
         # If child is a Ref or terminal, add it as an AST node
-        if isinstance(clause, (Ref, Str, Char, CharRange, AnyChar)):
+        if isinstance(clause, (Ref, Terminal)):
             node = _build_ast_node(child, input_str)
             if node is not None:
                 result.append(node)
@@ -183,7 +183,7 @@ def _collect_children_for_ast(match: MatchResult, input_str: str) -> list[ASTNod
                 result.append(node)
             # Transparent rules are completely skipped - don't create node and don't include their children
         # Include terminals as leaf nodes
-        elif isinstance(clause, (Str, Char, CharRange, AnyChar)):
+        elif isinstance(clause, Terminal):
             node = _build_ast_node(child, input_str)
             if node is not None:
                 result.append(node)

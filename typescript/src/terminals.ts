@@ -8,9 +8,16 @@ import type { MatchResult } from './matchResult';
 import { Match, MISMATCH } from './matchResult';
 
 /**
+ * Base interface for all terminal clause types.
+ */
+export interface Terminal extends Clause {
+  readonly transparent: false;
+}
+
+/**
  * Matches a literal string.
  */
-export class Str implements Clause {
+export class Str implements Terminal {
   readonly transparent = false;
 
   constructor(readonly text: string) {}
@@ -35,7 +42,7 @@ export class Str implements Clause {
 /**
  * Matches a single character.
  */
-export class Char implements Clause {
+export class Char implements Terminal {
   readonly transparent = false;
 
   constructor(readonly char: string) {
@@ -62,7 +69,7 @@ export class Char implements Clause {
 /**
  * Matches a single character in a range [lo-hi].
  */
-export class CharRange implements Clause {
+export class CharRange implements Terminal {
   readonly transparent = false;
 
   constructor(readonly lo: string, readonly hi: string) {
@@ -90,7 +97,7 @@ export class CharRange implements Clause {
 /**
  * Matches any single character.
  */
-export class AnyChar implements Clause {
+export class AnyChar implements Terminal {
   readonly transparent = false;
 
   match(parser: Parser, pos: number, _bound: Clause | null): MatchResult {
@@ -102,5 +109,20 @@ export class AnyChar implements Clause {
 
   toString(): string {
     return '.';
+  }
+}
+
+/**
+ * Matches nothing - always succeeds without consuming any input.
+ */
+export class Nothing implements Terminal {
+  readonly transparent = false;
+
+  match(parser: Parser, pos: number, _bound: Clause | null): MatchResult {
+    return new Match(this, pos, 0);
+  }
+
+  toString(): string {
+    return '∅';
   }
 }

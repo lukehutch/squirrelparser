@@ -113,4 +113,21 @@ public final class Terminals {
             return ".";
         }
     }
+
+    /** Matches nothing - always succeeds without consuming any input. */
+    public record Nothing(boolean transparent) implements Terminal {
+        public Nothing() {
+            this(false);
+        }
+
+        @Override
+        public MatchResult match(Parser parser, int pos, Clause bound) {
+            return new Match(this, pos, 0);
+        }
+
+        @Override
+        public String toString() {
+            return "∅";
+        }
+    }
 }

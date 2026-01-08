@@ -179,10 +179,7 @@ class Parser {
         // Transparent rules are completely skipped - don't create node and don't include their children
       }
       // Include terminals as leaf nodes
-      else if (clause is Str ||
-          clause is Char ||
-          clause is CharRange ||
-          clause is AnyChar) {
+      else if (clause is Terminal) {
         final node = buildAST(child, input);
         if (node != null) {
           result.add(node);
@@ -208,10 +205,7 @@ class Parser {
       final clause = child.clause;
 
       // If child is a Ref or terminal, add it as an AST node
-      if (clause is Ref || clause is Str ||
-          clause is Char ||
-          clause is CharRange ||
-          clause is AnyChar) {
+      if (clause is Ref || clause is Terminal) {
         final node = buildAST(child, input);
         if (node != null) {
           result.add(node);

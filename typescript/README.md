@@ -154,6 +154,14 @@ Rule <- . ;
 
 Matches any single character.
 
+### Nothing
+
+```
+Rule <- ∅ ;
+```
+
+Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions.
+
 ### Escape Sequences
 
 Supported in strings and character literals:
