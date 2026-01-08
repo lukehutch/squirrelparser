@@ -42,7 +42,8 @@ grammar = """
   ~_ <- [ \t\n\r]*;
 """
 
-# 2. Define custom CST node classes for each concrete syntax element
+# 2. Define custom CST node classes for each concrete syntax element type
+# (we'll just create a generic one here for simplicity)
 class CalcNode(CSTNode):
     def __init__(self, name: str, children=None, value=None):
         super().__init__(name)

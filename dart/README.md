@@ -42,7 +42,8 @@ final grammar = '''
   ~_ <- [ \t\n\r]*;
 ''';
 
-// 2. Define custom CST node classes for each concrete syntax element
+// 2. Define custom CST node classes for each concrete syntax element type
+// (we'll just create a generic one here for simplicity)
 class CalcNode extends CSTNode {
   final List<CalcNode> children;
   final int? value;

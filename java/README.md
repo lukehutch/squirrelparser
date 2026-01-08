@@ -25,14 +25,24 @@ String grammar = """
 
 **Important**: You only need to create factories for **non-transparent** grammar rules. Transparent rules are automatically excluded from factory requirements. If you accidentally create a factory for a transparent rule, an exception will be thrown.
 
-### CST Node Classes
-
-The CST infrastructure is complete in Java. To use it, you define custom CST node classes:
+### Basic Example with CST
 
 ```java
 import com.squirrelparser.*;
+import java.util.List;
 
-// Define custom CST node classes for each concrete syntax element
+// 1. Define your grammar using PEG metagrammar syntax
+String grammarText = """
+  Expr   <- Term (AddOp Term)*;
+  Term   <- Factor (MulOp Factor)*;
+  Factor <- Number / '(' Expr ')';
+  Number <- [0-9]+;
+  AddOp  <- '+' / '-';
+  MulOp  <- '*' / '/';
+  ~_ <- [ \\t\\n\\r]*;
+""";
+
+// 2. Define custom CST node classes for each concrete syntax element
 class CalcNode extends CSTNode {
     private final List<CalcNode> children;
     private final Integer value;
@@ -51,40 +61,13 @@ class CalcNode extends CSTNode {
         this(name, null, value);
     }
 
-    public List<CalcNode> getChildren() {
-        return children;
-    }
-
-    public Integer getValue() {
-        return value;
-    }
-
     @Override
     public String toString() {
         return value != null ? value.toString() : this.name;
     }
 }
-```
 
-### CST Node Factories
-
-Create factory instances for each non-transparent grammar rule:
-
-```java
-import com.squirrelparser.*;
-import java.util.List;
-
-String grammarText = """
-  Expr   <- Term (AddOp Term)*;
-  Term   <- Factor (MulOp Factor)*;
-  Factor <- Number / '(' Expr ')';
-  Number <- [0-9]+;
-  AddOp  <- '+' / '-';
-  MulOp  <- '*' / '/';
-  ~_ <- [ \\t\\n\\r]*;
-""";
-
-// Create factories for each NON-TRANSPARENT grammar rule
+// 3. Create factories for each NON-TRANSPARENT grammar rule
 List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "Expr",
@@ -127,7 +110,7 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
     )
 );
 
-// Parse the input
+// 4. Parse input and get the CST
 String input = "2+3*4";
 CSTNode cst = SquirrelParser.parse(grammarText, input, "Expr", factories);
 System.out.println("Parse successful: " + cst.getName());
@@ -150,6 +133,25 @@ new CSTNodeFactory<MyNode>(
         return new MyNode(ruleName, children);
     }
 )
+```
+
+### Direct API (Advanced)
+
+For advanced use cases, you can work directly with the rules map:
+
+```java
+import com.squirrelparser.*;
+import java.util.List;
+import java.util.Map;
+
+// Parse grammar
+Map<String, Clause> rules = MetaGrammar.parseGrammar(grammarText);
+
+// Create factories (same as before)
+List<CSTNodeFactory<CSTNode>> factories = [...];
+
+// Parse with rule map (internal API)
+CSTNode cst = parseWithRuleMapForTesting(rules, "RuleName", input, factories);
 ```
 
 ## Grammar Syntax Reference
@@ -271,19 +273,17 @@ Supported in strings and character literals:
 Rule <- "a" ; # Comments can appear anywhere
 ```
 
-## Exception Classes
-
-The CST infrastructure includes the following exception classes:
+## Error Handling
 
 ### CSTFactoryValidationException
 
-Thrown when factory validation fails:
+Thrown when factory validation fails (missing or extra factories):
 
 ```java
 import com.squirrelparser.*;
 
 try {
-    // ... squirrelParse call ...
+    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
 } catch (CSTFactoryValidationException e) {
     System.out.println("Missing factories: " + e.getMissing());
     System.out.println("Extra factories: " + e.getExtra());
@@ -292,13 +292,13 @@ try {
 
 ### DuplicateRuleNameException
 
-Thrown when duplicate rule names are found in factory list:
+Thrown when duplicate rule names appear in the factories list:
 
 ```java
 try {
-    // ... squirrelParse call ...
+    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
 } catch (DuplicateRuleNameException e) {
-    System.out.println("Duplicate rule name: " + e.getRuleName() +
+    System.out.println("Duplicate rule: " + e.getRuleName() +
                        " (appears " + e.getCount() + " times)");
 }
 ```
@@ -309,7 +309,7 @@ Thrown when CST construction fails:
 
 ```java
 try {
-    // ... squirrelParse call ...
+    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
 } catch (CSTConstructionException e) {
     System.out.println("CST construction failed: " + e.getMessage());
 }
@@ -379,31 +379,6 @@ new CSTNodeFactory<MyNode>(
 )
 ```
 
-## Error Handling
-
-### Factory Validation Errors
-
-```java
-import com.squirrelparser.*;
-import java.util.List;
-
-String grammarText = "..."; // Your grammar
-String input = "...";       // Your input
-List<CSTNodeFactory<CSTNode>> factories = [...]; // Your factories
-
-try {
-    CSTNode cst = SquirrelParser.parse(grammarText, input, "RuleName", factories);
-} catch (CSTFactoryValidationException e) {
-    System.out.println("Missing factories: " + e.getMissing());
-    System.out.println("Extra factories: " + e.getExtra());
-} catch (DuplicateRuleNameException e) {
-    System.out.println("Duplicate rule: " + e.getRuleName() +
-                       " (appears " + e.getCount() + " times)");
-} catch (CSTConstructionException e) {
-    System.out.println("CST construction failed: " + e.getMessage());
-}
-```
-
 ## Building
 
 ```bash
@@ -412,27 +387,9 @@ mvn package       # Build JAR
 mvn clean compile # Compile
 ```
 
-## Implementation Status
-
-The Java implementation includes:
-
-✅ **Complete CST Infrastructure**
-- `CSTNode` - abstract base class for all CST nodes
-- `CSTNodeFactory<T>` - generic factory for creating typed CST nodes
-- `CSTFactoryValidationException` - exception for factory validation errors
-- `DuplicateRuleNameException` - exception for duplicate rule names
-- `CSTConstructionException` - exception for CST construction failures
-
-✅ **Complete Public API**
-- `SquirrelParser.parse()` - public API method for parsing with CST factories
-- Full factory-based CST construction with validation
-- Transparent rule support
-
-The Java implementation is now complete and fully isomorphic with the Dart, TypeScript, and Python implementations.
-
 ## Testing
 
-All CST infrastructure classes are tested and compile without errors. The full test suite demonstrates:
+The implementation includes comprehensive CST tests demonstrating all features:
 
 - Type-safe generic node creation
 - Factory validation with duplicate detection
