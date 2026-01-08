@@ -18,7 +18,7 @@
 
 import type { Clause } from './clause';
 import { Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowedBy, FollowedBy, Ref } from './combinators';
-import { Str, Char, CharRange, AnyChar } from './terminals';
+import { Str, Char, CharRange, AnyChar, Nothing } from './terminals';
 import { squirrelParseWithRuleMap } from './squirrelParse';
 import { ASTNode } from './ast';
 
@@ -78,7 +78,14 @@ export class MetaGrammar {
       new Ref('CharLiteral'),
       new Ref('CharClass'),
       new Ref('AnyChar'),
-      new Seq([new Str('('), new Ref('_'), new Ref('Expression'), new Ref('_'), new Str(')')]),
+      new Ref('Parens'),
+    ]),
+    Parens: new Seq([
+      new Str('('),
+      new Ref('_'),
+      new Optional(new Ref('Expression')),
+      new Ref('_'),
+      new Str(')'),
     ]),
     Identifier: new Seq([
       new First([
@@ -387,6 +394,19 @@ export class MetaGrammar {
 
       case 'Group':
         return MetaGrammar.buildClause(node.children[0], input, transparent, transparentRules);
+
+      case 'Parens': {
+        // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+        // Find the Expression child (if it exists after parsing)
+        const expressionChild = node.children.find(c => c.label === 'Expression');
+        if (expressionChild) {
+          // Parens with content - return the expression
+          return MetaGrammar.buildClause(expressionChild, input, transparent, transparentRules);
+        } else {
+          // Empty parens - return Nothing
+          return new Nothing();
+        }
+      }
 
       default:
         // For unlabeled nodes, recursively build their children

@@ -127,7 +127,7 @@ public final class Terminals {
 
         @Override
         public String toString() {
-            return "∅";
+            return "()";
         }
     }
 }

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 from .squirrel_parse import squirrel_parse_with_rule_map
 from .ast_node import ASTNode
-from .terminals import Str, Char, CharRange, AnyChar
+from .terminals import Str, Char, CharRange, AnyChar, Nothing
 from .combinators import Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowedBy, FollowedBy, Ref
 
 if TYPE_CHECKING:
@@ -83,7 +83,14 @@ class MetaGrammar:
             Ref('CharLiteral'),
             Ref('CharClass'),
             Ref('AnyChar'),
-            Seq(Str('('), Ref('_'), Ref('Expression'), Ref('_'), Str(')')),
+            Ref('Parens'),
+        ),
+        'Parens': Seq(
+            Str('('),
+            Ref('_'),
+            Optional(Ref('Expression')),
+            Ref('_'),
+            Str(')'),
         ),
         'Identifier': Seq(
             First(
@@ -401,6 +408,21 @@ class MetaGrammar:
                 transparent=transparent,
                 transparent_rules=transparent_rules
             )
+
+        elif node.label == 'Parens':
+            # Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+            # Find the Expression child (if it exists after parsing)
+            expression_child = next((c for c in node.children if c.label == 'Expression'), None)
+            if expression_child:
+                # Parens with content - return the expression
+                return MetaGrammar._build_clause(
+                    expression_child, input_str,
+                    transparent=transparent,
+                    transparent_rules=transparent_rules
+                )
+            else:
+                # Empty parens - return Nothing
+                return Nothing(transparent=transparent)
 
         else:
             # For unlabeled nodes, recursively build their children

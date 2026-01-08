@@ -89,5 +89,5 @@ class Nothing extends Terminal {
   }
 
   @override
-  String toString() => '∅';
+  String toString() => '()';
 }

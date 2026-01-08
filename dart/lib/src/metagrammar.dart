@@ -69,7 +69,14 @@ class MetaGrammar {
       Ref('CharLiteral'),
       Ref('CharClass'),
       Ref('AnyChar'),
-      Seq([Str('('), Ref('_'), Ref('Expression'), Ref('_'), Str(')')]),
+      Ref('Parens'),
+    ]),
+    'Parens': Seq([
+      Str('('),
+      Ref('_'),
+      Optional(Ref('Expression')),
+      Ref('_'),
+      Str(')'),
     ]),
     'Identifier': Seq([
       First([
@@ -387,6 +394,20 @@ class MetaGrammar {
       case 'Group':
         return _buildClause(node.children[0], input,
             transparent: transparent, transparentRules: transparentRules);
+
+      case 'Parens':
+        // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+        // Find the Expression child (if it exists after parsing)
+        final expressionChild =
+            node.children.where((c) => c.label == 'Expression').firstOrNull;
+        if (expressionChild != null) {
+          // Parens with content - return the expression
+          return _buildClause(expressionChild, input,
+              transparent: transparent, transparentRules: transparentRules);
+        } else {
+          // Empty parens - return Nothing
+          return Nothing(transparent: transparent);
+        }
 
       default:
         // For unlabeled nodes, recursively build their children

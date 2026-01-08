@@ -158,9 +158,12 @@ Matches any single character.
 
 ```
 Rule <- ∅ ;
+Rule <- () ;
 ```
 
 Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions.
+
+You can use either `∅` or empty parentheses `()` to match Nothing.
 
 ### Escape Sequences
 

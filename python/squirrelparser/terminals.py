@@ -119,4 +119,4 @@ class Nothing(Terminal):
         return Match(self, pos, 0)
 
     def __str__(self) -> str:
-        return '∅'
+        return '()'

@@ -123,6 +123,6 @@ export class Nothing implements Terminal {
   }
 
   toString(): string {
-    return '∅';
+    return '()';
   }
 }

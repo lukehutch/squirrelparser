@@ -97,7 +97,14 @@ public class MetaGrammar {
             new Ref("CharLiteral"),
             new Ref("CharClass"),
             new Ref("AnyChar"),
-            new Seq(List.of(new Str("("), new Ref("_"), new Ref("Expression"), new Ref("_"), new Str(")")))
+            new Ref("Parens")
+        ))),
+        Map.entry("Parens", new Seq(List.of(
+            new Str("("),
+            new Ref("_"),
+            new Combinators.Optional(new Ref("Expression")),
+            new Ref("_"),
+            new Str(")")
         ))),
         Map.entry("Identifier", new Seq(List.of(
             new First(List.of(
@@ -381,6 +388,23 @@ public class MetaGrammar {
             case "CharClass" -> buildCharClass(node, input);
 
             case "AnyChar" -> new AnyChar();
+
+            case "Group" -> buildClause(node.children.get(0), input, transparent, transparentRules);
+
+            case "Parens" -> {
+                // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+                // Find the Expression child (if it exists after parsing)
+                java.util.Optional<ASTNode> expressionChild = node.children.stream()
+                    .filter(c -> c.label.equals("Expression"))
+                    .findFirst();
+                if (expressionChild.isPresent()) {
+                    // Parens with content - return the expression
+                    yield buildClause(expressionChild.get(), input, transparent, transparentRules);
+                } else {
+                    // Empty parens - return Nothing
+                    yield new Terminals.Nothing();
+                }
+            }
 
             default -> {
                 // For unlabeled nodes, recursively build their children
