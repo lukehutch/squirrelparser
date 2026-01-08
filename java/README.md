@@ -39,10 +39,7 @@ if (!errors.isEmpty()) {
 
 ```java
 import com.squirrelparser.*;
-import static com.squirrelparser.Terminals.*;
-import static com.squirrelparser.Combinators.*;
 import java.util.Map;
-import java.util.List;
 
 // Define grammar rules directly
 Map<String, Clause> rules = Map.of(
@@ -54,11 +51,19 @@ Map<String, Clause> rules = Map.of(
 );
 
 // Parse input
-Parser parser = new Parser(rules, "1+2+3");
-MatchResult result = parser.parse("expr");
+var result = Parser.squirrelParse(rules, "expr", "1+2+3");
+ASTNode ast = result.ast();
+List<SyntaxError> errors = result.errors();
 
-if (!result.isMismatch()) {
-    System.out.println("Matched: " + parser.input().substring(result.pos(), result.pos() + result.len()));
+if (ast != null) {
+    System.out.println("AST:");
+    System.out.println(ast.toPrettyString());
+}
+if (!errors.isEmpty()) {
+    System.out.println("Syntax errors found:");
+    for (var error : errors) {
+        System.out.println("  " + error);
+    }
 }
 ```
 
@@ -176,7 +181,7 @@ Rule <- "a" ; # Comments can appear anywhere
 
 ```java
 import com.squirrelparser.*;
-import java.util.Map;
+import java.util.List;
 
 String jsonGrammar = """
 # JSON Grammar
@@ -200,19 +205,21 @@ Null <- "null" ;
 ~_ <- [ \t\n\r]* ;
 """;
 
-// Parse the grammar
-Map<String, Clause> rules = MetaGrammar.parseGrammar(jsonGrammar);
-
 // Test with JSON input
 String jsonInput = "{\"name\": \"Alice\", \"age\": 30, \"active\": true}";
-Parser parser = new Parser(rules, jsonInput);
-ASTNode ast = parser.parseToAST("JSON");
+var result = SquirrelParse.parse(jsonGrammar, jsonInput, "JSON");
+ASTNode ast = result.ast();
+List<SyntaxError> errors = result.errors();
 
 if (ast != null) {
-    System.out.println("JSON parsed successfully!");
+    System.out.println("AST:");
     System.out.println(ast.toPrettyString());
-} else {
-    System.out.println("Failed to parse JSON");
+}
+if (!errors.isEmpty()) {
+    System.out.println("Syntax errors found:");
+    for (var error : errors) {
+        System.out.println("  " + error);
+    }
 }
 ```
 
@@ -220,7 +227,6 @@ if (ast != null) {
 
 ```java
 import com.squirrelparser.*;
-import java.util.Map;
 
 public class Calculator {
     public static void main(String[] args) {
@@ -232,16 +238,20 @@ public class Calculator {
         Number <- [0-9]+ ;
         """;
 
-        // Parse grammar
-        Map<String, Clause> rules = MetaGrammar.parseGrammar(calcGrammar);
-
         // Parse input and get AST
-        Parser parser = new Parser(rules, "2 + 3 * 4");
-        ASTNode ast = parser.parseToAST("Expr");
+        var result = SquirrelParse.parse(calcGrammar, "2+3*4", "Expr");
+        ASTNode ast = result.ast();
+        List<SyntaxError> errors = result.errors();
 
         if (ast != null) {
-            double result = evalAST(ast);
-            System.out.println("Result: " + result); // Output: Result: 14.0
+            double calcResult = evalAST(ast);
+            System.out.println("Result: " + calcResult); // Output: Result: 14.0
+        }
+        if (!errors.isEmpty()) {
+            System.out.println("Syntax errors found:");
+            for (var error : errors) {
+                System.out.println("  " + error);
+            }
         }
     }
 

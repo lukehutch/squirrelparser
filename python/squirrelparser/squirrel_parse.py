@@ -16,6 +16,27 @@ if TYPE_CHECKING:
 
 
 def squirrel_parse(
+    grammar_str: str,
+    input_str: str,
+    top_rule: str
+) -> tuple[ASTNode, list[SyntaxError]]:
+    """
+    Convenience function to parse input and return both AST and syntax errors.
+
+    Args:
+        grammar_str: The grammar as a PEG metagrammar string
+        input_str: The input string to parse
+        top_rule: The name of the top-level rule to parse
+
+    Returns:
+        A tuple (ast, syntax_errors) where ast is always non-null (possibly empty)
+    """
+    from .meta_grammar import MetaGrammar
+    parsed_rules = MetaGrammar.parse_grammar(grammar_str)
+    return _squirrel_parse_internal(parsed_rules, top_rule, input_str)
+
+
+def squirrel_parse_with_rule_map(
     rules: Mapping[str, Clause],
     top_rule: str,
     input_str: str
@@ -31,6 +52,15 @@ def squirrel_parse(
     Returns:
         A tuple (ast, syntax_errors) where ast is always non-null (possibly empty)
     """
+    return _squirrel_parse_internal(rules, top_rule, input_str)
+
+
+def _squirrel_parse_internal(
+    rules: Mapping[str, Clause],
+    top_rule: str,
+    input_str: str
+) -> tuple[ASTNode, list[SyntaxError]]:
+    """Internal implementation shared by public methods."""
     parser = Parser(rules=rules, input_str=input_str)
     match_result, _ = parser.parse(top_rule)
 

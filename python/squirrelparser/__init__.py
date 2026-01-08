@@ -9,7 +9,7 @@ from .combinators import Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowe
 from .parser import Parser
 from .ast_node import ASTNode, build_ast
 from .meta_grammar import MetaGrammar
-from .squirrel_parse import squirrel_parse
+from .squirrel_parse import squirrel_parse, squirrel_parse_with_rule_map
 
 __all__ = [
     'Match', 'Mismatch', 'SyntaxError', 'MISMATCH', 'LR_PENDING',
@@ -20,6 +20,7 @@ __all__ = [
     'ASTNode', 'build_ast',
     'MetaGrammar',
     'squirrel_parse',
+    'squirrel_parse_with_rule_map',
 ]
 
 __version__ = '1.0.0'

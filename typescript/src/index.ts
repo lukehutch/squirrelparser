@@ -20,4 +20,4 @@ export {
 export { Parser } from './parser';
 export { ASTNode, buildAST } from './ast';
 export { MetaGrammar } from './metaGrammar';
-export { squirrelParse } from './squirrelParse';
+export { squirrelParse, squirrelParseWithRuleMap } from './squirrelParse';

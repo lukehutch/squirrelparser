@@ -205,12 +205,44 @@ public class Parser {
     /**
      * Convenience method to parse and return both AST and syntax errors.
      *
+     * Overload 1: Parse with metagrammar string
+     *
+     * @param grammarText The grammar as a PEG metagrammar string
+     * @param input The input string to parse
+     * @param topRule The name of the top-level rule to parse
+     * @return A SquirrelParseResult containing the AST and syntax errors
+     */
+    public static SquirrelParseResult squirrelParse(
+        String grammarText,
+        String input,
+        String topRule
+    ) {
+        java.util.Map<String, Clause> rules = MetaGrammar.parseGrammar(grammarText);
+        return squirrelParseInternal(rules, topRule, input);
+    }
+
+    /**
+     * Convenience method to parse and return both AST and syntax errors.
+     *
+     * Overload 2: Parse with grammar rules map
+     *
      * @param rules The grammar rules map
      * @param topRule The name of the top-level rule to parse
      * @param input The input string to parse
      * @return A SquirrelParseResult containing the AST and syntax errors
      */
     public static SquirrelParseResult squirrelParse(
+        java.util.Map<String, Clause> rules,
+        String topRule,
+        String input
+    ) {
+        return squirrelParseInternal(rules, topRule, input);
+    }
+
+    /**
+     * Internal implementation shared by both overloads.
+     */
+    private static SquirrelParseResult squirrelParseInternal(
         java.util.Map<String, Clause> rules,
         String topRule,
         String input

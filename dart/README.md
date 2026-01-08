@@ -52,15 +52,13 @@ var input = "1+2+3";
 final (ast, syntaxErrors) = squirrelParse(rules, toprule, input);
 
 if (ast != null) {
-  // Parsed AST (incomplete if there were syntax errors)
   print("AST:");
   print(ast.toPrettyString());
 }
 if (syntaxErrors.isNotEmpty) {
-  // Any syntax errors
   print('Syntax errors:');
   for (final error in syntaxErrors) {
-    print(error);
+    print('  ${error.toString()}');
   }
 }
 ```
@@ -202,19 +200,19 @@ Null <- "null" ;
 ~_ <- [ \t\n\r]* ;
 """
 
-// Parse the grammar
-final rules = MetaGrammar.parseGrammar(jsonGrammar);
-
 // Test with JSON input
 final jsonInput = '{"name": "Alice", "age": 30, "active": true}';
-final parser = Parser(rules: rules, input: jsonInput);
-final (ast, usedRecovery) = parser.parseToAST('JSON');
+final (ast, errors) = squirrelParse(jsonGrammar, jsonInput, 'JSON');
 
 if (ast != null) {
-  print("JSON parsed successfully!");
+  print("AST:");
   print(ast.toPrettyString());
-} else {
-  print("Failed to parse JSON");
+}
+if (errors.isNotEmpty) {
+  print('Syntax errors found:');
+  for (final error in errors) {
+    print('  ${error.toString()}');
+  }
 }
 ```
 
@@ -231,12 +229,8 @@ Factor <- Number / '(' Expr ')' ;
 Number <- [0-9]+ ;
 """
 
-// Parse grammar
-final rules = MetaGrammar.parseGrammar(calcGrammar);
-
 // Parse input and get AST
-final parser = Parser(rules: rules, input: "2 + 3 * 4");
-final (ast, _) = parser.parseToAST('Expr');
+final (ast, errors) = squirrelParse(calcGrammar, "2+3*4", 'Expr');
 
 // Define evaluation function
 double evalAST(ASTNode node) {
@@ -288,6 +282,12 @@ double evalAST(ASTNode node) {
 if (ast != null) {
   final result = evalAST(ast);
   print("Result: $result"); // Output: Result: 14.0
+}
+if (errors.isNotEmpty) {
+  print('Syntax errors found:');
+  for (final error in errors) {
+    print('  ${error.toString()}');
+  }
 }
 ```
 

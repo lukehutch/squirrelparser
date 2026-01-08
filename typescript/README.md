@@ -35,7 +35,7 @@ if (errors.length > 0) {
 ### Without Metagrammar (Direct API)
 
 ```typescript
-import { Parser, Str, CharRange, Ref, Seq, First, OneOrMore } from 'squirrelparser';
+import { squirrelParseWithRuleMap, Str, CharRange, Ref, Seq, First, OneOrMore } from 'squirrelparser';
 
 // Define grammar rules directly
 const rules = {
@@ -47,12 +47,17 @@ const rules = {
 };
 
 // Parse input
-const parser = new Parser(rules, '1+2+3');
-const result = parser.parse('expr'); // Returns [MatchResult | null, boolean]
+const [ast, errors] = squirrelParseWithRuleMap(rules, 'expr', '1+2+3');
 
-if (result[0] && !result[0].isMismatch) {
-  // result[0] is the MatchResult
-  console.log('Matched:', parser.input.substring(result[0].pos, result[0].pos + result[0].len));
+if (ast) {
+  console.log('AST:');
+  console.log(ast.toPrettyString());
+}
+if (errors.length > 0) {
+  console.log('Syntax errors found:');
+  for (const error of errors) {
+    console.log(`  ${error.toString()}`);
+  }
 }
 ```
 
@@ -169,7 +174,7 @@ Rule <- "a" ; # Comments can appear anywhere
 ## Complete Example: JSON Grammar
 
 ```typescript
-import { MetaGrammar, Parser } from 'squirrelparser';
+import { squirrelParse } from 'squirrelparser';
 
 const jsonGrammar = `
 # JSON Grammar
@@ -193,26 +198,26 @@ Null <- "null" ;
 ~_ <- [ \t\n\r]* ;
 `;
 
-// Parse the grammar
-const rules = MetaGrammar.parseGrammar(jsonGrammar);
-
 // Test with JSON input
 const jsonInput = '{"name": "Alice", "age": 30, "active": true}';
-const parser = new Parser(rules, jsonInput);
-const [ast, usedRecovery] = parser.parseToAST('JSON');
+const [ast, errors] = squirrelParse(jsonGrammar, jsonInput, 'JSON');
 
 if (ast) {
-  console.log("JSON parsed successfully!");
+  console.log("AST:");
   console.log(ast.toPrettyString());
-} else {
-  console.log("Failed to parse JSON");
+}
+if (errors.length > 0) {
+  console.log('Syntax errors found:');
+  for (const error of errors) {
+    console.log(`  ${error.toString()}`);
+  }
 }
 ```
 
 ## Example: Calculator with Actions
 
 ```typescript
-import { MetaGrammar, Parser, ASTNode } from 'squirrelparser';
+import { squirrelParse, ASTNode } from 'squirrelparser';
 
 // Define grammar
 const calcGrammar = `
@@ -222,12 +227,8 @@ Factor <- Number / '(' Expr ')' ;
 Number <- [0-9]+ ;
 `;
 
-// Parse grammar
-const rules = MetaGrammar.parseGrammar(calcGrammar);
-
 // Parse input and get AST
-const parser = new Parser(rules, "2 + 3 * 4");
-const [ast, _] = parser.parseToAST('Expr');
+const [ast, errors] = squirrelParse(calcGrammar, "2+3*4", 'Expr');
 
 // Define evaluation function
 function evalAST(node: ASTNode): number {
@@ -279,6 +280,12 @@ function evalAST(node: ASTNode): number {
 if (ast) {
   const result = evalAST(ast);
   console.log(`Result: ${result}`); // Output: Result: 14
+}
+if (errors.length > 0) {
+  console.log('Syntax errors found:');
+  for (const error of errors) {
+    console.log(`  ${error.toString()}`);
+  }
 }
 ```
 

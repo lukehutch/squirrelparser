@@ -45,11 +45,15 @@ rules = {
 }
 
 # Parse input
-parser = Parser(rules, '1+2+3')
-result = parser.parse('expr')
+ast, errors = squirrel_parse_with_rule_map(rules, 'expr', '1+2+3')
 
-if not result.is_mismatch:
-    print(f"Matched: {parser.input[result.pos:result.pos+result.len]}")
+if ast:
+    print("AST:")
+    print(ast.to_pretty_string())
+if errors:
+    print('Syntax errors found:')
+    for error in errors:
+        print(f'  {error}')
 ```
 
 ## Grammar Syntax Reference
@@ -165,7 +169,7 @@ Rule <- "a" ; # Comments can appear anywhere
 ## Complete Example: JSON Grammar
 
 ```python
-from squirrelparser import MetaGrammar, Parser
+from squirrelparser import squirrel_parse
 
 json_grammar = """
 # JSON Grammar
@@ -189,25 +193,23 @@ Null <- "null" ;
 ~_ <- [ \t\n\r]* ;
 """
 
-# Parse the grammar
-rules = MetaGrammar.parse_grammar(json_grammar)
-
 # Test with JSON input
 json_input = '{"name": "Alice", "age": 30, "active": true}'
-parser = Parser(rules=rules, input_str=json_input)
-ast, used_recovery = parser.parse_to_ast('JSON')
+ast, errors = squirrel_parse(json_grammar, json_input, 'JSON')
 
 if ast:
-    print("JSON parsed successfully!")
+    print("AST:")
     print(ast.to_pretty_string())
-else:
-    print("Failed to parse JSON")
+if errors:
+    print('Syntax errors found:')
+    for error in errors:
+        print(f'  {error}')
 ```
 
 ## Example: Calculator with Actions
 
 ```python
-from squirrelparser import MetaGrammar, Parser, ASTNode
+from squirrelparser import squirrel_parse, ASTNode
 
 # Define grammar
 calc_grammar = """
@@ -217,12 +219,8 @@ Factor <- Number / '(' Expr ')' ;
 Number <- [0-9]+ ;
 """
 
-# Parse grammar
-rules = MetaGrammar.parse_grammar(calc_grammar)
-
 # Parse input and get AST
-parser = Parser(rules=rules, input_str="2 + 3 * 4")
-ast, _ = parser.parse_to_ast('Expr')
+ast, errors = squirrel_parse(calc_grammar, "2+3*4", 'Expr')
 
 # Define evaluation function
 def eval_ast(node: ASTNode) -> float:
@@ -266,6 +264,10 @@ def eval_ast(node: ASTNode) -> float:
 if ast:
     result = eval_ast(ast)
     print(f"Result: {result}")  # Output: Result: 14.0
+if errors:
+    print('Syntax errors found:')
+    for error in errors:
+        print(f'  {error}')
 ```
 
 ## Error Handling
