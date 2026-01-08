@@ -75,8 +75,7 @@ class Seq extends Clause {
     }
 
     return Match(this, 0, 0,
-        subClauseMatches: children,
-        isComplete: _allComplete(children));
+        subClauseMatches: children, isComplete: _allComplete(children));
   }
 
   /// Attempt to recover from a mismatch.
@@ -299,7 +298,8 @@ class Repetition extends Clause {
 
 /// One or more repetitions.
 class OneOrMore extends Repetition {
-  const OneOrMore(super.subClause, {super.transparent}) : super(requireOne: true);
+  const OneOrMore(super.subClause, {super.transparent})
+      : super(requireOne: true);
 
   @override
   String toString() => '$subClause+';
@@ -307,7 +307,8 @@ class OneOrMore extends Repetition {
 
 /// Zero or more repetitions.
 class ZeroOrMore extends Repetition {
-  const ZeroOrMore(super.subClause, {super.transparent}) : super(requireOne: false);
+  const ZeroOrMore(super.subClause, {super.transparent})
+      : super(requireOne: false);
 
   @override
   String toString() => '$subClause*';

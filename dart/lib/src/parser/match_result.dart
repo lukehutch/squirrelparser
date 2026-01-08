@@ -76,7 +76,8 @@ class Match extends MatchResult {
   String toPrettyString(String input, {int indent = 0}) {
     final buffer = StringBuffer();
     buffer.write('  ' * indent);
-    buffer.write(clause is Ref ? clause.toString() : clause.runtimeType.toString());
+    buffer.write(
+        clause is Ref ? clause.toString() : clause.runtimeType.toString());
     if (subClauseMatches.isEmpty) {
       buffer.write(': "${input.substring(pos, pos + len)}"');
     }

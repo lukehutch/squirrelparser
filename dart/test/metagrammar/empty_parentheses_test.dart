@@ -80,7 +80,7 @@ void main() {
 
       // Should match empty string
       final parser2 = Parser(rules: rules, input: '');
-      final (result2, __) = parser2.parse('Choice');
+      final (result2, _) = parser2.parse('Choice');
       expect(result2, isNotNull);
       expect(result2.len, equals(0));
     });

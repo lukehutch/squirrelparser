@@ -64,7 +64,20 @@ export function squirrelParse(
   factories: CSTNodeFactory<CSTNode>[]
 ): [CSTNode, SyntaxError[]] {
   const rules = MetaGrammar.parseGrammar(grammarText);
-  return doParse(rules, topRule, input, factories);
+
+  // Convert factories list to map, checking for duplicates
+  const factoriesMap = buildFactoriesMap(factories);
+
+  // Get the parse tree
+  const [matchResult, syntaxErrors] = parseToMatchResultForTesting(rules, topRule, input);
+
+  // Validate factories
+  validateCSTFactories(rules, factoriesMap);
+
+  // Build CST from parse tree
+  const cst = buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
+
+  return [cst, syntaxErrors];
 }
 
 // ============================================================================
@@ -96,22 +109,6 @@ export function parseWithRuleMapForTesting(
   input: string,
   factories: CSTNodeFactory<CSTNode>[]
 ): [CSTNode, SyntaxError[]] {
-  return doParse(rules, topRule, input, factories);
-}
-
-// ============================================================================
-// Private helpers
-// ============================================================================
-
-/**
- * Performs the actual parsing work with pre-parsed grammar rules.
- */
-function doParse(
-  rules: Record<string, Clause>,
-  topRule: string,
-  input: string,
-  factories: CSTNodeFactory<CSTNode>[]
-): [CSTNode, SyntaxError[]] {
   // Convert factories list to map, checking for duplicates
   const factoriesMap = buildFactoriesMap(factories);
 
@@ -126,6 +123,10 @@ function doParse(
 
   return [cst, syntaxErrors];
 }
+
+// ============================================================================
+// Private helpers
+// ============================================================================
 
 /**
  * Build a factories map from a list, checking for duplicate rule names.

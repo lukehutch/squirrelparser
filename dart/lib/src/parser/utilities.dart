@@ -22,6 +22,7 @@ List<String> getSkippedStrings(MatchResult? result) {
       collect(child);
     }
   }
+
   collect(result);
   return skipped;
 }
@@ -41,6 +42,7 @@ List<SyntaxError> getSyntaxErrors(MatchResult result) {
       collect(child);
     }
   }
+
   collect(result);
   return syntaxErrors;
 }

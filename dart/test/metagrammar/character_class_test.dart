@@ -41,7 +41,8 @@ void main() {
 
       parser = Parser(rules: rules, input: '!');
       (result, _) = parser.parse('AlphaNum');
-      expect(result is SyntaxError, isTrue, reason: 'should fail on non-alphanumeric');
+      expect(result is SyntaxError, isTrue,
+          reason: 'should fail on non-alphanumeric');
     });
 
     test('character class with individual characters', () {

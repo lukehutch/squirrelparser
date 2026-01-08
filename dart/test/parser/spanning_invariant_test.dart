@@ -10,7 +10,6 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:test/test.dart';
 
-
 void main() {
   group('Parse Tree Spanning Invariant Tests', () {
     test('SPAN-01-empty-input', () {
@@ -27,8 +26,9 @@ void main() {
 
     test('SPAN-02-complete-match-no-wrapper', () {
       // Complete match should not be wrapped
-      final parser =
-          Parser(rules: {'S': Seq([Str('a'), Str('b'), Str('c')])}, input: 'abc');
+      final parser = Parser(rules: {
+        'S': Seq([Str('a'), Str('b'), Str('c')])
+      }, input: 'abc');
       final (result, _) = parser.parse('S');
 
       expect(result is SyntaxError, isFalse,
@@ -51,8 +51,9 @@ void main() {
 
     test('SPAN-04-trailing-garbage-wrapped', () {
       // Partial match with trailing input should be wrapped with SyntaxError
-      final parser =
-          Parser(rules: {'S': Seq([Str('a'), Str('b')])}, input: 'abXYZ');
+      final parser = Parser(rules: {
+        'S': Seq([Str('a'), Str('b')])
+      }, input: 'abXYZ');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(5), reason: 'Result should span entire input');
@@ -101,8 +102,9 @@ void main() {
 
     test('SPAN-06-multiple-errors-throughout', () {
       // Multiple errors should all be in parse tree
-      final parser = Parser(
-          rules: {'S': Seq([Str('a'), Str('b'), Str('c')])}, input: 'aXbYc');
+      final parser = Parser(rules: {
+        'S': Seq([Str('a'), Str('b'), Str('c')])
+      }, input: 'aXbYc');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(5), reason: 'Should span entire input');
@@ -123,8 +125,9 @@ void main() {
 
     test('SPAN-07-recovery-with-deletion', () {
       // Deletion at end should be captured
-      final parser =
-          Parser(rules: {'S': Seq([Str('a'), Str('b'), Str('c')])}, input: 'ab');
+      final parser = Parser(rules: {
+        'S': Seq([Str('a'), Str('b'), Str('c')])
+      }, input: 'ab');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(2),
@@ -134,14 +137,12 @@ void main() {
 
     test('SPAN-08-first-alternative-with-trailing', () {
       // First should prefer longer match, both may have trailing
-      final parser = Parser(
-          rules: {
-            'S': First([
-              Seq([Str('a'), Str('b'), Str('c')]),
-              Str('a')
-            ])
-          },
-          input: 'abcX');
+      final parser = Parser(rules: {
+        'S': First([
+          Seq([Str('a'), Str('b'), Str('c')]),
+          Str('a')
+        ])
+      }, input: 'abcX');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(4), reason: 'Should span entire input');
@@ -162,14 +163,12 @@ void main() {
 
     test('SPAN-09-left-recursion-with-trailing', () {
       // LR expansion with trailing should work
-      final parser = Parser(
-          rules: {
-            'E': First([
-              Seq([Ref('E'), Str('+'), Str('n')]),
-              Str('n')
-            ])
-          },
-          input: 'n+nX');
+      final parser = Parser(rules: {
+        'E': First([
+          Seq([Ref('E'), Str('+'), Str('n')]),
+          Str('n')
+        ])
+      }, input: 'n+nX');
       final (result, _) = parser.parse('E');
 
       expect(result.len, equals(4), reason: 'Should span entire input');
@@ -190,8 +189,7 @@ void main() {
 
     test('SPAN-10-repetition-with-trailing', () {
       // OneOrMore with trailing should span full input
-      final parser = Parser(
-          rules: {'S': OneOrMore(Str('a'))}, input: 'aaaX');
+      final parser = Parser(rules: {'S': OneOrMore(Str('a'))}, input: 'aaaX');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(4), reason: 'Should span entire input');
@@ -212,12 +210,10 @@ void main() {
 
     test('SPAN-11-nested-rules-with-trailing', () {
       // Nested rule calls with trailing
-      final parser = Parser(
-          rules: {
-            'S': Seq([Ref('A'), Str(';')]),
-            'A': Seq([Str('a'), Str('b')])
-          },
-          input: 'ab;X');
+      final parser = Parser(rules: {
+        'S': Seq([Ref('A'), Str(';')]),
+        'A': Seq([Str('a'), Str('b')])
+      }, input: 'ab;X');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(4), reason: 'Should span entire input');
@@ -225,8 +221,7 @@ void main() {
 
     test('SPAN-12-zero-or-more-with-trailing', () {
       // ZeroOrMore matching nothing, then trailing
-      final parser =
-          Parser(rules: {'S': ZeroOrMore(Str('a'))}, input: 'XYZ');
+      final parser = Parser(rules: {'S': ZeroOrMore(Str('a'))}, input: 'XYZ');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(3), reason: 'Should span entire input');
@@ -248,8 +243,7 @@ void main() {
 
     test('SPAN-13-optional-with-trailing', () {
       // Optional not matching, then trailing
-      final parser =
-          Parser(rules: {'S': Optional(Str('a'))}, input: 'XYZ');
+      final parser = Parser(rules: {'S': Optional(Str('a'))}, input: 'XYZ');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(3), reason: 'Should span entire input');
@@ -270,15 +264,9 @@ void main() {
 
     test('SPAN-14-followed-by-success-with-trailing', () {
       // FollowedBy doesn't consume, but trailing should still be captured
-      final parser = Parser(
-          rules: {
-            'S': Seq([
-              FollowedBy(Str('a')),
-              Str('a'),
-              Str('b')
-            ])
-          },
-          input: 'abX');
+      final parser = Parser(rules: {
+        'S': Seq([FollowedBy(Str('a')), Str('a'), Str('b')])
+      }, input: 'abX');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(3), reason: 'Should span entire input');
@@ -299,14 +287,9 @@ void main() {
 
     test('SPAN-15-not-followed-by-failure-total', () {
       // NotFollowedBy in sequence that fails - no recovery possible
-      final parser = Parser(
-          rules: {
-            'S': Seq([
-              NotFollowedBy(Str('x')),
-              Str('y')
-            ])
-          },
-          input: 'xz');
+      final parser = Parser(rules: {
+        'S': Seq([NotFollowedBy(Str('x')), Str('y')])
+      }, input: 'xz');
       final (result, _) = parser.parse('S');
 
       // NotFollowedBy('x') succeeds at position 0 (since 'x' IS there, negation makes it fail)
@@ -314,22 +297,16 @@ void main() {
       // If input is 'xz', 'x' IS there, so NotFollowedBy fails
       // Then Str('y') can't match 'x', so Seq fails completely
       // Result should be SyntaxError spanning entire input
-      expect(result is SyntaxError, isTrue,
-          reason: 'Should be total failure');
+      expect(result is SyntaxError, isTrue, reason: 'Should be total failure');
       expect(result.len, equals(2), reason: 'Should span entire input');
     });
 
     test('SPAN-16-not-followed-by-success-with-trailing', () {
       // NotFollowedBy succeeding but with trailing - we'll simplify this
       // to avoid complex recovery rules
-      final parser = Parser(
-          rules: {
-            'S': Seq([
-              Str('b'),
-              Optional(Str('c'))
-            ])
-          },
-          input: 'bX');
+      final parser = Parser(rules: {
+        'S': Seq([Str('b'), Optional(Str('c'))])
+      }, input: 'bX');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(2), reason: 'Should span entire input');
@@ -354,9 +331,24 @@ void main() {
         ({'S': Str('a')}, 'a'),
         ({'S': Str('a')}, 'b'),
         ({'S': Str('a')}, ''),
-        ({'S': Seq([Str('a'), Str('b')])}, 'ab'),
-        ({'S': Seq([Str('a'), Str('b')])}, 'aXb'),
-        ({'S': First([Str('a'), Str('b')])}, 'c'),
+        (
+          {
+            'S': Seq([Str('a'), Str('b')])
+          },
+          'ab'
+        ),
+        (
+          {
+            'S': Seq([Str('a'), Str('b')])
+          },
+          'aXb'
+        ),
+        (
+          {
+            'S': First([Str('a'), Str('b')])
+          },
+          'c'
+        ),
       ];
 
       for (final (rules, input) in testCases) {
@@ -373,12 +365,10 @@ void main() {
     test('SPAN-18-long-input-with-single-trailing-error', () {
       // Long input with single error at end
       final input = 'abcdefghijklmnopqrstuvwxyzX';
-      final parser = Parser(
-          rules: {
-            'S': Seq(
-                'abcdefghijklmnopqrstuvwxyz'.split('').map((c) => Str(c)).toList())
-          },
-          input: input);
+      final parser = Parser(rules: {
+        'S': Seq(
+            'abcdefghijklmnopqrstuvwxyz'.split('').map((c) => Str(c)).toList())
+      }, input: input);
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(27), reason: 'Should span entire input');
@@ -399,16 +389,14 @@ void main() {
 
     test('SPAN-19-complex-grammar-with-errors', () {
       // Complex grammar with multiple errors at different levels
-      final parser = Parser(
-          rules: {
-            'S': Seq([Ref('E'), Str(';')]),
-            'E': First([
-              Seq([Ref('E'), Str('+'), Ref('T')]),
-              Ref('T')
-            ]),
-            'T': Str('n')
-          },
-          input: 'n+Xn;Y');
+      final parser = Parser(rules: {
+        'S': Seq([Ref('E'), Str(';')]),
+        'E': First([
+          Seq([Ref('E'), Str('+'), Ref('T')]),
+          Ref('T')
+        ]),
+        'T': Str('n')
+      }, input: 'n+Xn;Y');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(6), reason: 'Should span entire input');
@@ -430,11 +418,9 @@ void main() {
 
     test('SPAN-20-recovery-preserves-matched-content', () {
       // When recovering from errors, matched content should be preserved
-      final parser = Parser(
-          rules: {
-            'S': Seq([Str('hello'), Str(' '), Str('world')])
-          },
-          input: 'hello X world');
+      final parser = Parser(rules: {
+        'S': Seq([Str('hello'), Str(' '), Str('world')])
+      }, input: 'hello X world');
       final (result, _) = parser.parse('S');
 
       expect(result.len, equals(13), reason: 'Should span entire input');

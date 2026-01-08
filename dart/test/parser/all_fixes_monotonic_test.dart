@@ -142,8 +142,7 @@ void main() {
   test('F6-LR-deletion', () {
     final parser = Parser(rules: eofLR, input: '1+2+3');
     final (result, _) = parser.parse('S');
-    expect(!result.isMismatch, isTrue,
-        reason: 'should succeed with recovery');
+    expect(!result.isMismatch, isTrue, reason: 'should succeed with recovery');
     expect(countDeletions(result), greaterThanOrEqualTo(1),
         reason: 'should have at least 1 deletion');
   });

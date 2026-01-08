@@ -45,7 +45,22 @@ import 'package:squirrel_parser/squirrel_parser.dart';
   List<CSTNodeFactory<CSTNode>> factories,
 ) {
   final rules = MetaGrammar.parseGrammar(grammarText);
-  return _doParse(rules, topRule, input, factories);
+
+  // Convert factories list to map, checking for duplicates
+  final factoriesMap = _buildFactoriesMap(factories);
+
+  // Get the parse tree
+  final (matchResult, syntaxErrors) =
+      parseToMatchResultForTesting(rules, topRule, input);
+
+  // Validate factories
+  _validateCSTFactories(rules, factoriesMap);
+
+  // Build CST from parse tree
+  final cst =
+      _buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
+
+  return (cst, syntaxErrors);
 }
 
 // ============================================================================
@@ -73,34 +88,26 @@ import 'package:squirrel_parser/squirrel_parser.dart';
   String input,
   List<CSTNodeFactory<CSTNode>> factories,
 ) {
-  return _doParse(rules, topRule, input, factories);
-}
-
-// ============================================================================
-// Private helpers
-// ============================================================================
-
-/// Performs the actual parsing work with pre-parsed grammar rules.
-(CSTNode, List<SyntaxError>) _doParse(
-  Map<String, Clause> rules,
-  String topRule,
-  String input,
-  List<CSTNodeFactory<CSTNode>> factories,
-) {
   // Convert factories list to map, checking for duplicates
   final factoriesMap = _buildFactoriesMap(factories);
 
   // Get the parse tree
-  final (matchResult, syntaxErrors) = parseToMatchResultForTesting(rules, topRule, input);
+  final (matchResult, syntaxErrors) =
+      parseToMatchResultForTesting(rules, topRule, input);
 
   // Validate factories
   _validateCSTFactories(rules, factoriesMap);
 
   // Build CST from parse tree
-  final cst = _buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
+  final cst =
+      _buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
 
   return (cst, syntaxErrors);
 }
+
+// ============================================================================
+// Private helpers
+// ============================================================================
 
 /// Build a factories map from a list, checking for duplicate rule names.
 ///
@@ -131,13 +138,15 @@ Map<String, CSTNodeFactory<CSTNode>> _buildFactoriesMap(
 }
 
 /// Validate that CST factories cover all non-transparent grammar rules.
-void _validateCSTFactories(Map<String, Clause> rules, Map<String, CSTNodeFactory<CSTNode>> factories) {
+void _validateCSTFactories(
+    Map<String, Clause> rules, Map<String, CSTNodeFactory<CSTNode>> factories) {
   final transparentRules = _getTransparentRules(rules);
   final requiredRules = rules.keys.toSet()..removeAll(transparentRules);
   final factoryRules = factories.keys.toSet();
 
   // Check if any factories are for transparent rules
-  final factoriesForTransparentRules = factoryRules.intersection(transparentRules);
+  final factoriesForTransparentRules =
+      factoryRules.intersection(transparentRules);
   if (factoriesForTransparentRules.isNotEmpty) {
     throw CSTFactoryValidationException(
       extra: factoriesForTransparentRules,
@@ -192,12 +201,15 @@ CSTNode _buildCST(
   if (clause is Ref && !clause.transparent) {
     final childFactory = factories[clause.ruleName];
     if (childFactory != null) {
-      final childChildren = _buildCSTChildren(matchResult, input, factories, syntaxErrors, childFactory.expectedChildren);
-      children.add(childFactory.factory(clause.ruleName, childFactory.expectedChildren, childChildren));
+      final childChildren = _buildCSTChildren(matchResult, input, factories,
+          syntaxErrors, childFactory.expectedChildren);
+      children.add(childFactory.factory(
+          clause.ruleName, childFactory.expectedChildren, childChildren));
     }
   } else {
     // For non-Ref clauses, collect children normally
-    children.addAll(_buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren));
+    children.addAll(_buildCSTChildren(
+        matchResult, input, factories, syntaxErrors, factory.expectedChildren));
   }
 
   // Create the top-level CST node
@@ -214,7 +226,8 @@ CSTNode _buildCSTNode(
   // Get the rule name from the clause
   final clause = matchResult.clause;
   if (clause is! Ref) {
-    throw CSTConstructionException('Expected Ref at top level, got ${clause.runtimeType}');
+    throw CSTConstructionException(
+        'Expected Ref at top level, got ${clause.runtimeType}');
   }
 
   final ruleName = clause.ruleName;
@@ -222,16 +235,19 @@ CSTNode _buildCSTNode(
   // If this is a transparent rule, skip it and recurse into children
   if (clause.transparent) {
     final children = matchResult.subClauseMatches
-        .where((m) => !m.isMismatch && m.clause is Ref && !(m.clause as Ref).transparent)
+        .where((m) =>
+            !m.isMismatch && m.clause is Ref && !(m.clause as Ref).transparent)
         .toList();
 
     if (children.isEmpty) {
-      throw CSTConstructionException('Transparent rule $ruleName has no non-transparent children');
+      throw CSTConstructionException(
+          'Transparent rule $ruleName has no non-transparent children');
     }
     if (children.length == 1) {
       return _buildCSTNode(children[0], input, factories, syntaxErrors);
     } else {
-      throw CSTConstructionException('Transparent rule $ruleName has multiple non-transparent children');
+      throw CSTConstructionException(
+          'Transparent rule $ruleName has multiple non-transparent children');
     }
   }
 
@@ -241,7 +257,8 @@ CSTNode _buildCSTNode(
   }
 
   // Get child matches
-  final children = _buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren);
+  final children = _buildCSTChildren(
+      matchResult, input, factories, syntaxErrors, factory.expectedChildren);
 
   // Call the factory to create the CST node
   return factory.factory(ruleName, factory.expectedChildren, children);
@@ -265,7 +282,10 @@ List<CSTNode> _buildCSTChildren(
     final clause = child.clause;
 
     // Handle terminals - don't create CST nodes for terminals
-    if (clause is Str || clause is Char || clause is CharRange || clause is AnyChar) {
+    if (clause is Str ||
+        clause is Char ||
+        clause is CharRange ||
+        clause is AnyChar) {
       continue;
     }
 

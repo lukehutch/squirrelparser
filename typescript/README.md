@@ -1,4 +1,4 @@
-# The Squirrel Parser 🐿️ -- TypeScript Implementation
+# The Squirrel Parser 🐿️ (TypeScript implementation)
 
 This is the TypeScript implementation of the squirrel parser: a fast linear-time PEG packrat parser capable of handling all forms of left recursion, with optimal error recovery.
 
@@ -47,7 +47,7 @@ const grammar = `
   ~_ <- [ \t\n\r]*;
 `;
 
-// 2. Define a custom CST node class
+// 2. Define custom CST node classes for each concrete syntax element
 class CalcNode extends CSTNode {
   children: CalcNode[];
   value?: number;

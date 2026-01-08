@@ -130,8 +130,7 @@ void main() {
       input: 'ab',
     );
     final (result, _) = parser.parse('S');
-    expect(!result.isMismatch, isTrue,
-        reason: 'should succeed with recovery');
+    expect(!result.isMismatch, isTrue, reason: 'should succeed with recovery');
     expect(countDeletions(result) == 1, isTrue,
         reason: 'should have 1 deletion');
   });

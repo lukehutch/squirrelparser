@@ -1,4 +1,4 @@
-# The Squirrel Parser 🐿️ -- Dart Implementation
+# The Squirrel Parser 🐿️ (Dart implementation)
 
 This is the Dart implementation of the squirrel parser: a fast linear-time PEG packrat parser capable of handling all forms of left recursion, with optimal error recovery.
 
@@ -42,7 +42,7 @@ final grammar = '''
   ~_ <- [ \t\n\r]*;
 ''';
 
-// 2. Define a custom CST node class
+// 2. Define custom CST node classes for each concrete syntax element
 class CalcNode extends CSTNode {
   final List<CalcNode> children;
   final int? value;

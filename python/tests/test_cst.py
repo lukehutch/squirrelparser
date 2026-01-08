@@ -6,7 +6,6 @@ from squirrelparser import (
     CSTNode,
     CSTNodeFactory,
     CSTFactoryValidationException,
-    CSTConstructionException,
     DuplicateRuleNameException,
     squirrel_parse,
     parse_to_match_result_for_testing,

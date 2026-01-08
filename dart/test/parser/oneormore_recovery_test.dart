@@ -42,7 +42,8 @@ void main() {
 
     test('OM-05-multiple-iterations-with-errors', () {
       // FIX #10: First iteration with error, then more iterations with errors
-      final (ok, err, skip) = testParse({'S': OneOrMore(Str('ab'))}, 'XabYabZab');
+      final (ok, err, skip) =
+          testParse({'S': OneOrMore(Str('ab'))}, 'XabYabZab');
       expect(ok, isTrue, reason: 'should succeed');
       expect(err, equals(3), reason: 'should have 3 errors');
       expect(skip.contains('X'), isTrue, reason: 'should skip X');
@@ -52,7 +53,8 @@ void main() {
 
     test('OM-06-first-with-error-then-clean', () {
       // First iteration skips error, subsequent iterations clean
-      final (ok, err, skip) = testParse({'S': OneOrMore(Str('ab'))}, 'Xabababab');
+      final (ok, err, skip) =
+          testParse({'S': OneOrMore(Str('ab'))}, 'Xabababab');
       expect(ok, isTrue, reason: 'should succeed');
       expect(err, equals(1), reason: 'should have 1 error (only X)');
       expect(skip.contains('X'), isTrue, reason: 'should skip X');
@@ -112,7 +114,8 @@ void main() {
 
     test('OM-11-alternating-pattern', () {
       // Pattern: error, match, error, match, ...
-      final (ok, err, _) = testParse({'S': OneOrMore(Str('ab'))}, 'XabXabXabXab');
+      final (ok, err, _) =
+          testParse({'S': OneOrMore(Str('ab'))}, 'XabXabXabXab');
       expect(ok, isTrue, reason: 'should succeed');
       expect(err, equals(4), reason: 'should have 4 errors (4 X\'s)');
     });

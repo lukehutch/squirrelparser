@@ -22,7 +22,8 @@ void main() {
       ''';
 
       final rules = MetaGrammar.parseGrammar(grammar);
-      final (pt, errors) = parseToMatchResultForTesting(rules, 'Greeting', 'helloworld');
+      final (pt, errors) =
+          parseToMatchResultForTesting(rules, 'Greeting', 'helloworld');
 
       expect(pt, isNotNull);
       expect(pt.isMismatch, isFalse);
@@ -49,7 +50,8 @@ void main() {
       ];
 
       expect(
-        () => parseWithRuleMapForTesting(rules, 'Greeting', 'hello world', factories),
+        () => parseWithRuleMapForTesting(
+            rules, 'Greeting', 'hello world', factories),
         throwsA(isA<CSTFactoryValidationException>()),
       );
     });

@@ -24,7 +24,8 @@ void main() {
   });
 
   test('R03-long skip', () {
-    final (ok, err, _) = testParse({'S': OneOrMore(Str('ab'))}, 'ab${'X' * 50}ab');
+    final (ok, err, _) =
+        testParse({'S': OneOrMore(Str('ab'))}, 'ab${'X' * 50}ab');
     expect(ok, isTrue, reason: 'should succeed');
     expect(err, equals(1), reason: 'should have 1 error');
   });
@@ -117,14 +118,15 @@ void main() {
       'A': OneOrMore(First([Str('a'), Str('b')]))
     }, 'abxbxax');
     expect(ok, isTrue, reason: 'should succeed with recovery');
-    expect(err, equals(3), reason: 'should have 3 errors (x at positions 2, 4, 6)');
+    expect(err, equals(3),
+        reason: 'should have 3 errors (x at positions 2, 4, 6)');
     expect(skip.length, equals(3), reason: 'should skip 3 chars total');
   });
 
   test('R16-trailing multiple chars after recovery', () {
     // Multiple trailing errors after recovery
-    final (ok, err, skip) = testParse(
-        {'S': OneOrMore(Str('ab'))}, 'abXabXabXX');
+    final (ok, err, skip) =
+        testParse({'S': OneOrMore(Str('ab'))}, 'abXabXabXX');
     expect(ok, isTrue, reason: 'should succeed with recovery');
     expect(err, equals(3), reason: 'should have 3 errors');
     expect(skip.length, equals(3), reason: 'should skip 3 occurrences');
@@ -132,24 +134,23 @@ void main() {
 
   test('R17-trailing long error after recovery', () {
     // Long trailing error after recovery
-    final (ok, err, skip) = testParse(
-        {'S': OneOrMore(Str('x'))}, '${'x' * 50}Z${'x' * 49}YYYY');
+    final (ok, err, skip) =
+        testParse({'S': OneOrMore(Str('x'))}, '${'x' * 50}Z${'x' * 49}YYYY');
     expect(ok, isTrue, reason: 'should succeed with recovery');
     expect(err, equals(2), reason: 'should have 2 errors (Z and YYYY)');
   });
 
   test('R18-trailing after multiple alternating errors', () {
     // Multiple errors throughout, then trailing error
-    final (ok, err, _) = testParse({'S': OneOrMore(Str('ab'))},
-        'abXabYabZabXX');
+    final (ok, err, _) =
+        testParse({'S': OneOrMore(Str('ab'))}, 'abXabYabZabXX');
     expect(ok, isTrue, reason: 'should succeed with recovery');
     expect(err, equals(4), reason: 'should have 4 errors (X, Y, Z, XX)');
   });
 
   test('R19-single char after first recovery', () {
     // Recovery on first iteration, then trailing error
-    final (ok, err, skip) = testParse(
-        {'S': OneOrMore(Str('ab'))}, 'XXabX');
+    final (ok, err, skip) = testParse({'S': OneOrMore(Str('ab'))}, 'XXabX');
     expect(ok, isTrue, reason: 'should succeed');
     expect(err, equals(2), reason: 'should have 2 errors (XX and X)');
     expect(skip.contains('XX') && skip.contains('X'), isTrue,
@@ -158,8 +159,7 @@ void main() {
 
   test('R20-trailing error with single element', () {
     // Single valid element followed by recovery, then trailing
-    final (ok, err, _) = testParse(
-        {'S': OneOrMore(Str('a'))}, 'aXaY');
+    final (ok, err, _) = testParse({'S': OneOrMore(Str('a'))}, 'aXaY');
     expect(ok, isTrue, reason: 'should succeed');
     expect(err, equals(2), reason: 'should have 2 errors (X and Y)');
   });

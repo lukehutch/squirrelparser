@@ -1,4 +1,4 @@
-# The Squirrel Parser 🐿️ -- Java Implementation
+# The Squirrel Parser 🐿️ (Java implementation)
 
 This is the Java implementation of the squirrel parser: a fast linear-time PEG packrat parser capable of handling all forms of left recursion, with optimal error recovery.
 
@@ -32,7 +32,7 @@ The CST infrastructure is complete in Java. To use it, you define custom CST nod
 ```java
 import com.squirrelparser.*;
 
-// Define a custom CST node class
+// Define custom CST node classes for each concrete syntax element
 class CalcNode extends CSTNode {
     private final List<CalcNode> children;
     private final Integer value;
@@ -68,36 +68,55 @@ class CalcNode extends CSTNode {
 
 ### CST Node Factories
 
-Create factory instances for each grammar rule:
+Create factory instances for each non-transparent grammar rule:
 
 ```java
 import com.squirrelparser.*;
 import java.util.List;
 
-// Create factories for each grammar rule
-List<CSTNodeFactory<CalcNode>> factories = List.of(
-    new CSTNodeFactory<CalcNode>(
+String grammarText = """
+  Expr   <- Term (AddOp Term)*;
+  Term   <- Factor (MulOp Factor)*;
+  Factor <- Number / '(' Expr ')';
+  Number <- [0-9]+;
+  AddOp  <- '+' / '-';
+  MulOp  <- '*' / '/';
+  ~_ <- [ \\t\\n\\r]*;
+""";
+
+// Create factories for each NON-TRANSPARENT grammar rule
+List<CSTNodeFactory<CSTNode>> factories = List.of(
+    new CSTNodeFactory<>(
         "Expr",
-        List.of("Term"),
-        (ruleName, expectedChildren, children) -> {
-            return new CalcNode(ruleName, (List<CalcNode>) (List<?>) children);
-        }
+        List.of("Term", "AddOp"),
+        (ruleName, expectedChildren, children) ->
+            new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
-    new CSTNodeFactory<CalcNode>(
+    new CSTNodeFactory<>(
         "Term",
-        List.of("Factor"),
-        (ruleName, expectedChildren, children) -> {
-            return new CalcNode(ruleName, (List<CalcNode>) (List<?>) children);
-        }
+        List.of("Factor", "MulOp"),
+        (ruleName, expectedChildren, children) ->
+            new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
-    new CSTNodeFactory<CalcNode>(
+    new CSTNodeFactory<>(
         "Factor",
         List.of("Number", "Expr"),
-        (ruleName, expectedChildren, children) -> {
-            return new CalcNode(ruleName, (List<CalcNode>) (List<?>) children);
-        }
+        (ruleName, expectedChildren, children) ->
+            new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
-    new CSTNodeFactory<CalcNode>(
+    new CSTNodeFactory<>(
+        "AddOp",
+        List.of("<Terminal>"),
+        (ruleName, expectedChildren, children) ->
+            new CalcNode(ruleName)
+    ),
+    new CSTNodeFactory<>(
+        "MulOp",
+        List.of("<Terminal>"),
+        (ruleName, expectedChildren, children) ->
+            new CalcNode(ruleName)
+    ),
+    new CSTNodeFactory<>(
         "Number",
         List.of("<Terminal>"),
         (ruleName, expectedChildren, children) -> {
@@ -107,6 +126,11 @@ List<CSTNodeFactory<CalcNode>> factories = List.of(
         }
     )
 );
+
+// Parse the input
+String input = "2+3*4";
+CSTNode cst = SquirrelParser.parse(grammarText, input, "Expr", factories);
+System.out.println("Parse successful: " + cst.getName());
 ```
 
 ### Understanding CST Factories
@@ -363,15 +387,18 @@ new CSTNodeFactory<MyNode>(
 import com.squirrelparser.*;
 import java.util.List;
 
+String grammarText = "..."; // Your grammar
+String input = "...";       // Your input
+List<CSTNodeFactory<CSTNode>> factories = [...]; // Your factories
+
 try {
-    List<CSTNodeFactory<MyNode>> factories = [...];
-    // Call squirrelParse with factories
-    // CST cst = SquirrelParse.parse(grammar, input, topRule, factories);
+    CSTNode cst = SquirrelParser.parse(grammarText, input, "RuleName", factories);
 } catch (CSTFactoryValidationException e) {
     System.out.println("Missing factories: " + e.getMissing());
     System.out.println("Extra factories: " + e.getExtra());
 } catch (DuplicateRuleNameException e) {
-    System.out.println("Duplicate rule: " + e.getRuleName());
+    System.out.println("Duplicate rule: " + e.getRuleName() +
+                       " (appears " + e.getCount() + " times)");
 } catch (CSTConstructionException e) {
     System.out.println("CST construction failed: " + e.getMessage());
 }
@@ -396,10 +423,12 @@ The Java implementation includes:
 - `DuplicateRuleNameException` - exception for duplicate rule names
 - `CSTConstructionException` - exception for CST construction failures
 
-⏳ **Pending**
-- `squirrelParse()` public API method (infrastructure is complete)
+✅ **Complete Public API**
+- `SquirrelParser.parse()` - public API method for parsing with CST factories
+- Full factory-based CST construction with validation
+- Transparent rule support
 
-The CST node classes are fully type-safe and ready to use. Once the `squirrelParse()` method is implemented, the public API will be complete and isomorphic with the Dart, TypeScript, and Python implementations.
+The Java implementation is now complete and fully isomorphic with the Dart, TypeScript, and Python implementations.
 
 ## Testing
 

@@ -62,7 +62,8 @@ void main() {
 
     test('REP-06-alternating-match-skip-pattern', () {
       // Pattern: match, skip, match, skip, ...
-      final (ok, err, _) = testParse({'S': OneOrMore(Str('ab'))}, 'abXabXabXab');
+      final (ok, err, _) =
+          testParse({'S': OneOrMore(Str('ab'))}, 'abXabXabXab');
       expect(ok, isTrue, reason: 'should succeed');
       expect(err, equals(3), reason: 'should have 3 errors (3 X\'s)');
     });

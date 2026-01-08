@@ -7,7 +7,7 @@ including syntax error nodes for error recovery.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING, TypeVar, Generic, Callable
 
 if TYPE_CHECKING:

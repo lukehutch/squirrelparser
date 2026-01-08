@@ -80,42 +80,42 @@ void main() {
     CSTNodeFactory<TerminalNode>(
       ruleName: 'Number',
       expectedChildren: ['<Terminal>'],
-      factory: (ruleName, _expectedChildren, children) {
+      factory: (ruleName, expectedChildren, children) {
         return TerminalNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<OpNode>(
       ruleName: 'AddOp',
       expectedChildren: ['<Terminal>'],
-      factory: (ruleName, _expectedChildren, children) {
+      factory: (ruleName, expectedChildren, children) {
         return OpNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<OpNode>(
       ruleName: 'MulOp',
       expectedChildren: ['<Terminal>'],
-      factory: (ruleName, _expectedChildren, children) {
+      factory: (ruleName, expectedChildren, children) {
         return OpNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
       ruleName: 'Factor',
       expectedChildren: ['Number', 'Expr'],
-      factory: (ruleName, _expectedChildren, children) {
+      factory: (ruleName, expectedChildren, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
       ruleName: 'Term',
       expectedChildren: ['Factor', 'MulOp'],
-      factory: (ruleName, _expectedChildren, children) {
+      factory: (ruleName, expectedChildren, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
       ruleName: 'Expr',
       expectedChildren: ['Term', 'AddOp'],
-      factory: (ruleName, _expectedChildren, children) {
+      factory: (ruleName, expectedChildren, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),

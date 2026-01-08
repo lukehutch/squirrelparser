@@ -36,8 +36,7 @@ void main() {
         final (result, _) = parser.parse(topRule);
 
         final work = parserStats!.totalWork;
-        final success =
-            !result.isMismatch && result.len == input.length;
+        final success = !result.isMismatch && result.len == input.length;
         final ratio = size > 0 ? work / size : 0.0;
 
         results.add((size, work, ratio));

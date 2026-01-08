@@ -91,8 +91,7 @@ void main() {
     );
     final (result, _) = parser.parse('S');
     // With recovery, should insert missing ')'
-    expect(!result.isMismatch, isTrue,
-        reason: 'should succeed with recovery');
+    expect(!result.isMismatch, isTrue, reason: 'should succeed with recovery');
   });
 
   test('LR-Recovery-07-extra-close-paren', () {

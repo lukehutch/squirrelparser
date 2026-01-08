@@ -96,7 +96,8 @@ void main() {
   });
 
   test('ST12-long err span', () {
-    final (ok, err, _) = testParse({'S': OneOrMore(Str('ab'))}, 'ab${'X' * 200}ab');
+    final (ok, err, _) =
+        testParse({'S': OneOrMore(Str('ab'))}, 'ab${'X' * 200}ab');
     expect(ok, isTrue, reason: 'should succeed');
     expect(err, equals(1), reason: 'should have 1 error');
   });

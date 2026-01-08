@@ -5,7 +5,6 @@ squirrel_parse - Parse input and return a Concrete Syntax Tree (CST)
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Mapping
-from collections.abc import Callable
 
 from .parser import Parser
 from .terminals import Str, Char, CharRange, AnyChar
@@ -57,7 +56,20 @@ def squirrel_parse(
     from .meta_grammar import MetaGrammar
 
     rules = MetaGrammar.parse_grammar(grammar_text)
-    return _do_parse(rules, top_rule, input_str, factories)
+
+    # Convert factories list to map, checking for duplicates
+    factories_map = _build_factories_map(factories)
+
+    # Get the parse tree
+    match_result, syntax_errors = parse_to_match_result_for_testing(rules, top_rule, input_str)
+
+    # Validate factories
+    _validate_cst_factories(rules, factories_map)
+
+    # Build CST from parse tree
+    cst = _build_cst(match_result, input_str, factories_map, syntax_errors, top_rule)
+
+    return (cst, syntax_errors)
 
 
 # ============================================================================
@@ -90,21 +102,6 @@ def parse_with_rule_map_for_testing(
     Internal method for parsing with pre-parsed grammar rules.
     Exposed for testing purposes only - not part of public API.
     """
-    return _do_parse(rules, top_rule, input_str, factories)
-
-
-# ============================================================================
-# Private helpers
-# ============================================================================
-
-
-def _do_parse(
-    rules: Mapping[str, Clause],
-    top_rule: str,
-    input_str: str,
-    factories: list[CSTNodeFactory[CSTNode]],
-) -> tuple[CSTNode, list[SyntaxError]]:
-    """Performs the actual parsing work with pre-parsed grammar rules."""
     # Convert factories list to map, checking for duplicates
     factories_map = _build_factories_map(factories)
 
@@ -118,6 +115,11 @@ def _do_parse(
     cst = _build_cst(match_result, input_str, factories_map, syntax_errors, top_rule)
 
     return (cst, syntax_errors)
+
+
+# ============================================================================
+# Private helpers
+# ============================================================================
 
 
 def _build_factories_map(

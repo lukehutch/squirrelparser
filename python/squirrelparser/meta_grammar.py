@@ -230,6 +230,7 @@ class MetaGrammar:
 
         return result
 
+
     @staticmethod
     def _build_clause(
         node: ASTNode,

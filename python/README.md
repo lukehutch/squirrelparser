@@ -1,4 +1,4 @@
-# The Squirrel Parser 🐿️ -- Python Implementation
+# The Squirrel Parser 🐿️ (Python implementation)
 
 This is the Python implementation of the squirrel parser: a fast linear-time PEG packrat parser capable of handling all forms of left recursion, with optimal error recovery.
 
@@ -42,7 +42,7 @@ grammar = """
   ~_ <- [ \t\n\r]*;
 """
 
-# 2. Define a custom CST node class
+# 2. Define custom CST node classes for each concrete syntax element
 class CalcNode(CSTNode):
     def __init__(self, name: str, children=None, value=None):
         super().__init__(name)
