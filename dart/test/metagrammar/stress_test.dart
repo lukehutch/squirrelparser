@@ -401,11 +401,11 @@ void main() {
 
       expect(ast, isNotNull);
       expect(ast.label, equals('Main'));
-      // All three children are present (B appears even though marked transparent)
-      expect(ast.children.length, equals(3));
+      // Transparent rules (marked with ~) should not appear in the AST
+      // So only A and C should be present, not B
+      expect(ast.children.length, equals(2));
       expect(ast.children[0].label, equals('A'));
-      expect(ast.children[1].label, equals('B'));
-      expect(ast.children[2].label, equals('C'));
+      expect(ast.children[1].label, equals('C'));
     });
 
     test('character class with special characters', () {

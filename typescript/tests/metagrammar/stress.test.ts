@@ -402,11 +402,10 @@ describe('MetaGrammar - Stress Tests', () => {
 
     expect(ast).not.toBeNull();
     expect(ast!.label).toBe('Main');
-    // All three children are present (B appears even though marked transparent)
-    expect(ast!.children.length).toBe(3);
+    // Transparent rule B is excluded from the AST
+    expect(ast!.children.length).toBe(2);
     expect(ast!.children[0].label).toBe('A');
-    expect(ast!.children[1].label).toBe('B');
-    expect(ast!.children[2].label).toBe('C');
+    expect(ast!.children[1].label).toBe('C');
   });
 
   test('character class with special characters', () => {

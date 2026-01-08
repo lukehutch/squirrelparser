@@ -405,11 +405,10 @@ class TestMetaGrammarStressTests:
 
         assert ast is not None
         assert ast.label == 'Main'
-        # All three children are present (B appears even though marked transparent)
-        assert len(ast.children) == 3
+        # Transparent rule B is excluded from the AST
+        assert len(ast.children) == 2
         assert ast.children[0].label == 'A'
-        assert ast.children[1].label == 'B'
-        assert ast.children[2].label == 'C'
+        assert ast.children[1].label == 'C'
 
     def test_character_class_with_special_characters(self) -> None:
         """character class with special characters"""

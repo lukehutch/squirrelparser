@@ -7,9 +7,20 @@ from .clause import Clause
 from .terminals import Str, Char, CharRange, AnyChar
 from .combinators import Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowedBy, FollowedBy, Ref
 from .parser import Parser
-from .ast_node import ASTNode, build_ast
 from .meta_grammar import MetaGrammar
-from .squirrel_parse import squirrel_parse, squirrel_parse_with_rule_map
+from .cst_node import (
+    CSTNode,
+    CSTSyntaxErrorNode,
+    CSTNodeFactory,
+    CSTFactoryValidationException,
+    CSTConstructionException,
+    DuplicateRuleNameException,
+)
+from .squirrel_parse import (
+    squirrel_parse,
+    parse_to_match_result_for_testing,
+    parse_with_rule_map_for_testing,
+)
 
 __all__ = [
     'Match', 'Mismatch', 'SyntaxError', 'MISMATCH', 'LR_PENDING',
@@ -17,10 +28,16 @@ __all__ = [
     'Str', 'Char', 'CharRange', 'AnyChar',
     'Seq', 'First', 'OneOrMore', 'ZeroOrMore', 'Optional', 'NotFollowedBy', 'FollowedBy', 'Ref',
     'Parser',
-    'ASTNode', 'build_ast',
     'MetaGrammar',
+    'CSTNode',
+    'CSTSyntaxErrorNode',
+    'CSTNodeFactory',
+    'CSTFactoryValidationException',
+    'CSTConstructionException',
+    'DuplicateRuleNameException',
     'squirrel_parse',
-    'squirrel_parse_with_rule_map',
+    'parse_to_match_result_for_testing',
+    'parse_with_rule_map_for_testing',
 ]
 
 __version__ = '1.0.0'

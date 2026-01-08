@@ -218,7 +218,7 @@ public class Parser {
         String topRule
     ) {
         java.util.Map<String, Clause> rules = MetaGrammar.parseGrammar(grammarText);
-        return squirrelParseInternal(rules, topRule, input);
+        return squirrelParse(rules, topRule, input);
     }
 
     /**
@@ -232,17 +232,6 @@ public class Parser {
      * @return A SquirrelParseResult containing the AST and syntax errors
      */
     public static SquirrelParseResult squirrelParse(
-        java.util.Map<String, Clause> rules,
-        String topRule,
-        String input
-    ) {
-        return squirrelParseInternal(rules, topRule, input);
-    }
-
-    /**
-     * Internal implementation shared by both overloads.
-     */
-    private static SquirrelParseResult squirrelParseInternal(
         java.util.Map<String, Clause> rules,
         String topRule,
         String input

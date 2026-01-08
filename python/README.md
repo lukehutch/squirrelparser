@@ -4,56 +4,126 @@ This is the Python implementation of the squirrel parser: a fast linear-time PEG
 
 The squirrel parser handles all forms of left recursion, including cases of multiple interwoven direct or indirect left recursive cycles, and preserves perfect linear performance in the length of the input regardless of the number of syntax errors encountered: both parsing and error recovery have linear performance.
 
-See the details on the derivation of the squirrel parsing algorithm in [the paper](paper/squirrel_parser.pdf).
+See the details on the derivation of the squirrel parsing algorithm in [the paper](../paper/squirrel_parser.pdf).
 
 ## Usage
 
-### With Metagrammar (PEG Syntax) - Recommended
+The Squirrel Parser uses a **Concrete Syntax Tree (CST)** approach with custom factory functions. This allows you to build exactly the data structure you need from the parse tree.
+
+### Key Concept: Transparent Rules
+
+In the Squirrel Parser grammar, rules prefixed with `~` are **transparent** and don't create CST nodes:
 
 ```python
-from squirrelparser import squirrel_parse
+grammar = """
+  ~_ <- [ \t\n\r]*;  # Transparent: won't create a CST node
+  ~Whitespace <- ' '+;      # Transparent: won't create a CST node
+  Number <- [0-9]+;         # Non-transparent: will create a CST node
+  Expr <- Number ('+' Number)*;  # Non-transparent: will create a CST node
+"""
+```
 
-# Define grammar using PEG syntax
-grammar_str = """
-number <- [0-9]+
-expr <- expr '+' number / number
+**Important**: You only need to create factories for **non-transparent** grammar rules. Transparent rules are automatically excluded from factory requirements. If you accidentally create a factory for a transparent rule, an exception will be thrown.
+
+### Basic Example with CST
+
+```python
+from squirrelparser import squirrel_parse, CSTNode, CSTNodeFactory
+
+# 1. Define your grammar using PEG metagrammar syntax
+grammar = """
+  Expr <- Term (('+' / '-') Term)*;
+  Term <- Factor (('*' / '/') Factor)*;
+  Factor <- Number / '(' Expr ')';
+  Number <- [0-9]+;
+  ~_ <- [ \t\n\r]*;
 """
 
-# Parse input with error handling
-ast, errors = squirrel_parse(grammar_str, '1+2+3', 'expr')
+# 2. Define a custom CST node class
+class CalcNode(CSTNode):
+    def __init__(self, name: str, children=None, value=None):
+        super().__init__(name)
+        self.children = children or []
+        self.value = value
 
-print('AST:')
-print(ast.to_pretty_string())
-if errors:
-    print('Syntax errors found:')
+    def __str__(self):
+        return str(self.value) if self.value is not None else self.name
+
+
+# 3. Create factories for each NON-TRANSPARENT grammar rule
+factories = [
+    CSTNodeFactory(
+        'Expr',
+        ['Term'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+    ),
+    CSTNodeFactory(
+        'Term',
+        ['Factor'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+    ),
+    CSTNodeFactory(
+        'Factor',
+        ['Number', 'Expr'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+    ),
+    CSTNodeFactory(
+        'Number',
+        ['<Terminal>'],
+        lambda ruleName, expectedChildren, children: CalcNode(
+            ruleName, [], int(children[0].toString()) if children else 0
+        ),
+    ),
+]
+
+# 4. Parse input and get the CST
+cst, errors = squirrel_parse(grammar, "2+3*4", 'Expr', factories)
+
+if not errors:
+    print('Parse successful!')
+    print(f'CST root: {cst.name}')
+else:
+    print('Syntax errors:')
     for error in errors:
         print(f'  {error}')
 ```
 
-### Without Metagrammar (Direct API)
+### Understanding CST Factories
+
+Each **non-transparent** grammar rule needs a corresponding factory. The factory function receives:
+
+- **ruleName**: The name of the grammar rule
+- **expectedChildren**: The expected child rule names (useful for validation)
+- **children**: The actual CST child nodes built from the parse tree
 
 ```python
-from squirrelparser import *
+CSTNodeFactory(
+    'RuleName',
+    ['Child1', 'Child2'],  # Expected children
+    lambda ruleName, expectedChildren, children: MyNode(ruleName, children)
+)
+```
 
-# Define grammar rules directly
-rules = {
-    'number': OneOrMore(CharRange('0', '9')),
-    'expr': First([
-        Seq([Ref('expr'), Str('+'), Ref('number')]),
-        Ref('number')
-    ])
-}
+### Direct API (Advanced)
 
-# Parse input
-ast, errors = squirrel_parse_with_rule_map(rules, 'expr', '1+2+3')
+For advanced use cases, you can work directly with the rules map:
 
-if ast:
-    print("AST:")
-    print(ast.to_pretty_string())
-if errors:
-    print('Syntax errors found:')
-    for error in errors:
-        print(f'  {error}')
+```python
+from squirrelparser import MetaGrammar, parse_with_rule_map_for_testing
+
+# Parse grammar
+rules = MetaGrammar.parse_grammar(grammar_text)
+
+# Create factories (same as before)
+factories = [...]
+
+# Parse with rule map (internal API)
+cst, errors = parse_with_rule_map_for_testing(
+    rules,
+    'RuleName',
+    input_str,
+    factories,
+)
 ```
 
 ## Grammar Syntax Reference
@@ -64,7 +134,7 @@ if errors:
 RuleName <- Expression ;
 ```
 
-Rules are defined with a name, followed by `<-`, then an expression, ending with `;
+Rules are defined with a name, followed by `<-`, then an expression, ending with `;`.
 
 ### Transparent Rules
 
@@ -72,7 +142,7 @@ Rules are defined with a name, followed by `<-`, then an expression, ending with
 ~RuleName <- Expression ;
 ```
 
-Transparent rules (prefixed with `~`) are flattened in the AST.
+Transparent rules (prefixed with `~`) don't create CST nodes and are excluded from factory requirements.
 
 ### Sequences
 
@@ -156,9 +226,7 @@ Rule <- ∅ ;
 Rule <- () ;
 ```
 
-Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions.
-
-You can use either `∅` or empty parentheses `()` to match Nothing.
+Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions. You can use either `∅` or empty parentheses `()`.
 
 ### Escape Sequences
 
@@ -177,13 +245,20 @@ Supported in strings and character literals:
 Rule <- "a" ; # Comments can appear anywhere
 ```
 
-## Complete Example: JSON Grammar
+## Complete Example: JSON Parser with CST
 
 ```python
-from squirrelparser import squirrel_parse
+from squirrelparser import squirrel_parse, CSTNode, CSTNodeFactory
+
+# Custom CST node for JSON
+class JsonNode(CSTNode):
+    def __init__(self, name: str, children=None, value=None):
+        super().__init__(name)
+        self.children = children or []
+        self.value = value
+
 
 json_grammar = """
-# JSON Grammar
 JSON <- _ Value _ ;
 Value <- Object / Array / String / Number / Boolean / Null ;
 
@@ -193,8 +268,7 @@ Pair <- String _ ':' _ Value ;
 Array <- '[' _ (Value (',' _ Value)*)? _ ']' ;
 
 String <- '"' StringChar* '"' ;
-~StringChar <- [^"\\] / '\\' EscapeChar ;
-~EscapeChar <- ["\\/bfnrt] ;
+~StringChar <- [^"\\\\] / '\\\\' . ;
 
 Number <- '-'? [0-9]+ ('.' [0-9]+)? ;
 
@@ -204,131 +278,142 @@ Null <- "null" ;
 ~_ <- [ \t\n\r]* ;
 """
 
-# Test with JSON input
-json_input = '{"name": "Alice", "age": 30, "active": true}'
-ast, errors = squirrel_parse(json_grammar, json_input, 'JSON')
+# CST factories
+factories = [
+    CSTNodeFactory(
+        'JSON',
+        ['Value'],
+        lambda ruleName, _, children: JsonNode(
+            ruleName, children, children[0].value if children else None
+        ),
+    ),
+    CSTNodeFactory(
+        'Value',
+        ['Object', 'Array', 'String', 'Number', 'Boolean', 'Null'],
+        lambda ruleName, _, children: JsonNode(
+            ruleName, children, children[0].value if children else None
+        ),
+    ),
+    # ... factories for other rules ...
+]
 
-if ast:
-    print("AST:")
-    print(ast.to_pretty_string())
-if errors:
-    print('Syntax errors found:')
+# Parse JSON
+json_input = '{"name": "Alice", "age": 30}'
+cst, errors = squirrel_parse(json_grammar, json_input, 'JSON', factories)
+
+if not errors:
+    print('JSON parsed successfully')
+else:
     for error in errors:
-        print(f'  {error}')
-```
-
-## Example: Calculator with Actions
-
-```python
-from squirrelparser import squirrel_parse, ASTNode
-
-# Define grammar
-calc_grammar = """
-Expr <- Term (('+' / '-') Term)* ;
-Term <- Factor (('*' / '/') Factor)* ;
-Factor <- Number / '(' Expr ')' ;
-Number <- [0-9]+ ;
-"""
-
-# Parse input and get AST
-ast, errors = squirrel_parse(calc_grammar, "2+3*4", 'Expr')
-
-# Define evaluation function
-def eval_ast(node: ASTNode) -> float:
-    if node.label == 'Number':
-        return float(node.text)
-    elif node.label == 'Factor':
-        if len(node.children) == 1:
-            return eval_ast(node.children[0])
-        else:  # Parenthesized expression
-            return eval_ast(node.children[1])
-    elif node.label == 'Term':
-        result = eval_ast(node.children[0])
-        i = 1
-        while i < len(node.children):
-            op = node.children[i].text
-            operand = eval_ast(node.children[i + 1])
-            if op == '*':
-                result *= operand
-            elif op == '/':
-                result /= operand
-            i += 2
-        return result
-    elif node.label == 'Expr':
-        result = eval_ast(node.children[0])
-        i = 1
-        while i < len(node.children):
-            op = node.children[i].text
-            operand = eval_ast(node.children[i + 1])
-            if op == '+':
-                result += operand
-            elif op == '-':
-                result -= operand
-            i += 2
-        return result
-    else:
-        # Recursively evaluate children
-        if node.children:
-            return eval_ast(node.children[0])
-        return 0
-
-if ast:
-    result = eval_ast(ast)
-    print(f"Result: {result}")  # Output: Result: 14.0
-if errors:
-    print('Syntax errors found:')
-    for error in errors:
-        print(f'  {error}')
+        print(f'Error: {error}')
 ```
 
 ## Error Handling
 
+### Factory Validation Errors
+
 ```python
-from squirrelparser import MetaGrammar
+from squirrelparser import (
+    squirrel_parse,
+    CSTFactoryValidationException,
+    DuplicateRuleNameException,
+    CSTConstructionException,
+)
 
 try:
-    rules = MetaGrammar.parse_grammar(grammar_text)
-except ValueError as e:
-    print(f"Grammar parse error: {e}")
+    cst, errors = squirrel_parse(grammar, input_str, 'Rule', factories)
+except CSTFactoryValidationException as e:
+    print(f'Missing factories: {e.missing}')
+    print(f'Extra factories: {e.extra}')
+except DuplicateRuleNameException as e:
+    print(f'Duplicate rule name: {e.rule_name} (appears {e.count} times)')
+except CSTConstructionException as e:
+    print(f'CST construction failed: {e.args[0]}')
 ```
 
-## Tips
+### Syntax Errors
 
-1. **Use Transparent Rules** for whitespace and other structural elements you don't want in the AST -- prefix the rule name with `~` and no AST node will be created when the rule matches:
-   ```
-   ~_ <- [ \t\n\r]* ;
-   ```
-
-2. **Add Comments** to document your grammar:
-   ```
-   # This rule matches identifiers
-   Identifier <- [a-zA-Z_][a-zA-Z0-9_]* ;
-   ```
-
-3. **Handle Whitespace Explicitly** where needed:
-   ```
-   # Require whitespace between tokens
-   Statement <- Keyword _ Identifier ;
-
-   # Optional whitespace
-   Expression <- Term (_ ('+' / '-') _ Term)* ;
-   ```
-
-## Debugging
-
-Use `to_pretty_string()` to visualize the AST:
+The parser returns syntax errors separately from the CST:
 
 ```python
-ast, _ = parser.parse_to_ast('Expression')
-if ast:
-    print(ast.to_pretty_string())
+cst, syntax_errors = squirrel_parse(grammar, input_str, 'Rule', factories)
+
+if syntax_errors:
+    print('Syntax errors found:')
+    for error in syntax_errors:
+        print(f'  {error}')
 ```
 
-This will show the hierarchical structure of your parsed input.
+### Defining Custom Node Classes
+
+Your CST node classes should capture the semantic information you need:
+
+```python
+class MyNode(CSTNode):
+    def __init__(self, name: str, children=None, value=None):
+        super().__init__(name)
+        self.children = children or []
+        self.value = value
+```
+
+### Using Transparent Rules for Whitespace
+
+Use transparent rules to handle whitespace and other structural elements:
+
+```python
+grammar = """
+  ~_ <- [ \t\n\r]* ;
+  Expression <- Term (_ ('+' / '-') _ Term)* ;
+  Term <- Factor (_ ('*' / '/') _ Factor)* ;
+  Factor <- Number / '(' _ Expression _ ')' ;
+  Number <- [0-9]+ ;
+"""
+
+# You only need factories for Expression, Term, Factor, and Number
+# NOT for _ (which is transparent)
+```
+
+### Factory Functions Can Validate Input
+
+You can perform validation within your factory functions:
+
+```python
+CSTNodeFactory(
+    'MyRule',
+    ['Child1', 'Child2'],
+    lambda ruleName, expectedChildren, children: (
+        MyNode(ruleName, children)
+        if children
+        else (_ for _ in ()).throw(
+            CSTConstructionException(f'{ruleName} requires children')
+        )
+    )
+)
+```
+
+### Handling Terminal Nodes
+
+Terminal rules (which match literal text or character classes) have `expectedChildren: ['<Terminal>']`:
+
+```python
+# Terminals have expectedChildren: ['<Terminal>']
+CSTNodeFactory(
+    'Number',
+    ['<Terminal>'],
+    lambda ruleName, _, children: MyNode(
+        ruleName, [], str(children[0]) if children else None
+    ),
+)
+```
 
 ## Installation
 
 ```bash
 pip install -e .    # Install in development mode
 pytest              # Run tests
+mypy                # Run type checking
 ```
+
+## Testing
+
+The implementation includes comprehensive CST tests demonstrating all features.

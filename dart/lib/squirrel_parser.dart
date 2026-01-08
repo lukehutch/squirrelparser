@@ -1,6 +1,7 @@
 /// Squirrel Parser - A packrat parser with left recursion and error recovery
 library;
 
+export 'src/cst_node.dart';
 export 'src/metagrammar.dart';
 export 'src/parser/ast_node.dart';
 export 'src/parser/clause.dart';

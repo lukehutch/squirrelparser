@@ -18,6 +18,17 @@ export {
   getSyntaxErrors,
 } from './combinators';
 export { Parser } from './parser';
-export { ASTNode, buildAST } from './ast';
 export { MetaGrammar } from './metaGrammar';
-export { squirrelParse, squirrelParseWithRuleMap } from './squirrelParse';
+export {
+  CSTNode,
+  CSTSyntaxErrorNode,
+  CSTNodeFactory,
+  CSTFactoryValidationException,
+  CSTConstructionException,
+  DuplicateRuleNameException,
+} from './cstNode';
+export {
+  squirrelParse,
+  parseToMatchResultForTesting,
+  parseWithRuleMapForTesting,
+} from './squirrelParse';

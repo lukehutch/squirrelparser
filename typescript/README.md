@@ -1,64 +1,161 @@
 # The Squirrel Parser 🐿️ -- TypeScript Implementation
 
-This is the Typescript implementation of the squirrel parser: a fast linear-time PEG packrat parser capable of handling all forms of left recursion, with optimal error recovery.
+This is the TypeScript implementation of the squirrel parser: a fast linear-time PEG packrat parser capable of handling all forms of left recursion, with optimal error recovery.
 
 The squirrel parser handles all forms of left recursion, including cases of multiple interwoven direct or indirect left recursive cycles, and preserves perfect linear performance in the length of the input regardless of the number of syntax errors encountered: both parsing and error recovery have linear performance.
 
-See the details on the derivation of the squirrel parsing algorithm in [the paper](paper/squirrel_parser.pdf).
+See the details on the derivation of the squirrel parsing algorithm in [the paper](../paper/squirrel_parser.pdf).
 
 ## Usage
 
-### With Metagrammar (PEG Syntax) - Recommended
+The Squirrel Parser uses a **Concrete Syntax Tree (CST)** approach with custom factory functions. This allows you to build exactly the data structure you need from the parse tree.
+
+### Key Concept: Transparent Rules
+
+In the Squirrel Parser grammar, rules prefixed with `~` are **transparent** and don't create CST nodes:
 
 ```typescript
-import { MetaGrammar, squirrelParse } from 'squirrelparser';
+const grammar = `
+  ~_ <- [ \t\n\r]*;  // Transparent: won't create a CST node
+  ~Whitespace <- ' '+;      // Transparent: won't create a CST node
+  Number <- [0-9]+;         // Non-transparent: will create a CST node
+  Expr <- Number ('+' Number)*;  // Non-transparent: will create a CST node
+`;
+```
 
-// Define grammar using PEG syntax
-const grammarStr = `
-  number <- [0-9]+
-  expr <- expr '+' number / number
+**Important**: You only need to create factories for **non-transparent** grammar rules. Transparent rules are automatically excluded from factory requirements. If you accidentally create a factory for a transparent rule, an exception will be thrown.
+
+### Basic Example with CST
+
+```typescript
+import {
+  squirrelParse,
+  CSTNode,
+  CSTNodeFactory,
+  type SyntaxError,
+} from 'squirrelparser';
+
+// 1. Define your grammar using PEG metagrammar syntax
+const grammar = `
+  Expr <- Term (('+' / '-') Term)*;
+  Term <- Factor (('*' / '/') Factor)*;
+  Factor <- Number / '(' Expr ')';
+  Number <- [0-9]+;
+  ~_ <- [ \t\n\r]*;
 `;
 
-// Parse input with error handling
-const [ast, errors] = squirrelParse(grammarStr, '1+2+3', 'expr');
+// 2. Define a custom CST node class
+class CalcNode extends CSTNode {
+  children: CalcNode[];
+  value?: number;
 
-console.log('AST:');
-console.log(ast.toPrettyString());
-if (errors.length > 0) {
-  console.log('Syntax errors found:');
+  constructor(
+    name: string,
+    children: CalcNode[] = [],
+    value?: number
+  ) {
+    super(name);
+    this.children = children;
+    this.value = value;
+  }
+
+  override toString(): string {
+    return this.value !== undefined ? this.value.toString() : this.name;
+  }
+}
+
+// 3. Create factories for each NON-TRANSPARENT grammar rule
+const factories = [
+  new CSTNodeFactory<CalcNode>(
+    'Expr',
+    ['Term'],
+    (ruleName, _expectedChildren, children) => {
+      return new CalcNode(ruleName, children as CalcNode[]);
+    }
+  ),
+  new CSTNodeFactory<CalcNode>(
+    'Term',
+    ['Factor'],
+    (ruleName, _expectedChildren, children) => {
+      return new CalcNode(ruleName, children as CalcNode[]);
+    }
+  ),
+  new CSTNodeFactory<CalcNode>(
+    'Factor',
+    ['Number', 'Expr'],
+    (ruleName, _expectedChildren, children) => {
+      return new CalcNode(ruleName, children as CalcNode[]);
+    }
+  ),
+  new CSTNodeFactory<CalcNode>(
+    'Number',
+    ['<Terminal>'],
+    (ruleName, _expectedChildren, children) => {
+      // Terminals don't have children, so we extract the value differently
+      const value = children.length > 0 ? parseInt(children[0].toString()) : 0;
+      return new CalcNode(ruleName, [], value);
+    }
+  ),
+];
+
+// 4. Parse input and get the CST
+const [cst, errors] = squirrelParse(grammar, '2+3*4', 'Expr', factories);
+
+if (errors.length === 0) {
+  console.log('Parse successful!');
+  console.log(`CST root: ${cst.name}`);
+} else {
+  console.log('Syntax errors:');
   for (const error of errors) {
     console.log(`  ${error.toString()}`);
   }
 }
 ```
 
-### Without Metagrammar (Direct API)
+### Understanding CST Factories
+
+Each **non-transparent** grammar rule needs a corresponding factory. The factory function receives:
+
+- **ruleName**: The name of the grammar rule
+- **expectedChildren**: The expected child rule names (useful for validation)
+- **children**: The actual CST child nodes built from the parse tree
 
 ```typescript
-import { squirrelParseWithRuleMap, Str, CharRange, Ref, Seq, First, OneOrMore } from 'squirrelparser';
-
-// Define grammar rules directly
-const rules = {
-  number: new OneOrMore(new CharRange('0', '9')),
-  expr: new First([
-    new Seq([new Ref('expr'), new Str('+'), new Ref('number')],
-    new Ref('number')
-  ])
-};
-
-// Parse input
-const [ast, errors] = squirrelParseWithRuleMap(rules, 'expr', '1+2+3');
-
-if (ast) {
-  console.log('AST:');
-  console.log(ast.toPrettyString());
-}
-if (errors.length > 0) {
-  console.log('Syntax errors found:');
-  for (const error of errors) {
-    console.log(`  ${error.toString()}`);
+new CSTNodeFactory<MyNode>(
+  'RuleName',
+  ['Child1', 'Child2'],  // Expected children
+  (ruleName, expectedChildren, children) => {
+    // Build and return your custom node
+    return new MyNode(ruleName, children);
   }
-}
+)
+```
+
+### Direct API (Advanced)
+
+For advanced use cases, you can work directly with the rules map:
+
+```typescript
+import {
+  MetaGrammar,
+  parseWithRuleMapForTesting,
+  type CSTNode,
+  type CSTNodeFactory,
+} from 'squirrelparser';
+
+// Parse grammar
+const rules = MetaGrammar.parseGrammar(grammarText);
+
+// Create factories (same as before)
+const factories: CSTNodeFactory<CSTNode>[] = [...];
+
+// Parse with rule map (internal API)
+const [cst, errors] = parseWithRuleMapForTesting(
+  rules,
+  'RuleName',
+  input,
+  factories
+);
 ```
 
 ## Grammar Syntax Reference
@@ -77,7 +174,7 @@ Rules are defined with a name, followed by `<-`, then an expression, ending with
 ~RuleName <- Expression ;
 ```
 
-Transparent rules (prefixed with `~`) are flattened in the AST.
+Transparent rules (prefixed with `~`) don't create CST nodes and are excluded from factory requirements.
 
 ### Sequences
 
@@ -161,9 +258,7 @@ Rule <- ∅ ;
 Rule <- () ;
 ```
 
-Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions.
-
-You can use either `∅` or empty parentheses `()` to match Nothing.
+Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions. You can use either `∅` or empty parentheses `()`.
 
 ### Escape Sequences
 
@@ -182,13 +277,28 @@ Supported in strings and character literals:
 Rule <- "a" ; # Comments can appear anywhere
 ```
 
-## Complete Example: JSON Grammar
+## Complete Example: JSON Parser with CST
 
 ```typescript
-import { squirrelParse } from 'squirrelparser';
+import {
+  squirrelParse,
+  CSTNode,
+  CSTNodeFactory,
+} from 'squirrelparser';
+
+// Custom CST node for JSON
+class JsonNode extends CSTNode {
+  value: unknown;
+  children: JsonNode[];
+
+  constructor(name: string, children: JsonNode[] = [], value: unknown = null) {
+    super(name);
+    this.children = children;
+    this.value = value;
+  }
+}
 
 const jsonGrammar = `
-# JSON Grammar
 JSON <- _ Value _ ;
 Value <- Object / Array / String / Number / Boolean / Null ;
 
@@ -198,8 +308,7 @@ Pair <- String _ ':' _ Value ;
 Array <- '[' _ (Value (',' _ Value)*)? _ ']' ;
 
 String <- '"' StringChar* '"' ;
-~StringChar <- [^"\\] / '\\\' EscapeChar ;
-~EscapeChar <- ["\\/bfnrt] ;
+~StringChar <- [^"\\\\] / '\\\\' . ;
 
 Number <- '-'? [0-9]+ ('.' [0-9]+)? ;
 
@@ -209,143 +318,156 @@ Null <- "null" ;
 ~_ <- [ \t\n\r]* ;
 `;
 
-// Test with JSON input
-const jsonInput = '{"name": "Alice", "age": 30, "active": true}';
-const [ast, errors] = squirrelParse(jsonGrammar, jsonInput, 'JSON');
+// CST factories
+const factories = [
+  new CSTNodeFactory<JsonNode>(
+    'JSON',
+    ['Value'],
+    (ruleName, _expectedChildren, children) => {
+      return new JsonNode(
+        ruleName,
+        children as JsonNode[],
+        children.length > 0 ? (children[0] as JsonNode).value : null
+      );
+    }
+  ),
+  new CSTNodeFactory<JsonNode>(
+    'Value',
+    ['Object', 'Array', 'String', 'Number', 'Boolean', 'Null'],
+    (ruleName, _expectedChildren, children) => {
+      return new JsonNode(
+        ruleName,
+        children as JsonNode[],
+        children.length > 0 ? (children[0] as JsonNode).value : null
+      );
+    }
+  ),
+  // ... factories for other rules ...
+];
 
-if (ast) {
-  console.log("AST:");
-  console.log(ast.toPrettyString());
-}
-if (errors.length > 0) {
-  console.log('Syntax errors found:');
+// Parse JSON
+const jsonInput = '{"name": "Alice", "age": 30}';
+const [cst, errors] = squirrelParse(jsonGrammar, jsonInput, 'JSON', factories);
+
+if (errors.length === 0) {
+  console.log('JSON parsed successfully');
+} else {
   for (const error of errors) {
-    console.log(`  ${error.toString()}`);
-  }
-}
-```
-
-## Example: Calculator with Actions
-
-```typescript
-import { squirrelParse, ASTNode } from 'squirrelparser';
-
-// Define grammar
-const calcGrammar = `
-Expr <- Term (('+' / '-') Term)* ;
-Term <- Factor (('*' / '/') Factor)* ;
-Factor <- Number / '(' Expr ')' ;
-Number <- [0-9]+ ;
-`;
-
-// Parse input and get AST
-const [ast, errors] = squirrelParse(calcGrammar, "2+3*4", 'Expr');
-
-// Define evaluation function
-function evalAST(node: ASTNode): number {
-  if (node.label === 'Number') {
-    return parseFloat(node.text);
-  } else if (node.label === 'Factor') {
-    if (node.children.length === 1) {
-      return evalAST(node.children[0]);
-    } else { // Parenthesized expression
-      return evalAST(node.children[1]);
-    }
-  } else if (node.label === 'Term') {
-    let result = evalAST(node.children[0]);
-    let i = 1;
-    while (i < node.children.length) {
-      const op = node.children[i].text;
-      const operand = evalAST(node.children[i + 1]);
-      if (op === '*') {
-        result *= operand;
-      } else if (op === '/') {
-        result /= operand;
-      }
-      i += 2;
-    }
-    return result;
-  } else if (node.label === 'Expr') {
-    let result = evalAST(node.children[0]);
-    let i = 1;
-    while (i < node.children.length) {
-      const op = node.children[i].text;
-      const operand = evalAST(node.children[i + 1]);
-      if (op === '+') {
-        result += operand;
-      } else if (op === '-') {
-        result -= operand;
-      }
-      i += 2;
-    }
-    return result;
-  } else {
-    // Recursively evaluate children
-    if (node.children.length > 0) {
-      return evalAST(node.children[0]);
-    }
-    return 0;
-  }
-}
-
-if (ast) {
-  const result = evalAST(ast);
-  console.log(`Result: ${result}`); // Output: Result: 14
-}
-if (errors.length > 0) {
-  console.log('Syntax errors found:');
-  for (const error of errors) {
-    console.log(`  ${error.toString()}`);
+    console.log(`Error: ${error.toString()}`);
   }
 }
 ```
 
 ## Error Handling
 
+### Factory Validation Errors
+
 ```typescript
-import { MetaGrammar } from 'squirrelparser';
+import {
+  squirrelParse,
+  CSTFactoryValidationException,
+  DuplicateRuleNameException,
+  CSTConstructionException,
+  type CSTNodeFactory,
+  type CSTNode,
+} from 'squirrelparser';
 
 try {
-  const rules = MetaGrammar.parseGrammar(grammarText);
+  const [cst, errors] = squirrelParse(grammar, input, 'Rule', factories);
 } catch (e) {
-  console.log("Grammar parse error:", e);
+  if (e instanceof CSTFactoryValidationException) {
+    console.log('Missing factories:', e.missing);
+    console.log('Extra factories:', e.extra);
+  } else if (e instanceof DuplicateRuleNameException) {
+    console.log(`Duplicate rule name: ${e.ruleName} (appears ${e.count} times)`);
+  } else if (e instanceof CSTConstructionException) {
+    console.log(`CST construction failed: ${e.message}`);
+  }
 }
 ```
 
-## Tips
+### Syntax Errors
 
-1. **Use Transparent Rules** for whitespace and other structural elements you don't want in the AST -- prefix the rule name with `~` and no AST node will be created when the rule matches:
-   ```
-   ~_ <- [ \t\n\r]* ;
-   ```
-
-2. **Add Comments** to document your grammar:
-   ```
-   # This rule matches identifiers
-   Identifier <- [a-zA-Z_][a-zA-Z0-9_]* ;
-   ```
-
-3. **Handle Whitespace Explicitly** where needed:
-   ```
-   # Require whitespace between tokens
-   Statement <- Keyword _ Identifier ;
-
-   # Optional whitespace
-   Expression <- Term (_ ('+' / '-') _ Term)* ;
-   ```
-
-## Debugging
-
-Use `toPrettyString()` to visualize the AST:
+The parser returns syntax errors separately from the CST:
 
 ```typescript
-const [ast, _] = parser.parseToAST('Expression');
-if (ast) {
-  console.log(ast.toPrettyString());
+const [cst, syntaxErrors] = squirrelParse(grammar, input, 'Rule', factories);
+
+if (syntaxErrors.length > 0) {
+  console.log('Syntax errors found:');
+  for (const error of syntaxErrors) {
+    console.log(`  ${error.toString()}`);
+  }
 }
 ```
 
-This will show the hierarchical structure of your parsed input.
+### Defining Custom Node Classes
+
+Your CST node classes should capture the semantic information you need:
+
+```typescript
+class MyNode extends CSTNode {
+  children: MyNode[];
+  value?: string;
+
+  constructor(name: string, children: MyNode[] = [], value?: string) {
+    super(name);
+    this.children = children;
+    this.value = value;
+  }
+}
+```
+
+### Using Transparent Rules for Whitespace
+
+Use transparent rules to handle whitespace and other structural elements:
+
+```typescript
+const grammar = `
+  ~_ <- [ \t\n\r]* ;
+  Expression <- Term (_ ('+' / '-') _ Term)* ;
+  Term <- Factor (_ ('*' / '/') _ Factor)* ;
+  Factor <- Number / '(' _ Expression _ ')' ;
+  Number <- [0-9]+ ;
+`;
+
+// You only need factories for Expression, Term, Factor, and Number
+// NOT for _ (which is transparent)
+```
+
+### Factory Functions Can Validate Input
+
+You can perform validation within your factory functions:
+
+```typescript
+new CSTNodeFactory<MyNode>(
+  'MyRule',
+  ['Child1', 'Child2'],
+  (ruleName, expectedChildren, children) => {
+    if (children.length === 0) {
+      throw new CSTConstructionException(`${ruleName} requires children`);
+    }
+    return new MyNode(ruleName, children);
+  }
+)
+```
+
+### Handling Terminal Nodes
+
+Terminal rules (which match literal text or character classes) have `expectedChildren: ['<Terminal>']`:
+
+```typescript
+// Terminals have expectedChildren: ['<Terminal>']
+new CSTNodeFactory<MyNode>(
+  'Number',
+  ['<Terminal>'],
+  (ruleName, _expectedChildren, children) => {
+    // Extract raw text from terminal
+    const value = children.length > 0 ? children[0].toString() : null;
+    return new MyNode(ruleName, [], value);
+  }
+)
+```
 
 ## Building
 
@@ -353,4 +475,9 @@ This will show the hierarchical structure of your parsed input.
 npm install       # Install dependencies
 npm test          # Run tests
 npm run build     # Build library
+npm run lint      # Run linting
 ```
+
+## Testing
+
+The implementation includes comprehensive CST tests demonstrating all features.

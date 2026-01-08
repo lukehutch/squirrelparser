@@ -19,8 +19,8 @@
 import type { Clause } from './clause';
 import { Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowedBy, FollowedBy, Ref } from './combinators';
 import { Str, Char, CharRange, AnyChar, Nothing } from './terminals';
-import { squirrelParseWithRuleMap } from './squirrelParse';
-import { ASTNode } from './ast';
+import { parseToMatchResultForTesting } from './squirrelParse';
+import { buildAST, ASTNode } from './ast';
 
 export class MetaGrammar {
   /**
@@ -176,11 +176,16 @@ export class MetaGrammar {
    * Parse a grammar specification and return the rules.
    */
   static parseGrammar(grammarText: string): Record<string, Clause> {
-    const [ast, syntaxErrors] = squirrelParseWithRuleMap(MetaGrammar.rules, 'Grammar', grammarText);
+    const [matchResult, syntaxErrors] = parseToMatchResultForTesting(MetaGrammar.rules, 'Grammar', grammarText);
 
     if (syntaxErrors.length > 0) {
-      const errorMessages = syntaxErrors.map(e => e.toString()).join('\n');
+      const errorMessages = syntaxErrors.map((e) => e.toString()).join('\n');
       throw new Error(`Failed to parse grammar. Syntax errors:\n${errorMessages}`);
+    }
+
+    const ast = buildAST(matchResult, grammarText, 'Grammar');
+    if (!ast) {
+      throw new Error('Failed to build AST from grammar');
     }
 
     return MetaGrammar.buildGrammarRules(ast, grammarText);
@@ -192,29 +197,38 @@ export class MetaGrammar {
   private static buildGrammarRules(ast: ASTNode, input: string): Record<string, Clause> {
     const result: Record<string, Clause> = {};
     const transparentRules = new Set<string>();
+    const ruleNodes = ast.children.filter(n => n.label === 'Rule');
 
-    for (const ruleNode of ast.children.filter(n => n.label === 'Rule')) {
-      // Get rule name (first Identifier child)
+    // First pass: collect all transparent rules
+    for (const ruleNode of ruleNodes) {
       const ruleNameNode = ruleNode.children.find(c => c.label === 'Identifier');
       if (!ruleNameNode) {
         throw new Error('Rule missing Identifier');
       }
       const ruleName = ruleNameNode.text;
 
-      // Get rule body (first Expression child)
+      // Check for transparent marker
+      const hasTransparentMarker = ruleNode.children.some(c => c.label === 'Str' && c.text === '~');
+      if (hasTransparentMarker) {
+        transparentRules.add(ruleName);
+      }
+    }
+
+    // Second pass: build all clauses with complete transparent rules set
+    for (const ruleNode of ruleNodes) {
+      const ruleNameNode = ruleNode.children.find(c => c.label === 'Identifier');
+      if (!ruleNameNode) {
+        throw new Error('Rule missing Identifier');
+      }
+      const ruleName = ruleNameNode.text;
+
       const ruleBody = ruleNode.children.find(c => c.label === 'Expression');
       if (!ruleBody) {
         throw new Error('Rule missing Expression');
       }
 
-      // Check for transparent marker (first child is Str with text '~')
       const hasTransparentMarker = ruleNode.children.some(c => c.label === 'Str' && c.text === '~');
-
-      if (hasTransparentMarker) {
-        transparentRules.add(ruleName);
-      }
-
-      result[ruleName] = MetaGrammar.buildClause(ruleBody, input, false, transparentRules);
+      result[ruleName] = MetaGrammar.buildClause(ruleBody, input, hasTransparentMarker, transparentRules);
     }
 
     return result;
@@ -269,7 +283,7 @@ export class MetaGrammar {
           throw new Error('Prefix node has no Prefix/Suffix child');
         }
 
-        const childClause = MetaGrammar.buildClause(childNode, input, false, transparentRules);
+        const childClause = MetaGrammar.buildClause(childNode, input, transparent, transparentRules);
 
         if (!operatorNode) {
           // No prefix operator, just return the child
@@ -299,7 +313,7 @@ export class MetaGrammar {
           throw new Error('Suffix node has no Suffix/Primary child');
         }
 
-        const childClause = MetaGrammar.buildClause(childNode, input, false, transparentRules);
+        const childClause = MetaGrammar.buildClause(childNode, input, transparent, transparentRules);
 
         if (!operatorNode) {
           // No suffix operator, just return the child
@@ -321,7 +335,7 @@ export class MetaGrammar {
       case 'Choice': {
         const semanticChildren = node.children.filter(c => !MetaGrammar.shouldSkipNode(c.label));
         const sequences = semanticChildren.map(child =>
-          MetaGrammar.buildClause(child, input, false, transparentRules)
+          MetaGrammar.buildClause(child, input, transparent, transparentRules)
         );
         return sequences.length === 1
           ? sequences[0]
@@ -331,7 +345,7 @@ export class MetaGrammar {
       case 'Sequence': {
         const semanticChildren = node.children.filter(c => !MetaGrammar.shouldSkipNode(c.label));
         const items = semanticChildren.map(child =>
-          MetaGrammar.buildClause(child, input, false, transparentRules)
+          MetaGrammar.buildClause(child, input, transparent, transparentRules)
         );
         return items.length === 1
           ? items[0]
@@ -419,7 +433,8 @@ export class MetaGrammar {
         return new Seq(
           node.children.map(child =>
             MetaGrammar.buildClause(child, input, false, transparentRules)
-          )
+          ),
+          transparent
         );
     }
   }

@@ -203,8 +203,9 @@ class MetaGrammar {
         transparentRules.add(ruleName);
       }
 
-      result[ruleName] =
-          _buildClause(ruleBody, input, transparentRules: transparentRules);
+      result[ruleName] = _buildClause(ruleBody, input,
+          transparent: hasTransparentMarker,
+          transparentRules: transparentRules);
     }
 
     return result;
@@ -263,8 +264,8 @@ class MetaGrammar {
           throw FormatException('Prefix node has no Prefix/Suffix child');
         }
 
-        final childClause =
-            _buildClause(childNode, input, transparentRules: transparentRules);
+        final childClause = _buildClause(childNode, input,
+            transparent: transparent, transparentRules: transparentRules);
 
         if (operatorNode == null) {
           // No prefix operator, just return the child
@@ -298,8 +299,8 @@ class MetaGrammar {
           throw FormatException('Suffix node has no Suffix/Primary child');
         }
 
-        final childClause =
-            _buildClause(childNode, input, transparentRules: transparentRules);
+        final childClause = _buildClause(childNode, input,
+            transparent: transparent, transparentRules: transparentRules);
 
         if (operatorNode == null) {
           // No suffix operator, just return the child
@@ -322,8 +323,8 @@ class MetaGrammar {
         final semanticChildren =
             node.children.where((c) => !_shouldSkipNode(c.label)).toList();
         final sequences = semanticChildren
-            .map((child) =>
-                _buildClause(child, input, transparentRules: transparentRules))
+            .map((child) => _buildClause(child, input,
+                transparent: transparent, transparentRules: transparentRules))
             .toList();
         return sequences.length == 1
             ? sequences[0]
@@ -333,8 +334,8 @@ class MetaGrammar {
         final semanticChildren =
             node.children.where((c) => !_shouldSkipNode(c.label)).toList();
         final items = semanticChildren
-            .map((child) =>
-                _buildClause(child, input, transparentRules: transparentRules))
+            .map((child) => _buildClause(child, input,
+                transparent: transparent, transparentRules: transparentRules))
             .toList();
         return items.length == 1
             ? items[0]

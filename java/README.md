@@ -4,67 +4,128 @@ This is the Java implementation of the squirrel parser: a fast linear-time PEG p
 
 The squirrel parser handles all forms of left recursion, including cases of multiple interwoven direct or indirect left recursive cycles, and preserves perfect linear performance in the length of the input regardless of the number of syntax errors encountered: both parsing and error recovery have linear performance.
 
-See the details on the derivation of the squirrel parsing algorithm in [the paper](paper/squirrel_parser.pdf).
+See the details on the derivation of the squirrel parsing algorithm in [the paper](../paper/squirrel_parser.pdf).
 
 ## Usage
 
-### With Metagrammar (PEG Syntax) - Recommended
+The Squirrel Parser uses a **Concrete Syntax Tree (CST)** approach with custom factory functions. This allows you to build exactly the data structure you need from the parse tree.
+
+### Key Concept: Transparent Rules
+
+In the Squirrel Parser grammar, rules prefixed with `~` are **transparent** and don't create CST nodes:
+
+```java
+String grammar = """
+  ~_ <- [ \\t\\n\\r]*;  // Transparent: won't create a CST node
+  ~Whitespace <- ' '+;      // Transparent: won't create a CST node
+  Number <- [0-9]+;         // Non-transparent: will create a CST node
+  Expr <- Number ('+' Number)*;  // Non-transparent: will create a CST node
+""";
+```
+
+**Important**: You only need to create factories for **non-transparent** grammar rules. Transparent rules are automatically excluded from factory requirements. If you accidentally create a factory for a transparent rule, an exception will be thrown.
+
+### CST Node Classes
+
+The CST infrastructure is complete in Java. To use it, you define custom CST node classes:
+
+```java
+import com.squirrelparser.*;
+
+// Define a custom CST node class
+class CalcNode extends CSTNode {
+    private final List<CalcNode> children;
+    private final Integer value;
+
+    public CalcNode(String name, List<CalcNode> children, Integer value) {
+        super(name);
+        this.children = children != null ? children : List.of();
+        this.value = value;
+    }
+
+    public CalcNode(String name, List<CalcNode> children) {
+        this(name, children, null);
+    }
+
+    public CalcNode(String name, Integer value) {
+        this(name, null, value);
+    }
+
+    public List<CalcNode> getChildren() {
+        return children;
+    }
+
+    public Integer getValue() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return value != null ? value.toString() : this.name;
+    }
+}
+```
+
+### CST Node Factories
+
+Create factory instances for each grammar rule:
 
 ```java
 import com.squirrelparser.*;
 import java.util.List;
 
-// Define grammar using PEG syntax
-String grammarStr = """
-    number <- [0-9]+
-    expr <- expr '+' number / number
-    """;
-
-// Parse input with error handling
-var result = SquirrelParse.parse(grammarStr, "1+2+3", "expr");
-ASTNode ast = result.ast();
-List<SyntaxError> errors = result.errors();
-
-System.out.println("AST:");
-System.out.println(ast.toPrettyString());
-if (!errors.isEmpty()) {
-    System.out.println("Syntax errors found:");
-    for (var error : errors) {
-        System.out.println("  " + error);
-    }
-}
+// Create factories for each grammar rule
+List<CSTNodeFactory<CalcNode>> factories = List.of(
+    new CSTNodeFactory<CalcNode>(
+        "Expr",
+        List.of("Term"),
+        (ruleName, expectedChildren, children) -> {
+            return new CalcNode(ruleName, (List<CalcNode>) (List<?>) children);
+        }
+    ),
+    new CSTNodeFactory<CalcNode>(
+        "Term",
+        List.of("Factor"),
+        (ruleName, expectedChildren, children) -> {
+            return new CalcNode(ruleName, (List<CalcNode>) (List<?>) children);
+        }
+    ),
+    new CSTNodeFactory<CalcNode>(
+        "Factor",
+        List.of("Number", "Expr"),
+        (ruleName, expectedChildren, children) -> {
+            return new CalcNode(ruleName, (List<CalcNode>) (List<?>) children);
+        }
+    ),
+    new CSTNodeFactory<CalcNode>(
+        "Number",
+        List.of("<Terminal>"),
+        (ruleName, expectedChildren, children) -> {
+            int value = children.isEmpty() ? 0 :
+                Integer.parseInt(children.get(0).toString());
+            return new CalcNode(ruleName, value);
+        }
+    )
+);
 ```
 
-### Without Metagrammar (Direct API)
+### Understanding CST Factories
+
+Each **non-transparent** grammar rule needs a corresponding factory. The factory function receives:
+
+- **ruleName**: The name of the grammar rule
+- **expectedChildren**: The expected child rule names (useful for validation)
+- **children**: The actual CST child nodes built from the parse tree
 
 ```java
-import com.squirrelparser.*;
-import java.util.Map;
-
-// Define grammar rules directly
-Map<String, Clause> rules = Map.of(
-    "number", new OneOrMore(new CharRange("0", "9")),
-    "expr", new First(List.of(
-        new Seq(List.of(new Ref("expr"), new Str("+"), new Ref("number"))),
-        new Ref("number")
-    ))
-);
-
-// Parse input
-var result = Parser.squirrelParse(rules, "expr", "1+2+3");
-ASTNode ast = result.ast();
-List<SyntaxError> errors = result.errors();
-
-if (ast != null) {
-    System.out.println("AST:");
-    System.out.println(ast.toPrettyString());
-}
-if (!errors.isEmpty()) {
-    System.out.println("Syntax errors found:");
-    for (var error : errors) {
-        System.out.println("  " + error);
+new CSTNodeFactory<MyNode>(
+    "RuleName",
+    List.of("Child1", "Child2"),  // Expected children
+    (ruleName, expectedChildren, children) -> {
+        // Build and return your custom node
+        return new MyNode(ruleName, children);
     }
-}
+)
 ```
 
 ## Grammar Syntax Reference
@@ -83,7 +144,7 @@ Rules are defined with a name, followed by `<-`, then an expression, ending with
 ~RuleName <- Expression ;
 ```
 
-Transparent rules (prefixed with `~`) are flattened in the AST.
+Transparent rules (prefixed with `~`) don't create CST nodes and are excluded from factory requirements.
 
 ### Sequences
 
@@ -112,7 +173,7 @@ Optional <- "a"? ;
 ### Lookahead
 
 ```
- PositiveLookahead <- &"a" "b" ;
+PositiveLookahead <- &"a" "b" ;
 NegativeLookahead <- !"a" "b" ;
 ```
 
@@ -167,9 +228,7 @@ Rule <- ∅ ;
 Rule <- () ;
 ```
 
-Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions.
-
-You can use either `∅` or empty parentheses `()` to match Nothing.
+Matches nothing - always succeeds without consuming any input. Useful for optional elements and epsilon productions. You can use either `∅` or empty parentheses `()`.
 
 ### Escape Sequences
 
@@ -183,188 +242,172 @@ Supported in strings and character literals:
 
 ### Comments
 
-```java
+```
 # This is a comment
 Rule <- "a" ; # Comments can appear anywhere
 ```
 
-## Complete Example: JSON Grammar
+## Exception Classes
 
-```java
-import com.squirrelparser.*;
-import java.util.List;
+The CST infrastructure includes the following exception classes:
 
-String jsonGrammar = """
-# JSON Grammar
-JSON <- _ Value _ ;
-Value <- Object / Array / String / Number / Boolean / Null ;
+### CSTFactoryValidationException
 
-Object <- '{' _ (Pair (',' _ Pair)*)? _ '}' ;
-Pair <- String _ ':' _ Value ;
-
-Array <- '[' _ (Value (',' _ Value)*)? _ ']' ;
-
-String <- '"' StringChar* '"' ;
-~StringChar <- [^"\\] / '\\\' EscapeChar ;
-~EscapeChar <- ["\\/bfnrt] ;
-
-Number <- '-'? [0-9]+ ('.' [0-9]+)? ;
-
-Boolean <- "true" / "false" ;
-Null <- "null" ;
-
-~_ <- [ \t\n\r]* ;
-""";
-
-// Test with JSON input
-String jsonInput = "{\"name\": \"Alice\", \"age\": 30, \"active\": true}";
-var result = SquirrelParse.parse(jsonGrammar, jsonInput, "JSON");
-ASTNode ast = result.ast();
-List<SyntaxError> errors = result.errors();
-
-if (ast != null) {
-    System.out.println("AST:");
-    System.out.println(ast.toPrettyString());
-}
-if (!errors.isEmpty()) {
-    System.out.println("Syntax errors found:");
-    for (var error : errors) {
-        System.out.println("  " + error);
-    }
-}
-```
-
-## Example: Calculator with Actions
-
-```java
-import com.squirrelparser.*;
-
-public class Calculator {
-    public static void main(String[] args) {
-        // Define grammar
-        String calcGrammar = """
-        Expr <- Term (('+' / '-') Term)* ;
-        Term <- Factor (('*' / '/') Factor)* ;
-        Factor <- Number / '(' Expr ')' ;
-        Number <- [0-9]+ ;
-        """;
-
-        // Parse input and get AST
-        var result = SquirrelParse.parse(calcGrammar, "2+3*4", "Expr");
-        ASTNode ast = result.ast();
-        List<SyntaxError> errors = result.errors();
-
-        if (ast != null) {
-            double calcResult = evalAST(ast);
-            System.out.println("Result: " + calcResult); // Output: Result: 14.0
-        }
-        if (!errors.isEmpty()) {
-            System.out.println("Syntax errors found:");
-            for (var error : errors) {
-                System.out.println("  " + error);
-            }
-        }
-    }
-
-    // Define evaluation function
-    public static double evalAST(ASTNode node) {
-        if (node.label.equals("Number")) {
-            return Double.parseDouble(node.text());
-        } else if (node.label.equals("Factor")) {
-            if (node.children.size() == 1) {
-                return evalAST(node.children.get(0));
-            } else { // Parenthesized expression
-                return evalAST(node.children.get(1));
-            }
-        } else if (node.label.equals("Term")) {
-            double result = evalAST(node.children.get(0));
-            int i = 1;
-            while (i < node.children.size()) {
-                String op = node.children.get(i).text();
-                double operand = evalAST(node.children.get(i + 1));
-                if (op.equals("*")) {
-                    result *= operand;
-                } else if (op.equals("/")) {
-                    result /= operand;
-                }
-                i += 2;
-            }
-            return result;
-        } else if (node.label.equals("Expr")) {
-            double result = evalAST(node.children.get(0));
-            int i = 1;
-            while (i < node.children.size()) {
-                String op = node.children.get(i).text();
-                double operand = evalAST(node.children.get(i + 1));
-                if (op.equals("+")) {
-                    result += operand;
-                } else if (op.equals("-")) {
-                    result -= operand;
-                }
-                i += 2;
-            }
-            return result;
-        } else {
-            // Recursively evaluate children
-            if (!node.children.isEmpty()) {
-                return evalAST(node.children.get(0));
-            }
-            return 0.0;
-        }
-    }
-}
-```
-
-## Error Handling
+Thrown when factory validation fails:
 
 ```java
 import com.squirrelparser.*;
 
 try {
-    Map<String, Clause> rules = MetaGrammar.parseGrammar(grammarText);
-} catch (Exception e) {
-    System.out.println("Grammar parse error: " + e.getMessage());
+    // ... squirrelParse call ...
+} catch (CSTFactoryValidationException e) {
+    System.out.println("Missing factories: " + e.getMissing());
+    System.out.println("Extra factories: " + e.getExtra());
 }
 ```
 
-## Tips
+### DuplicateRuleNameException
 
-1. **Use Transparent Rules** for whitespace and other structural elements you don't want in the AST -- prefix the rule name with `~` and no AST node will be created when the rule matches:
-   ```
-   ~_ <- [ \t\n\r]* ;
-   ```
-
-2. **Add Comments** to document your grammar:
-   ```
-   # This rule matches identifiers
-   Identifier <- [a-zA-Z_][a-zA-Z0-9_]* ;
-   ```
-
-3. **Handle Whitespace Explicitly** where needed:
-   ```
-   # Require whitespace between tokens
-   Statement <- Keyword _ Identifier ;
-
-   # Optional whitespace
-   Expression <- Term (_ ('+' / '-') _ Term)* ;
-   ```
-
-## Debugging
-
-Use `toPrettyString()` to visualize the AST:
+Thrown when duplicate rule names are found in factory list:
 
 ```java
-ASTNode ast = parser.parseToAST("Expression");
-if (ast != null) {
-    System.out.println(ast.toPrettyString());
+try {
+    // ... squirrelParse call ...
+} catch (DuplicateRuleNameException e) {
+    System.out.println("Duplicate rule name: " + e.getRuleName() +
+                       " (appears " + e.getCount() + " times)");
 }
 ```
 
-This will show the hierarchical structure of your parsed input.
+### CSTConstructionException
+
+Thrown when CST construction fails:
+
+```java
+try {
+    // ... squirrelParse call ...
+} catch (CSTConstructionException e) {
+    System.out.println("CST construction failed: " + e.getMessage());
+}
+```
+
+### Defining Custom Node Classes
+
+Your CST node classes should capture the semantic information you need:
+
+```java
+class MyNode extends CSTNode {
+    private final List<MyNode> children;
+    private final String value;
+
+    public MyNode(String name, List<MyNode> children, String value) {
+        super(name);
+        this.children = children;
+        this.value = value;
+    }
+}
+```
+
+### Using Transparent Rules for Whitespace
+
+Use transparent rules to handle whitespace and other structural elements:
+
+```
+~_ <- [ \t\n\r]* ;
+Expression <- Term (_ ('+' / '-') _ Term)* ;
+Term <- Factor (_ ('*' / '/') _ Factor)* ;
+Factor <- Number / '(' _ Expression _ ')' ;
+Number <- [0-9]+ ;
+```
+
+You only need factories for Expression, Term, Factor, and Number. NOT for `_` (which is transparent).
+
+### Factory Functions Can Validate Input
+
+You can perform validation within your factory functions:
+
+```java
+new CSTNodeFactory<MyNode>(
+    "MyRule",
+    List.of("Child1", "Child2"),
+    (ruleName, expectedChildren, children) -> {
+        if (children.isEmpty()) {
+            throw new CSTConstructionException(ruleName + " requires children");
+        }
+        return new MyNode(ruleName, children, null);
+    }
+)
+```
+
+### Handling Terminal Nodes
+
+Terminal rules (which match literal text or character classes) have `expectedChildren: List.of("<Terminal>")`:
+
+```java
+// Terminals have expectedChildren: List.of("<Terminal>")
+new CSTNodeFactory<MyNode>(
+    "Number",
+    List.of("<Terminal>"),
+    (ruleName, _expectedChildren, children) -> {
+        String value = children.isEmpty() ? null : children.get(0).toString();
+        return new MyNode(ruleName, null, value);
+    }
+)
+```
+
+## Error Handling
+
+### Factory Validation Errors
+
+```java
+import com.squirrelparser.*;
+import java.util.List;
+
+try {
+    List<CSTNodeFactory<MyNode>> factories = [...];
+    // Call squirrelParse with factories
+    // CST cst = SquirrelParse.parse(grammar, input, topRule, factories);
+} catch (CSTFactoryValidationException e) {
+    System.out.println("Missing factories: " + e.getMissing());
+    System.out.println("Extra factories: " + e.getExtra());
+} catch (DuplicateRuleNameException e) {
+    System.out.println("Duplicate rule: " + e.getRuleName());
+} catch (CSTConstructionException e) {
+    System.out.println("CST construction failed: " + e.getMessage());
+}
+```
 
 ## Building
 
 ```bash
 mvn clean test    # Run tests
 mvn package       # Build JAR
+mvn clean compile # Compile
 ```
+
+## Implementation Status
+
+The Java implementation includes:
+
+✅ **Complete CST Infrastructure**
+- `CSTNode` - abstract base class for all CST nodes
+- `CSTNodeFactory<T>` - generic factory for creating typed CST nodes
+- `CSTFactoryValidationException` - exception for factory validation errors
+- `DuplicateRuleNameException` - exception for duplicate rule names
+- `CSTConstructionException` - exception for CST construction failures
+
+⏳ **Pending**
+- `squirrelParse()` public API method (infrastructure is complete)
+
+The CST node classes are fully type-safe and ready to use. Once the `squirrelParse()` method is implemented, the public API will be complete and isomorphic with the Dart, TypeScript, and Python implementations.
+
+## Testing
+
+All CST infrastructure classes are tested and compile without errors. The full test suite demonstrates:
+
+- Type-safe generic node creation
+- Factory validation with duplicate detection
+- Transparent rule handling
+- Correct exception throwing
+
+See the test files in `src/test/java/` for complete examples.

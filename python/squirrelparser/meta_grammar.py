@@ -18,8 +18,8 @@ Syntax:
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from .squirrel_parse import squirrel_parse_with_rule_map
-from .ast_node import ASTNode
+from .squirrel_parse import parse_to_match_result_for_testing
+from .ast_node import ASTNode, build_ast
 from .terminals import Str, Char, CharRange, AnyChar, Nothing
 from .combinators import Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowedBy, FollowedBy, Ref
 
@@ -180,13 +180,17 @@ class MetaGrammar:
     @staticmethod
     def parse_grammar(grammar_text: str) -> dict[str, Clause]:
         """Parse a grammar specification and return the rules."""
-        ast, syntax_errors = squirrel_parse_with_rule_map(MetaGrammar.rules, 'Grammar', grammar_text)
+        match_result, syntax_errors = parse_to_match_result_for_testing(MetaGrammar.rules, 'Grammar', grammar_text)
 
         if syntax_errors:
             error_msgs = '\n'.join(str(e) for e in syntax_errors)
             raise ValueError(
                 f'Failed to parse grammar. Syntax errors:\n{error_msgs}'
             )
+
+        ast = build_ast(match_result, grammar_text, 'Grammar')
+        if not ast:
+            raise ValueError('Failed to build AST from grammar')
 
         return MetaGrammar._build_grammar_rules(ast, grammar_text)
 
@@ -195,28 +199,33 @@ class MetaGrammar:
         """Build grammar rules from the AST."""
         result: dict[str, Clause] = {}
         transparent_rules: set[str] = set()
+        rule_nodes = [n for n in ast.children if n.label == 'Rule']
 
-        for rule_node in ast.children:
-            if rule_node.label != 'Rule':
-                continue
-
-            # Get rule name (first Identifier child)
+        # First pass: collect all transparent rules
+        for rule_node in rule_nodes:
             rule_name_node = next(c for c in rule_node.children if c.label == 'Identifier')
             rule_name = rule_name_node.text
 
-            # Get rule body (first Expression child)
+            # Check for transparent marker
+            has_transparent_marker = any(
+                c.label == 'Str' and c.text == '~' for c in rule_node.children
+            )
+            if has_transparent_marker:
+                transparent_rules.add(rule_name)
+
+        # Second pass: build all clauses with complete transparent rules set
+        for rule_node in rule_nodes:
+            rule_name_node = next(c for c in rule_node.children if c.label == 'Identifier')
+            rule_name = rule_name_node.text
+
             rule_body = next(c for c in rule_node.children if c.label == 'Expression')
 
-            # Check for transparent marker (first child is Str with text '~')
             has_transparent_marker = any(
                 c.label == 'Str' and c.text == '~' for c in rule_node.children
             )
 
-            if has_transparent_marker:
-                transparent_rules.add(rule_name)
-
             result[rule_name] = MetaGrammar._build_clause(
-                rule_body, input_str, transparent_rules=transparent_rules
+                rule_body, input_str, transparent=has_transparent_marker, transparent_rules=transparent_rules
             )
 
         return result
@@ -279,20 +288,26 @@ class MetaGrammar:
             if child_node is None:
                 raise ValueError('Prefix node has no Prefix/Suffix child')
 
-            child_clause = MetaGrammar._build_clause(
-                child_node, input_str, transparent_rules=transparent_rules
-            )
-
             if operator_node is None:
                 # No prefix operator, just return the child
-                return child_clause
+                return MetaGrammar._build_clause(
+                    child_node, input_str, transparent=transparent, transparent_rules=transparent_rules
+                )
 
             if operator_node.text == '&':
-                return FollowedBy(child_clause)
+                return FollowedBy(
+                    MetaGrammar._build_clause(
+                        child_node, input_str, transparent=transparent, transparent_rules=transparent_rules
+                    )
+                )
             elif operator_node.text == '!':
-                return NotFollowedBy(child_clause)
+                return NotFollowedBy(
+                    MetaGrammar._build_clause(
+                        child_node, input_str, transparent=transparent, transparent_rules=transparent_rules
+                    )
+                )
             elif operator_node.text == '~':
-                # Transparent marker - return child with transparent flag
+                # Transparent marker - mark child as transparent
                 return MetaGrammar._build_clause(
                     child_node, input_str,
                     transparent=True,
@@ -311,7 +326,7 @@ class MetaGrammar:
                 raise ValueError('Suffix node has no Suffix/Primary child')
 
             child_clause = MetaGrammar._build_clause(
-                child_node, input_str, transparent_rules=transparent_rules
+                child_node, input_str, transparent=transparent, transparent_rules=transparent_rules
             )
 
             if operator_node is None:
@@ -333,7 +348,7 @@ class MetaGrammar:
                 if not MetaGrammar._should_skip_node(c.label)
             ]
             sequences = [
-                MetaGrammar._build_clause(child, input_str, transparent_rules=transparent_rules)
+                MetaGrammar._build_clause(child, input_str, transparent=transparent, transparent_rules=transparent_rules)
                 for child in semantic_children
             ]
             return sequences[0] if len(sequences) == 1 else First(*sequences, transparent=transparent)
@@ -344,19 +359,19 @@ class MetaGrammar:
                 if not MetaGrammar._should_skip_node(c.label)
             ]
             items = [
-                MetaGrammar._build_clause(child, input_str, transparent_rules=transparent_rules)
+                MetaGrammar._build_clause(child, input_str, transparent=transparent, transparent_rules=transparent_rules)
                 for child in semantic_children
             ]
             return items[0] if len(items) == 1 else Seq(*items, transparent=transparent)
 
         elif node.label == 'And':
             return FollowedBy(
-                MetaGrammar._build_clause(node.children[0], input_str, transparent_rules=transparent_rules)
+                MetaGrammar._build_clause(node.children[0], input_str, transparent=transparent, transparent_rules=transparent_rules)
             )
 
         elif node.label == 'Not':
             return NotFollowedBy(
-                MetaGrammar._build_clause(node.children[0], input_str, transparent_rules=transparent_rules)
+                MetaGrammar._build_clause(node.children[0], input_str, transparent=transparent, transparent_rules=transparent_rules)
             )
 
         elif node.label == 'Transparent':
@@ -369,19 +384,19 @@ class MetaGrammar:
 
         elif node.label == 'ZeroOrMore':
             return ZeroOrMore(
-                MetaGrammar._build_clause(node.children[0], input_str, transparent_rules=transparent_rules),
+                MetaGrammar._build_clause(node.children[0], input_str, transparent=transparent, transparent_rules=transparent_rules),
                 transparent=transparent
             )
 
         elif node.label == 'OneOrMore':
             return OneOrMore(
-                MetaGrammar._build_clause(node.children[0], input_str, transparent_rules=transparent_rules),
+                MetaGrammar._build_clause(node.children[0], input_str, transparent=transparent, transparent_rules=transparent_rules),
                 transparent=transparent
             )
 
         elif node.label == 'Optional':
             return Optional(
-                MetaGrammar._build_clause(node.children[0], input_str, transparent_rules=transparent_rules),
+                MetaGrammar._build_clause(node.children[0], input_str, transparent=transparent, transparent_rules=transparent_rules),
                 transparent=transparent
             )
 
