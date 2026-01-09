@@ -399,7 +399,7 @@ CSTNodeFactory(
 )
 ```
 
-## Installation
+## Building
 
 ```bash
 pip install -e .    # Install in development mode

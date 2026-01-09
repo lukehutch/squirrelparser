@@ -255,11 +255,78 @@ Supported in strings and character literals:
 Rule <- "a" ; # Comments can appear anywhere
 ```
 
+## Complete Example: JSON Parser with CST
+
+```java
+import com.squirrelparser.*;
+import java.util.List;
+
+// Custom CST node for JSON
+class JsonNode extends CSTNode {
+    private final Object value;
+    private final List<JsonNode> children;
+
+    public JsonNode(String name, List<JsonNode> children, Object value) {
+        super(name);
+        this.children = children != null ? children : List.of();
+        this.value = value;
+    }
+}
+
+String jsonGrammar = """
+JSON <- _ Value _ ;
+Value <- Object / Array / String / Number / Boolean / Null ;
+
+Object <- '{' _ (Pair (',' _ Pair)*)? _ '}' ;
+Pair <- String _ ':' _ Value ;
+
+Array <- '[' _ (Value (',' _ Value)*)? _ ']' ;
+
+String <- '"' StringChar* '"' ;
+~StringChar <- [^"\\\\] / '\\\\' . ;
+
+Number <- '-'? [0-9]+ ('.' [0-9]+)? ;
+
+Boolean <- "true" / "false" ;
+Null <- "null" ;
+
+~_ <- [ \\t\\n\\r]* ;
+""";
+
+// CST factories - note: only for non-transparent rules
+List<CSTNodeFactory<CSTNode>> factories = List.of(
+    new CSTNodeFactory<>(
+        "JSON",
+        List.of("Value"),
+        (ruleName, expectedChildren, children) ->
+            new JsonNode(
+                ruleName,
+                (List<JsonNode>) (List<?>) children,
+                !children.isEmpty() ? ((JsonNode) children.get(0)).value : null
+            )
+    ),
+    new CSTNodeFactory<>(
+        "Value",
+        List.of("Object", "Array", "String", "Number", "Boolean", "Null"),
+        (ruleName, expectedChildren, children) ->
+            new JsonNode(
+                ruleName,
+                (List<JsonNode>) (List<?>) children,
+                !children.isEmpty() ? ((JsonNode) children.get(0)).value : null
+            )
+    )
+    // ... factories for other non-transparent rules ...
+);
+
+// Parse JSON
+String jsonInput = "{\"name\": \"Alice\", \"age\": 30}";
+CSTNode cst = SquirrelParser.parse(jsonGrammar, jsonInput, "JSON", factories);
+System.out.println("JSON parsed successfully: " + cst.getName());
+```
+
 ## Error Handling
 
-### CSTFactoryValidationException
-
-Thrown when factory validation fails (missing or extra factories):
+### Factory Validation Errors
 
 ```java
 import com.squirrelparser.*;
@@ -269,31 +336,26 @@ try {
 } catch (CSTFactoryValidationException e) {
     System.out.println("Missing factories: " + e.getMissing());
     System.out.println("Extra factories: " + e.getExtra());
-}
-```
-
-### DuplicateRuleNameException
-
-Thrown when duplicate rule names appear in the factories list:
-
-```java
-try {
-    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
 } catch (DuplicateRuleNameException e) {
     System.out.println("Duplicate rule: " + e.getRuleName() +
                        " (appears " + e.getCount() + " times)");
+} catch (CSTConstructionException e) {
+    System.out.println("CST construction failed: " + e.getMessage());
 }
 ```
 
-### CSTConstructionException
+### Syntax Errors
 
-Thrown when CST construction fails:
+The parser returns syntax errors separately from the CST:
 
 ```java
-try {
-    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
-} catch (CSTConstructionException e) {
-    System.out.println("CST construction failed: " + e.getMessage());
+List<SyntaxError> syntaxErrors = SquirrelParser.parseErrors(grammar, input, "RuleName", factories);
+
+if (!syntaxErrors.isEmpty()) {
+    System.out.println("Syntax errors found:");
+    for (SyntaxError error : syntaxErrors) {
+        System.out.println("  " + error.toString());
+    }
 }
 ```
 

@@ -130,8 +130,9 @@ List<ASTNode> _collectChildren(MatchResult match, String input) {
   final result = <ASTNode>[];
 
   for (final child in match.subClauseMatches) {
-    if (child.isMismatch || child is SyntaxError)
+    if (child.isMismatch || child is SyntaxError) {
       continue; // Skip error nodes in AST
+    }
 
     final clause = child.clause;
 
@@ -157,8 +158,9 @@ List<ASTNode> collectChildrenForAST(MatchResult match, String input) {
   final result = <ASTNode>[];
 
   for (final child in match.subClauseMatches) {
-    if (child.isMismatch || child is SyntaxError)
+    if (child.isMismatch || child is SyntaxError) {
       continue; // Skip error nodes in AST
+    }
 
     final clause = child.clause;
 

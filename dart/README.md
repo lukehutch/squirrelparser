@@ -144,30 +144,6 @@ CSTNodeFactory<MyNode>(
 )
 ```
 
-**Important**: If you accidentally create a factory for a transparent rule, an exception will be thrown. For example:
-
-```dart
-// This will throw DuplicateRuleNameException or validation error!
-CSTNodeFactory<MyNode>(
-  ruleName: '_',  // Error: _ is transparent, factories are not allowed for it
-  expectedChildren: [],
-  factory: (ruleName, expectedChildren, children) => MyNode(ruleName),
-)
-```
-
-### Defining Custom Node Classes
-
-Your CST node classes should capture the semantic information you need:
-
-```dart
-class MyNode extends CSTNode {
-  final List<MyNode> children;
-  final String? value;
-
-  MyNode({required super.name, required this.children, this.value});
-}
-```
-
 ## Grammar Syntax Reference
 
 ### Rules
@@ -396,6 +372,36 @@ if (syntaxErrors.isNotEmpty) {
 }
 ```
 
+### Defining Custom Node Classes
+
+Your CST node classes should capture the semantic information you need:
+
+```dart
+class MyNode extends CSTNode {
+  final List<MyNode> children;
+  final String? value;
+
+  MyNode({required super.name, required this.children, this.value});
+}
+```
+
+### Using Transparent Rules for Whitespace
+
+Use transparent rules to handle whitespace and other structural elements:
+
+```dart
+final grammar = '''
+  ~_ <- [ \t\n\r]* ;
+  Expression <- Term (_ ('+' / '-') _ Term)* ;
+  Term <- Factor (_ ('*' / '/') _ Factor)* ;
+  Factor <- Number / '(' _ Expression _ ')' ;
+  Number <- [0-9]+ ;
+''';
+
+// You only need factories for Expression, Term, Factor, and Number
+// NOT for _ (which is transparent)
+```
+
 ### Factory Functions Can Validate Input
 
 You can perform validation within your factory functions:
@@ -431,23 +437,6 @@ CSTNodeFactory<MyNode>(
     );
   },
 )
-```
-
-### Using Transparent Rules for Whitespace
-
-Use transparent rules to handle whitespace and other structural elements:
-
-```dart
-final grammar = '''
-  ~_ <- [ \t\n\r]* ;
-  Expression <- Term (_ ('+' / '-') _ Term)* ;
-  Term <- Factor (_ ('*' / '/') _ Factor)* ;
-  Factor <- Number / '(' _ Expression _ ')' ;
-  Number <- [0-9]+ ;
-''';
-
-// You only need factories for Expression, Term, Factor, and Number
-// NOT for _ (which is transparent)
 ```
 
 ## Building
