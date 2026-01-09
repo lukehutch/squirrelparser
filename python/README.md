@@ -60,34 +60,34 @@ factories = [
     CSTNodeFactory(
         'Expr',
         ['Term', 'AddOp'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+        lambda ruleName, children: CalcNode(ruleName, children),
     ),
     CSTNodeFactory(
         'Term',
         ['Factor', 'MulOp'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+        lambda ruleName, children: CalcNode(ruleName, children),
     ),
     CSTNodeFactory(
         'Factor',
         ['Number', 'Expr'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+        lambda ruleName, children: CalcNode(ruleName, children),
     ),
     CSTNodeFactory(
         'Number',
         ['<Terminal>'],
-        lambda ruleName, expectedChildren, children: CalcNode(
+        lambda ruleName, children: CalcNode(
             ruleName, [], int(children[0].toString()) if children else 0
         ),
     ),
     CSTNodeFactory(
         'AddOp',
         ['<Terminal>'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+        lambda ruleName, children: CalcNode(ruleName, children),
     ),
     CSTNodeFactory(
         'MulOp',
         ['<Terminal>'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+        lambda ruleName, children: CalcNode(ruleName, children),
     ),
 ]
 
@@ -108,14 +108,15 @@ else:
 Each **non-transparent** grammar rule needs a corresponding factory. The factory function receives:
 
 - **ruleName**: The name of the grammar rule
-- **expectedChildren**: The expected child rule names (useful for validation)
 - **children**: The actual CST child nodes built from the parse tree
+
+Use `'<Terminal>'` in the child rule names list when you expect a terminal (literal string or character class match) as a child, or a rule name when expecting output from another rule.
 
 ```python
 CSTNodeFactory(
     'RuleName',
-    ['Child1', 'Child2'],  # Expected children
-    lambda ruleName, expectedChildren, children: MyNode(ruleName, children)
+    ['Child1', 'Child2'],  # Child rule names (use '<Terminal>' for terminals)
+    lambda ruleName, children: MyNode(ruleName, children)
 )
 ```
 
@@ -276,14 +277,14 @@ factories = [
     CSTNodeFactory(
         'JSON',
         ['Value'],
-        lambda ruleName, _, children: JsonNode(
+        lambda ruleName, children: JsonNode(
             ruleName, children, children[0].value if children else None
         ),
     ),
     CSTNodeFactory(
         'Value',
         ['Object', 'Array', 'String', 'Number', 'Boolean', 'Null'],
-        lambda ruleName, _, children: JsonNode(
+        lambda ruleName, children: JsonNode(
             ruleName, children, children[0].value if children else None
         ),
     ),
@@ -378,7 +379,7 @@ You can perform validation within your factory functions:
 CSTNodeFactory(
     'MyRule',
     ['Child1', 'Child2'],
-    lambda ruleName, expectedChildren, children: (
+    lambda ruleName, children: (
         MyNode(ruleName, children)
         if children
         else (_ for _ in ()).throw(
@@ -390,14 +391,14 @@ CSTNodeFactory(
 
 ### Handling Terminal Nodes
 
-Terminal rules (which match literal text or character classes) have `expectedChildren: ['<Terminal>']`:
+Terminal rules (which match literal text or character classes) use `'<Terminal>'` in the child rule names:
 
 ```python
-# Terminals have expectedChildren: ['<Terminal>']
+# Terminals use '<Terminal>' to indicate a terminal child
 CSTNodeFactory(
     'Number',
     ['<Terminal>'],
-    lambda ruleName, _, children: MyNode(
+    lambda ruleName, children: MyNode(
         ruleName, [], str(children[0]) if children else None
     ),
 )

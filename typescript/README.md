@@ -74,28 +74,28 @@ const factories = [
   new CSTNodeFactory<CalcNode>(
     'Expr',
     ['Term', 'AddOp'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       return new CalcNode(ruleName, children as CalcNode[]);
     }
   ),
   new CSTNodeFactory<CalcNode>(
     'Term',
     ['Factor', 'MulOp'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       return new CalcNode(ruleName, children as CalcNode[]);
     }
   ),
   new CSTNodeFactory<CalcNode>(
     'Factor',
     ['Number', 'Expr'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       return new CalcNode(ruleName, children as CalcNode[]);
     }
   ),
   new CSTNodeFactory<CalcNode>(
     'Number',
     ['<Terminal>'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       const value = children.length > 0 ? parseInt(children[0].toString()) : 0;
       return new CalcNode(ruleName, [], value);
     }
@@ -103,7 +103,7 @@ const factories = [
   new CSTNodeFactory<CalcNode>(
     'AddOp',
     ['<Terminal>'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       // Capture the operator symbol
       return new CalcNode(ruleName, children as CalcNode[]);
     }
@@ -111,7 +111,7 @@ const factories = [
   new CSTNodeFactory<CalcNode>(
     'MulOp',
     ['<Terminal>'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       // Capture the operator symbol
       return new CalcNode(ruleName, children as CalcNode[]);
     }
@@ -137,14 +137,15 @@ if (errors.length === 0) {
 Each **non-transparent** grammar rule needs a corresponding factory. The factory function receives:
 
 - **ruleName**: The name of the grammar rule
-- **expectedChildren**: The expected child rule names (useful for validation)
 - **children**: The actual CST child nodes built from the parse tree
+
+Use `'<Terminal>'` in `childRuleNames` when you expect a terminal (literal string or character class match) as a child, or a rule name when expecting output from another rule.
 
 ```typescript
 new CSTNodeFactory<MyNode>(
   'RuleName',
-  ['Child1', 'Child2'],  // Expected children
-  (ruleName, expectedChildren, children) => {
+  ['Child1', 'Child2'],  // Child rule names (use '<Terminal>' for terminals)
+  (ruleName, children) => {
     // Build and return your custom node
     return new MyNode(ruleName, children);
   }
@@ -316,7 +317,7 @@ const factories = [
   new CSTNodeFactory<JsonNode>(
     'JSON',
     ['Value'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       return new JsonNode(
         ruleName,
         children as JsonNode[],
@@ -327,7 +328,7 @@ const factories = [
   new CSTNodeFactory<JsonNode>(
     'Value',
     ['Object', 'Array', 'String', 'Number', 'Boolean', 'Null'],
-    (ruleName, _expectedChildren, children) => {
+    (ruleName, children) => {
       return new JsonNode(
         ruleName,
         children as JsonNode[],
@@ -438,7 +439,7 @@ You can perform validation within your factory functions:
 new CSTNodeFactory<MyNode>(
   'MyRule',
   ['Child1', 'Child2'],
-  (ruleName, expectedChildren, children) => {
+  (ruleName, children) => {
     if (children.length === 0) {
       throw new CSTConstructionException(`${ruleName} requires children`);
     }
@@ -449,14 +450,14 @@ new CSTNodeFactory<MyNode>(
 
 ### Handling Terminal Nodes
 
-Terminal rules (which match literal text or character classes) have `expectedChildren: ['<Terminal>']`:
+Terminal rules (which match literal text or character classes) use `'<Terminal>'` in the `childRuleNames`:
 
 ```typescript
-// Terminals have expectedChildren: ['<Terminal>']
+// Terminals use '<Terminal>' to indicate a terminal child
 new CSTNodeFactory<MyNode>(
   'Number',
   ['<Terminal>'],
-  (ruleName, _expectedChildren, children) => {
+  (ruleName, children) => {
     // Extract raw text from terminal
     const value = children.length > 0 ? children[0].toString() : null;
     return new MyNode(ruleName, [], value);

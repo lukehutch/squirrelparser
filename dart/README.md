@@ -63,29 +63,29 @@ class CalcNode extends CSTNode {
 final factories = [
   CSTNodeFactory<CalcNode>(
     ruleName: 'Expr',
-    expectedChildren: ['Term', 'AddOp'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['Term', 'AddOp'],
+    factory: (ruleName, children) {
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'Term',
-    expectedChildren: ['Factor', 'MulOp'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['Factor', 'MulOp'],
+    factory: (ruleName, children) {
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'Factor',
-    expectedChildren: ['Number', 'Expr'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['Number', 'Expr'],
+    factory: (ruleName, children) {
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'Number',
-    expectedChildren: ['<Terminal>'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['<Terminal>'],
+    factory: (ruleName, children) {
       return CalcNode(
         name: ruleName,
         children: [],
@@ -95,16 +95,16 @@ final factories = [
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'AddOp',
-    expectedChildren: ['<Terminal>'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['<Terminal>'],
+    factory: (ruleName, children) {
       // Capture the operator symbol
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'MulOp',
-    expectedChildren: ['<Terminal>'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['<Terminal>'],
+    factory: (ruleName, children) {
       // Capture the operator symbol
       return CalcNode(name: ruleName, children: children);
     },
@@ -130,14 +130,15 @@ if (errors.isEmpty) {
 Each non-transparent grammar rule needs a corresponding factory. The factory function receives:
 
 - **ruleName**: The name of the grammar rule
-- **expectedChildren**: The expected child rule names (useful for validation)
 - **children**: The actual CST child nodes built from the parse tree
+
+Use `'<Terminal>'` in `childRuleNames` when you expect a terminal (literal string or character class match) as a child, or a rule name when expecting output from another rule.
 
 ```dart
 CSTNodeFactory<MyNode>(
   ruleName: 'RuleName',
-  expectedChildren: ['Child1', 'Child2'],  // Expected children
-  factory: (ruleName, expectedChildren, children) {
+  childRuleNames: ['Child1', 'Child2'],  // Child rule names (use '<Terminal>' for terminals)
+  factory: (ruleName, children) {
     // Build and return your custom node
     return MyNode(name: ruleName, children: children);
   },
@@ -304,8 +305,8 @@ Null <- "null" ;
 final factories = [
   CSTNodeFactory<JsonNode>(
     ruleName: 'JSON',
-    expectedChildren: ['Value'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['Value'],
+    factory: (ruleName, children) {
       return JsonNode(
         name: ruleName,
         children: children,
@@ -315,8 +316,8 @@ final factories = [
   ),
   CSTNodeFactory<JsonNode>(
     ruleName: 'Value',
-    expectedChildren: ['Object', 'Array', 'String', 'Number', 'Boolean', 'Null'],
-    factory: (ruleName, expectedChildren, children) {
+    childRuleNames: ['Object', 'Array', 'String', 'Number', 'Boolean', 'Null'],
+    factory: (ruleName, children) {
       return JsonNode(
         name: ruleName,
         children: children,
@@ -413,8 +414,8 @@ You can perform validation within your factory functions:
 ```dart
 CSTNodeFactory<MyNode>(
   ruleName: 'MyRule',
-  expectedChildren: ['Child1', 'Child2'],
-  factory: (ruleName, expectedChildren, children) {
+  childRuleNames: ['Child1', 'Child2'],
+  factory: (ruleName, children) {
     if (children.isEmpty) {
       throw CSTConstructionException('$ruleName requires children');
     }
@@ -425,14 +426,14 @@ CSTNodeFactory<MyNode>(
 
 ### Handling Terminal Nodes
 
-Terminal rules (which match literal text or character classes) have `expectedChildren: ['<Terminal>']`:
+Terminal rules (which match literal text or character classes) use `'<Terminal>'` in the `childRuleNames`:
 
 ```dart
-// Terminals have expectedChildren: ['<Terminal>']
+// Terminals use '<Terminal>' to indicate a terminal child
 CSTNodeFactory<MyNode>(
   ruleName: 'Number',
-  expectedChildren: ['<Terminal>'],
-  factory: (ruleName, _, children) {
+  childRuleNames: ['<Terminal>'],
+  factory: (ruleName, children) {
     // Extract raw text from terminal
     return MyNode(
       name: ruleName,

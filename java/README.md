@@ -73,25 +73,25 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "Expr",
         List.of("Term", "AddOp"),
-        (ruleName, expectedChildren, children) ->
+        (ruleName, children) ->
             new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
     new CSTNodeFactory<>(
         "Term",
         List.of("Factor", "MulOp"),
-        (ruleName, expectedChildren, children) ->
+        (ruleName, children) ->
             new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
     new CSTNodeFactory<>(
         "Factor",
         List.of("Number", "Expr"),
-        (ruleName, expectedChildren, children) ->
+        (ruleName, children) ->
             new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
     new CSTNodeFactory<>(
         "Number",
         List.of("<Terminal>"),
-        (ruleName, expectedChildren, children) -> {
+        (ruleName, children) -> {
             int value = children.isEmpty() ? 0 :
                 Integer.parseInt(children.get(0).toString());
             return new CalcNode(ruleName, value);
@@ -100,13 +100,13 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "AddOp",
         List.of("<Terminal>"),
-        (ruleName, expectedChildren, children) ->
+        (ruleName, children) ->
             new CalcNode(ruleName)
     ),
     new CSTNodeFactory<>(
         "MulOp",
         List.of("<Terminal>"),
-        (ruleName, expectedChildren, children) ->
+        (ruleName, children) ->
             new CalcNode(ruleName)
     )
 );
@@ -122,14 +122,15 @@ System.out.println("Parse successful: " + cst.getName());
 Each **non-transparent** grammar rule needs a corresponding factory. The factory function receives:
 
 - **ruleName**: The name of the grammar rule
-- **expectedChildren**: The expected child rule names (useful for validation)
 - **children**: The actual CST child nodes built from the parse tree
+
+Use `"<Terminal>"` in the `childRuleNames` list when you expect a terminal (literal string or character class match) as a child, or a rule name when expecting output from another rule.
 
 ```java
 new CSTNodeFactory<MyNode>(
     "RuleName",
-    List.of("Child1", "Child2"),  // Expected children
-    (ruleName, expectedChildren, children) -> {
+    List.of("Child1", "Child2"),  // Child rule names (use "<Terminal>" for terminals)
+    (ruleName, children) -> {
         // Build and return your custom node
         return new MyNode(ruleName, children);
     }
@@ -298,7 +299,7 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "JSON",
         List.of("Value"),
-        (ruleName, expectedChildren, children) ->
+        (ruleName, children) ->
             new JsonNode(
                 ruleName,
                 (List<JsonNode>) (List<?>) children,
@@ -308,7 +309,7 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "Value",
         List.of("Object", "Array", "String", "Number", "Boolean", "Null"),
-        (ruleName, expectedChildren, children) ->
+        (ruleName, children) ->
             new JsonNode(
                 ruleName,
                 (List<JsonNode>) (List<?>) children,
@@ -400,7 +401,7 @@ You can perform validation within your factory functions:
 new CSTNodeFactory<MyNode>(
     "MyRule",
     List.of("Child1", "Child2"),
-    (ruleName, expectedChildren, children) -> {
+    (ruleName, children) -> {
         if (children.isEmpty()) {
             throw new CSTConstructionException(ruleName + " requires children");
         }
@@ -411,14 +412,14 @@ new CSTNodeFactory<MyNode>(
 
 ### Handling Terminal Nodes
 
-Terminal rules (which match literal text or character classes) have `expectedChildren: List.of("<Terminal>")`:
+Terminal rules (which match literal text or character classes) use `List.of("<Terminal>")` in the constructor:
 
 ```java
-// Terminals have expectedChildren: List.of("<Terminal>")
+// Terminals use '<Terminal>' to indicate a terminal child
 new CSTNodeFactory<MyNode>(
     "Number",
     List.of("<Terminal>"),
-    (ruleName, _expectedChildren, children) -> {
+    (ruleName, children) -> {
         String value = children.isEmpty() ? null : children.get(0).toString();
         return new MyNode(ruleName, null, value);
     }
