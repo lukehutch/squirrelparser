@@ -139,7 +139,7 @@ void main() {
 
     try {
       final (cst, errors) = squirrelParse(
-        grammarText: calculatorGrammar,
+        grammar: calculatorGrammar,
         topRule: 'Expr',
         factories: factories,
         input: input,

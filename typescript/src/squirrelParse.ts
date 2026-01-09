@@ -26,7 +26,7 @@ import { AnyChar, Char, CharRange, Str } from './terminals';
  * The CST is constructed directly from the parse tree using the provided factory functions.
  * This allows for fully custom syntax tree representations.
  *
- * @param grammarText The grammar as a PEG metagrammar string
+ * @param grammar The grammar as a PEG metagrammar string
  * @param topRule The name of the top-level rule to parse
  * @param factories List of CST node factories for each grammar rule
  * @param input The input string to parse
@@ -58,12 +58,12 @@ import { AnyChar, Char, CharRange, Str } from './terminals';
  * ```
  */
 export function squirrelParse(
-  grammarText: string,
+  grammar: string,
   topRule: string,
   factories: CSTNodeFactory<CSTNode>[],
   input: string
 ): [CSTNode, SyntaxError[]] {
-  const rules = MetaGrammar.parseGrammar(grammarText);
+  const rules = MetaGrammar.parseGrammar(grammar);
 
   // Convert factories list to map, checking for duplicates
   const factoriesMap = buildFactoriesMap(factories);
@@ -106,12 +106,12 @@ export function parseWithRules(
  * Useful when you want explicit parameter names.
  */
 export function squirrelParseNamed(params: {
-  grammarText: string;
+  grammar: string;
   topRule: string;
   factories: CSTNodeFactory<CSTNode>[];
   input: string;
 }): [CSTNode, SyntaxError[]] {
-  return squirrelParse(params.grammarText, params.topRule, params.factories, params.input);
+  return squirrelParse(params.grammar, params.topRule, params.factories, params.input);
 }
 
 /**

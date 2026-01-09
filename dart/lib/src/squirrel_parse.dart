@@ -37,19 +37,19 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 /// ];
 ///
 /// final (cst, errors) = squirrelParse(
-///   grammarText: grammar,
+///   grammar: grammar,
 ///   topRule: 'Expr',
 ///   factories: factories,
 ///   input: input,
 /// );
 /// ```
 (CSTNode, List<SyntaxError>) squirrelParse({
-  required String grammarText,
+  required String grammar,
   required String topRule,
   required List<CSTNodeFactory<CSTNode>> factories,
   required String input,
 }) {
-  final rules = MetaGrammar.parseGrammar(grammarText);
+  final rules = MetaGrammar.parseGrammar(grammar);
 
   // Convert factories list to map, checking for duplicates
   final factoriesMap = _buildFactoriesMap(factories);

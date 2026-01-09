@@ -142,7 +142,7 @@ void main() {
       ];
 
       final (cst, errors) = squirrelParse(
-        grammarText: grammar,
+        grammar: grammar,
         topRule: 'Test',
         factories: factories,
         input: 'hello',

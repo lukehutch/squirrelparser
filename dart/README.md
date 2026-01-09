@@ -113,7 +113,7 @@ final factories = [
 
 // 4. Parse input and get the CST
 final (cst, errors) = squirrelParse(
-  grammarText: grammar,
+  grammar: grammar,
   topRule: 'Expr',
   factories: factories,
   input: "2+3*4",
@@ -336,7 +336,7 @@ final factories = [
 // Parse JSON
 final jsonInput = '{"name": "Alice", "age": 30}';
 final (cst, errors) = squirrelParse(
-  grammarText: jsonGrammar,
+  grammar: jsonGrammar,
   topRule: 'JSON',
   factories: factories,
   input: jsonInput,
@@ -360,7 +360,7 @@ if (errors.isEmpty) {
 
 try {
   final (cst, errors) = squirrelParse(
-    grammarText: grammar,
+    grammar: grammar,
     topRule: 'Rule',
     factories: factories,
     input: input,
@@ -383,7 +383,7 @@ The parser returns syntax errors separately from the CST:
 // grammar, input, and factories are defined in the basic example above
 
 final (cst, syntaxErrors) = squirrelParse(
-  grammarText: grammar,
+  grammar: grammar,
   topRule: 'Rule',
   factories: factories,
   input: input,

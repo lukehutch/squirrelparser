@@ -32,7 +32,7 @@ import com.squirrelparser.*;
 import java.util.List;
 
 // 1. Define your grammar using PEG metagrammar syntax
-String grammarText = """
+String grammar = """
   Expr   <- Term (AddOp Term)*;
   Term   <- Factor (MulOp Factor)*;
   Factor <- Number / '(' Expr ')';
@@ -113,7 +113,7 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
 
 // 4. Parse input and get the CST
 String input = "2+3*4";
-CSTNode cst = SquirrelParser.parse(grammarText, "Expr", factories, input);
+CSTNode cst = SquirrelParser.parse(grammar, "Expr", factories, input);
 System.out.println("Parse successful: " + cst.getName());
 ```
 

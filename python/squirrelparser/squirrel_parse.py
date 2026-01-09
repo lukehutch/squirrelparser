@@ -30,7 +30,7 @@ from .clause import Clause
 
 
 def squirrel_parse(
-    grammar_text: str,
+    grammar: str,
     *,
     top_rule: str,
     factories: list[CSTNodeFactory[CSTNode]],
@@ -43,7 +43,7 @@ def squirrel_parse(
     This allows for fully custom syntax tree representations.
 
     Args:
-        grammar_text: The grammar as a PEG metagrammar string
+        grammar: The grammar as a PEG metagrammar string
         top_rule: The name of the top-level rule to parse (keyword-only)
         factories: List of CST node factories for each grammar rule (keyword-only)
         input_str: The input string to parse (keyword-only)
@@ -58,7 +58,7 @@ def squirrel_parse(
     """
     from .meta_grammar import MetaGrammar
 
-    rules = MetaGrammar.parse_grammar(grammar_text)
+    rules = MetaGrammar.parse_grammar(grammar)
 
     # Convert factories list to map, checking for duplicates
     factories_map = _build_factories_map(factories)
