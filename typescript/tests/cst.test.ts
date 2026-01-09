@@ -5,21 +5,25 @@ import {
   DuplicateRuleNameException,
   MetaGrammar,
   squirrelParse,
-  parseToMatchResultForTesting,
-  parseWithRuleMapForTesting,
 } from '../src/index';
+import { parseToMatchResultForTesting, parseWithRuleMapForTesting } from './testUtils';
 
 // Simple test CST node for testing
 class SimpleCST extends CSTNode {
+  readonly children: CSTNode[];
+  readonly value?: string;
+
   constructor(
     name: string,
-    readonly children: CSTNode[] = [],
-    readonly value?: string
+    children: CSTNode[] = [],
+    value?: string
   ) {
     super(name);
+    this.children = children;
+    this.value = value;
   }
 
-  override toString(): string {
+  toString(): string {
     return this.value ?? this.name;
   }
 }
@@ -52,8 +56,8 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Greeting',
         ['Name'],
-        (ruleName, expectedChildren, children) => {
-          return new SimpleCST(ruleName, children);
+        (ruleName: string, expectedChildren: string[], children: CSTNode[]) => {
+          return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
     ];
@@ -75,14 +79,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Greeting',
         [],
-        (ruleName, _expectedChildren, _children) => {
+        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'ExtraRule',
         [],
-        (ruleName, _expectedChildren, _children) => {
+        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
@@ -105,14 +109,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Main',
         ['Item'],
-        (ruleName, _expectedChildren, children) => {
-          return new SimpleCST(ruleName, children);
+        (ruleName: string, _expectedChildren: string[], children: CSTNode[]) => {
+          return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Item',
         ['<Terminal>'],
-        (ruleName, _expectedChildren, _children) => {
+        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'test');
         }
       ),
@@ -134,7 +138,7 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Test',
         ['<Terminal>'],
-        (ruleName, _expectedChildren, _children) => {
+        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'hello');
         }
       ),
@@ -159,14 +163,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Main',
         [],
-        (ruleName, _expectedChildren, _children) => {
+        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Main',
         [],
-        (ruleName, _expectedChildren, _children) => {
+        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
@@ -191,14 +195,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Expr',
         ['Term'],
-        (ruleName, _expectedChildren, children) => {
-          return new SimpleCST(ruleName, children);
+        (ruleName: string, _expectedChildren: string[], children: CSTNode[]) => {
+          return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Term',
         ['<Terminal>'],
-        (ruleName, _expectedChildren, _children) => {
+        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'x');
         }
       ),

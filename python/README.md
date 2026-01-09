@@ -55,7 +55,23 @@ class CalcNode(CSTNode):
 
 
 # 3. Create factories for each NON-TRANSPARENT grammar rule
+# Note: factories should be in the same order as the grammar rules are defined
 factories = [
+    CSTNodeFactory(
+        'Expr',
+        ['Term', 'AddOp'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+    ),
+    CSTNodeFactory(
+        'Term',
+        ['Factor', 'MulOp'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+    ),
+    CSTNodeFactory(
+        'Factor',
+        ['Number', 'Expr'],
+        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
+    ),
     CSTNodeFactory(
         'Number',
         ['<Terminal>'],
@@ -71,21 +87,6 @@ factories = [
     CSTNodeFactory(
         'MulOp',
         ['<Terminal>'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
-    ),
-    CSTNodeFactory(
-        'Factor',
-        ['Number', 'Expr'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
-    ),
-    CSTNodeFactory(
-        'Term',
-        ['Factor', 'MulOp'],
-        lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
-    ),
-    CSTNodeFactory(
-        'Expr',
-        ['Term', 'AddOp'],
         lambda ruleName, expectedChildren, children: CalcNode(ruleName, children),
     ),
 ]

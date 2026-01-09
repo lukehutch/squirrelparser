@@ -8,9 +8,15 @@ from collections.abc import Mapping
 from squirrelparser import (
     Parser, Clause, Ref, Str, Char, CharRange,
     Seq, First, OneOrMore, ZeroOrMore, Optional,
-    SyntaxError as SyntaxErrorNode
+    SyntaxError as SyntaxErrorNode,
+    CSTNode,
+    CSTNodeFactory,
+    CSTConstructionException,
+    CSTFactoryValidationException,
+    DuplicateRuleNameException,
+    AnyChar,
 )
-from squirrelparser.match_result import MatchResult
+from squirrelparser.match_result import MatchResult, SyntaxError
 
 
 def parse(rules: Mapping[str, Any], input_str: str, top_rule: str = 'S') -> tuple[bool, int, list[str]]:
@@ -307,3 +313,181 @@ def _count_operators(result: MatchResult, op_str: str) -> int:
         if not child.is_mismatch:
             count += _count_operators(child, op_str)
     return count
+
+
+# ============================================================================
+# CST Testing Utilities
+# ============================================================================
+
+
+def parse_to_match_result_for_testing(
+    rules: Mapping[str, Clause],
+    top_rule: str,
+    input_str: str,
+) -> tuple[MatchResult, list[SyntaxError]]:
+    """
+    Parse input with pre-parsed grammar rules and return raw parse tree and errors.
+    Test utility only - not part of public API.
+    """
+    from squirrelparser.combinators import get_syntax_errors
+
+    parser = Parser(cast(Mapping[str, Clause], rules), input_str)
+    match_result, _used_recovery = parser.parse(top_rule)
+    syntax_errors = get_syntax_errors(match_result, input_str)
+    return (match_result, syntax_errors)
+
+
+def parse_with_rule_map_for_testing(
+    rules: Mapping[str, Clause],
+    top_rule: str,
+    input_str: str,
+    factories: list[CSTNodeFactory[CSTNode]],
+) -> tuple[CSTNode, list[SyntaxError]]:
+    """
+    Parse input with pre-parsed grammar rules and return a CST.
+    Test utility only - not part of public API.
+    """
+    match_result, syntax_errors = parse_to_match_result_for_testing(rules, top_rule, input_str)
+
+    # Build factories map, checking for duplicates
+    factories_map: dict[str, CSTNodeFactory[CSTNode]] = {}
+    counts: dict[str, int] = {}
+
+    for factory in factories:
+        counts[factory.rule_name] = counts.get(factory.rule_name, 0) + 1
+
+    for rule_name, count in counts.items():
+        if count > 1:
+            raise DuplicateRuleNameException(rule_name, count)
+
+    for factory in factories:
+        factories_map[factory.rule_name] = factory
+
+    # Validate factories
+    transparent_rules: set[str] = set()
+    for rule_name, clause in rules.items():
+        if clause.transparent:
+            transparent_rules.add(rule_name)
+
+    required_rules = set(rules.keys()) - transparent_rules
+    factory_rules = set(factories_map.keys())
+
+    factories_for_transparent_rules = factory_rules & transparent_rules
+    if factories_for_transparent_rules:
+        raise CSTFactoryValidationException(factories_for_transparent_rules, set())
+
+    missing = required_rules - factory_rules
+    extra = factory_rules - required_rules
+
+    if missing or extra:
+        raise CSTFactoryValidationException(missing, extra)
+
+    # Build CST
+    cst = _build_cst(match_result, input_str, factories_map, syntax_errors, top_rule)
+    return (cst, syntax_errors)
+
+
+# Helper functions for CST building (test utilities only)
+
+
+def _build_cst(
+    match_result: MatchResult,
+    input_str: str,
+    factories: dict[str, CSTNodeFactory[CSTNode]],
+    syntax_errors: list[SyntaxError],
+    top_rule_name: str,
+) -> CSTNode:
+    """Build a CST from a parse tree using the provided factories."""
+    if match_result.is_mismatch:
+        raise CSTConstructionException('Cannot build CST from mismatch result')
+
+    factory = factories.get(top_rule_name)
+    if not factory:
+        raise CSTConstructionException(f'No factory found for rule: {top_rule_name}')
+
+    clause = match_result.clause
+    children: list[CSTNode] = []
+
+    if isinstance(clause, Ref) and not clause.transparent:
+        child_factory = factories.get(clause.rule_name)
+        if child_factory:
+            child_children = _build_cst_children(
+                match_result,
+                input_str,
+                factories,
+                syntax_errors,
+                child_factory.expected_children,
+            )
+            children.append(child_factory.factory(clause.rule_name, child_factory.expected_children, child_children))
+    else:
+        children.extend(
+            _build_cst_children(match_result, input_str, factories, syntax_errors, factory.expected_children)
+        )
+
+    return factory.factory(top_rule_name, factory.expected_children, children)
+
+
+def _build_cst_node(
+    match_result: MatchResult,
+    input_str: str,
+    factories: dict[str, CSTNodeFactory[CSTNode]],
+    syntax_errors: list[SyntaxError],
+) -> CSTNode:
+    """Recursively build CST nodes from a parse tree."""
+    clause = match_result.clause
+    if not isinstance(clause, Ref):
+        raise CSTConstructionException(f'Expected Ref at top level, got {type(clause).__name__}')
+
+    rule_name = clause.rule_name
+
+    if clause.transparent:
+        children = [
+            m
+            for m in match_result.sub_clause_matches
+            if not m.is_mismatch and isinstance(m.clause, Ref) and not m.clause.transparent
+        ]
+
+        if not children:
+            raise CSTConstructionException(f'Transparent rule {rule_name} has no non-transparent children')
+        if len(children) == 1:
+            return _build_cst_node(children[0], input_str, factories, syntax_errors)
+        else:
+            raise CSTConstructionException(f'Transparent rule {rule_name} has multiple non-transparent children')
+
+    factory = factories.get(rule_name)
+    if not factory:
+        raise CSTConstructionException(f'No factory found for rule: {rule_name}')
+
+    children = _build_cst_children(match_result, input_str, factories, syntax_errors, factory.expected_children)
+    return factory.factory(rule_name, factory.expected_children, children)
+
+
+def _build_cst_children(
+    match_result: MatchResult,
+    input_str: str,
+    factories: dict[str, CSTNodeFactory[CSTNode]],
+    syntax_errors: list[SyntaxError],
+    _expected_children: list[str],
+) -> list[CSTNode]:
+    """Build CST nodes for children of a parse tree node."""
+    children: list[CSTNode] = []
+
+    for child in match_result.sub_clause_matches:
+        if child.is_mismatch:
+            continue
+
+        clause = child.clause
+
+        if isinstance(clause, (Str, Char, CharRange, AnyChar)):
+            continue
+
+        if isinstance(clause, Ref):
+            if clause.transparent:
+                continue
+
+            child_factory = factories.get(clause.rule_name)
+            if child_factory:
+                cst_child = _build_cst_node(child, input_str, factories, syntax_errors)
+                children.append(cst_child)
+
+    return children

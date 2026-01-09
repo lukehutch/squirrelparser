@@ -16,6 +16,13 @@ import {
   Str,
   SyntaxError,
   ZeroOrMore,
+  getSyntaxErrors,
+  CSTNode,
+  CSTNodeFactory,
+  CSTConstructionException,
+  CSTFactoryValidationException,
+  DuplicateRuleNameException,
+  AnyChar,
 } from '../src';
 
 /**
@@ -328,4 +335,218 @@ function countOperators(result: MatchResult, opStr: string): number {
     count += countOperators(child, opStr);
   }
   return count;
+}
+
+// ============================================================================
+// CST Testing Utilities
+// ============================================================================
+
+/**
+ * Parse input with pre-parsed grammar rules and return raw parse tree and errors.
+ * Test utility only - not part of public API.
+ */
+export function parseToMatchResultForTesting(
+  rules: Record<string, Clause>,
+  topRule: string,
+  input: string
+): [MatchResult, SyntaxError[]] {
+  const parser = new Parser(rules, input);
+  const [matchResult] = parser.parse(topRule);
+  const syntaxErrors = getSyntaxErrors(matchResult, input);
+  return [matchResult, syntaxErrors];
+}
+
+/**
+ * Parse input with pre-parsed grammar rules and return a CST.
+ * Test utility only - not part of public API.
+ */
+export function parseWithRuleMapForTesting(
+  rules: Record<string, Clause>,
+  topRule: string,
+  input: string,
+  factories: CSTNodeFactory<CSTNode>[]
+): [CSTNode, SyntaxError[]] {
+  const [matchResult, syntaxErrors] = parseToMatchResultForTesting(rules, topRule, input);
+
+  // Build factories map, checking for duplicates
+  const factoriesMap: Record<string, CSTNodeFactory<CSTNode>> = {};
+  const counts: Record<string, number> = {};
+
+  for (const factory of factories) {
+    counts[factory.ruleName] = (counts[factory.ruleName] ?? 0) + 1;
+  }
+
+  for (const [ruleName, count] of Object.entries(counts)) {
+    if (count > 1) {
+      throw new DuplicateRuleNameException(ruleName, count);
+    }
+  }
+
+  for (const factory of factories) {
+    factoriesMap[factory.ruleName] = factory;
+  }
+
+  // Validate factories
+  const transparentRules = new Set<string>();
+  for (const [ruleName, clause] of Object.entries(rules)) {
+    if (clause.transparent) {
+      transparentRules.add(ruleName);
+    }
+  }
+
+  const requiredRules = new Set(Object.keys(rules));
+  for (const rule of transparentRules) {
+    requiredRules.delete(rule);
+  }
+
+  const factoryRules = new Set(Object.keys(factoriesMap));
+
+  const factoriesForTransparentRules = new Set<string>();
+  for (const rule of factoryRules) {
+    if (transparentRules.has(rule)) {
+      factoriesForTransparentRules.add(rule);
+    }
+  }
+
+  if (factoriesForTransparentRules.size > 0) {
+    throw new CSTFactoryValidationException(factoriesForTransparentRules, new Set());
+  }
+
+  const missing = new Set<string>();
+  const extra = new Set<string>();
+
+  for (const rule of requiredRules) {
+    if (!factoryRules.has(rule)) {
+      missing.add(rule);
+    }
+  }
+
+  for (const rule of factoryRules) {
+    if (!requiredRules.has(rule)) {
+      extra.add(rule);
+    }
+  }
+
+  if (missing.size > 0 || extra.size > 0) {
+    throw new CSTFactoryValidationException(missing, extra);
+  }
+
+  // Build CST
+  const cst = buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
+  return [cst, syntaxErrors];
+}
+
+// Helper functions for CST building (test utilities only)
+
+function buildCST(
+  matchResult: MatchResult,
+  input: string,
+  factories: Record<string, CSTNodeFactory<CSTNode>>,
+  syntaxErrors: SyntaxError[],
+  topRuleName: string
+): CSTNode {
+  if (matchResult.isMismatch) {
+    throw new CSTConstructionException('Cannot build CST from mismatch result');
+  }
+
+  const factory = factories[topRuleName];
+  if (!factory) {
+    throw new CSTConstructionException(`No factory found for rule: ${topRuleName}`);
+  }
+
+  const clause = matchResult.clause;
+  const children: CSTNode[] = [];
+
+  if (clause instanceof Ref && !clause.transparent) {
+    const childFactory = factories[clause.ruleName];
+    if (childFactory) {
+      const childChildren = buildCSTChildren(
+        matchResult,
+        input,
+        factories,
+        syntaxErrors,
+        childFactory.expectedChildren
+      );
+      children.push(childFactory.factory(clause.ruleName, childFactory.expectedChildren, childChildren));
+    }
+  } else {
+    children.push(
+      ...buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren)
+    );
+  }
+
+  return factory.factory(topRuleName, factory.expectedChildren, children);
+}
+
+function buildCSTNode(
+  matchResult: MatchResult,
+  input: string,
+  factories: Record<string, CSTNodeFactory<CSTNode>>,
+  syntaxErrors: SyntaxError[]
+): CSTNode {
+  const clause = matchResult.clause;
+  if (!clause || !(clause instanceof Ref)) {
+    throw new CSTConstructionException(`Expected Ref at top level, got ${clause?.constructor.name ?? 'null'}`);
+  }
+
+  const ruleName = clause.ruleName;
+
+  if (clause.transparent) {
+    const children = matchResult.subClauseMatches.filter(
+      (m) => !m.isMismatch && m.clause instanceof Ref && !(m.clause as Ref).transparent
+    );
+
+    if (children.length === 0) {
+      throw new CSTConstructionException(`Transparent rule ${ruleName} has no non-transparent children`);
+    }
+    if (children.length === 1) {
+      return buildCSTNode(children[0], input, factories, syntaxErrors);
+    } else {
+      throw new CSTConstructionException(`Transparent rule ${ruleName} has multiple non-transparent children`);
+    }
+  }
+
+  const factory = factories[ruleName];
+  if (!factory) {
+    throw new CSTConstructionException(`No factory found for rule: ${ruleName}`);
+  }
+
+  const children = buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren);
+  return factory.factory(ruleName, factory.expectedChildren, children);
+}
+
+function buildCSTChildren(
+  matchResult: MatchResult,
+  input: string,
+  factories: Record<string, CSTNodeFactory<CSTNode>>,
+  syntaxErrors: SyntaxError[],
+  _expectedChildren: string[]
+): CSTNode[] {
+  const children: CSTNode[] = [];
+
+  for (const child of matchResult.subClauseMatches) {
+    if (child.isMismatch) {
+      continue;
+    }
+
+    const clause = child.clause;
+
+    if (clause instanceof Str || clause instanceof Char || clause instanceof CharRange || clause instanceof AnyChar) {
+      continue;
+    }
+
+    if (clause instanceof Ref) {
+      if (clause.transparent) {
+        continue;
+      }
+
+      const childFactory = factories[clause.ruleName];
+      if (childFactory) {
+        const cstChild = buildCSTNode(child, input, factories, syntaxErrors);
+        children.push(cstChild);
+      }
+    }
+  }
+
+  return children;
 }

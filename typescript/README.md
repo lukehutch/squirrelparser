@@ -69,7 +69,29 @@ class CalcNode extends CSTNode {
 }
 
 // 3. Create factories for each NON-TRANSPARENT grammar rule
+// Note: factories should be in the same order as the grammar rules are defined
 const factories = [
+  new CSTNodeFactory<CalcNode>(
+    'Expr',
+    ['Term', 'AddOp'],
+    (ruleName, _expectedChildren, children) => {
+      return new CalcNode(ruleName, children as CalcNode[]);
+    }
+  ),
+  new CSTNodeFactory<CalcNode>(
+    'Term',
+    ['Factor', 'MulOp'],
+    (ruleName, _expectedChildren, children) => {
+      return new CalcNode(ruleName, children as CalcNode[]);
+    }
+  ),
+  new CSTNodeFactory<CalcNode>(
+    'Factor',
+    ['Number', 'Expr'],
+    (ruleName, _expectedChildren, children) => {
+      return new CalcNode(ruleName, children as CalcNode[]);
+    }
+  ),
   new CSTNodeFactory<CalcNode>(
     'Number',
     ['<Terminal>'],
@@ -91,27 +113,6 @@ const factories = [
     ['<Terminal>'],
     (ruleName, _expectedChildren, children) => {
       // Capture the operator symbol
-      return new CalcNode(ruleName, children as CalcNode[]);
-    }
-  ),
-  new CSTNodeFactory<CalcNode>(
-    'Factor',
-    ['Number', 'Expr'],
-    (ruleName, _expectedChildren, children) => {
-      return new CalcNode(ruleName, children as CalcNode[]);
-    }
-  ),
-  new CSTNodeFactory<CalcNode>(
-    'Term',
-    ['Factor', 'MulOp'],
-    (ruleName, _expectedChildren, children) => {
-      return new CalcNode(ruleName, children as CalcNode[]);
-    }
-  ),
-  new CSTNodeFactory<CalcNode>(
-    'Expr',
-    ['Term', 'AddOp'],
-    (ruleName, _expectedChildren, children) => {
       return new CalcNode(ruleName, children as CalcNode[]);
     }
   ),

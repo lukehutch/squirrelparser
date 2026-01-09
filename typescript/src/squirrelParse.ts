@@ -68,8 +68,10 @@ export function squirrelParse(
   // Convert factories list to map, checking for duplicates
   const factoriesMap = buildFactoriesMap(factories);
 
-  // Get the parse tree
-  const [matchResult, syntaxErrors] = parseToMatchResultForTesting(rules, topRule, input);
+  // Parse the input using the rules
+  const parser = new Parser(rules, input);
+  const [matchResult] = parser.parse(topRule);
+  const syntaxErrors = getSyntaxErrors(matchResult, input);
 
   // Validate factories
   validateCSTFactories(rules, factoriesMap);
@@ -81,14 +83,14 @@ export function squirrelParse(
 }
 
 // ============================================================================
-// Internal API: For testing only
+// Private helpers (internal API for package use only)
 // ============================================================================
 
 /**
- * Internal method for parsing with pre-parsed grammar rules and raw parse tree.
- * Exposed for testing purposes only - not part of public API.
+ * Parse input with pre-parsed grammar rules and return raw parse tree and errors.
+ * For internal package use only (used by metaGrammar).
  */
-export function parseToMatchResultForTesting(
+export function parseWithRules(
   rules: Record<string, Clause>,
   topRule: string,
   input: string
@@ -98,35 +100,6 @@ export function parseToMatchResultForTesting(
   const syntaxErrors = getSyntaxErrors(matchResult, input);
   return [matchResult, syntaxErrors];
 }
-
-/**
- * Internal method for parsing with pre-parsed grammar rules.
- * Exposed for testing purposes only - not part of public API.
- */
-export function parseWithRuleMapForTesting(
-  rules: Record<string, Clause>,
-  topRule: string,
-  input: string,
-  factories: CSTNodeFactory<CSTNode>[]
-): [CSTNode, SyntaxError[]] {
-  // Convert factories list to map, checking for duplicates
-  const factoriesMap = buildFactoriesMap(factories);
-
-  // Get the parse tree
-  const [matchResult, syntaxErrors] = parseToMatchResultForTesting(rules, topRule, input);
-
-  // Validate factories
-  validateCSTFactories(rules, factoriesMap);
-
-  // Build CST from parse tree
-  const cst = buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
-
-  return [cst, syntaxErrors];
-}
-
-// ============================================================================
-// Private helpers
-// ============================================================================
 
 /**
  * Build a factories map from a list, checking for duplicate rule names.

@@ -49,51 +49,10 @@ import 'package:squirrel_parser/squirrel_parser.dart';
   // Convert factories list to map, checking for duplicates
   final factoriesMap = _buildFactoriesMap(factories);
 
-  // Get the parse tree
-  final (matchResult, syntaxErrors) =
-      parseToMatchResultForTesting(rules, topRule, input);
-
-  // Validate factories
-  _validateCSTFactories(rules, factoriesMap);
-
-  // Build CST from parse tree
-  final cst =
-      _buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
-
-  return (cst, syntaxErrors);
-}
-
-// ============================================================================
-// Internal API: For testing only
-// ============================================================================
-
-/// Internal method for parsing with pre-parsed grammar rules and raw parse tree.
-/// Exposed for testing purposes only - not part of public API.
-(MatchResult, List<SyntaxError>) parseToMatchResultForTesting(
-  Map<String, Clause> rules,
-  String topRule,
-  String input,
-) {
+  // Parse the input using the rules
   final parser = Parser(rules: rules, input: input);
   final (matchResult, _) = parser.parse(topRule);
   final syntaxErrors = getSyntaxErrors(matchResult);
-  return (matchResult, syntaxErrors);
-}
-
-/// Internal method for parsing with pre-parsed grammar rules.
-/// Exposed for testing purposes only - not part of public API.
-(CSTNode, List<SyntaxError>) parseWithRuleMapForTesting(
-  Map<String, Clause> rules,
-  String topRule,
-  String input,
-  List<CSTNodeFactory<CSTNode>> factories,
-) {
-  // Convert factories list to map, checking for duplicates
-  final factoriesMap = _buildFactoriesMap(factories);
-
-  // Get the parse tree
-  final (matchResult, syntaxErrors) =
-      parseToMatchResultForTesting(rules, topRule, input);
 
   // Validate factories
   _validateCSTFactories(rules, factoriesMap);

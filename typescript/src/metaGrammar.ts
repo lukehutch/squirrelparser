@@ -19,7 +19,7 @@
 import type { Clause } from './clause';
 import { Seq, First, OneOrMore, ZeroOrMore, Optional, NotFollowedBy, FollowedBy, Ref } from './combinators';
 import { Str, Char, CharRange, AnyChar, Nothing } from './terminals';
-import { parseToMatchResultForTesting } from './squirrelParse';
+import { parseWithRules } from './squirrelParse';
 import { buildAST, ASTNode } from './ast';
 
 export class MetaGrammar {
@@ -176,7 +176,7 @@ export class MetaGrammar {
    * Parse a grammar specification and return the rules.
    */
   static parseGrammar(grammarText: string): Record<string, Clause> {
-    const [matchResult, syntaxErrors] = parseToMatchResultForTesting(MetaGrammar.rules, 'Grammar', grammarText);
+    const [matchResult, syntaxErrors] = parseWithRules(MetaGrammar.rules, 'Grammar', grammarText);
 
     if (syntaxErrors.length > 0) {
       const errorMessages = syntaxErrors.map((e) => e.toString()).join('\n');

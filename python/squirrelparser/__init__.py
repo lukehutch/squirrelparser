@@ -18,8 +18,6 @@ from .cst_node import (
 )
 from .squirrel_parse import (
     squirrel_parse,
-    parse_to_match_result_for_testing,
-    parse_with_rule_map_for_testing,
 )
 
 __all__ = [
@@ -36,8 +34,6 @@ __all__ = [
     'CSTConstructionException',
     'DuplicateRuleNameException',
     'squirrel_parse',
-    'parse_to_match_result_for_testing',
-    'parse_with_rule_map_for_testing',
 ]
 
 __version__ = '1.0.0'

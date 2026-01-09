@@ -29,6 +29,4 @@ export {
 } from './cstNode';
 export {
   squirrelParse,
-  parseToMatchResultForTesting,
-  parseWithRuleMapForTesting,
 } from './squirrelParse';

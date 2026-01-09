@@ -1,6 +1,8 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:test/test.dart';
 
+import 'test_utils.dart' show parseToMatchResultForTesting, parseWithRuleMapForTesting;
+
 /// Simple test CST node for testing
 class SimpleCST extends CSTNode {
   final List<CSTNode> children;

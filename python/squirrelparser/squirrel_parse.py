@@ -4,7 +4,7 @@ squirrel_parse - Parse input and return a Concrete Syntax Tree (CST)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING, Mapping, cast
 
 from .parser import Parser
 from .terminals import Str, Char, CharRange, AnyChar
@@ -18,8 +18,10 @@ from .cst_node import (
 )
 
 if TYPE_CHECKING:
-    from .clause import Clause
     from .match_result import MatchResult, SyntaxError
+
+# Import at module level for runtime use
+from .clause import Clause
 
 
 # ============================================================================
@@ -60,8 +62,10 @@ def squirrel_parse(
     # Convert factories list to map, checking for duplicates
     factories_map = _build_factories_map(factories)
 
-    # Get the parse tree
-    match_result, syntax_errors = parse_to_match_result_for_testing(rules, top_rule, input_str)
+    # Parse the input using the rules
+    parser = Parser(cast(Mapping[str, Clause], rules), input_str)
+    match_result, _ = parser.parse(top_rule)
+    syntax_errors = get_syntax_errors(match_result, input_str)
 
     # Validate factories
     _validate_cst_factories(rules, factories_map)
@@ -73,53 +77,34 @@ def squirrel_parse(
 
 
 # ============================================================================
-# Internal API: For testing only
+# Private helpers (internal API for package use only)
 # ============================================================================
 
 
-def parse_to_match_result_for_testing(
+def parse_with_rules(
     rules: Mapping[str, Clause],
     top_rule: str,
     input_str: str,
 ) -> tuple[MatchResult, list[SyntaxError]]:
-    """
-    Internal method for parsing with pre-parsed grammar rules and raw parse tree.
-    Exposed for testing purposes only - not part of public API.
-    """
+    """Parse input with pre-parsed rules and return raw parse tree and errors. For internal use only."""
+    return _parse_to_match_result(rules, top_rule, input_str)
+
+
+# ============================================================================
+# Internal implementation helpers
+# ============================================================================
+
+
+def _parse_to_match_result(
+    rules: Mapping[str, Clause],
+    top_rule: str,
+    input_str: str,
+) -> tuple[MatchResult, list[SyntaxError]]:
+    """Parse with pre-parsed rules and return match result and syntax errors."""
     parser = Parser(rules=rules, input_str=input_str)
     match_result, _ = parser.parse(top_rule)
     syntax_errors = get_syntax_errors(match_result, input_str)
     return (match_result, syntax_errors)
-
-
-def parse_with_rule_map_for_testing(
-    rules: Mapping[str, Clause],
-    top_rule: str,
-    input_str: str,
-    factories: list[CSTNodeFactory[CSTNode]],
-) -> tuple[CSTNode, list[SyntaxError]]:
-    """
-    Internal method for parsing with pre-parsed grammar rules.
-    Exposed for testing purposes only - not part of public API.
-    """
-    # Convert factories list to map, checking for duplicates
-    factories_map = _build_factories_map(factories)
-
-    # Get the parse tree
-    match_result, syntax_errors = parse_to_match_result_for_testing(rules, top_rule, input_str)
-
-    # Validate factories
-    _validate_cst_factories(rules, factories_map)
-
-    # Build CST from parse tree
-    cst = _build_cst(match_result, input_str, factories_map, syntax_errors, top_rule)
-
-    return (cst, syntax_errors)
-
-
-# ============================================================================
-# Private helpers
-# ============================================================================
 
 
 def _build_factories_map(

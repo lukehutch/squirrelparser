@@ -68,6 +68,7 @@ class CalcNode extends CSTNode {
 }
 
 // 3. Create factories for each NON-TRANSPARENT grammar rule
+// Note: factories should be in the same order as the grammar rules are defined
 List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "Expr",
@@ -88,6 +89,15 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
             new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
     new CSTNodeFactory<>(
+        "Number",
+        List.of("<Terminal>"),
+        (ruleName, expectedChildren, children) -> {
+            int value = children.isEmpty() ? 0 :
+                Integer.parseInt(children.get(0).toString());
+            return new CalcNode(ruleName, value);
+        }
+    ),
+    new CSTNodeFactory<>(
         "AddOp",
         List.of("<Terminal>"),
         (ruleName, expectedChildren, children) ->
@@ -98,15 +108,6 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
         List.of("<Terminal>"),
         (ruleName, expectedChildren, children) ->
             new CalcNode(ruleName)
-    ),
-    new CSTNodeFactory<>(
-        "Number",
-        List.of("<Terminal>"),
-        (ruleName, expectedChildren, children) -> {
-            int value = children.isEmpty() ? 0 :
-                Integer.parseInt(children.get(0).toString());
-            return new CalcNode(ruleName, value);
-        }
     )
 );
 

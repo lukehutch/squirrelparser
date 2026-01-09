@@ -8,9 +8,8 @@ from squirrelparser import (
     CSTFactoryValidationException,
     DuplicateRuleNameException,
     squirrel_parse,
-    parse_to_match_result_for_testing,
-    parse_with_rule_map_for_testing,
 )
+from .test_utils import parse_to_match_result_for_testing, parse_with_rule_map_for_testing
 
 
 class SimpleCST(CSTNode):
