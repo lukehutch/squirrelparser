@@ -313,6 +313,8 @@ from squirrelparser import (
     CSTConstructionException,
 )
 
+# grammar, input_str, and factories are defined in the basic example above
+
 try:
     cst, errors = squirrel_parse(grammar, input_str, 'Rule', factories)
 except CSTFactoryValidationException as e:
@@ -329,6 +331,8 @@ except CSTConstructionException as e:
 The parser returns syntax errors separately from the CST:
 
 ```python
+# grammar, input_str, and factories are defined in the basic example above
+
 cst, syntax_errors = squirrel_parse(grammar, input_str, 'Rule', factories)
 
 if syntax_errors:

@@ -331,6 +331,8 @@ System.out.println("JSON parsed successfully: " + cst.getName());
 ```java
 import com.squirrelparser.*;
 
+// grammar, input, and factories are defined in the basic example above
+
 try {
     CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
 } catch (CSTFactoryValidationException e) {
@@ -346,16 +348,16 @@ try {
 
 ### Syntax Errors
 
-The parser returns syntax errors separately from the CST:
+Java's parser validates the grammar and factories configuration. If validation fails, exceptions are thrown before parsing:
 
 ```java
-List<SyntaxError> syntaxErrors = SquirrelParser.parseErrors(grammar, input, "RuleName", factories);
+// grammar, input, and factories are defined in the basic example above
 
-if (!syntaxErrors.isEmpty()) {
-    System.out.println("Syntax errors found:");
-    for (SyntaxError error : syntaxErrors) {
-        System.out.println("  " + error.toString());
-    }
+try {
+    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
+    System.out.println("Parse successful: " + cst.getName());
+} catch (CSTFactoryValidationException | DuplicateRuleNameException | CSTConstructionException e) {
+    System.out.println("Parse failed: " + e.getMessage());
 }
 ```
 

@@ -361,9 +361,9 @@ import {
   CSTFactoryValidationException,
   DuplicateRuleNameException,
   CSTConstructionException,
-  type CSTNodeFactory,
-  type CSTNode,
 } from 'squirrelparser';
+
+// grammar, input, and factories are defined in the basic example above
 
 try {
   const [cst, errors] = squirrelParse(grammar, input, 'Rule', factories);
@@ -384,6 +384,8 @@ try {
 The parser returns syntax errors separately from the CST:
 
 ```typescript
+// grammar, input, and factories are defined in the basic example above
+
 const [cst, syntaxErrors] = squirrelParse(grammar, input, 'Rule', factories);
 
 if (syntaxErrors.length > 0) {

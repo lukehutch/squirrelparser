@@ -345,6 +345,8 @@ if (errors.isEmpty) {
 ### Factory Validation Errors
 
 ```dart
+// grammar, input, and factories are defined in the basic example above
+
 try {
   final (cst, errors) = squirrelParse(grammar, input, 'Rule', factories);
 } on CSTFactoryValidationException catch (e) {
@@ -362,6 +364,8 @@ try {
 The parser returns syntax errors separately from the CST:
 
 ```dart
+// grammar, input, and factories are defined in the basic example above
+
 final (cst, syntaxErrors) = squirrelParse(grammar, input, 'Rule', factories);
 
 if (syntaxErrors.isNotEmpty) {
