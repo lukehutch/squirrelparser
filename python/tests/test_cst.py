@@ -53,9 +53,7 @@ class TestCST:
         # Only provide factory for Greeting, missing Name
         factories = [
             CSTNodeFactory(
-                'Greeting',
-                ['Name'],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName, children),
+                'Greeting', lambda ruleName, children: SimpleCST(ruleName, children),
             ),
         ]
 
@@ -73,14 +71,10 @@ class TestCST:
         # Provide factory for Greeting and extra Name
         factories = [
             CSTNodeFactory(
-                'Greeting',
-                [],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName),
+                'Greeting', lambda ruleName, children: SimpleCST(ruleName),
             ),
             CSTNodeFactory(
-                'ExtraRule',
-                [],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName),
+                'ExtraRule', lambda ruleName, children: SimpleCST(ruleName),
             ),
         ]
 
@@ -98,14 +92,10 @@ class TestCST:
 
         factories = [
             CSTNodeFactory(
-                'Main',
-                ['Item'],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName, children),
+                'Main', lambda ruleName, children: SimpleCST(ruleName, children),
             ),
             CSTNodeFactory(
-                'Item',
-                ['<Terminal>'],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName, value='test'),
+                'Item', lambda ruleName, children: SimpleCST(ruleName, value='test'),
             ),
         ]
 
@@ -123,9 +113,7 @@ class TestCST:
 
         factories = [
             CSTNodeFactory(
-                'Test',
-                ['<Terminal>'],
-                lambda ruleName, children: SimpleCST(ruleName, value='hello'),
+                'Test', lambda ruleName, children: SimpleCST(ruleName, value='hello'),
             ),
         ]
 
@@ -146,14 +134,10 @@ class TestCST:
         # Provide two factories with the same rule name
         factories = [
             CSTNodeFactory(
-                'Main',
-                [],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName),
+                'Main', lambda ruleName, children: SimpleCST(ruleName),
             ),
             CSTNodeFactory(
-                'Main',
-                [],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName),
+                'Main', lambda ruleName, children: SimpleCST(ruleName),
             ),
         ]
 
@@ -173,14 +157,10 @@ class TestCST:
         # Should only need factories for Expr and Term, not Whitespace (which is transparent)
         factories = [
             CSTNodeFactory(
-                'Expr',
-                ['Term'],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName, children),
+                'Expr', lambda ruleName, children: SimpleCST(ruleName, children),
             ),
             CSTNodeFactory(
-                'Term',
-                ['<Terminal>'],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName, value='x'),
+                'Term', lambda ruleName, children: SimpleCST(ruleName, value='x'),
             ),
         ]
 
@@ -189,3 +169,5 @@ class TestCST:
 
         assert cst is not None
         assert len(errors) == 0
+
+

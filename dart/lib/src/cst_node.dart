@@ -55,9 +55,6 @@ class CSTNodeFactory<T extends CSTNode> {
   /// The grammar rule name this factory corresponds to
   final String ruleName;
 
-  /// The expected child node names or `<Terminal>` for terminal children
-  final List<String> childRuleNames;
-
   /// Factory function that creates a CST node of type T from rule name
   /// and actual child CST nodes
   final T Function(
@@ -67,7 +64,6 @@ class CSTNodeFactory<T extends CSTNode> {
 
   CSTNodeFactory({
     required this.ruleName,
-    required this.childRuleNames,
     required this.factory,
   });
 }

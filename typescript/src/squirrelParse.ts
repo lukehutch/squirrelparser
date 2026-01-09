@@ -15,6 +15,7 @@ import type { MatchResult, SyntaxError } from './matchResult';
 import { MetaGrammar } from './metaGrammar';
 import { Parser } from './parser';
 import { AnyChar, Char, CharRange, Str } from './terminals';
+import { Seq, First, ZeroOrMore, OneOrMore, Optional } from './combinators';
 
 // ============================================================================
 // Public CST API
@@ -26,28 +27,30 @@ import { AnyChar, Char, CharRange, Str } from './terminals';
  * The CST is constructed directly from the parse tree using the provided factory functions.
  * This allows for fully custom syntax tree representations.
  *
+ * The returned CST node is guaranteed to be non-null. It will be either a proper CST node
+ * constructed from a match, or a CSTSyntaxErrorNode if the parse encountered errors that
+ * were recovered.
+ *
  * @param grammar The grammar as a PEG metagrammar string
  * @param topRule The name of the top-level rule to parse
  * @param factories List of CST node factories for each grammar rule
  * @param input The input string to parse
- * @returns A tuple [cst, syntaxErrors] where cst is the root CST node
+ * @returns A tuple [cst, syntaxErrors] where cst is a non-null root CST node (never null)
  * @throws {CSTFactoryValidationException} if the factory list is invalid
  * @throws {DuplicateRuleNameException} if any rule name appears more than once
- * @throws {CSTConstructionException} if CST construction fails
+ * @throws {CSTConstructionException} if CST construction fails or returns null
  *
  * @example
  * ```typescript
  * const factories = [
  *   new CSTNodeFactory<MyNode>(
  *     'Expr',
- *     ['Term'],
  *     (ruleName, children) => {
  *       return new MyNode(ruleName, children);
  *     }
  *   ),
  *   new CSTNodeFactory<MyNode>(
  *     'Term',
- *     ['<Terminal>'],
  *     (ruleName, children) => {
  *       return new MyNode(ruleName);
  *     }
@@ -67,7 +70,6 @@ export function squirrelParse(
 
   // Convert factories list to map, checking for duplicates
   const factoriesMap = buildFactoriesMap(factories);
-
   // Parse the input using the rules
   const parser = new Parser(rules, input);
   const [matchResult] = parser.parse(topRule);
@@ -79,9 +81,70 @@ export function squirrelParse(
   // Build CST from parse tree
   const cst = buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
 
+  // CST must never be null - this would indicate an internal error
+  if (cst === null || cst === undefined) {
+    throw new CSTConstructionException(
+      `Internal error: buildCST returned null for rule: ${topRule}`
+    );
+  }
+
   return [cst, syntaxErrors];
 }
 
+// ============================================================================
+// Derivation of expected children from grammar
+// ============================================================================
+
+/**
+ * Derive the expected child rule names for a given rule based on its clause.
+ * Walks the clause structure and collects all non-transparent Ref names.
+ */
+function deriveExpectedChildren(
+  clause: Clause,
+  rules: Record<string, Clause>
+): string[] {
+  const children: string[] = [];
+  const seen = new Set<string>();
+
+  function walk(c: Clause): void {
+    if (c instanceof Ref) {
+      if (!c.transparent) {
+        // Non-transparent Ref - add as expected child (once)
+        if (!seen.has(c.ruleName)) {
+          children.push(c.ruleName);
+          seen.add(c.ruleName);
+        }
+      } else {
+        // Transparent Ref - walk into it to collect its children
+        const refClause = rules[c.ruleName];
+        if (refClause) {
+          walk(refClause);
+        }
+      }
+    } else if (c instanceof Seq) {
+      // Sequence - walk all children
+      for (const child of c.subClauses) {
+        walk(child);
+      }
+    } else if (c instanceof First) {
+      // First (alternation) - walk all children
+      for (const child of c.subClauses) {
+        walk(child);
+      }
+    } else if (c instanceof ZeroOrMore || c instanceof OneOrMore || c instanceof Optional) {
+      // Repetition/optional - walk the inner clause
+      walk(c.subClause);
+    }
+    // Terminals (Str, Char, CharRange, AnyChar) are skipped
+  }
+
+  walk(clause);
+  return children;
+}
+
+/**
+ * For each factory, derive and set its expected children from the grammar.
+ */
 // ============================================================================
 // Private helpers (internal API for package use only)
 // ============================================================================
@@ -232,19 +295,13 @@ function buildCST(
   if (clause instanceof Ref && !clause.transparent) {
     const childFactory = factories[clause.ruleName];
     if (childFactory) {
-      const childChildren = buildCSTChildren(
-        matchResult,
-        input,
-        factories,
-        syntaxErrors,
-        childFactory.expectedChildren
-      );
+      const childChildren = buildCSTChildren(matchResult, input, factories, syntaxErrors);
       children.push(childFactory.factory(clause.ruleName, childChildren));
     }
   } else {
     // For non-Ref clauses, collect children normally
     children.push(
-      ...buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren)
+      ...buildCSTChildren(matchResult, input, factories, syntaxErrors)
     );
   }
 
@@ -291,7 +348,7 @@ function buildCSTNode(
   }
 
   // Get child matches
-  const children = buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren);
+  const children = buildCSTChildren(matchResult, input, factories, syntaxErrors);
 
   // Call the factory to create the CST node
   return factory.factory(ruleName, children);
@@ -304,8 +361,7 @@ function buildCSTChildren(
   matchResult: MatchResult,
   input: string,
   factories: Record<string, CSTNodeFactory<CSTNode>>,
-  syntaxErrors: SyntaxError[],
-  _expectedChildren: string[]
+  syntaxErrors: SyntaxError[]
 ): CSTNode[] {
   const children: CSTNode[] = [];
 

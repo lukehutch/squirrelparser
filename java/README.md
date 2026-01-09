@@ -68,29 +68,24 @@ class CalcNode extends CSTNode {
 }
 
 // 3. Create factories for each NON-TRANSPARENT grammar rule
-// Note: factories should be in the same order as the grammar rules are defined
 List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "Expr",
-        List.of("Term", "AddOp"),
         (ruleName, children) ->
             new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
     new CSTNodeFactory<>(
         "Term",
-        List.of("Factor", "MulOp"),
         (ruleName, children) ->
             new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
     new CSTNodeFactory<>(
         "Factor",
-        List.of("Number", "Expr"),
         (ruleName, children) ->
             new CalcNode(ruleName, (List<CalcNode>) (List<?>) children)
     ),
     new CSTNodeFactory<>(
         "Number",
-        List.of("<Terminal>"),
         (ruleName, children) -> {
             int value = children.isEmpty() ? 0 :
                 Integer.parseInt(children.get(0).toString());
@@ -99,13 +94,11 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
     ),
     new CSTNodeFactory<>(
         "AddOp",
-        List.of("<Terminal>"),
         (ruleName, children) ->
             new CalcNode(ruleName)
     ),
     new CSTNodeFactory<>(
         "MulOp",
-        List.of("<Terminal>"),
         (ruleName, children) ->
             new CalcNode(ruleName)
     )
@@ -124,12 +117,11 @@ Each **non-transparent** grammar rule needs a corresponding factory. The factory
 - **ruleName**: The name of the grammar rule
 - **children**: The actual CST child nodes built from the parse tree
 
-Use `"<Terminal>"` in the `childRuleNames` list when you expect a terminal (literal string or character class match) as a child, or a rule name when expecting output from another rule.
+The expected children are automatically derived from the grammar, so you only need to provide the rule name and factory function:
 
 ```java
 new CSTNodeFactory<MyNode>(
     "RuleName",
-    List.of("Child1", "Child2"),  // Child rule names (use "<Terminal>" for terminals)
     (ruleName, children) -> {
         // Build and return your custom node
         return new MyNode(ruleName, children);
@@ -298,7 +290,6 @@ Null <- "null" ;
 List<CSTNodeFactory<CSTNode>> factories = List.of(
     new CSTNodeFactory<>(
         "JSON",
-        List.of("Value"),
         (ruleName, children) ->
             new JsonNode(
                 ruleName,
@@ -308,7 +299,6 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
     ),
     new CSTNodeFactory<>(
         "Value",
-        List.of("Object", "Array", "String", "Number", "Boolean", "Null"),
         (ruleName, children) ->
             new JsonNode(
                 ruleName,
@@ -362,6 +352,63 @@ try {
 }
 ```
 
+### CST Node Composition and Error Handling
+
+The CST (Concrete Syntax Tree) returned by `SquirrelParser.parse()` is **guaranteed to be non-null** and will consist of:
+
+1. **CSTNode instances** - Created from your factory function invocations for successfully parsed grammar rules
+2. **CSTSyntaxErrorNode instances** - Created for syntax errors encountered and recovered during parsing
+
+#### Understanding CSTSyntaxErrorNode
+
+Syntax error nodes appear in the CST in two cases:
+
+- **Rule Deletions**: When the parser skips a grammar rule to recover from an error (e.g., skipping a sequence subclause)
+- **Input Insertions**: When the parser skips extra input characters that don't match the expected grammar (e.g., spurious input between grammar elements)
+
+#### Important: Variable Child Arity
+
+**In sequences (Seq clauses), the number of child nodes may exceed the number of grammar subclauses** when insertions occur. For example, if you have a grammar rule `Rule <- "a" "b" "c"` (3 subclauses), the parse tree might contain 4 children if extra input was skipped and recovered:
+
+```
+children[0] = Match for "a"
+children[1] = SyntaxErrorNode for inserted input
+children[2] = Match for "b"
+children[3] = Match for "c"
+```
+
+#### Recommendations for Factory Functions
+
+Your factory functions should be prepared to handle:
+
+1. **Variable child count** - Don't assume `children.size()` equals the number of grammar subclauses
+2. **Mixed node types** - Children may be regular CSTNode instances OR CSTSyntaxErrorNode instances
+3. **Defensive checks** - Inspect both the type and arity of children:
+
+```java
+new CSTNodeFactory<MyNode>(
+    "MyRule",
+    (ruleName, children) -> {
+        // Check both count and types
+        int validChildren = 0;
+        for (CSTNode child : children) {
+            // Check if it's a syntax error node
+            if (child instanceof CSTSyntaxErrorNode) {
+                // Handle error node
+                System.out.println("Error at: " + ((CSTSyntaxErrorNode) child).pos());
+            } else {
+                // Count regular nodes
+                validChildren++;
+            }
+        }
+        // Use validChildren or handle the error nodes appropriately
+        return new MyNode(ruleName, children);
+    }
+)
+```
+
+The CST structure faithfully represents both the successful matches and the error recovery points, giving you complete visibility into what the parser encountered.
+
 ### Defining Custom Node Classes
 
 Your CST node classes should capture the semantic information you need:
@@ -400,7 +447,6 @@ You can perform validation within your factory functions:
 ```java
 new CSTNodeFactory<MyNode>(
     "MyRule",
-    List.of("Child1", "Child2"),
     (ruleName, children) -> {
         if (children.isEmpty()) {
             throw new CSTConstructionException(ruleName + " requires children");
@@ -412,13 +458,12 @@ new CSTNodeFactory<MyNode>(
 
 ### Handling Terminal Nodes
 
-Terminal rules (which match literal text or character classes) use `List.of("<Terminal>")` in the constructor:
+Terminal rules (which match literal text or character classes) can be handled the same way as other rules. The expected children are automatically derived from the grammar:
 
 ```java
-// Terminals use '<Terminal>' to indicate a terminal child
+// Terminal rules are handled automatically
 new CSTNodeFactory<MyNode>(
     "Number",
-    List.of("<Terminal>"),
     (ruleName, children) -> {
         String value = children.isEmpty() ? null : children.get(0).toString();
         return new MyNode(ruleName, null, value);

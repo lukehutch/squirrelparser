@@ -416,15 +416,14 @@ def _build_cst(
                 input_str,
                 factories,
                 syntax_errors,
-                child_factory.expected_children,
             )
-            children.append(child_factory.factory(clause.rule_name, child_factory.expected_children, child_children))
+            children.append(child_factory.factory(clause.rule_name, child_children))
     else:
         children.extend(
-            _build_cst_children(match_result, input_str, factories, syntax_errors, factory.expected_children)
+            _build_cst_children(match_result, input_str, factories, syntax_errors)
         )
 
-    return factory.factory(top_rule_name, factory.expected_children, children)
+    return factory.factory(top_rule_name, children)
 
 
 def _build_cst_node(
@@ -458,16 +457,15 @@ def _build_cst_node(
     if not factory:
         raise CSTConstructionException(f'No factory found for rule: {rule_name}')
 
-    children = _build_cst_children(match_result, input_str, factories, syntax_errors, factory.expected_children)
-    return factory.factory(rule_name, factory.expected_children, children)
+    children = _build_cst_children(match_result, input_str, factories, syntax_errors)
+    return factory.factory(rule_name, children)
 
 
 def _build_cst_children(
     match_result: MatchResult,
     input_str: str,
     factories: dict[str, CSTNodeFactory[CSTNode]],
-    syntax_errors: list[SyntaxError],
-    _expected_children: list[str],
+    syntax_errors: list[SyntaxError]
 ) -> list[CSTNode]:
     """Build CST nodes for children of a parse tree node."""
     children: list[CSTNode] = []

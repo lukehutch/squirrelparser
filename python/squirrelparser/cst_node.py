@@ -82,7 +82,6 @@ class CSTNodeFactory(Generic[T]):
     def __init__(
         self,
         rule_name: str,
-        expected_children: list[str],
         factory: Callable[[str, list[CSTNode]], T],
     ) -> None:
         """
@@ -90,12 +89,10 @@ class CSTNodeFactory(Generic[T]):
 
         Args:
             rule_name: The grammar rule name this factory corresponds to
-            expected_children: The expected child node names or `<Terminal>` for terminal children
             factory: Factory function that creates a CST node of type T from rule name
                     and actual child CST nodes
         """
         self.rule_name = rule_name
-        self.expected_children = expected_children
         self.factory = factory
 
 

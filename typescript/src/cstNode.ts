@@ -68,9 +68,6 @@ export class CSTNodeFactory<T extends CSTNode> {
   /** The grammar rule name this factory corresponds to */
   readonly ruleName: string;
 
-  /** The expected child node names or `<Terminal>` for terminal children */
-  readonly expectedChildren: string[];
-
   /**
    * Factory function that creates a CST node of type T from rule name and actual child CST nodes
    */
@@ -81,11 +78,9 @@ export class CSTNodeFactory<T extends CSTNode> {
 
   constructor(
     ruleName: string,
-    expectedChildren: string[],
     factory: (ruleName: string, children: CSTNode[]) => T
   ) {
     this.ruleName = ruleName;
-    this.expectedChildren = expectedChildren;
     this.factory = factory;
   }
 }

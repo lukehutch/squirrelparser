@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Mapping, cast
 
 from .parser import Parser
 from .terminals import Str, Char, CharRange, AnyChar
-from .combinators import Ref, get_syntax_errors
+from .combinators import Ref, get_syntax_errors, Seq, First, ZeroOrMore, OneOrMore, Optional
 from .cst_node import (
     CSTNode,
     CSTNodeFactory,
@@ -42,6 +42,10 @@ def squirrel_parse(
     The CST is constructed directly from the parse tree using the provided factory functions.
     This allows for fully custom syntax tree representations.
 
+    The returned CST node is guaranteed to be non-null. It will be either a proper CST node
+    constructed from a match, or a CSTSyntaxErrorNode if the parse encountered errors that
+    were recovered.
+
     Args:
         grammar: The grammar as a PEG metagrammar string
         top_rule: The name of the top-level rule to parse (keyword-only)
@@ -49,21 +53,19 @@ def squirrel_parse(
         input_str: The input string to parse (keyword-only)
 
     Returns:
-        A tuple (cst, syntax_errors) where cst is the root CST node
+        A tuple (cst, syntax_errors) where cst is a non-null root CST node (never None)
 
     Raises:
         CSTFactoryValidationException: if the factory list is invalid
         DuplicateRuleNameException: if any rule name appears more than once
-        CSTConstructionException: if CST construction fails
+        CSTConstructionException: if CST construction fails or returns None
     """
     from .meta_grammar import MetaGrammar
 
     rules = MetaGrammar.parse_grammar(grammar)
 
     # Convert factories list to map, checking for duplicates
-    factories_map = _build_factories_map(factories)
-
-    # Parse the input using the rules
+    factories_map = _build_factories_map(factories)    # Parse the input using the rules
     parser = Parser(cast(Mapping[str, Clause], rules), input_str)
     match_result, _ = parser.parse(top_rule)
     syntax_errors = get_syntax_errors(match_result, input_str)
@@ -73,6 +75,12 @@ def squirrel_parse(
 
     # Build CST from parse tree
     cst = _build_cst(match_result, input_str, factories_map, syntax_errors, top_rule)
+
+    # CST must never be None - this would indicate an internal error
+    if cst is None:
+        raise CSTConstructionException(
+            f"Internal error: _build_cst returned None for rule: {top_rule}"
+        )
 
     return (cst, syntax_errors)
 
@@ -186,13 +194,13 @@ def _build_cst(
         child_factory = factories.get(clause.rule_name)
         if child_factory:
             child_children = _build_cst_children(
-                match_result, input_str, factories, syntax_errors, child_factory.expected_children
+                match_result, input_str, factories, syntax_errors
             )
             children.append(child_factory.factory(clause.rule_name, child_children))
     else:
         # For non-Ref clauses, collect children normally
         children.extend(
-            _build_cst_children(match_result, input_str, factories, syntax_errors, factory.expected_children)
+            _build_cst_children(match_result, input_str, factories, syntax_errors)
         )
 
     # Create the top-level CST node
@@ -233,7 +241,7 @@ def _build_cst_node(
         raise CSTConstructionException(f"No factory found for rule: {rule_name}")
 
     # Get child matches
-    children = _build_cst_children(match_result, input_str, factories, syntax_errors, factory.expected_children)
+    children = _build_cst_children(match_result, input_str, factories, syntax_errors)
 
     # Call the factory to create the CST node
     return factory.factory(rule_name, children)
@@ -244,7 +252,6 @@ def _build_cst_children(
     input_str: str,
     factories: Mapping[str, CSTNodeFactory[CSTNode]],
     syntax_errors: list[SyntaxError],
-    expected_children: list[str],
 ) -> list[CSTNode]:
     """Build CST nodes for children of a parse tree node."""
     children: list[CSTNode] = []

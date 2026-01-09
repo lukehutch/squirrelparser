@@ -13,23 +13,25 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 /// The CST is constructed directly from the parse tree using the provided factory functions.
 /// This allows for fully custom syntax tree representations.
 ///
+/// The returned CST node is guaranteed to be non-null. It will be either a proper CST node
+/// constructed from a match, or a CSTSyntaxErrorNode if the parse encountered errors that
+/// were recovered.
+///
 /// Throws [CSTFactoryValidationException] if the factory list is invalid.
 /// Throws [DuplicateRuleNameException] if any rule name appears more than once in the factories list.
-/// Throws [CSTConstructionException] if CST construction fails.
+/// Throws [CSTConstructionException] if CST construction fails or returns null.
 ///
 /// Example:
 /// ```dart
 /// final factories = [
 ///   CSTNodeFactory<MyNode>(
 ///     ruleName: 'Expr',
-///     childRuleNames: ['Term'],
 ///     factory: (ruleName, children) {
 ///       return MyNode(name: ruleName, children: children);
 ///     },
 ///   ),
 ///   CSTNodeFactory<MyNode>(
 ///     ruleName: 'Term',
-///     childRuleNames: ['<Terminal>'],
 ///     factory: (ruleName, children) {
 ///       return MyNode(name: ruleName);
 ///     },
@@ -52,9 +54,7 @@ import 'package:squirrel_parser/squirrel_parser.dart';
   final rules = MetaGrammar.parseGrammar(grammar);
 
   // Convert factories list to map, checking for duplicates
-  final factoriesMap = _buildFactoriesMap(factories);
-
-  // Parse the input using the rules
+  final factoriesMap = _buildFactoriesMap(factories);  // Parse the input using the rules
   final parser = Parser(rules: rules, input: input);
   final (matchResult, _) = parser.parse(topRule);
   final syntaxErrors = getSyntaxErrors(matchResult);
@@ -65,6 +65,12 @@ import 'package:squirrel_parser/squirrel_parser.dart';
   // Build CST from parse tree
   final cst =
       _buildCST(matchResult, input, factoriesMap, syntaxErrors, topRule);
+
+  // CST must never be null - this would indicate an internal error
+  if (cst == null) {
+    throw CSTConstructionException(
+        'Internal error: _buildCST returned null for rule: $topRule');
+  }
 
   return (cst, syntaxErrors);
 }
@@ -139,6 +145,9 @@ Set<String> _getTransparentRules(Map<String, Clause> rules) {
   return transparent;
 }
 
+/// Derive the expected child rule names for a given rule based on its clause.
+/// Walks the clause structure and collects all non-transparent Ref names.
+/// For each factory, derive and set its expected children from the grammar.
 /// Build a CST from a parse tree using the provided factories.
 CSTNode _buildCST(
   MatchResult matchResult,
@@ -165,15 +174,13 @@ CSTNode _buildCST(
   if (clause is Ref && !clause.transparent) {
     final childFactory = factories[clause.ruleName];
     if (childFactory != null) {
-      final childChildren = _buildCSTChildren(matchResult, input, factories,
-          syntaxErrors, childFactory.childRuleNames);
+      final childChildren = _buildCSTChildren(matchResult, input, factories, syntaxErrors);
       children.add(
           childFactory.factory(clause.ruleName, childChildren));
     }
   } else {
     // For non-Ref clauses, collect children normally
-    children.addAll(_buildCSTChildren(
-        matchResult, input, factories, syntaxErrors, factory.childRuleNames));
+    children.addAll(_buildCSTChildren(matchResult, input, factories, syntaxErrors));
   }
 
   // Create the top-level CST node
@@ -221,8 +228,7 @@ CSTNode _buildCSTNode(
   }
 
   // Get child matches
-  final children = _buildCSTChildren(
-      matchResult, input, factories, syntaxErrors, factory.childRuleNames);
+  final children = _buildCSTChildren(matchResult, input, factories, syntaxErrors);
 
   // Call the factory to create the CST node
   return factory.factory(ruleName, children);
@@ -234,7 +240,6 @@ List<CSTNode> _buildCSTChildren(
   String input,
   Map<String, CSTNodeFactory<CSTNode>> factories,
   List<SyntaxError> syntaxErrors,
-  List<String> expectedChildren,
 ) {
   final children = <CSTNode>[];
 

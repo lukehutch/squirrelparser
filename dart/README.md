@@ -63,28 +63,28 @@ class CalcNode extends CSTNode {
 final factories = [
   CSTNodeFactory<CalcNode>(
     ruleName: 'Expr',
-    childRuleNames: ['Term', 'AddOp'],
+    
     factory: (ruleName, children) {
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'Term',
-    childRuleNames: ['Factor', 'MulOp'],
+    
     factory: (ruleName, children) {
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'Factor',
-    childRuleNames: ['Number', 'Expr'],
+    
     factory: (ruleName, children) {
       return CalcNode(name: ruleName, children: children);
     },
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'Number',
-    childRuleNames: ['<Terminal>'],
+    childRuleNames: ,
     factory: (ruleName, children) {
       return CalcNode(
         name: ruleName,
@@ -95,7 +95,7 @@ final factories = [
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'AddOp',
-    childRuleNames: ['<Terminal>'],
+    childRuleNames: ,
     factory: (ruleName, children) {
       // Capture the operator symbol
       return CalcNode(name: ruleName, children: children);
@@ -103,7 +103,7 @@ final factories = [
   ),
   CSTNodeFactory<CalcNode>(
     ruleName: 'MulOp',
-    childRuleNames: ['<Terminal>'],
+    childRuleNames: ,
     factory: (ruleName, children) {
       // Capture the operator symbol
       return CalcNode(name: ruleName, children: children);
@@ -137,12 +137,11 @@ Each non-transparent grammar rule needs a corresponding factory. The factory fun
 - **ruleName**: The name of the grammar rule
 - **children**: The actual CST child nodes built from the parse tree
 
-Use `'<Terminal>'` in `childRuleNames` when you expect a terminal (literal string or character class match) as a child, or a rule name when expecting output from another rule.
+The expected children are automatically derived from the grammar:
 
 ```dart
 CSTNodeFactory<MyNode>(
   ruleName: 'RuleName',
-  childRuleNames: ['Child1', 'Child2'],  // Child rule names (use '<Terminal>' for terminals)
   factory: (ruleName, children) {
     // Build and return your custom node
     return MyNode(name: ruleName, children: children);
@@ -310,7 +309,7 @@ Null <- "null" ;
 final factories = [
   CSTNodeFactory<JsonNode>(
     ruleName: 'JSON',
-    childRuleNames: ['Value'],
+    
     factory: (ruleName, children) {
       return JsonNode(
         name: ruleName,
@@ -321,7 +320,7 @@ final factories = [
   ),
   CSTNodeFactory<JsonNode>(
     ruleName: 'Value',
-    childRuleNames: ['Object', 'Array', 'String', 'Number', 'Boolean', 'Null'],
+    
     factory: (ruleName, children) {
       return JsonNode(
         name: ruleName,
@@ -397,6 +396,63 @@ if (syntaxErrors.isNotEmpty) {
 }
 ```
 
+### CST Node Composition and Error Handling
+
+The CST (Concrete Syntax Tree) returned by `squirrelParse()` is **guaranteed to be non-null** and will consist of:
+
+1. **CSTNode instances** - Created from your factory function invocations for successfully parsed grammar rules
+2. **CSTSyntaxErrorNode instances** - Created for syntax errors encountered and recovered during parsing
+
+#### Understanding CSTSyntaxErrorNode
+
+Syntax error nodes appear in the CST in two cases:
+
+- **Rule Deletions**: When the parser skips a grammar rule to recover from an error (e.g., skipping a sequence subclause)
+- **Input Insertions**: When the parser skips extra input characters that don't match the expected grammar (e.g., spurious input between grammar elements)
+
+#### Important: Variable Child Arity
+
+**In sequences (Seq clauses), the number of child nodes may exceed the number of grammar subclauses** when insertions occur. For example, if you have a grammar rule `Rule <- "a" "b" "c"` (3 subclauses), the parse tree might contain 4 children if extra input was skipped and recovered:
+
+```
+children[0] = Match for "a"
+children[1] = SyntaxErrorNode for inserted input
+children[2] = Match for "b"
+children[3] = Match for "c"
+```
+
+#### Recommendations for Factory Functions
+
+Your factory functions should be prepared to handle:
+
+1. **Variable child count** - Don't assume `children.length` equals the number of grammar subclauses
+2. **Mixed node types** - Children may be regular CSTNode instances OR CSTSyntaxErrorNode instances
+3. **Defensive checks** - Inspect both the type and arity of children:
+
+```dart
+CSTNodeFactory<MyNode>(
+  ruleName: 'MyRule',
+  factory: (ruleName, children) {
+    // Check both count and types
+    int validChildren = 0;
+    for (final child in children) {
+      // Check if it's a syntax error node
+      if (child is CSTSyntaxErrorNode) {
+        // Handle error node
+        print('Error at: ${child.pos}');
+      } else {
+        // Count regular nodes
+        validChildren++;
+      }
+    }
+    // Use validChildren or handle the error nodes appropriately
+    return MyNode(name: ruleName, children: children.whereType<MyNode>().toList());
+  },
+)
+```
+
+The CST structure faithfully represents both the successful matches and the error recovery points, giving you complete visibility into what the parser encountered.
+
 ### Defining Custom Node Classes
 
 Your CST node classes should capture the semantic information you need:
@@ -434,7 +490,7 @@ You can perform validation within your factory functions:
 ```dart
 CSTNodeFactory<MyNode>(
   ruleName: 'MyRule',
-  childRuleNames: ['Child1', 'Child2'],
+  
   factory: (ruleName, children) {
     if (children.isEmpty) {
       throw CSTConstructionException('$ruleName requires children');
@@ -452,7 +508,7 @@ Terminal rules (which match literal text or character classes) use `'<Terminal>'
 // Terminals use '<Terminal>' to indicate a terminal child
 CSTNodeFactory<MyNode>(
   ruleName: 'Number',
-  childRuleNames: ['<Terminal>'],
+  childRuleNames: ,
   factory: (ruleName, children) {
     // Extract raw text from terminal
     return MyNode(

@@ -43,9 +43,7 @@ void main() {
       // Only provide factory for Greeting, missing Name
       final factories = [
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Greeting',
-          childRuleNames: ['Name'],
-          factory: (ruleName, children) {
+          ruleName: 'Greeting', factory: (ruleName, children) {
             return SimpleCST(name: ruleName, children: children);
           },
         ),
@@ -68,16 +66,12 @@ void main() {
       // Provide factory for Greeting and extra Name
       final factories = [
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Greeting',
-          childRuleNames: [],
-          factory: (ruleName, children) {
+          ruleName: 'Greeting', factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'ExtraRule',
-          childRuleNames: [],
-          factory: (ruleName, children) {
+          ruleName: 'ExtraRule', factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
@@ -99,16 +93,12 @@ void main() {
 
       final factories = [
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Main',
-          childRuleNames: ['Item'],
-          factory: (ruleName, children) {
+          ruleName: 'Main', factory: (ruleName, children) {
             return SimpleCST(name: ruleName, children: children);
           },
         ),
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Item',
-          childRuleNames: ['<Terminal>'],
-          factory: (ruleName, children) {
+          ruleName: 'Item', factory: (ruleName, children) {
             return SimpleCST(name: ruleName, value: 'test');
           },
         ),
@@ -133,9 +123,7 @@ void main() {
 
       final factories = [
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Test',
-          childRuleNames: ['<Terminal>'],
-          factory: (ruleName, children) {
+          ruleName: 'Test', factory: (ruleName, children) {
             return SimpleCST(name: ruleName, value: 'hello');
           },
         ),
@@ -163,16 +151,12 @@ void main() {
       // Provide two factories with the same rule name
       final factories = [
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Main',
-          childRuleNames: [],
-          factory: (ruleName, children) {
+          ruleName: 'Main', factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Main',
-          childRuleNames: [],
-          factory: (ruleName, children) {
+          ruleName: 'Main', factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
@@ -196,16 +180,12 @@ void main() {
       // Should only need factories for Expr and Term, not Whitespace (which is transparent)
       final factories = [
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Expr',
-          childRuleNames: ['Term'],
-          factory: (ruleName, children) {
+          ruleName: 'Expr', factory: (ruleName, children) {
             return SimpleCST(name: ruleName, children: children);
           },
         ),
         CSTNodeFactory<SimpleCST>(
-          ruleName: 'Term',
-          childRuleNames: ['<Terminal>'],
-          factory: (ruleName, children) {
+          ruleName: 'Term', factory: (ruleName, children) {
             return SimpleCST(name: ruleName, value: 'x');
           },
         ),
@@ -224,3 +204,4 @@ void main() {
     });
   });
 }
+

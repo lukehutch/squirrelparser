@@ -55,7 +55,6 @@ describe('CST - Concrete Syntax Tree', () => {
     const factories = [
       new CSTNodeFactory<SimpleCST>(
         'Greeting',
-        ['Name'],
         (ruleName: string, children: CSTNode[]) => {
           return new SimpleCST(ruleName, children as SimpleCST[]);
         }
@@ -78,14 +77,12 @@ describe('CST - Concrete Syntax Tree', () => {
     const factories = [
       new CSTNodeFactory<SimpleCST>(
         'Greeting',
-        [],
         (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'ExtraRule',
-        [],
         (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
@@ -108,14 +105,12 @@ describe('CST - Concrete Syntax Tree', () => {
     const factories = [
       new CSTNodeFactory<SimpleCST>(
         'Main',
-        ['Item'],
         (ruleName: string, children: CSTNode[]) => {
           return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Item',
-        ['<Terminal>'],
         (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'test');
         }
@@ -137,7 +132,6 @@ describe('CST - Concrete Syntax Tree', () => {
     const factories = [
       new CSTNodeFactory<SimpleCST>(
         'Test',
-        ['<Terminal>'],
         (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'hello');
         }
@@ -162,14 +156,12 @@ describe('CST - Concrete Syntax Tree', () => {
     const factories = [
       new CSTNodeFactory<SimpleCST>(
         'Main',
-        [],
         (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Main',
-        [],
         (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
@@ -194,14 +186,12 @@ describe('CST - Concrete Syntax Tree', () => {
     const factories = [
       new CSTNodeFactory<SimpleCST>(
         'Expr',
-        ['Term'],
         (ruleName: string, children: CSTNode[]) => {
           return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Term',
-        ['<Terminal>'],
         (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'x');
         }
@@ -215,3 +205,4 @@ describe('CST - Concrete Syntax Tree', () => {
     expect(errors).toEqual([]);
   });
 });
+

@@ -78,44 +78,32 @@ void main() {
   // We need factories for all non-transparent rules
   final factories = [
     CSTNodeFactory<TerminalNode>(
-      ruleName: 'Number',
-      childRuleNames: ['<Terminal>'],
-      factory: (ruleName, children) {
+      ruleName: 'Number', factory: (ruleName, children) {
         return TerminalNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<OpNode>(
-      ruleName: 'AddOp',
-      childRuleNames: ['<Terminal>'],
-      factory: (ruleName, children) {
+      ruleName: 'AddOp', factory: (ruleName, children) {
         return OpNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<OpNode>(
-      ruleName: 'MulOp',
-      childRuleNames: ['<Terminal>'],
-      factory: (ruleName, children) {
+      ruleName: 'MulOp', factory: (ruleName, children) {
         return OpNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
-      ruleName: 'Factor',
-      childRuleNames: ['Number', 'Expr'],
-      factory: (ruleName, children) {
+      ruleName: 'Factor', factory: (ruleName, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
-      ruleName: 'Term',
-      childRuleNames: ['Factor', 'MulOp'],
-      factory: (ruleName, children) {
+      ruleName: 'Term', factory: (ruleName, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
-      ruleName: 'Expr',
-      childRuleNames: ['Term', 'AddOp'],
-      factory: (ruleName, children) {
+      ruleName: 'Expr', factory: (ruleName, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
@@ -164,3 +152,4 @@ void main() {
   print('='.padRight(50, '='));
   print('CST Example completed');
 }
+
