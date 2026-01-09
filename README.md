@@ -25,3 +25,7 @@ Isomorphic implementations are provided for four languages:
 For the full derivation of the algorithm, see [the paper](paper/squirrel_parser.pdf):
 
 > *The Squirrel Parser: A Linear-Time PEG Packrat Parser Capable of Left Recursion and Optimal Error Recovery, Luke A. D. Hutchison, 2026*
+
+## The emoji
+
+Yes, [that's a chipmunk, not a squirrel](https://www.unicode.org/L2/L2017/17442-squirrel-emoji.pdf).
