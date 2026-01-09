@@ -112,7 +112,12 @@ final factories = [
 ];
 
 // 4. Parse input and get the CST
-final (cst, errors) = squirrelParse(grammar, "2+3*4", 'Expr', factories);
+final (cst, errors) = squirrelParse(
+  grammarText: grammar,
+  topRule: 'Expr',
+  factories: factories,
+  input: "2+3*4",
+);
 
 if (errors.isEmpty) {
   print('Parse successful!');
@@ -330,7 +335,12 @@ final factories = [
 
 // Parse JSON
 final jsonInput = '{"name": "Alice", "age": 30}';
-final (cst, errors) = squirrelParse(jsonGrammar, jsonInput, 'JSON', factories);
+final (cst, errors) = squirrelParse(
+  grammarText: jsonGrammar,
+  topRule: 'JSON',
+  factories: factories,
+  input: jsonInput,
+);
 
 if (errors.isEmpty) {
   print('JSON parsed successfully');
@@ -349,7 +359,12 @@ if (errors.isEmpty) {
 // grammar, input, and factories are defined in the basic example above
 
 try {
-  final (cst, errors) = squirrelParse(grammar, input, 'Rule', factories);
+  final (cst, errors) = squirrelParse(
+    grammarText: grammar,
+    topRule: 'Rule',
+    factories: factories,
+    input: input,
+  );
 } on CSTFactoryValidationException catch (e) {
   print('Missing factories: ${e.missing}');
   print('Extra factories: ${e.extra}');
@@ -367,7 +382,12 @@ The parser returns syntax errors separately from the CST:
 ```dart
 // grammar, input, and factories are defined in the basic example above
 
-final (cst, syntaxErrors) = squirrelParse(grammar, input, 'Rule', factories);
+final (cst, syntaxErrors) = squirrelParse(
+  grammarText: grammar,
+  topRule: 'Rule',
+  factories: factories,
+  input: input,
+);
 
 if (syntaxErrors.isNotEmpty) {
   print('Syntax errors found:');

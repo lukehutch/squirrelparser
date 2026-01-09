@@ -119,7 +119,7 @@ const factories = [
 ];
 
 // 4. Parse input and get the CST
-const [cst, errors] = squirrelParse(grammar, '2+3*4', 'Expr', factories);
+const [cst, errors] = squirrelParse(grammar, "Expr", factories, "2+3*4");
 
 if (errors.length === 0) {
   console.log('Parse successful!');
@@ -340,8 +340,8 @@ const factories = [
 ];
 
 // Parse JSON
-const jsonInput = '{"name": "Alice", "age": 30}';
-const [cst, errors] = squirrelParse(jsonGrammar, jsonInput, 'JSON', factories);
+const jsonInput = "{\"name\": \"Alice\", \"age\": 30}";
+const [cst, errors] = squirrelParse(jsonGrammar, "JSON", factories, jsonInput);
 
 if (errors.length === 0) {
   console.log('JSON parsed successfully');
@@ -367,7 +367,7 @@ import {
 // grammar, input, and factories are defined in the basic example above
 
 try {
-  const [cst, errors] = squirrelParse(grammar, input, 'Rule', factories);
+  const [cst, errors] = squirrelParse(grammar, "Rule", factories, input);
 } catch (e) {
   if (e instanceof CSTFactoryValidationException) {
     console.log('Missing factories:', e.missing);
@@ -387,7 +387,7 @@ The parser returns syntax errors separately from the CST:
 ```typescript
 // grammar, input, and factories are defined in the basic example above
 
-const [cst, syntaxErrors] = squirrelParse(grammar, input, 'Rule', factories);
+const [cst, syntaxErrors] = squirrelParse(grammar, "Rule", factories, input);
 
 if (syntaxErrors.length > 0) {
   console.log('Syntax errors found:');

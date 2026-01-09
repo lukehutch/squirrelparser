@@ -44,8 +44,8 @@ void main() {
       final factories = [
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Greeting',
-          expectedChildren: ['Name'],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: ['Name'],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName, children: children);
           },
         ),
@@ -69,15 +69,15 @@ void main() {
       final factories = [
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Greeting',
-          expectedChildren: [],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: [],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
         CSTNodeFactory<SimpleCST>(
           ruleName: 'ExtraRule',
-          expectedChildren: [],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: [],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
@@ -100,15 +100,15 @@ void main() {
       final factories = [
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Main',
-          expectedChildren: ['Item'],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: ['Item'],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName, children: children);
           },
         ),
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Item',
-          expectedChildren: ['<Terminal>'],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: ['<Terminal>'],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName, value: 'test');
           },
         ),
@@ -134,14 +134,19 @@ void main() {
       final factories = [
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Test',
-          expectedChildren: ['<Terminal>'],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: ['<Terminal>'],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName, value: 'hello');
           },
         ),
       ];
 
-      final (cst, errors) = squirrelParse(grammar, 'hello', 'Test', factories);
+      final (cst, errors) = squirrelParse(
+        grammarText: grammar,
+        topRule: 'Test',
+        factories: factories,
+        input: 'hello',
+      );
 
       expect(cst, isNotNull);
       expect(cst.name, equals('Test'));
@@ -159,15 +164,15 @@ void main() {
       final factories = [
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Main',
-          expectedChildren: [],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: [],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Main',
-          expectedChildren: [],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: [],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName);
           },
         ),
@@ -192,15 +197,15 @@ void main() {
       final factories = [
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Expr',
-          expectedChildren: ['Term'],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: ['Term'],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName, children: children);
           },
         ),
         CSTNodeFactory<SimpleCST>(
           ruleName: 'Term',
-          expectedChildren: ['<Terminal>'],
-          factory: (ruleName, expectedChildren, children) {
+          childRuleNames: ['<Terminal>'],
+          factory: (ruleName, children) {
             return SimpleCST(name: ruleName, value: 'x');
           },
         ),

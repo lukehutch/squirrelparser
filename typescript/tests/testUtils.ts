@@ -464,18 +464,17 @@ function buildCST(
         matchResult,
         input,
         factories,
-        syntaxErrors,
-        childFactory.expectedChildren
+        syntaxErrors
       );
-      children.push(childFactory.factory(clause.ruleName, childFactory.expectedChildren, childChildren));
+      children.push(childFactory.factory(clause.ruleName, childChildren));
     }
   } else {
     children.push(
-      ...buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren)
+      ...buildCSTChildren(matchResult, input, factories, syntaxErrors)
     );
   }
 
-  return factory.factory(topRuleName, factory.expectedChildren, children);
+  return factory.factory(topRuleName, children);
 }
 
 function buildCSTNode(
@@ -511,16 +510,15 @@ function buildCSTNode(
     throw new CSTConstructionException(`No factory found for rule: ${ruleName}`);
   }
 
-  const children = buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren);
-  return factory.factory(ruleName, factory.expectedChildren, children);
+  const children = buildCSTChildren(matchResult, input, factories, syntaxErrors);
+  return factory.factory(ruleName, children);
 }
 
 function buildCSTChildren(
   matchResult: MatchResult,
   input: string,
   factories: Record<string, CSTNodeFactory<CSTNode>>,
-  syntaxErrors: SyntaxError[],
-  _expectedChildren: string[]
+  syntaxErrors: SyntaxError[]
 ): CSTNode[] {
   const children: CSTNode[] = [];
 

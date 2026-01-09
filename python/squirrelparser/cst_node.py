@@ -75,7 +75,7 @@ class CSTNodeFactory(Generic[T]):
     Metadata for creating a CST node from a parse tree node.
 
     Each grammar rule (non-transparent) must have a corresponding factory.
-    The factory takes the rule name, expected child names, and actual child CST nodes,
+    The factory takes the rule name and actual child CST nodes,
     and returns a CSTNode instance of type T.
     """
 
@@ -83,7 +83,7 @@ class CSTNodeFactory(Generic[T]):
         self,
         rule_name: str,
         expected_children: list[str],
-        factory: Callable[[str, list[str], list[CSTNode]], T],
+        factory: Callable[[str, list[CSTNode]], T],
     ) -> None:
         """
         Initialize a CST node factory.
@@ -91,8 +91,8 @@ class CSTNodeFactory(Generic[T]):
         Args:
             rule_name: The grammar rule name this factory corresponds to
             expected_children: The expected child node names or `<Terminal>` for terminal children
-            factory: Factory function that creates a CST node of type T from rule name,
-                    expected child names, and actual child CST nodes
+            factory: Factory function that creates a CST node of type T from rule name
+                    and actual child CST nodes
         """
         self.rule_name = rule_name
         self.expected_children = expected_children

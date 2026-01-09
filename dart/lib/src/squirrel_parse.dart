@@ -22,28 +22,33 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 /// final factories = [
 ///   CSTNodeFactory<MyNode>(
 ///     ruleName: 'Expr',
-///     expectedChildren: ['Term'],
-///     factory: (ruleName, expectedChildren, children) {
+///     childRuleNames: ['Term'],
+///     factory: (ruleName, children) {
 ///       return MyNode(name: ruleName, children: children);
 ///     },
 ///   ),
 ///   CSTNodeFactory<MyNode>(
 ///     ruleName: 'Term',
-///     expectedChildren: ['<Terminal>'],
-///     factory: (ruleName, expectedChildren, children) {
+///     childRuleNames: ['<Terminal>'],
+///     factory: (ruleName, children) {
 ///       return MyNode(name: ruleName);
 ///     },
 ///   ),
 /// ];
 ///
-/// final (cst, errors) = squirrelParse(grammar, input, 'Expr', factories);
+/// final (cst, errors) = squirrelParse(
+///   grammarText: grammar,
+///   topRule: 'Expr',
+///   factories: factories,
+///   input: input,
+/// );
 /// ```
-(CSTNode, List<SyntaxError>) squirrelParse(
-  String grammarText,
-  String input,
-  String topRule,
-  List<CSTNodeFactory<CSTNode>> factories,
-) {
+(CSTNode, List<SyntaxError>) squirrelParse({
+  required String grammarText,
+  required String topRule,
+  required List<CSTNodeFactory<CSTNode>> factories,
+  required String input,
+}) {
   final rules = MetaGrammar.parseGrammar(grammarText);
 
   // Convert factories list to map, checking for duplicates
@@ -161,18 +166,18 @@ CSTNode _buildCST(
     final childFactory = factories[clause.ruleName];
     if (childFactory != null) {
       final childChildren = _buildCSTChildren(matchResult, input, factories,
-          syntaxErrors, childFactory.expectedChildren);
-      children.add(childFactory.factory(
-          clause.ruleName, childFactory.expectedChildren, childChildren));
+          syntaxErrors, childFactory.childRuleNames);
+      children.add(
+          childFactory.factory(clause.ruleName, childChildren));
     }
   } else {
     // For non-Ref clauses, collect children normally
     children.addAll(_buildCSTChildren(
-        matchResult, input, factories, syntaxErrors, factory.expectedChildren));
+        matchResult, input, factories, syntaxErrors, factory.childRuleNames));
   }
 
   // Create the top-level CST node
-  return factory.factory(topRuleName, factory.expectedChildren, children);
+  return factory.factory(topRuleName, children);
 }
 
 /// Recursively build CST nodes from a parse tree.
@@ -217,10 +222,10 @@ CSTNode _buildCSTNode(
 
   // Get child matches
   final children = _buildCSTChildren(
-      matchResult, input, factories, syntaxErrors, factory.expectedChildren);
+      matchResult, input, factories, syntaxErrors, factory.childRuleNames);
 
   // Call the factory to create the CST node
-  return factory.factory(ruleName, factory.expectedChildren, children);
+  return factory.factory(ruleName, children);
 }
 
 /// Build CST nodes for children of a parse tree node.

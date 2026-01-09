@@ -125,11 +125,11 @@ class TestCST:
             CSTNodeFactory(
                 'Test',
                 ['<Terminal>'],
-                lambda ruleName, expectedChildren, children: SimpleCST(ruleName, value='hello'),
+                lambda ruleName, children: SimpleCST(ruleName, value='hello'),
             ),
         ]
 
-        cst, errors = squirrel_parse(grammar, 'hello', 'Test', factories)  # type: ignore[arg-type]
+        cst, errors = squirrel_parse(grammar, top_rule='Test', factories=factories, input_str='hello')
 
         assert cst is not None
         assert cst.name == 'Test'

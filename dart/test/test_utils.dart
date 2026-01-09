@@ -224,11 +224,9 @@ CSTNode _buildCST(
         input,
         factories,
         syntaxErrors,
-        childFactory.expectedChildren,
       );
       children.add(childFactory.factory(
         clause.ruleName,
-        childFactory.expectedChildren,
         childChildren,
       ));
     }
@@ -238,11 +236,10 @@ CSTNode _buildCST(
       input,
       factories,
       syntaxErrors,
-      factory.expectedChildren,
     ));
   }
 
-  return factory.factory(topRuleName, factory.expectedChildren, children);
+  return factory.factory(topRuleName, children);
 }
 
 CSTNode _buildCSTNode(
@@ -290,10 +287,9 @@ CSTNode _buildCSTNode(
     input,
     factories,
     syntaxErrors,
-    factory.expectedChildren,
   );
 
-  return factory.factory(ruleName, factory.expectedChildren, children);
+  return factory.factory(ruleName, children);
 }
 
 List<CSTNode> _buildCSTChildren(
@@ -301,7 +297,6 @@ List<CSTNode> _buildCSTChildren(
   String input,
   Map<String, CSTNodeFactory<CSTNode>> factories,
   List<SyntaxError> syntaxErrors,
-  List<String> expectedChildren,
 ) {
   final children = <CSTNode>[];
 

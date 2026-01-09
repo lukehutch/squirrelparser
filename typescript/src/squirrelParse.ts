@@ -27,9 +27,9 @@ import { AnyChar, Char, CharRange, Str } from './terminals';
  * This allows for fully custom syntax tree representations.
  *
  * @param grammarText The grammar as a PEG metagrammar string
- * @param input The input string to parse
  * @param topRule The name of the top-level rule to parse
  * @param factories List of CST node factories for each grammar rule
+ * @param input The input string to parse
  * @returns A tuple [cst, syntaxErrors] where cst is the root CST node
  * @throws {CSTFactoryValidationException} if the factory list is invalid
  * @throws {DuplicateRuleNameException} if any rule name appears more than once
@@ -41,27 +41,27 @@ import { AnyChar, Char, CharRange, Str } from './terminals';
  *   new CSTNodeFactory<MyNode>(
  *     'Expr',
  *     ['Term'],
- *     (ruleName, expectedChildren, children) => {
+ *     (ruleName, children) => {
  *       return new MyNode(ruleName, children);
  *     }
  *   ),
  *   new CSTNodeFactory<MyNode>(
  *     'Term',
  *     ['<Terminal>'],
- *     (ruleName, expectedChildren, children) => {
+ *     (ruleName, children) => {
  *       return new MyNode(ruleName);
  *     }
  *   ),
  * ];
  *
- * const [cst, errors] = squirrelParse(grammar, input, 'Expr', factories);
+ * const [cst, errors] = squirrelParse(grammar, 'Expr', factories, input);
  * ```
  */
 export function squirrelParse(
   grammarText: string,
-  input: string,
   topRule: string,
-  factories: CSTNodeFactory<CSTNode>[]
+  factories: CSTNodeFactory<CSTNode>[],
+  input: string
 ): [CSTNode, SyntaxError[]] {
   const rules = MetaGrammar.parseGrammar(grammarText);
 
@@ -99,6 +99,19 @@ export function parseWithRules(
   const [matchResult] = parser.parse(topRule);
   const syntaxErrors = getSyntaxErrors(matchResult, input);
   return [matchResult, syntaxErrors];
+}
+
+/**
+ * Alternative named-parameter version of squirrelParse.
+ * Useful when you want explicit parameter names.
+ */
+export function squirrelParseNamed(params: {
+  grammarText: string;
+  topRule: string;
+  factories: CSTNodeFactory<CSTNode>[];
+  input: string;
+}): [CSTNode, SyntaxError[]] {
+  return squirrelParse(params.grammarText, params.topRule, params.factories, params.input);
 }
 
 /**
@@ -226,7 +239,7 @@ function buildCST(
         syntaxErrors,
         childFactory.expectedChildren
       );
-      children.push(childFactory.factory(clause.ruleName, childFactory.expectedChildren, childChildren));
+      children.push(childFactory.factory(clause.ruleName, childChildren));
     }
   } else {
     // For non-Ref clauses, collect children normally
@@ -236,7 +249,7 @@ function buildCST(
   }
 
   // Create the top-level CST node
-  return factory.factory(topRuleName, factory.expectedChildren, children);
+  return factory.factory(topRuleName, children);
 }
 
 /**
@@ -281,7 +294,7 @@ function buildCSTNode(
   const children = buildCSTChildren(matchResult, input, factories, syntaxErrors, factory.expectedChildren);
 
   // Call the factory to create the CST node
-  return factory.factory(ruleName, factory.expectedChildren, children);
+  return factory.factory(ruleName, children);
 }
 
 /**

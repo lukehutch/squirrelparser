@@ -92,7 +92,7 @@ factories = [
 ]
 
 # 4. Parse input and get the CST
-cst, errors = squirrel_parse(grammar, "2+3*4", 'Expr', factories)
+cst, errors = squirrel_parse(grammar, top_rule='Expr', factories=factories, input_str="2+3*4")
 
 if not errors:
     print('Parse successful!')
@@ -293,7 +293,7 @@ factories = [
 
 # Parse JSON
 json_input = '{"name": "Alice", "age": 30}'
-cst, errors = squirrel_parse(json_grammar, json_input, 'JSON', factories)
+cst, errors = squirrel_parse(json_grammar, top_rule='JSON', factories=factories, input_str=json_input)
 
 if not errors:
     print('JSON parsed successfully')
@@ -317,7 +317,7 @@ from squirrelparser import (
 # grammar, input_str, and factories are defined in the basic example above
 
 try:
-    cst, errors = squirrel_parse(grammar, input_str, 'Rule', factories)
+    cst, errors = squirrel_parse(grammar, top_rule='Rule', factories=factories, input_str=input_str)
 except CSTFactoryValidationException as e:
     print(f'Missing factories: {e.missing}')
     print(f'Extra factories: {e.extra}')
@@ -334,7 +334,7 @@ The parser returns syntax errors separately from the CST:
 ```python
 # grammar, input_str, and factories are defined in the basic example above
 
-cst, syntax_errors = squirrel_parse(grammar, input_str, 'Rule', factories)
+cst, syntax_errors = squirrel_parse(grammar, top_rule='Rule', factories=factories, input_str=input_str)
 
 if syntax_errors:
     print('Syntax errors found:')

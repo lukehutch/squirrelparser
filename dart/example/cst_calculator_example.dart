@@ -79,43 +79,43 @@ void main() {
   final factories = [
     CSTNodeFactory<TerminalNode>(
       ruleName: 'Number',
-      expectedChildren: ['<Terminal>'],
-      factory: (ruleName, expectedChildren, children) {
+      childRuleNames: ['<Terminal>'],
+      factory: (ruleName, children) {
         return TerminalNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<OpNode>(
       ruleName: 'AddOp',
-      expectedChildren: ['<Terminal>'],
-      factory: (ruleName, expectedChildren, children) {
+      childRuleNames: ['<Terminal>'],
+      factory: (ruleName, children) {
         return OpNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<OpNode>(
       ruleName: 'MulOp',
-      expectedChildren: ['<Terminal>'],
-      factory: (ruleName, expectedChildren, children) {
+      childRuleNames: ['<Terminal>'],
+      factory: (ruleName, children) {
         return OpNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
       ruleName: 'Factor',
-      expectedChildren: ['Number', 'Expr'],
-      factory: (ruleName, expectedChildren, children) {
+      childRuleNames: ['Number', 'Expr'],
+      factory: (ruleName, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
       ruleName: 'Term',
-      expectedChildren: ['Factor', 'MulOp'],
-      factory: (ruleName, expectedChildren, children) {
+      childRuleNames: ['Factor', 'MulOp'],
+      factory: (ruleName, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
     CSTNodeFactory<ExprNode>(
       ruleName: 'Expr',
-      expectedChildren: ['Term', 'AddOp'],
-      factory: (ruleName, expectedChildren, children) {
+      childRuleNames: ['Term', 'AddOp'],
+      factory: (ruleName, children) {
         return ExprNode(name: ruleName, children: children);
       },
     ),
@@ -139,10 +139,10 @@ void main() {
 
     try {
       final (cst, errors) = squirrelParse(
-        calculatorGrammar,
-        input,
-        'Expr',
-        factories,
+        grammarText: calculatorGrammar,
+        topRule: 'Expr',
+        factories: factories,
+        input: input,
       );
 
       if (errors.isEmpty) {

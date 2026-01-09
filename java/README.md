@@ -113,7 +113,7 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
 
 // 4. Parse input and get the CST
 String input = "2+3*4";
-CSTNode cst = SquirrelParser.parse(grammarText, input, "Expr", factories);
+CSTNode cst = SquirrelParser.parse(grammarText, "Expr", factories, input);
 System.out.println("Parse successful: " + cst.getName());
 ```
 
@@ -321,7 +321,7 @@ List<CSTNodeFactory<CSTNode>> factories = List.of(
 
 // Parse JSON
 String jsonInput = "{\"name\": \"Alice\", \"age\": 30}";
-CSTNode cst = SquirrelParser.parse(jsonGrammar, jsonInput, "JSON", factories);
+CSTNode cst = SquirrelParser.parse(jsonGrammar, "JSON", factories, jsonInput);
 System.out.println("JSON parsed successfully: " + cst.getName());
 ```
 
@@ -335,7 +335,7 @@ import com.squirrelparser.*;
 // grammar, input, and factories are defined in the basic example above
 
 try {
-    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
+    CSTNode cst = SquirrelParser.parse(grammar, "RuleName", factories, input);
 } catch (CSTFactoryValidationException e) {
     System.out.println("Missing factories: " + e.getMissing());
     System.out.println("Extra factories: " + e.getExtra());
@@ -355,7 +355,7 @@ Java's parser validates the grammar and factories configuration. If validation f
 // grammar, input, and factories are defined in the basic example above
 
 try {
-    CSTNode cst = SquirrelParser.parse(grammar, input, "RuleName", factories);
+    CSTNode cst = SquirrelParser.parse(grammar, "RuleName", factories, input);
     System.out.println("Parse successful: " + cst.getName());
 } catch (CSTFactoryValidationException | DuplicateRuleNameException | CSTConstructionException e) {
     System.out.println("Parse failed: " + e.getMessage());

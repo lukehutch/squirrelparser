@@ -46,7 +46,7 @@ class CSTSyntaxErrorNode extends CSTNode {
 /// Metadata for creating a CST node from a parse tree node.
 ///
 /// Each grammar rule (non-transparent) must have a corresponding factory.
-/// The factory takes the rule name, expected child names, and actual child CST nodes,
+/// The factory takes the rule name and actual child CST nodes,
 /// and returns a CSTNode instance of type T.
 ///
 /// Type parameter T is the specific CST node type that this factory produces.
@@ -56,19 +56,18 @@ class CSTNodeFactory<T extends CSTNode> {
   final String ruleName;
 
   /// The expected child node names or `<Terminal>` for terminal children
-  final List<String> expectedChildren;
+  final List<String> childRuleNames;
 
-  /// Factory function that creates a CST node of type T from rule name, expected child names,
+  /// Factory function that creates a CST node of type T from rule name
   /// and actual child CST nodes
   final T Function(
     String ruleName,
-    List<String> expectedChildNames,
     List<CSTNode> children,
   ) factory;
 
   CSTNodeFactory({
     required this.ruleName,
-    required this.expectedChildren,
+    required this.childRuleNames,
     required this.factory,
   });
 }

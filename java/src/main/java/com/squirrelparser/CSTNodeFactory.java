@@ -6,7 +6,7 @@ import java.util.List;
  * Metadata for creating a CST node from a parse tree node.
  *
  * Each grammar rule (non-transparent) must have a corresponding factory.
- * The factory takes the rule name, expected child names, and actual child CST nodes,
+ * The factory takes the rule name and actual child CST nodes,
  * and returns a CSTNode instance of type T.
  *
  * @param <T> The specific CST node type that this factory produces.
@@ -25,15 +25,13 @@ public class CSTNodeFactory<T extends CSTNode> {
     @FunctionalInterface
     public interface CSTNodeFactoryFunction<T extends CSTNode> {
         /**
-         * Create a CST node of type T from rule name, expected child names,
-         * and actual child CST nodes.
+         * Create a CST node of type T from rule name and actual child CST nodes.
          *
          * @param ruleName The name of the grammar rule
-         * @param expectedChildNames The expected child node names or `<Terminal>` for terminal children
          * @param children The actual child CST nodes
          * @return The created CST node
          */
-        T create(String ruleName, List<String> expectedChildNames, List<CSTNode> children);
+        T create(String ruleName, List<CSTNode> children);
     }
 
     /**
@@ -41,8 +39,8 @@ public class CSTNodeFactory<T extends CSTNode> {
      *
      * @param ruleName The grammar rule name this factory corresponds to
      * @param expectedChildren The expected child node names or `<Terminal>` for terminal children
-     * @param factory Factory function that creates a CST node of type T from rule name,
-     *               expected child names, and actual child CST nodes
+     * @param factory Factory function that creates a CST node of type T from rule name
+     *               and actual child CST nodes
      */
     public CSTNodeFactory(
         String ruleName,
@@ -71,7 +69,7 @@ public class CSTNodeFactory<T extends CSTNode> {
     /**
      * Create a CST node using this factory.
      */
-    public T create(String ruleName, List<String> expectedChildNames, List<CSTNode> children) {
-        return factory.create(ruleName, expectedChildNames, children);
+    public T create(String ruleName, List<CSTNode> children) {
+        return factory.create(ruleName, children);
     }
 }

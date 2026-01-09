@@ -31,9 +31,10 @@ from .clause import Clause
 
 def squirrel_parse(
     grammar_text: str,
-    input_str: str,
+    *,
     top_rule: str,
     factories: list[CSTNodeFactory[CSTNode]],
+    input_str: str,
 ) -> tuple[CSTNode, list[SyntaxError]]:
     """
     Parse input and return a Concrete Syntax Tree (CST), and any syntax errors.
@@ -43,9 +44,9 @@ def squirrel_parse(
 
     Args:
         grammar_text: The grammar as a PEG metagrammar string
-        input_str: The input string to parse
-        top_rule: The name of the top-level rule to parse
-        factories: List of CST node factories for each grammar rule
+        top_rule: The name of the top-level rule to parse (keyword-only)
+        factories: List of CST node factories for each grammar rule (keyword-only)
+        input_str: The input string to parse (keyword-only)
 
     Returns:
         A tuple (cst, syntax_errors) where cst is the root CST node
@@ -187,7 +188,7 @@ def _build_cst(
             child_children = _build_cst_children(
                 match_result, input_str, factories, syntax_errors, child_factory.expected_children
             )
-            children.append(child_factory.factory(clause.rule_name, child_factory.expected_children, child_children))
+            children.append(child_factory.factory(clause.rule_name, child_children))
     else:
         # For non-Ref clauses, collect children normally
         children.extend(
@@ -195,7 +196,7 @@ def _build_cst(
         )
 
     # Create the top-level CST node
-    return factory.factory(top_rule_name, factory.expected_children, children)
+    return factory.factory(top_rule_name, children)
 
 
 def _build_cst_node(
@@ -235,7 +236,7 @@ def _build_cst_node(
     children = _build_cst_children(match_result, input_str, factories, syntax_errors, factory.expected_children)
 
     # Call the factory to create the CST node
-    return factory.factory(rule_name, factory.expected_children, children)
+    return factory.factory(rule_name, children)
 
 
 def _build_cst_children(

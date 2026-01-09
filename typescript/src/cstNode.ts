@@ -58,7 +58,7 @@ export class CSTSyntaxErrorNode extends CSTNode {
  * Metadata for creating a CST node from a parse tree node.
  *
  * Each grammar rule (non-transparent) must have a corresponding factory.
- * The factory takes the rule name, expected child names, and actual child CST nodes,
+ * The factory takes the rule name and actual child CST nodes,
  * and returns a CSTNode instance of type T.
  *
  * @template T The specific CST node type that this factory produces.
@@ -72,19 +72,17 @@ export class CSTNodeFactory<T extends CSTNode> {
   readonly expectedChildren: string[];
 
   /**
-   * Factory function that creates a CST node of type T from rule name, expected child names,
-   * and actual child CST nodes
+   * Factory function that creates a CST node of type T from rule name and actual child CST nodes
    */
   readonly factory: (
     ruleName: string,
-    expectedChildNames: string[],
     children: CSTNode[]
   ) => T;
 
   constructor(
     ruleName: string,
     expectedChildren: string[],
-    factory: (ruleName: string, expectedChildNames: string[], children: CSTNode[]) => T
+    factory: (ruleName: string, children: CSTNode[]) => T
   ) {
     this.ruleName = ruleName;
     this.expectedChildren = expectedChildren;

@@ -56,7 +56,7 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Greeting',
         ['Name'],
-        (ruleName: string, expectedChildren: string[], children: CSTNode[]) => {
+        (ruleName: string, children: CSTNode[]) => {
           return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
@@ -79,14 +79,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Greeting',
         [],
-        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
+        (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'ExtraRule',
         [],
-        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
+        (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
@@ -109,14 +109,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Main',
         ['Item'],
-        (ruleName: string, _expectedChildren: string[], children: CSTNode[]) => {
+        (ruleName: string, children: CSTNode[]) => {
           return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Item',
         ['<Terminal>'],
-        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
+        (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'test');
         }
       ),
@@ -138,13 +138,13 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Test',
         ['<Terminal>'],
-        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
+        (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'hello');
         }
       ),
     ];
 
-    const [cst, errors] = squirrelParse(grammar, 'hello', 'Test', factories);
+    const [cst, errors] = squirrelParse(grammar, 'Test', factories, 'hello');
 
     expect(cst).not.toBeNull();
     expect(cst.name).toBe('Test');
@@ -163,14 +163,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Main',
         [],
-        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
+        (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Main',
         [],
-        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
+        (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName);
         }
       ),
@@ -195,14 +195,14 @@ describe('CST - Concrete Syntax Tree', () => {
       new CSTNodeFactory<SimpleCST>(
         'Expr',
         ['Term'],
-        (ruleName: string, _expectedChildren: string[], children: CSTNode[]) => {
+        (ruleName: string, children: CSTNode[]) => {
           return new SimpleCST(ruleName, children as SimpleCST[]);
         }
       ),
       new CSTNodeFactory<SimpleCST>(
         'Term',
         ['<Terminal>'],
-        (ruleName: string, _expectedChildren: string[], _children: CSTNode[]) => {
+        (ruleName: string, _children: CSTNode[]) => {
           return new SimpleCST(ruleName, [], 'x');
         }
       ),
