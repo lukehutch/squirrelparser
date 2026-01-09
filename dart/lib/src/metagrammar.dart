@@ -251,6 +251,28 @@ class MetaGrammar {
     }
 
     switch (node.label) {
+      case 'Choice':
+        final semanticChildren =
+            node.children.where((c) => !_shouldSkipNode(c.label)).toList();
+        final sequences = semanticChildren
+            .map((child) => _buildClause(child, input,
+                transparent: transparent, transparentRules: transparentRules))
+            .toList();
+        return sequences.length == 1
+            ? sequences[0]
+            : First(sequences, transparent: transparent);
+
+      case 'Sequence':
+        final semanticChildren =
+            node.children.where((c) => !_shouldSkipNode(c.label)).toList();
+        final items = semanticChildren
+            .map((child) => _buildClause(child, input,
+                transparent: transparent, transparentRules: transparentRules))
+            .toList();
+        return items.length == 1
+            ? items[0]
+            : Seq(items, transparent: transparent);
+
       case 'Prefix':
         // Check if there's a prefix operator (&, !, ~)
         final operatorNode =
@@ -319,27 +341,39 @@ class MetaGrammar {
                 'Unknown suffix operator: ${operatorNode.text}');
         }
 
-      case 'Choice':
-        final semanticChildren =
-            node.children.where((c) => !_shouldSkipNode(c.label)).toList();
-        final sequences = semanticChildren
-            .map((child) => _buildClause(child, input,
-                transparent: transparent, transparentRules: transparentRules))
-            .toList();
-        return sequences.length == 1
-            ? sequences[0]
-            : First(sequences, transparent: transparent);
+      case 'Parens':
+        // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+        // Find the Expression child (if it exists after parsing)
+        final expressionChild =
+            node.children.where((c) => c.label == 'Expression').firstOrNull;
+        if (expressionChild != null) {
+          // Parens with content - return the expression
+          return _buildClause(expressionChild, input,
+              transparent: transparent, transparentRules: transparentRules);
+        } else {
+          // Empty parens - return Nothing
+          return Nothing(transparent: transparent);
+        }
 
-      case 'Sequence':
-        final semanticChildren =
-            node.children.where((c) => !_shouldSkipNode(c.label)).toList();
-        final items = semanticChildren
-            .map((child) => _buildClause(child, input,
-                transparent: transparent, transparentRules: transparentRules))
-            .toList();
-        return items.length == 1
-            ? items[0]
-            : Seq(items, transparent: transparent);
+      case 'Identifier':
+        // This is a rule reference - check if the referenced rule is transparent
+        final isRefTransparent =
+            transparent || transparentRules.contains(node.text);
+        return Ref(node.text, transparent: isRefTransparent);
+
+      case 'StringLiteral':
+        return Str(
+            _unescapeString(node.text.substring(1, node.text.length - 1)));
+
+      case 'CharLiteral':
+        return Char(
+            _unescapeChar(node.text.substring(1, node.text.length - 1)));
+
+      case 'CharClass':
+        return _buildCharClass(node, input);
+
+      case 'AnyChar':
+        return AnyChar();
 
       case 'And':
         return FollowedBy(_buildClause(node.children[0], input,
@@ -372,43 +406,9 @@ class MetaGrammar {
                 transparentRules: transparentRules),
             transparent: transparent);
 
-      case 'Identifier':
-        // This is a rule reference - check if the referenced rule is transparent
-        final isRefTransparent =
-            transparent || transparentRules.contains(node.text);
-        return Ref(node.text, transparent: isRefTransparent);
-
-      case 'StringLiteral':
-        return Str(
-            _unescapeString(node.text.substring(1, node.text.length - 1)));
-
-      case 'CharLiteral':
-        return Char(
-            _unescapeChar(node.text.substring(1, node.text.length - 1)));
-
-      case 'CharClass':
-        return _buildCharClass(node, input);
-
-      case 'AnyChar':
-        return AnyChar();
-
       case 'Group':
         return _buildClause(node.children[0], input,
             transparent: transparent, transparentRules: transparentRules);
-
-      case 'Parens':
-        // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
-        // Find the Expression child (if it exists after parsing)
-        final expressionChild =
-            node.children.where((c) => c.label == 'Expression').firstOrNull;
-        if (expressionChild != null) {
-          // Parens with content - return the expression
-          return _buildClause(expressionChild, input,
-              transparent: transparent, transparentRules: transparentRules);
-        } else {
-          // Empty parens - return Nothing
-          return Nothing(transparent: transparent);
-        }
 
       default:
         // For unlabeled nodes, recursively build their children

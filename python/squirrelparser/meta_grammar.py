@@ -280,7 +280,29 @@ class MetaGrammar:
                 transparent=transparent
             )
 
-        if node.label == 'Prefix':
+        if node.label == 'Choice':
+            semantic_children = [
+                c for c in node.children
+                if not MetaGrammar._should_skip_node(c.label)
+            ]
+            sequences = [
+                MetaGrammar._build_clause(child, input_str, transparent=transparent, transparent_rules=transparent_rules)
+                for child in semantic_children
+            ]
+            return sequences[0] if len(sequences) == 1 else First(*sequences, transparent=transparent)
+
+        elif node.label == 'Sequence':
+            semantic_children = [
+                c for c in node.children
+                if not MetaGrammar._should_skip_node(c.label)
+            ]
+            items = [
+                MetaGrammar._build_clause(child, input_str, transparent=transparent, transparent_rules=transparent_rules)
+                for child in semantic_children
+            ]
+            return items[0] if len(items) == 1 else Seq(*items, transparent=transparent)
+
+        elif node.label == 'Prefix':
             # Check if there's a prefix operator (&, !, ~)
             operator_node = next((c for c in node.children if c.label == 'Str'), None)
             # Prefix can contain either another Prefix (for stacking) or a Suffix
@@ -343,27 +365,37 @@ class MetaGrammar:
             else:
                 raise ValueError(f'Unknown suffix operator: {operator_node.text}')
 
-        elif node.label == 'Choice':
-            semantic_children = [
-                c for c in node.children
-                if not MetaGrammar._should_skip_node(c.label)
-            ]
-            sequences = [
-                MetaGrammar._build_clause(child, input_str, transparent=transparent, transparent_rules=transparent_rules)
-                for child in semantic_children
-            ]
-            return sequences[0] if len(sequences) == 1 else First(*sequences, transparent=transparent)
+        elif node.label == 'Parens':
+            # Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+            # Find the Expression child (if it exists after parsing)
+            expression_child = next((c for c in node.children if c.label == 'Expression'), None)
+            if expression_child:
+                # Parens with content - return the expression
+                return MetaGrammar._build_clause(
+                    expression_child, input_str,
+                    transparent=transparent,
+                    transparent_rules=transparent_rules
+                )
+            else:
+                # Empty parens - return Nothing
+                return Nothing(transparent=transparent)
 
-        elif node.label == 'Sequence':
-            semantic_children = [
-                c for c in node.children
-                if not MetaGrammar._should_skip_node(c.label)
-            ]
-            items = [
-                MetaGrammar._build_clause(child, input_str, transparent=transparent, transparent_rules=transparent_rules)
-                for child in semantic_children
-            ]
-            return items[0] if len(items) == 1 else Seq(*items, transparent=transparent)
+        elif node.label == 'Identifier':
+            # This is a rule reference - check if the referenced rule is transparent
+            is_ref_transparent = transparent or node.text in transparent_rules
+            return Ref(node.text, transparent=is_ref_transparent)
+
+        elif node.label == 'StringLiteral':
+            return Str(MetaGrammar._unescape_string(node.text[1:-1]))
+
+        elif node.label == 'CharLiteral':
+            return Char(MetaGrammar._unescape_char(node.text[1:-1]))
+
+        elif node.label == 'CharClass':
+            return MetaGrammar._build_char_class(node, input_str)
+
+        elif node.label == 'AnyChar':
+            return AnyChar()
 
         elif node.label == 'And':
             return FollowedBy(
@@ -401,44 +433,12 @@ class MetaGrammar:
                 transparent=transparent
             )
 
-        elif node.label == 'Identifier':
-            # This is a rule reference - check if the referenced rule is transparent
-            is_ref_transparent = transparent or node.text in transparent_rules
-            return Ref(node.text, transparent=is_ref_transparent)
-
-        elif node.label == 'StringLiteral':
-            return Str(MetaGrammar._unescape_string(node.text[1:-1]))
-
-        elif node.label == 'CharLiteral':
-            return Char(MetaGrammar._unescape_char(node.text[1:-1]))
-
-        elif node.label == 'CharClass':
-            return MetaGrammar._build_char_class(node, input_str)
-
-        elif node.label == 'AnyChar':
-            return AnyChar()
-
         elif node.label == 'Group':
             return MetaGrammar._build_clause(
                 node.children[0], input_str,
                 transparent=transparent,
                 transparent_rules=transparent_rules
             )
-
-        elif node.label == 'Parens':
-            # Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
-            # Find the Expression child (if it exists after parsing)
-            expression_child = next((c for c in node.children if c.label == 'Expression'), None)
-            if expression_child:
-                # Parens with content - return the expression
-                return MetaGrammar._build_clause(
-                    expression_child, input_str,
-                    transparent=transparent,
-                    transparent_rules=transparent_rules
-                )
-            else:
-                # Empty parens - return Nothing
-                return Nothing(transparent=transparent)
 
         else:
             # For unlabeled nodes, recursively build their children

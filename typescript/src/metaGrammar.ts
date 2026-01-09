@@ -273,6 +273,26 @@ export class MetaGrammar {
     }
 
     switch (node.label) {
+      case 'Choice': {
+        const semanticChildren = node.children.filter(c => !MetaGrammar.shouldSkipNode(c.label));
+        const sequences = semanticChildren.map(child =>
+          MetaGrammar.buildClause(child, input, transparent, transparentRules)
+        );
+        return sequences.length === 1
+          ? sequences[0]
+          : new First(sequences, transparent);
+      }
+
+      case 'Sequence': {
+        const semanticChildren = node.children.filter(c => !MetaGrammar.shouldSkipNode(c.label));
+        const items = semanticChildren.map(child =>
+          MetaGrammar.buildClause(child, input, transparent, transparentRules)
+        );
+        return items.length === 1
+          ? items[0]
+          : new Seq(items, transparent);
+      }
+
       case 'Prefix': {
         // Check if there's a prefix operator (&, !, ~)
         const operatorNode = node.children.find(c => c.label === 'Str');
@@ -332,25 +352,40 @@ export class MetaGrammar {
         }
       }
 
-      case 'Choice': {
-        const semanticChildren = node.children.filter(c => !MetaGrammar.shouldSkipNode(c.label));
-        const sequences = semanticChildren.map(child =>
-          MetaGrammar.buildClause(child, input, transparent, transparentRules)
-        );
-        return sequences.length === 1
-          ? sequences[0]
-          : new First(sequences, transparent);
+      case 'Parens': {
+        // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+        // Find the Expression child (if it exists after parsing)
+        const expressionChild = node.children.find(c => c.label === 'Expression');
+        if (expressionChild) {
+          // Parens with content - return the expression
+          return MetaGrammar.buildClause(expressionChild, input, transparent, transparentRules);
+        } else {
+          // Empty parens - return Nothing
+          return new Nothing();
+        }
       }
 
-      case 'Sequence': {
-        const semanticChildren = node.children.filter(c => !MetaGrammar.shouldSkipNode(c.label));
-        const items = semanticChildren.map(child =>
-          MetaGrammar.buildClause(child, input, transparent, transparentRules)
-        );
-        return items.length === 1
-          ? items[0]
-          : new Seq(items, transparent);
+      case 'Identifier': {
+        // This is a rule reference - check if the referenced rule is transparent
+        const isRefTransparent = transparent || transparentRules.has(node.text);
+        return new Ref(node.text, isRefTransparent);
       }
+
+      case 'StringLiteral':
+        return new Str(
+          MetaGrammar.unescapeString(node.text.substring(1, node.text.length - 1))
+        );
+
+      case 'CharLiteral':
+        return new Char(
+          MetaGrammar.unescapeChar(node.text.substring(1, node.text.length - 1))
+        );
+
+      case 'CharClass':
+        return MetaGrammar.buildCharClass(node, input);
+
+      case 'AnyChar':
+        return new AnyChar();
 
       case 'And':
         return new FollowedBy(
@@ -384,43 +419,8 @@ export class MetaGrammar {
           transparent
         );
 
-      case 'Identifier': {
-        // This is a rule reference - check if the referenced rule is transparent
-        const isRefTransparent = transparent || transparentRules.has(node.text);
-        return new Ref(node.text, isRefTransparent);
-      }
-
-      case 'StringLiteral':
-        return new Str(
-          MetaGrammar.unescapeString(node.text.substring(1, node.text.length - 1))
-        );
-
-      case 'CharLiteral':
-        return new Char(
-          MetaGrammar.unescapeChar(node.text.substring(1, node.text.length - 1))
-        );
-
-      case 'CharClass':
-        return MetaGrammar.buildCharClass(node, input);
-
-      case 'AnyChar':
-        return new AnyChar();
-
       case 'Group':
         return MetaGrammar.buildClause(node.children[0], input, transparent, transparentRules);
-
-      case 'Parens': {
-        // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
-        // Find the Expression child (if it exists after parsing)
-        const expressionChild = node.children.find(c => c.label === 'Expression');
-        if (expressionChild) {
-          // Parens with content - return the expression
-          return MetaGrammar.buildClause(expressionChild, input, transparent, transparentRules);
-        } else {
-          // Empty parens - return Nothing
-          return new Nothing();
-        }
-      }
 
       default:
         // For unlabeled nodes, recursively build their children

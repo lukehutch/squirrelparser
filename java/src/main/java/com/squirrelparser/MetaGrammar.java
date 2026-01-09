@@ -287,6 +287,26 @@ public class MetaGrammar {
         }
 
         return switch (node.label) {
+            case "Choice" -> {
+                List<ASTNode> semanticChildren = node.children.stream()
+                    .filter(c -> !shouldSkipNode(c.label))
+                    .collect(Collectors.toList());
+                List<Clause> sequences = semanticChildren.stream()
+                    .map(child -> buildClause(child, input, false, transparentRules))
+                    .collect(Collectors.toList());
+                yield sequences.size() == 1 ? sequences.get(0) : new First(sequences, transparent);
+            }
+
+            case "Sequence" -> {
+                List<ASTNode> semanticChildren = node.children.stream()
+                    .filter(c -> !shouldSkipNode(c.label))
+                    .collect(Collectors.toList());
+                List<Clause> items = semanticChildren.stream()
+                    .map(child -> buildClause(child, input, false, transparentRules))
+                    .collect(Collectors.toList());
+                yield items.size() == 1 ? items.get(0) : new Seq(items, transparent);
+            }
+
             case "Prefix" -> {
                 // Check if there's a prefix operator (&, !, ~)
                 java.util.Optional<ASTNode> operatorNode = node.children.stream()
@@ -349,24 +369,19 @@ public class MetaGrammar {
                 };
             }
 
-            case "Choice" -> {
-                List<ASTNode> semanticChildren = node.children.stream()
-                    .filter(c -> !shouldSkipNode(c.label))
-                    .collect(Collectors.toList());
-                List<Clause> sequences = semanticChildren.stream()
-                    .map(child -> buildClause(child, input, false, transparentRules))
-                    .collect(Collectors.toList());
-                yield sequences.size() == 1 ? sequences.get(0) : new First(sequences, transparent);
-            }
-
-            case "Sequence" -> {
-                List<ASTNode> semanticChildren = node.children.stream()
-                    .filter(c -> !shouldSkipNode(c.label))
-                    .collect(Collectors.toList());
-                List<Clause> items = semanticChildren.stream()
-                    .map(child -> buildClause(child, input, false, transparentRules))
-                    .collect(Collectors.toList());
-                yield items.size() == 1 ? items.get(0) : new Seq(items, transparent);
+            case "Parens" -> {
+                // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
+                // Find the Expression child (if it exists after parsing)
+                java.util.Optional<ASTNode> expressionChild = node.children.stream()
+                    .filter(c -> c.label.equals("Expression"))
+                    .findFirst();
+                if (expressionChild.isPresent()) {
+                    // Parens with content - return the expression
+                    yield buildClause(expressionChild.get(), input, transparent, transparentRules);
+                } else {
+                    // Empty parens - return Nothing
+                    yield new Terminals.Nothing();
+                }
             }
 
             case "Identifier" -> {
@@ -390,21 +405,6 @@ public class MetaGrammar {
             case "AnyChar" -> new AnyChar();
 
             case "Group" -> buildClause(node.children.get(0), input, transparent, transparentRules);
-
-            case "Parens" -> {
-                // Parens can contain: Str('('), _, Optional(Expression), _, Str(')')
-                // Find the Expression child (if it exists after parsing)
-                java.util.Optional<ASTNode> expressionChild = node.children.stream()
-                    .filter(c -> c.label.equals("Expression"))
-                    .findFirst();
-                if (expressionChild.isPresent()) {
-                    // Parens with content - return the expression
-                    yield buildClause(expressionChild.get(), input, transparent, transparentRules);
-                } else {
-                    // Empty parens - return Nothing
-                    yield new Terminals.Nothing();
-                }
-            }
 
             default -> {
                 // For unlabeled nodes, recursively build their children
