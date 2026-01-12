@@ -1,10 +1,12 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * SECTION 11: STRESS TESTS (20 tests)
@@ -86,6 +88,7 @@ class ParserStressTest {
 
     @Test
     void testST09_100Seq() {
+        @SuppressWarnings("unused")
         String elems = IntStream.range(0, 100)
             .mapToObj(i -> "\"x\"")
             .collect(Collectors.joining(" "));
@@ -97,6 +100,7 @@ class ParserStressTest {
 
     @Test
     void testST10_50Optional() {
+        @SuppressWarnings("unused")
         String elems = IntStream.range(0, 50)
             .mapToObj(i -> "\"x\"?")
             .collect(Collectors.joining(" "));
@@ -123,6 +127,7 @@ class ParserStressTest {
 
     @Test
     void testST13_ManyShortErr() {
+        @SuppressWarnings("unused")
         String input = IntStream.range(0, 30)
             .mapToObj(i -> "abX")
             .collect(Collectors.joining()) + "ab";
@@ -166,6 +171,7 @@ class ParserStressTest {
 
     @Test
     void testST18_50Errors() {
+        @SuppressWarnings("unused")
         String input = IntStream.range(0, 50)
             .mapToObj(i -> "abZ")
             .collect(Collectors.joining()) + "ab";

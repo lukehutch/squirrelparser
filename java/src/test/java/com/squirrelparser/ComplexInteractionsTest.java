@@ -5,13 +5,14 @@
 
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.squirrelparser.TestUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class ComplexInteractionsTest {
 
@@ -46,6 +47,7 @@ class ComplexInteractionsTest {
     @Test
     void complex03_recoveryVersionOverflowVerified() {
         // Many recoveries to test version counter doesn't overflow
+        @SuppressWarnings("unused")
         String input = "ab" + IntStream.range(0, 50).mapToObj(i -> "Xab").collect(Collectors.joining());
         String grammar = "S <- \"ab\"+ ;";
         var result = testParse(grammar, input);
@@ -201,7 +203,9 @@ class ComplexInteractionsTest {
         for (int i = 0; i < 50; i++) {
             String idx = String.format("%03d", i);
             rules.append("Rule").append(i).append(" <- \"opt_").append(idx).append("\" ;\n");
-            if (i > 0) alternatives.append(" / ");
+            if (i > 0) {
+                alternatives.append(" / ");
+            }
             alternatives.append("Rule").append(i);
         }
         String grammar = rules + "S <- " + alternatives + " ;";

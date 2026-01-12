@@ -9,12 +9,15 @@
 
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class SpanningInvariantTest {
 
@@ -59,15 +62,21 @@ class SpanningInvariantTest {
             return se.pos() == pos && se.len() == len;
         }
         for (MatchResult child : result.subClauseMatches()) {
-            if (hasTrailingError(child, input, pos, len)) return true;
+            if (hasTrailingError(child, input, pos, len)) {
+                return true;
+            }
         }
         return false;
     }
 
     private boolean hasSyntaxError(MatchResult result) {
-        if (result instanceof SyntaxError) return true;
+        if (result instanceof SyntaxError) {
+            return true;
+        }
         for (MatchResult child : result.subClauseMatches()) {
-            if (hasSyntaxError(child)) return true;
+            if (hasSyntaxError(child)) {
+                return true;
+            }
         }
         return false;
     }

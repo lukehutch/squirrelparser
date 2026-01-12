@@ -1,7 +1,7 @@
 import {
   ASTNode,
   CSTNode,
-  CSTNodeFactory,
+  CSTNodeFactoryFn,
   squirrelParseCST,
   squirrelParsePT,
 } from '../src/index.js';
@@ -43,12 +43,9 @@ describe('CST - Concrete Syntax Tree', () => {
     `;
 
     // Only provide factory for Greeting, missing Name and <Terminal>
-    const factories: CSTNodeFactory[] = [
-      {
-        ruleName: 'Greeting',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-    ];
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Greeting', (astNode, children) => new SimpleCST(astNode, children)],
+    ]);
 
     expect(() =>
       squirrelParseCST({
@@ -66,16 +63,10 @@ describe('CST - Concrete Syntax Tree', () => {
     `;
 
     // Provide factory for Greeting and extra Name
-    const factories: CSTNodeFactory[] = [
-      {
-        ruleName: 'Greeting',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-      {
-        ruleName: 'ExtraRule',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-    ];
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Greeting', (astNode, children) => new SimpleCST(astNode, children)],
+      ['ExtraRule', (astNode, children) => new SimpleCST(astNode, children)],
+    ]);
 
     expect(() =>
       squirrelParseCST({
@@ -93,20 +84,11 @@ describe('CST - Concrete Syntax Tree', () => {
       Item <- "test";
     `;
 
-    const factories: CSTNodeFactory[] = [
-      {
-        ruleName: 'Main',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-      {
-        ruleName: 'Item',
-        factory: (astNode, children) => new SimpleCST(astNode, children, 'test'),
-      },
-      {
-        ruleName: '<Terminal>',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-    ];
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Main', (astNode, children) => new SimpleCST(astNode, children)],
+      ['Item', (astNode, children) => new SimpleCST(astNode, children, 'test')],
+      ['<Terminal>', (astNode, children) => new SimpleCST(astNode, children)],
+    ]);
 
     const cst = squirrelParseCST({
       grammarSpec: grammar,
@@ -124,16 +106,10 @@ describe('CST - Concrete Syntax Tree', () => {
       Test <- "hello";
     `;
 
-    const factories: CSTNodeFactory[] = [
-      {
-        ruleName: 'Test',
-        factory: (astNode, children) => new SimpleCST(astNode, children, 'hello'),
-      },
-      {
-        ruleName: '<Terminal>',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-    ];
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Test', (astNode, children) => new SimpleCST(astNode, children, 'hello')],
+      ['<Terminal>', (astNode, children) => new SimpleCST(astNode, children)],
+    ]);
 
     const cst = squirrelParseCST({
       grammarSpec: grammar,
@@ -146,33 +122,6 @@ describe('CST - Concrete Syntax Tree', () => {
     expect(cst.label).toBe('Test');
   });
 
-  it('duplicate rule names throw error', () => {
-    const grammar = `
-      Main <- "test";
-    `;
-
-    // Provide two factories with the same rule name
-    const factories: CSTNodeFactory[] = [
-      {
-        ruleName: 'Main',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-      {
-        ruleName: 'Main',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-    ];
-
-    expect(() =>
-      squirrelParseCST({
-        grammarSpec: grammar,
-        topRuleName: 'Main',
-        factories,
-        input: 'test',
-      })
-    ).toThrow();
-  });
-
   it('transparent rules are excluded from CST factories', () => {
     const grammar = `
       Expr <- ~Whitespace Term ~Whitespace;
@@ -181,20 +130,11 @@ describe('CST - Concrete Syntax Tree', () => {
     `;
 
     // Should only need factories for Expr and Term, not Whitespace (which is transparent)
-    const factories: CSTNodeFactory[] = [
-      {
-        ruleName: 'Expr',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-      {
-        ruleName: 'Term',
-        factory: (astNode, children) => new SimpleCST(astNode, children, 'x'),
-      },
-      {
-        ruleName: '<Terminal>',
-        factory: (astNode, children) => new SimpleCST(astNode, children),
-      },
-    ];
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Expr', (astNode, children) => new SimpleCST(astNode, children)],
+      ['Term', (astNode, children) => new SimpleCST(astNode, children, 'x')],
+      ['<Terminal>', (astNode, children) => new SimpleCST(astNode, children)],
+    ]);
 
     // This should work without a factory for Whitespace
     const cst = squirrelParseCST({

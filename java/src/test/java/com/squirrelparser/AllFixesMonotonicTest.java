@@ -1,11 +1,15 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.countDeletions;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
-import static com.squirrelparser.TestUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import com.squirrelparser.TestUtils.ParseTestResult;
 
 /**
  * SECTION 11: ALL SIX FIXES WITH MONOTONIC INVARIANT (20 tests)

@@ -143,9 +143,10 @@ abstract class CSTNodeBase extends Node<CSTNodeBase> {
 // -----------------------------------------------------------------------------------------------------------------
 
 /**
- * Factory for creating CST nodes from AST nodes.
+ * Factory function type for creating CST nodes from AST nodes.
  */
-record CSTNodeFactory(String ruleName, BiFunction<ASTNode, List<CSTNodeBase>, CSTNodeBase> factory) {}
+@FunctionalInterface
+interface CSTNodeFactoryFn extends BiFunction<ASTNode, List<CSTNodeBase>, CSTNodeBase> {}
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -155,34 +156,46 @@ record CSTNodeFactory(String ruleName, BiFunction<ASTNode, List<CSTNodeBase>, CS
 final class CSTBuilder {
     private CSTBuilder() {}
 
-    public static CSTNodeBase buildCST(ASTNode ast, List<CSTNodeFactory> factories, boolean allowSyntaxErrors) {
-        var factoriesMap = new java.util.HashMap<String, CSTNodeFactory>();
-        for (var factory : factories) {
-            if (factoriesMap.containsKey(factory.ruleName())) {
-                throw new IllegalArgumentException("Duplicate factory for rule \"" + factory.ruleName() + "\"");
-            }
-            factoriesMap.put(factory.ruleName(), factory);
-        }
-        return buildCSTInternal(ast, factoriesMap, allowSyntaxErrors);
+    /**
+     * Build a CST from an AST using the provided factory map.
+     *
+     * <p>The factories map should contain an entry for each rule name in the grammar, plus:
+     * <ul>
+     *   <li>'&lt;Terminal&gt;' for terminal matches (string literals, character classes, etc.)</li>
+     *   <li>'&lt;SyntaxError&gt;' if allowSyntaxErrors is true</li>
+     * </ul>
+     *
+     * @param ast The AST to convert
+     * @param factories Map from rule name to factory function
+     * @param allowSyntaxErrors Whether to allow syntax errors
+     * @return The CST root node
+     */
+    public static CSTNodeBase buildCST(
+            ASTNode ast,
+            java.util.Map<String, CSTNodeFactoryFn> factories,
+            boolean allowSyntaxErrors) {
+        return buildCSTInternal(ast, factories, allowSyntaxErrors);
     }
 
-    private static CSTNodeBase buildCSTInternal(ASTNode ast, java.util.Map<String, CSTNodeFactory> factoriesMap,
-                                                  boolean allowSyntaxErrors) {
+    private static CSTNodeBase buildCSTInternal(
+            ASTNode ast,
+            java.util.Map<String, CSTNodeFactoryFn> factories,
+            boolean allowSyntaxErrors) {
         if (ast.syntaxError() != null) {
             if (!allowSyntaxErrors) {
                 throw new IllegalArgumentException("Syntax error: " + ast.syntaxError());
             }
-            var errorFactory = factoriesMap.get("<SyntaxError>");
+            var errorFactory = factories.get("<SyntaxError>");
             if (errorFactory == null) {
                 throw new IllegalArgumentException("No factory found for <SyntaxError>");
             }
-            return errorFactory.factory().apply(ast, List.of());
+            return errorFactory.apply(ast, List.of());
         }
 
-        var factory = factoriesMap.get(ast.label());
+        var factory = factories.get(ast.label());
 
         if (factory == null && ast.label().equals(Terminal.NODE_LABEL)) {
-            factory = factoriesMap.get("<Terminal>");
+            factory = factories.get("<Terminal>");
         }
 
         if (factory == null) {
@@ -190,8 +203,8 @@ final class CSTBuilder {
         }
 
         List<CSTNodeBase> childCSTNodes = ast.children().stream()
-            .map(child -> buildCSTInternal(child, factoriesMap, allowSyntaxErrors))
+            .map(child -> buildCSTInternal(child, factories, allowSyntaxErrors))
             .toList();
-        return factory.factory().apply(ast, childCSTNodes);
+        return factory.apply(ast, childCSTNodes);
     }
 }

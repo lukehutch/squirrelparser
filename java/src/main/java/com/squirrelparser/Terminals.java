@@ -1,8 +1,8 @@
 package com.squirrelparser;
 
-import java.util.List;
-
 import static com.squirrelparser.MatchResult.mismatch;
+
+import java.util.List;
 
 /**
  * Matches a literal string.
@@ -20,7 +20,9 @@ final class Str extends Terminal {
 
     @Override
     public MatchResult match(Parser parser, int pos, Clause bound) {
-        if (pos + text.length() > parser.input().length()) return mismatch();
+        if (pos + text.length() > parser.input().length()) {
+            return mismatch();
+        }
         for (int i = 0; i < text.length(); i++) {
             if (parser.input().charAt(pos + i) != text.charAt(i)) {
                 return mismatch();
@@ -56,7 +58,9 @@ final class Char extends Terminal {
 
     @Override
     public MatchResult match(Parser parser, int pos, Clause bound) {
-        if (pos + ch.length() > parser.input().length()) return mismatch();
+        if (pos + ch.length() > parser.input().length()) {
+            return mismatch();
+        }
         for (int i = 0; i < ch.length(); i++) {
             if (parser.input().charAt(pos + i) != ch.charAt(i)) {
                 return mismatch();
@@ -121,7 +125,9 @@ final class CharSet extends Terminal {
 
     @Override
     public MatchResult match(Parser parser, int pos, Clause bound) {
-        if (pos >= parser.input().length()) return mismatch();
+        if (pos >= parser.input().length()) {
+            return mismatch();
+        }
         int c = parser.input().codePointAt(pos);
 
         boolean inSet = false;
@@ -141,7 +147,9 @@ final class CharSet extends Terminal {
     @Override
     public String toString() {
         var buf = new StringBuilder("[");
-        if (inverted) buf.append("^");
+        if (inverted) {
+            buf.append("^");
+        }
         for (int[] range : ranges) {
             if (range[0] == range[1]) {
                 buf.append(Utils.escapeString(Character.toString(range[0])));
@@ -164,7 +172,9 @@ final class CharSet extends Terminal {
 final class AnyChar extends Terminal {
     @Override
     public MatchResult match(Parser parser, int pos, Clause bound) {
-        if (pos >= parser.input().length()) return mismatch();
+        if (pos >= parser.input().length()) {
+            return mismatch();
+        }
         return new Match(this, pos, 1);
     }
 

@@ -1,13 +1,17 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.squirrelparser.TestUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import com.squirrelparser.TestUtils.ParseTestResult;
 
 /**
  * ADVANCED STRESS TESTS FOR SQUIRREL PARSER RECOVERY
@@ -37,6 +41,7 @@ class AdvancedStressTest {
         @Test
         void testISO02_RecoveryVersionOverflow() {
             String grammar = "S <- \"ab\"+ ;";
+            @SuppressWarnings("unused")
             String input = "ab" + IntStream.range(0, 50).mapToObj(i -> "Xab").collect(Collectors.joining());
             ParseTestResult r = testParse(grammar, input);
             assertTrue(r.ok(), "many errors should not overflow version");
@@ -327,7 +332,9 @@ class AdvancedStressTest {
     @Nested
     class PathologicalGrammars {
         private String buildDeepFirst(int depth) {
-            if (depth == 0) return "\"target\"";
+            if (depth == 0) {
+                return "\"target\"";
+            }
             return "\"x\" / (" + buildDeepFirst(depth - 1) + ")";
         }
 
@@ -339,7 +346,9 @@ class AdvancedStressTest {
         }
 
         private String buildDeepSeq(int depth) {
-            if (depth == 0) return "\"x\"";
+            if (depth == 0) {
+                return "\"x\"";
+            }
             return "\"a\" (" + buildDeepSeq(depth - 1) + ")";
         }
 

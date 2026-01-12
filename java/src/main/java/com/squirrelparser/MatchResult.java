@@ -70,7 +70,9 @@ public abstract sealed class MatchResult permits Match, SyntaxError {
 
     // Helper functions
     static int totalLength(List<MatchResult> children) {
-        if (children.isEmpty()) return 0;
+        if (children.isEmpty()) {
+            return 0;
+        }
         var first = children.getFirst();
         var last = children.getLast();
         return last.pos() + last.len() - first.pos();

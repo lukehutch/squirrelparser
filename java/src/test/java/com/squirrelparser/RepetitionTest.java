@@ -4,14 +4,14 @@
 
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static com.squirrelparser.TestUtils.*;
+import org.junit.jupiter.api.Test;
 
 class RepetitionTest {
     @Test
@@ -102,6 +102,7 @@ class RepetitionTest {
 
     @Test
     void r12_20errors() {
+        @SuppressWarnings("unused")
         String input = IntStream.range(0, 20).mapToObj(i -> "abZ").collect(Collectors.joining()) + "ab";
         var result = testParse("S <- \"ab\"+ ;", input);
         assertTrue(result.ok(), "should succeed");

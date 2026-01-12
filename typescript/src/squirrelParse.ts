@@ -2,7 +2,7 @@
  * Public Squirrel Parser API.
  */
 
-import { ASTNode, buildAST, buildCST, CSTNode, CSTNodeFactory } from './cstNode.js';
+import { ASTNode, buildAST, buildCST, CSTNode, CSTNodeFactoryFn } from './cstNode.js';
 import { MetaGrammar } from './metaGrammar.js';
 import { Parser, ParseResult } from './parser.js';
 
@@ -30,7 +30,7 @@ import { Parser, ParseResult } from './parser.js';
 export function squirrelParseCST(options: {
   grammarSpec: string;
   topRuleName: string;
-  factories: CSTNodeFactory[];
+  factories: Map<string, CSTNodeFactoryFn>;
   input: string;
   allowSyntaxErrors?: boolean;
 }): CSTNode {

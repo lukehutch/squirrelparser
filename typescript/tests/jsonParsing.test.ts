@@ -1,7 +1,7 @@
 import {
   ASTNode,
   CSTNode,
-  CSTNodeFactory,
+  CSTNodeFactoryFn,
   squirrelParseCST,
   squirrelParsePT,
 } from '../src/index.js';
@@ -161,111 +161,63 @@ function parseJson(input: string, _allowErrors = false): ParseJsonResult {
   const syntaxErrors = parseResult.getSyntaxErrors();
   const errorStrings = syntaxErrors.map((e) => input.substring(e.pos, e.pos + e.len));
 
-  const factories: CSTNodeFactory[] = [
-    {
-      ruleName: 'JSON',
-      factory: (astNode, children) => {
-        const values = children.filter((c): c is JsonValue => c instanceof JsonValue);
-        if (values.length === 0) return new JsonNull(astNode, [...children]);
-        return values[0];
-      },
-    },
-    {
-      ruleName: 'Value',
-      factory: (astNode, children) => {
-        const values = children.filter((c): c is JsonValue => c instanceof JsonValue);
-        if (values.length === 0) return new JsonNull(astNode, [...children]);
-        return values[0];
-      },
-    },
-    {
-      ruleName: 'Object',
-      factory: (astNode, children) => {
-        const members = children.filter((c): c is JsonMember => c instanceof JsonMember);
-        return new JsonObject(astNode, children, members);
-      },
-    },
-    {
-      ruleName: 'Member',
-      factory: (astNode, children) => {
-        let keyNode: JsonString | null = null;
-        let valueNode: JsonValue | null = null;
+  const factories = new Map<string, CSTNodeFactoryFn>([
+    ['JSON', (astNode, children) => {
+      const values = children.filter((c): c is JsonValue => c instanceof JsonValue);
+      if (values.length === 0) return new JsonNull(astNode, [...children]);
+      return values[0];
+    }],
+    ['Value', (astNode, children) => {
+      const values = children.filter((c): c is JsonValue => c instanceof JsonValue);
+      if (values.length === 0) return new JsonNull(astNode, [...children]);
+      return values[0];
+    }],
+    ['Object', (astNode, children) => {
+      const members = children.filter((c): c is JsonMember => c instanceof JsonMember);
+      return new JsonObject(astNode, children, members);
+    }],
+    ['Member', (astNode, children) => {
+      let keyNode: JsonString | null = null;
+      let valueNode: JsonValue | null = null;
 
-        for (const child of children) {
-          if (child instanceof JsonString && keyNode === null) {
-            keyNode = child;
-          }
-          if (child instanceof JsonValue && !(child instanceof JsonString) && valueNode === null) {
-            valueNode = child;
-          }
+      for (const child of children) {
+        if (child instanceof JsonString && keyNode === null) {
+          keyNode = child;
         }
+        if (child instanceof JsonValue && !(child instanceof JsonString) && valueNode === null) {
+          valueNode = child;
+        }
+      }
 
-        const keyStr = keyNode?.value ?? '';
-        return new JsonMember(astNode, children, keyStr, valueNode ?? new JsonNull(astNode, []));
-      },
-    },
-    {
-      ruleName: 'Array',
-      factory: (astNode, children) => {
-        const elements = children.filter((c): c is JsonValue => c instanceof JsonValue);
-        return new JsonArray(astNode, children, elements);
-      },
-    },
-    {
-      ruleName: 'String',
-      factory: (astNode, children) => {
-        const quoted = astNode.getInputSpan(input);
-        const value = extractStringValue(quoted);
-        return new JsonString(astNode, children, value);
-      },
-    },
-    {
-      ruleName: 'Character',
-      factory: (astNode, children) => new JsonString(astNode, children, astNode.getInputSpan(input)),
-    },
-    {
-      ruleName: 'Escape',
-      factory: (astNode, children) => new JsonString(astNode, children, ''),
-    },
-    {
-      ruleName: 'Number',
-      factory: (astNode, children) => {
-        const numStr = astNode.getInputSpan(input);
-        return new JsonNumber(astNode, children, parseNumber(numStr));
-      },
-    },
-    {
-      ruleName: 'Integer',
-      factory: (astNode, children) => new JsonNull(astNode, children),
-    },
-    {
-      ruleName: 'Fraction',
-      factory: (astNode, children) => new JsonNull(astNode, children),
-    },
-    {
-      ruleName: 'Exponent',
-      factory: (astNode, children) => new JsonNull(astNode, children),
-    },
-    {
-      ruleName: 'Boolean',
-      factory: (astNode, children) => {
-        const boolStr = astNode.getInputSpan(input);
-        return new JsonBoolean(astNode, children, boolStr === 'true');
-      },
-    },
-    {
-      ruleName: 'Null',
-      factory: (astNode, children) => new JsonNull(astNode, children),
-    },
-    {
-      ruleName: '<Terminal>',
-      factory: (astNode, _children) => new JsonTerminal(astNode),
-    },
-    {
-      ruleName: '<SyntaxError>',
-      factory: (astNode, children) => new JsonNull(astNode, children),
-    },
-  ];
+      const keyStr = keyNode?.value ?? '';
+      return new JsonMember(astNode, children, keyStr, valueNode ?? new JsonNull(astNode, []));
+    }],
+    ['Array', (astNode, children) => {
+      const elements = children.filter((c): c is JsonValue => c instanceof JsonValue);
+      return new JsonArray(astNode, children, elements);
+    }],
+    ['String', (astNode, children) => {
+      const quoted = astNode.getInputSpan(input);
+      const value = extractStringValue(quoted);
+      return new JsonString(astNode, children, value);
+    }],
+    ['Character', (astNode, children) => new JsonString(astNode, children, astNode.getInputSpan(input))],
+    ['Escape', (astNode, children) => new JsonString(astNode, children, '')],
+    ['Number', (astNode, children) => {
+      const numStr = astNode.getInputSpan(input);
+      return new JsonNumber(astNode, children, parseNumber(numStr));
+    }],
+    ['Integer', (astNode, children) => new JsonNull(astNode, children)],
+    ['Fraction', (astNode, children) => new JsonNull(astNode, children)],
+    ['Exponent', (astNode, children) => new JsonNull(astNode, children)],
+    ['Boolean', (astNode, children) => {
+      const boolStr = astNode.getInputSpan(input);
+      return new JsonBoolean(astNode, children, boolStr === 'true');
+    }],
+    ['Null', (astNode, children) => new JsonNull(astNode, children)],
+    ['<Terminal>', (astNode, _children) => new JsonTerminal(astNode)],
+    ['<SyntaxError>', (astNode, children) => new JsonNull(astNode, children)],
+  ]);
 
   try {
     const cst = squirrelParseCST({

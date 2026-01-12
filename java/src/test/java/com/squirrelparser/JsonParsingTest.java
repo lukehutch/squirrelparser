@@ -1,15 +1,20 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.SquirrelParser.squirrelParseCST;
+import static com.squirrelparser.SquirrelParser.squirrelParsePT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static com.squirrelparser.SquirrelParser.*;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 // ============================================================================
 // JSON CST Node Classes
@@ -146,7 +151,9 @@ class JsonParsingTest {
     // ============================================================================
 
     static String extractStringValue(String quotedString) {
-        if (quotedString.length() < 2) return "";
+        if (quotedString.length() < 2) {
+            return "";
+        }
         String content = quotedString.substring(1, quotedString.length() - 1);
 
         content = content.replace("\\\"", "\"");
@@ -196,31 +203,36 @@ class JsonParsingTest {
             .map(e -> input.substring(e.pos(), e.pos() + e.len()))
             .toList();
 
-        List<CSTNodeFactory> factories = List.of(
-            new CSTNodeFactory("JSON", (astNode, children) -> {
+        @SuppressWarnings({"serial", "unused"})
+        Map<String, CSTNodeFactoryFn> factories = new HashMap<>() {{
+            put("JSON", (astNode, children) -> {
                 List<JsonValue> values = children.stream()
                     .filter(c -> c instanceof JsonValue)
                     .map(c -> (JsonValue) c)
                     .toList();
-                if (values.isEmpty()) return new JsonNull(astNode, children);
+                if (values.isEmpty()) {
+                    return new JsonNull(astNode, children);
+                }
                 return values.get(0);
-            }),
-            new CSTNodeFactory("Value", (astNode, children) -> {
+            });
+            put("Value", (astNode, children) -> {
                 List<JsonValue> values = children.stream()
                     .filter(c -> c instanceof JsonValue)
                     .map(c -> (JsonValue) c)
                     .toList();
-                if (values.isEmpty()) return new JsonNull(astNode, children);
+                if (values.isEmpty()) {
+                    return new JsonNull(astNode, children);
+                }
                 return values.get(0);
-            }),
-            new CSTNodeFactory("Object", (astNode, children) -> {
+            });
+            put("Object", (astNode, children) -> {
                 List<JsonMember> members = children.stream()
                     .filter(c -> c instanceof JsonMember)
                     .map(c -> (JsonMember) c)
                     .toList();
                 return new JsonObject(astNode, children, members);
-            }),
-            new CSTNodeFactory("Member", (astNode, children) -> {
+            });
+            put("Member", (astNode, children) -> {
                 JsonString keyNode = null;
                 JsonValue valueNode = null;
 
@@ -240,52 +252,38 @@ class JsonParsingTest {
                     keyStr,
                     valueNode != null ? valueNode : new JsonNull(astNode, List.of())
                 );
-            }),
-            new CSTNodeFactory("Array", (astNode, children) -> {
+            });
+            put("Array", (astNode, children) -> {
                 List<JsonValue> elements = children.stream()
                     .filter(c -> c instanceof JsonValue)
                     .map(c -> (JsonValue) c)
                     .toList();
                 return new JsonArray(astNode, children, elements);
-            }),
-            new CSTNodeFactory("String", (astNode, children) -> {
+            });
+            put("String", (astNode, children) -> {
                 String quoted = astNode.getInputSpan(input);
                 String value = extractStringValue(quoted);
                 return new JsonString(astNode, children, value);
-            }),
-            new CSTNodeFactory("Character", (astNode, children) ->
-                new JsonString(astNode, children, astNode.getInputSpan(input))
-            ),
-            new CSTNodeFactory("Escape", (astNode, children) ->
-                new JsonString(astNode, children, "")
-            ),
-            new CSTNodeFactory("Number", (astNode, children) -> {
+            });
+            put("Character", (astNode, children) ->
+                new JsonString(astNode, children, astNode.getInputSpan(input)));
+            put("Escape", (astNode, children) ->
+                new JsonString(astNode, children, ""));
+            put("Number", (astNode, children) -> {
                 String numStr = astNode.getInputSpan(input);
                 return new JsonNumber(astNode, children, parseNumber(numStr));
-            }),
-            new CSTNodeFactory("Integer", (astNode, children) ->
-                new JsonNull(astNode, children)
-            ),
-            new CSTNodeFactory("Fraction", (astNode, children) ->
-                new JsonNull(astNode, children)
-            ),
-            new CSTNodeFactory("Exponent", (astNode, children) ->
-                new JsonNull(astNode, children)
-            ),
-            new CSTNodeFactory("Boolean", (astNode, children) -> {
+            });
+            put("Integer", (astNode, children) -> new JsonNull(astNode, children));
+            put("Fraction", (astNode, children) -> new JsonNull(astNode, children));
+            put("Exponent", (astNode, children) -> new JsonNull(astNode, children));
+            put("Boolean", (astNode, children) -> {
                 String boolStr = astNode.getInputSpan(input);
                 return new JsonBoolean(astNode, children, boolStr.equals("true"));
-            }),
-            new CSTNodeFactory("Null", (astNode, children) ->
-                new JsonNull(astNode, children)
-            ),
-            new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                new JsonTerminal(astNode)
-            ),
-            new CSTNodeFactory("<SyntaxError>", (astNode, children) ->
-                new JsonNull(astNode, children)
-            )
-        );
+            });
+            put("Null", (astNode, children) -> new JsonNull(astNode, children));
+            put("<Terminal>", (astNode, children) -> new JsonTerminal(astNode));
+            put("<SyntaxError>", (astNode, children) -> new JsonNull(astNode, children));
+        }};
 
         try {
             CSTNodeBase cst = squirrelParseCST(

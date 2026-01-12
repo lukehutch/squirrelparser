@@ -1,9 +1,12 @@
 package com.squirrelparser;
 
+import static com.squirrelparser.TestUtils.parseForTree;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
 
-import static com.squirrelparser.TestUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import com.squirrelparser.TestUtils.ParseTestResult;
 
 /**
  * SECTION 10: MONOTONIC INVARIANT TESTS (50 tests)

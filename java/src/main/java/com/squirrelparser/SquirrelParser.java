@@ -1,6 +1,6 @@
 package com.squirrelparser;
 
-import java.util.List;
+import java.util.Map;
 
 /**
  * Public Squirrel Parser API.
@@ -18,18 +18,21 @@ public final class SquirrelParser {
      * This allows for fully custom syntax tree representations. You can decide whether to include, process,
      * ignore, or transform any child nodes when your factory methods construct CST nodes from the AST.
      *
-     * <p>You must define a CSTNodeFactory to handle terminals, with the rule name '<Terminal>',
-     * in order to construct CST nodes for terminal matches.
+     * <p>The factories map should contain an entry for each rule name in the grammar, plus:
+     * <ul>
+     *   <li>'&lt;Terminal&gt;' for terminal matches (string literals, character classes, etc.)</li>
+     *   <li>'&lt;SyntaxError&gt;' if allowSyntaxErrors is true</li>
+     * </ul>
      *
      * <p>If allowSyntaxErrors is false, and a syntax error is encountered in the AST, an ArgumentError will be
      * thrown describing only the first syntax error encountered.
      *
-     * <p>If allowSyntaxErrors is true, then you must define a CSTNodeFactory for the label '<SyntaxError>',
+     * <p>If allowSyntaxErrors is true, then you must define a factory for the label '&lt;SyntaxError&gt;',
      * in order to decide how to construct CST nodes when there are syntax errors.
      *
      * @param grammarSpec      The grammar specification string
      * @param topRuleName      The top-level rule name to parse
-     * @param factories        List of CST node factories
+     * @param factories        Map from rule name to CST node factory function
      * @param input            The input string to parse
      * @param allowSyntaxErrors Whether to allow syntax errors
      * @return The CST root node
@@ -37,7 +40,7 @@ public final class SquirrelParser {
     public static CSTNodeBase squirrelParseCST(
             String grammarSpec,
             String topRuleName,
-            List<CSTNodeFactory> factories,
+            Map<String, CSTNodeFactoryFn> factories,
             String input,
             boolean allowSyntaxErrors) {
         return CSTBuilder.buildCST(

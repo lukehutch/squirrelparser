@@ -4,7 +4,7 @@
 from squirrelparser import (
     ASTNode,
     CSTNode,
-    CSTNodeFactory,
+    CSTNodeFactoryFn,
     squirrel_parse_cst,
 )
 
@@ -84,23 +84,16 @@ class TestCSTAstCreation:
             Term <- [0-9]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Expr': lambda ast_node, children: InclusiveNode(ast_node, children),
+            'Term': lambda ast_node, children: InclusiveNode(ast_node, children),
+            '<Terminal>': lambda ast_node, children: InclusiveNode(ast_node, children),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='Expr',
-            factories=[
-                CSTNodeFactory(
-                    rule_name='Expr',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='Term',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-            ],
+            factories=factories,
             input='1+2',
         )
 
@@ -119,32 +112,21 @@ class TestCSTAstCreation:
             Number <- [0-9]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Sum': lambda ast_node, children: ComputedNode(
+                ast_node,
+                children,
+                len(children),
+                ','.join(c.label for c in children),
+            ),
+            'Number': lambda ast_node, children: ComputedNode(ast_node, children, 0, 'Number'),
+            '<Terminal>': lambda ast_node, children: ComputedNode(ast_node, children, 0, 'Terminal'),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='Sum',
-            factories=[
-                CSTNodeFactory(
-                    rule_name='Sum',
-                    factory=lambda ast_node, children: ComputedNode(
-                        ast_node,
-                        children,
-                        len(children),
-                        ','.join(c.label for c in children),
-                    ),
-                ),
-                CSTNodeFactory(
-                    rule_name='Number',
-                    factory=lambda ast_node, children: ComputedNode(
-                        ast_node, children, 0, 'Number'
-                    ),
-                ),
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: ComputedNode(
-                        ast_node, children, 0, 'Terminal'
-                    ),
-                ),
-            ],
+            factories=factories,
             input='42',
         )
 
@@ -164,29 +146,18 @@ class TestCSTAstCreation:
             Element <- [a-z]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'List': lambda ast_node, children: TransformedNode(
+                ast_node, children, [c.label.upper() for c in children]
+            ),
+            'Element': lambda ast_node, children: TransformedNode(ast_node, children, ['ELEMENT']),
+            '<Terminal>': lambda ast_node, children: TransformedNode(ast_node, children, ['TERMINAL']),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='List',
-            factories=[
-                CSTNodeFactory(
-                    rule_name='List',
-                    factory=lambda ast_node, children: TransformedNode(
-                        ast_node, children, [c.label.upper() for c in children]
-                    ),
-                ),
-                CSTNodeFactory(
-                    rule_name='Element',
-                    factory=lambda ast_node, children: TransformedNode(
-                        ast_node, children, ['ELEMENT']
-                    ),
-                ),
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: TransformedNode(
-                        ast_node, children, ['TERMINAL']
-                    ),
-                ),
-            ],
+            factories=factories,
             input='abc',
         )
 
@@ -206,35 +177,21 @@ class TestCSTAstCreation:
             Second <- [0-9]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Pair': lambda ast_node, children: SelectiveNode(
+                ast_node,
+                children,
+                [c for c in children if c.label in ('First', 'Second')],
+            ),
+            'First': lambda ast_node, children: SelectiveNode(ast_node, children, children),
+            'Second': lambda ast_node, children: SelectiveNode(ast_node, children, children),
+            '<Terminal>': lambda ast_node, children: SelectiveNode(ast_node, children, []),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='Pair',
-            factories=[
-                CSTNodeFactory(
-                    rule_name='Pair',
-                    factory=lambda ast_node, children: SelectiveNode(
-                        ast_node,
-                        children,
-                        [c for c in children if c.label in ('First', 'Second')],
-                    ),
-                ),
-                CSTNodeFactory(
-                    rule_name='First',
-                    factory=lambda ast_node, children: SelectiveNode(
-                        ast_node, children, children
-                    ),
-                ),
-                CSTNodeFactory(
-                    rule_name='Second',
-                    factory=lambda ast_node, children: SelectiveNode(
-                        ast_node, children, children
-                    ),
-                ),
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: SelectiveNode(ast_node, children, []),
-                ),
-            ],
+            factories=factories,
             input='(abc,123)',
         )
 
@@ -254,23 +211,16 @@ class TestCSTAstCreation:
             Word <- [a-z]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Text': lambda ast_node, children: InclusiveNode(ast_node, children),
+            'Word': lambda ast_node, children: InclusiveNode(ast_node, children),
+            '<Terminal>': lambda ast_node, children: TerminalNode(ast_node, 'terminal'),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='Text',
-            factories=[
-                CSTNodeFactory(
-                    rule_name='Text',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='Word',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: TerminalNode(ast_node, 'terminal'),
-                ),
-            ],
+            factories=factories,
             input='hello',
         )
 
@@ -288,29 +238,19 @@ class TestCSTAstCreation:
             Number <- [0-9]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Expr': lambda ast_node, children: InclusiveNode(ast_node, children),
+            'Number': lambda ast_node, children: InclusiveNode(ast_node, children),
+            '<Terminal>': lambda ast_node, children: InclusiveNode(ast_node, children),
+            '<SyntaxError>': lambda ast_node, children: ErrorNode(
+                ast_node, f'Syntax error at {ast_node.pos}'
+            ),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='Expr',
-            factories=[
-                CSTNodeFactory(
-                    rule_name='Expr',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='Number',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='<SyntaxError>',
-                    factory=lambda ast_node, children: ErrorNode(
-                        ast_node, f'Syntax error at {ast_node.pos}'
-                    ),
-                ),
-            ],
+            factories=factories,
             input='abc',
             allow_syntax_errors=True,
         )
@@ -329,37 +269,27 @@ class TestCSTAstCreation:
             Title <- [a-z]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            # Inclusive factory
+            'Doc': lambda ast_node, children: InclusiveNode(ast_node, children),
+            # Selective factory
+            'Section': lambda ast_node, children: SelectiveNode(
+                ast_node,
+                children,
+                [c for c in children if c.label == 'Title'],
+            ),
+            # Computed factory
+            'Title': lambda ast_node, children: ComputedNode(
+                ast_node, children, len(children), 'Title'
+            ),
+            # Terminal factory
+            '<Terminal>': lambda ast_node, children: TerminalNode(ast_node, 'terminal'),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='Doc',
-            factories=[
-                # Inclusive factory
-                CSTNodeFactory(
-                    rule_name='Doc',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                # Selective factory
-                CSTNodeFactory(
-                    rule_name='Section',
-                    factory=lambda ast_node, children: SelectiveNode(
-                        ast_node,
-                        children,
-                        [c for c in children if c.label == 'Title'],
-                    ),
-                ),
-                # Computed factory
-                CSTNodeFactory(
-                    rule_name='Title',
-                    factory=lambda ast_node, children: ComputedNode(
-                        ast_node, children, len(children), 'Title'
-                    ),
-                ),
-                # Terminal factory
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: TerminalNode(ast_node, 'terminal'),
-                ),
-            ],
+            factories=factories,
             input='abc',
         )
 
@@ -376,23 +306,16 @@ class TestCSTAstCreation:
             Word <- [a-z]+;
         """
 
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Sentence': lambda ast_node, children: InclusiveNode(ast_node, children),
+            'Word': lambda ast_node, children: InclusiveNode(ast_node, children),
+            '<Terminal>': lambda ast_node, children: InclusiveNode(ast_node, children),
+        }
+
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
             top_rule_name='Sentence',
-            factories=[
-                CSTNodeFactory(
-                    rule_name='Sentence',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='Word',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-                CSTNodeFactory(
-                    rule_name='<Terminal>',
-                    factory=lambda ast_node, children: InclusiveNode(ast_node, children),
-                ),
-            ],
+            factories=factories,
             input='hello world test',
         )
 

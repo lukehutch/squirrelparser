@@ -65,7 +65,7 @@ const cst = squirrelParseCST({ grammarSpec: grammar, topRuleName: 'Number',
 This example parses `x=32;y=0x20;` and converts numeric literals to actual integers:
 
 ```typescript
-import { ASTNode, CSTNode, CSTNodeFactory, squirrelParseCST } from 'squirrel-parser';
+import { ASTNode, CSTNode, CSTNodeFactoryFn, squirrelParseCST } from 'squirrel-parser';
 
 // Grammar for variable assignments with decimal and hex numbers
 const GRAMMAR = `
@@ -111,49 +111,28 @@ class TerminalNode extends CSTNode {
   }
 }
 
-// Factory functions that parse values during CST construction
-function createFactories(input: string): CSTNodeFactory[] {
-  return [
-    {
-      ruleName: 'Assignments',
-      factory: (astNode, children) => new AssignmentsNode(astNode, children),
-    },
-    {
-      ruleName: 'Assignment',
-      factory: (astNode, children) => {
-        const nameNode = children[0];
-        const valueNode = children[1] as NumberNode;
-        const name = input.substring(nameNode.pos, nameNode.pos + nameNode.len);
-        return new AssignmentNode(astNode, name, valueNode.value);
-      },
-    },
-    {
-      ruleName: 'Name',
-      factory: (astNode) => new TerminalNode(astNode),
-    },
-    {
-      ruleName: 'Number',
-      factory: (_, children) => children[0] as NumberNode,
-    },
-    {
-      ruleName: 'HexNumber',
-      factory: (astNode) => {
-        const text = input.substring(astNode.pos, astNode.pos + astNode.len);
-        return new NumberNode(astNode, parseInt(text.substring(2), 16));
-      },
-    },
-    {
-      ruleName: 'DecNumber',
-      factory: (astNode) => {
-        const text = input.substring(astNode.pos, astNode.pos + astNode.len);
-        return new NumberNode(astNode, parseInt(text, 10));
-      },
-    },
-    {
-      ruleName: '<Terminal>',
-      factory: (astNode) => new TerminalNode(astNode),
-    },
-  ];
+// Factory map that creates CST nodes (input captured by closure)
+function createFactories(input: string): Map<string, CSTNodeFactoryFn> {
+  return new Map<string, CSTNodeFactoryFn>([
+    ['Assignments', (astNode, children) => new AssignmentsNode(astNode, children)],
+    ['Assignment', (astNode, children) => {
+      const nameNode = children[0];
+      const valueNode = children[1] as NumberNode;
+      const name = input.substring(nameNode.pos, nameNode.pos + nameNode.len);
+      return new AssignmentNode(astNode, name, valueNode.value);
+    }],
+    ['Name', (astNode) => new TerminalNode(astNode)],
+    ['Number', (_, children) => children[0] as NumberNode],
+    ['HexNumber', (astNode) => {
+      const text = input.substring(astNode.pos, astNode.pos + astNode.len);
+      return new NumberNode(astNode, parseInt(text.substring(2), 16));
+    }],
+    ['DecNumber', (astNode) => {
+      const text = input.substring(astNode.pos, astNode.pos + astNode.len);
+      return new NumberNode(astNode, parseInt(text, 10));
+    }],
+    ['<Terminal>', (astNode) => new TerminalNode(astNode)],
+  ]);
 }
 
 // Main

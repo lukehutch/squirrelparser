@@ -1,9 +1,10 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
-
 import static com.squirrelparser.TestUtils.testParse;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
 
 class FixComprehensiveTest {
 

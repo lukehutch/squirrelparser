@@ -4,12 +4,13 @@
 
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static com.squirrelparser.TestUtils.*;
+import org.junit.jupiter.api.Test;
 
 class LRTest {
     private static final String LR1 = """

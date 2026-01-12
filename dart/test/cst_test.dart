@@ -36,14 +36,9 @@ void main() {
       ''';
 
       // Only provide factory for Greeting, missing Name and <Terminal>
-      final factories = [
-        CSTNodeFactory(
-          ruleName: 'Greeting',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-      ];
+      final factories = <String, CSTNodeFactoryFn>{
+        'Greeting': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+      };
 
       expect(
         () => parseWithGrammarSpecForTesting(grammar, 'Greeting', 'hello world', factories),
@@ -57,20 +52,10 @@ void main() {
       ''';
 
       // Provide factory for Greeting and extra Name
-      final factories = [
-        CSTNodeFactory(
-          ruleName: 'Greeting',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-        CSTNodeFactory(
-          ruleName: 'ExtraRule',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-      ];
+      final factories = <String, CSTNodeFactoryFn>{
+        'Greeting': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+        'ExtraRule': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+      };
 
       expect(
         () => parseWithGrammarSpecForTesting(grammar, 'Greeting', 'hello', factories),
@@ -84,26 +69,11 @@ void main() {
         Item <- "test";
       ''';
 
-      final factories = [
-        CSTNodeFactory(
-          ruleName: 'Main',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-        CSTNodeFactory(
-          ruleName: 'Item',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children, value: 'test');
-          },
-        ),
-        CSTNodeFactory(
-          ruleName: '<Terminal>',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-      ];
+      final factories = <String, CSTNodeFactoryFn>{
+        'Main': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+        'Item': (astNode, children) => SimpleCST(astNode: astNode, children: children, value: 'test'),
+        '<Terminal>': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+      };
 
       final (cst, errors) = parseWithGrammarSpecForTesting(
         grammar,
@@ -122,20 +92,10 @@ void main() {
         Test <- "hello";
       ''';
 
-      final factories = [
-        CSTNodeFactory(
-          ruleName: 'Test',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children, value: 'hello');
-          },
-        ),
-        CSTNodeFactory(
-          ruleName: '<Terminal>',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-      ];
+      final factories = <String, CSTNodeFactoryFn>{
+        'Test': (astNode, children) => SimpleCST(astNode: astNode, children: children, value: 'hello'),
+        '<Terminal>': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+      };
 
       final cst = squirrelParseCST(
         grammarSpec: grammar,
@@ -148,33 +108,6 @@ void main() {
       expect(cst.label, equals('Test'));
     });
 
-    test('duplicate rule names throw ArgumentError', () {
-      const grammar = '''
-        Main <- "test";
-      ''';
-
-      // Provide two factories with the same rule name
-      final factories = [
-        CSTNodeFactory(
-          ruleName: 'Main',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-        CSTNodeFactory(
-          ruleName: 'Main',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-      ];
-
-      expect(
-        () => parseWithGrammarSpecForTesting(grammar, 'Main', 'test', factories),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
-
     test('transparent rules are excluded from CST factories', () {
       const grammar = '''
         Expr <- ~Whitespace Term ~Whitespace;
@@ -183,26 +116,11 @@ void main() {
       ''';
 
       // Should only need factories for Expr and Term, not Whitespace (which is transparent)
-      final factories = [
-        CSTNodeFactory(
-          ruleName: 'Expr',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-        CSTNodeFactory(
-          ruleName: 'Term',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children, value: 'x');
-          },
-        ),
-        CSTNodeFactory(
-          ruleName: '<Terminal>',
-          factory: (astNode, children) {
-            return SimpleCST(astNode: astNode, children: children);
-          },
-        ),
-      ];
+      final factories = <String, CSTNodeFactoryFn>{
+        'Expr': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+        'Term': (astNode, children) => SimpleCST(astNode: astNode, children: children, value: 'x'),
+        '<Terminal>': (astNode, children) => SimpleCST(astNode: astNode, children: children),
+      };
 
       // This should work without a factory for Whitespace
       final (cst, errors) = parseWithGrammarSpecForTesting(

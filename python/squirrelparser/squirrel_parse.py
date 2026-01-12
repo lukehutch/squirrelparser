@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .cst_node import ASTNode, CSTNode, CSTNodeFactory, build_ast, build_cst
+from .cst_node import ASTNode, CSTNode, CSTNodeFactoryFn, build_ast, build_cst
 from .meta_grammar import MetaGrammar
 from .parser import Parser, ParseResult
 
@@ -11,7 +11,7 @@ def squirrel_parse_cst(
     *,
     grammar_spec: str,
     top_rule_name: str,
-    factories: list[CSTNodeFactory],
+    factories: dict[str, CSTNodeFactoryFn],
     input: str,
     allow_syntax_errors: bool = False,
 ) -> CSTNode:
@@ -25,13 +25,14 @@ def squirrel_parse_cst(
     This allows for fully custom syntax tree representations. You can decide whether to include, process,
     ignore, or transform any child nodes when your factory methods construct CST nodes from the AST.
 
-    You must define a CSTNodeFactory to handle terminals, with the rule name '<Terminal>',
-    in order to construct CST nodes for terminal matches.
+    The factories map should contain an entry for each rule name in the grammar, plus:
+    - '<Terminal>' for terminal matches (string literals, character classes, etc.)
+    - '<SyntaxError>' if allow_syntax_errors is True
 
     If allow_syntax_errors is False, and a syntax error is encountered in the AST, a ValueError will be
     raised describing only the first syntax error encountered.
 
-    If allow_syntax_errors is True, then you must define a CSTNodeFactory for the label '<SyntaxError>',
+    If allow_syntax_errors is True, then you must define a factory for the label '<SyntaxError>',
     in order to decide how to construct CST nodes when there are syntax errors.
     """
     return build_cst(

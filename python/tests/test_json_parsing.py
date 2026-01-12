@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from squirrelparser import (
     ASTNode,
     CSTNode,
-    CSTNodeFactory,
+    CSTNodeFactoryFn,
     squirrel_parse_cst,
     squirrel_parse_pt,
 )
@@ -255,24 +255,24 @@ def parse_json(input_str: str, allow_errors: bool = False) -> ParseJsonResult:
     def syntax_error_factory(ast_node: ASTNode, children: list[CSTNode]) -> CSTNode:
         return JsonNull(ast_node, children)
 
-    factories = [
-        CSTNodeFactory(rule_name='JSON', factory=json_factory),
-        CSTNodeFactory(rule_name='Value', factory=value_factory),
-        CSTNodeFactory(rule_name='Object', factory=object_factory),
-        CSTNodeFactory(rule_name='Member', factory=member_factory),
-        CSTNodeFactory(rule_name='Array', factory=array_factory),
-        CSTNodeFactory(rule_name='String', factory=string_factory),
-        CSTNodeFactory(rule_name='Character', factory=character_factory),
-        CSTNodeFactory(rule_name='Escape', factory=escape_factory),
-        CSTNodeFactory(rule_name='Number', factory=number_factory),
-        CSTNodeFactory(rule_name='Integer', factory=integer_factory),
-        CSTNodeFactory(rule_name='Fraction', factory=fraction_factory),
-        CSTNodeFactory(rule_name='Exponent', factory=exponent_factory),
-        CSTNodeFactory(rule_name='Boolean', factory=boolean_factory),
-        CSTNodeFactory(rule_name='Null', factory=null_factory),
-        CSTNodeFactory(rule_name='<Terminal>', factory=terminal_factory),
-        CSTNodeFactory(rule_name='<SyntaxError>', factory=syntax_error_factory),
-    ]
+    factories: dict[str, CSTNodeFactoryFn] = {
+        'JSON': json_factory,
+        'Value': value_factory,
+        'Object': object_factory,
+        'Member': member_factory,
+        'Array': array_factory,
+        'String': string_factory,
+        'Character': character_factory,
+        'Escape': escape_factory,
+        'Number': number_factory,
+        'Integer': integer_factory,
+        'Fraction': fraction_factory,
+        'Exponent': exponent_factory,
+        'Boolean': boolean_factory,
+        'Null': null_factory,
+        '<Terminal>': terminal_factory,
+        '<SyntaxError>': syntax_error_factory,
+    }
 
     try:
         cst = squirrel_parse_cst(

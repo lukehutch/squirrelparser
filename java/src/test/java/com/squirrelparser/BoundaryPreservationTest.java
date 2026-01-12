@@ -6,10 +6,11 @@
 
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import static com.squirrelparser.TestUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class BoundaryPreservationTest {
 

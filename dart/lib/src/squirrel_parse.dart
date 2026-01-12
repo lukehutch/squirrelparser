@@ -13,21 +13,19 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 /// This allows for fully custom syntax tree representations. You can decide whether to include, process,
 /// ignore, or transform any child nodes when your factory methods construct CST nodes from the AST.
 ///
-/// You must define a [CSTNodeFactory] to handle terminals, with the rule name `'<Terminal>'`, in order to
-/// construct CST nodes for terminal matches.
+/// The [factories] map should contain an entry for each rule name in the grammar, plus:
+/// - `'<Terminal>'` for terminal matches (string literals, character classes, etc.)
+/// - `'<SyntaxError>'` if allowSyntaxErrors is true
 ///
 /// If [allowSyntaxErrors] is false, and a syntax error is encountered in the AST, an ArgumentError will be
 /// thrown describing only the first syntax error encountered.
 ///
-/// If [allowSyntaxErrors] is true, then you must define a [CSTNodeFactory] for the label `'<SyntaxError>'`,
+/// If [allowSyntaxErrors] is true, then you must define a factory for the label `'<SyntaxError>'`,
 /// in order to decide how to construct CST nodes when there are syntax errors.
-///
-/// Throws [ArgumentError] if the factory list is invalid or contains duplicate rule names.
-/// Throws [StateError] if CST construction fails or returns null.
 CSTNode squirrelParseCST({
   required String grammarSpec,
   required String topRuleName,
-  required List<CSTNodeFactory> factories,
+  required Map<String, CSTNodeFactoryFn> factories,
   required String input,
   bool allowSyntaxErrors = false,
 }) =>

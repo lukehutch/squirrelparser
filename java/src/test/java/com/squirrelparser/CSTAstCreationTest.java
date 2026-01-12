@@ -1,11 +1,16 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.SquirrelParser.squirrelParseCST;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static com.squirrelparser.SquirrelParser.*;
+import org.junit.jupiter.api.Test;
 
 // ============================================================================
 // Custom CST Node Classes for Testing
@@ -136,16 +141,10 @@ class CSTAstCreationTest {
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "Expr",
-            List.of(
-                new CSTNodeFactory("Expr", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("Term", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                )
+            Map.of(
+                "Expr", (astNode, children) -> new InclusiveNode(astNode, children),
+                "Term", (astNode, children) -> new InclusiveNode(astNode, children),
+                "<Terminal>", (astNode, children) -> new InclusiveNode(astNode, children)
             ),
             "1+2",
             false
@@ -171,18 +170,14 @@ class CSTAstCreationTest {
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "Sum",
-            List.of(
-                new CSTNodeFactory("Sum", (astNode, children) -> {
+            Map.of(
+                "Sum", (astNode, children) -> {
                     int childCount = children.size();
                     String concatenated = children.stream().map(c -> c.label()).reduce("", (a, b) -> a.isEmpty() ? b : a + "," + b);
                     return new ComputedNode(astNode, children, childCount, concatenated);
-                }),
-                new CSTNodeFactory("Number", (astNode, children) ->
-                    new ComputedNode(astNode, children, 0, "Number")
-                ),
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new ComputedNode(astNode, children, 0, "Terminal")
-                )
+                },
+                "Number", (astNode, children) -> new ComputedNode(astNode, children, 0, "Number"),
+                "<Terminal>", (astNode, children) -> new ComputedNode(astNode, children, 0, "Terminal")
             ),
             "42",
             false
@@ -209,17 +204,13 @@ class CSTAstCreationTest {
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "List",
-            List.of(
-                new CSTNodeFactory("List", (astNode, children) -> {
+            Map.of(
+                "List", (astNode, children) -> {
                     List<String> labels = children.stream().map(c -> c.label().toUpperCase()).toList();
                     return new TransformedNode(astNode, children, labels);
-                }),
-                new CSTNodeFactory("Element", (astNode, children) ->
-                    new TransformedNode(astNode, children, List.of("ELEMENT"))
-                ),
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new TransformedNode(astNode, children, List.of("TERMINAL"))
-                )
+                },
+                "Element", (astNode, children) -> new TransformedNode(astNode, children, List.of("ELEMENT")),
+                "<Terminal>", (astNode, children) -> new TransformedNode(astNode, children, List.of("TERMINAL"))
             ),
             "abc",
             false
@@ -246,23 +237,17 @@ class CSTAstCreationTest {
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "Pair",
-            List.of(
-                new CSTNodeFactory("Pair", (astNode, children) -> {
+            Map.of(
+                "Pair", (astNode, children) -> {
                     // Only keep First and Second, skip terminals
                     List<CSTNodeBase> selected = children.stream()
                         .filter(c -> c.label().equals("First") || c.label().equals("Second"))
                         .toList();
                     return new SelectiveNode(astNode, children, selected);
-                }),
-                new CSTNodeFactory("First", (astNode, children) ->
-                    new SelectiveNode(astNode, children, children)
-                ),
-                new CSTNodeFactory("Second", (astNode, children) ->
-                    new SelectiveNode(astNode, children, children)
-                ),
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new SelectiveNode(astNode, children, List.of())
-                )
+                },
+                "First", (astNode, children) -> new SelectiveNode(astNode, children, children),
+                "Second", (astNode, children) -> new SelectiveNode(astNode, children, children),
+                "<Terminal>", (astNode, children) -> new SelectiveNode(astNode, children, List.of())
             ),
             "(abc,123)",
             false
@@ -286,19 +271,14 @@ class CSTAstCreationTest {
             Word <- [a-z]+;
             """;
 
+        @SuppressWarnings("unused")
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "Text",
-            List.of(
-                new CSTNodeFactory("Text", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("Word", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new TerminalNode(astNode, "terminal")
-                )
+            Map.of(
+                "Text", (astNode, children) -> new InclusiveNode(astNode, children),
+                "Word", (astNode, children) -> new InclusiveNode(astNode, children),
+                "<Terminal>", (astNode, children) -> new TerminalNode(astNode, "terminal")
             ),
             "hello",
             false
@@ -320,22 +300,15 @@ class CSTAstCreationTest {
             Number <- [0-9]+;
             """;
 
+        @SuppressWarnings("unused")
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "Expr",
-            List.of(
-                new CSTNodeFactory("Expr", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("Number", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("<SyntaxError>", (astNode, children) ->
-                    new ErrorNode(astNode, "Syntax error at " + astNode.pos())
-                )
+            Map.of(
+                "Expr", (astNode, children) -> new InclusiveNode(astNode, children),
+                "Number", (astNode, children) -> new InclusiveNode(astNode, children),
+                "<Terminal>", (astNode, children) -> new InclusiveNode(astNode, children),
+                "<SyntaxError>", (astNode, children) -> new ErrorNode(astNode, "Syntax error at " + astNode.pos())
             ),
             "abc",
             true
@@ -357,29 +330,24 @@ class CSTAstCreationTest {
             Title <- [a-z]+;
             """;
 
+        @SuppressWarnings("unused")
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "Doc",
-            List.of(
+            Map.of(
                 // Inclusive factory
-                new CSTNodeFactory("Doc", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
+                "Doc", (astNode, children) -> new InclusiveNode(astNode, children),
                 // Selective factory
-                new CSTNodeFactory("Section", (astNode, children) -> {
+                "Section", (astNode, children) -> {
                     List<CSTNodeBase> selected = children.stream()
                         .filter(c -> c.label().equals("Title"))
                         .toList();
                     return new SelectiveNode(astNode, children, selected);
-                }),
+                },
                 // Computed factory
-                new CSTNodeFactory("Title", (astNode, children) ->
-                    new ComputedNode(astNode, children, children.size(), "Title")
-                ),
+                "Title", (astNode, children) -> new ComputedNode(astNode, children, children.size(), "Title"),
                 // Terminal factory
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new TerminalNode(astNode, "terminal")
-                )
+                "<Terminal>", (astNode, children) -> new TerminalNode(astNode, "terminal")
             ),
             "abc",
             false
@@ -403,16 +371,10 @@ class CSTAstCreationTest {
         CSTNodeBase cst = squirrelParseCST(
             grammar,
             "Sentence",
-            List.of(
-                new CSTNodeFactory("Sentence", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("Word", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                ),
-                new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                    new InclusiveNode(astNode, children)
-                )
+            Map.of(
+                "Sentence", (astNode, children) -> new InclusiveNode(astNode, children),
+                "Word", (astNode, children) -> new InclusiveNode(astNode, children),
+                "<Terminal>", (astNode, children) -> new InclusiveNode(astNode, children)
             ),
             "hello world test",
             false

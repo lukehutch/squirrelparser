@@ -1,12 +1,12 @@
 package com.squirrelparser;
 
+import static com.squirrelparser.Utils.unescapeChar;
+import static com.squirrelparser.Utils.unescapeString;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.squirrelparser.Utils.unescapeChar;
-import static com.squirrelparser.Utils.unescapeString;
 
 /**
  * MetaGrammar: A grammar for defining PEG grammars.

@@ -1,14 +1,19 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.testParse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.squirrelparser.TestUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import com.squirrelparser.TestUtils.ParseTestResult;
 
 /**
  * PERFORMANCE & EDGE CASE TESTS
@@ -69,6 +74,7 @@ class PerformanceEdgeCaseTest {
         @Test
         void testPERF05_ManyErrors() {
             // 500 errors in input
+            @SuppressWarnings("unused")
             String input = IntStream.range(0, 500)
                 .mapToObj(i -> "Xx")
                 .collect(Collectors.joining());
@@ -80,6 +86,7 @@ class PerformanceEdgeCaseTest {
         @Test
         void testPERF06_LRExpansionDepth() {
             // LR with 100 expansions
+            @SuppressWarnings("unused")
             String input = IntStream.range(0, 100)
                 .mapToObj(i -> "+n")
                 .collect(Collectors.joining())

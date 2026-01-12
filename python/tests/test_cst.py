@@ -5,7 +5,7 @@ import pytest
 from squirrelparser import (
     ASTNode,
     CSTNode,
-    CSTNodeFactory,
+    CSTNodeFactoryFn,
     squirrel_parse_cst,
     squirrel_parse_pt,
 )
@@ -45,12 +45,9 @@ class TestCST:
         """
 
         # Only provide factory for Greeting, missing Name and <Terminal>
-        factories = [
-            CSTNodeFactory(
-                rule_name='Greeting',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-        ]
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Greeting': lambda ast_node, children: SimpleCST(ast_node, children),
+        }
 
         with pytest.raises(ValueError):
             squirrel_parse_cst(
@@ -66,16 +63,10 @@ class TestCST:
         """
 
         # Provide factory for Greeting and extra Name
-        factories = [
-            CSTNodeFactory(
-                rule_name='Greeting',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-            CSTNodeFactory(
-                rule_name='ExtraRule',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-        ]
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Greeting': lambda ast_node, children: SimpleCST(ast_node, children),
+            'ExtraRule': lambda ast_node, children: SimpleCST(ast_node, children),
+        }
 
         with pytest.raises(ValueError):
             squirrel_parse_cst(
@@ -91,20 +82,11 @@ class TestCST:
             Item <- "test";
         """
 
-        factories = [
-            CSTNodeFactory(
-                rule_name='Main',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-            CSTNodeFactory(
-                rule_name='Item',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children, 'test'),
-            ),
-            CSTNodeFactory(
-                rule_name='<Terminal>',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-        ]
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Main': lambda ast_node, children: SimpleCST(ast_node, children),
+            'Item': lambda ast_node, children: SimpleCST(ast_node, children, 'test'),
+            '<Terminal>': lambda ast_node, children: SimpleCST(ast_node, children),
+        }
 
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
@@ -121,16 +103,10 @@ class TestCST:
             Test <- "hello";
         """
 
-        factories = [
-            CSTNodeFactory(
-                rule_name='Test',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children, 'hello'),
-            ),
-            CSTNodeFactory(
-                rule_name='<Terminal>',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-        ]
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Test': lambda ast_node, children: SimpleCST(ast_node, children, 'hello'),
+            '<Terminal>': lambda ast_node, children: SimpleCST(ast_node, children),
+        }
 
         cst = squirrel_parse_cst(
             grammar_spec=grammar,
@@ -142,31 +118,6 @@ class TestCST:
         assert cst is not None
         assert cst.label == 'Test'
 
-    def test_duplicate_rule_names_throw_value_error(self):
-        grammar = """
-            Main <- "test";
-        """
-
-        # Provide two factories with the same rule name
-        factories = [
-            CSTNodeFactory(
-                rule_name='Main',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-            CSTNodeFactory(
-                rule_name='Main',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-        ]
-
-        with pytest.raises(ValueError):
-            squirrel_parse_cst(
-                grammar_spec=grammar,
-                top_rule_name='Main',
-                factories=factories,
-                input='test',
-            )
-
     def test_transparent_rules_are_excluded_from_cst_factories(self):
         grammar = """
             Expr <- ~Whitespace Term ~Whitespace;
@@ -175,20 +126,11 @@ class TestCST:
         """
 
         # Should only need factories for Expr and Term, not Whitespace (which is transparent)
-        factories = [
-            CSTNodeFactory(
-                rule_name='Expr',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-            CSTNodeFactory(
-                rule_name='Term',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children, 'x'),
-            ),
-            CSTNodeFactory(
-                rule_name='<Terminal>',
-                factory=lambda ast_node, children: SimpleCST(ast_node, children),
-            ),
-        ]
+        factories: dict[str, CSTNodeFactoryFn] = {
+            'Expr': lambda ast_node, children: SimpleCST(ast_node, children),
+            'Term': lambda ast_node, children: SimpleCST(ast_node, children, 'x'),
+            '<Terminal>': lambda ast_node, children: SimpleCST(ast_node, children),
+        }
 
         # This should work without a factory for Whitespace
         cst = squirrel_parse_cst(

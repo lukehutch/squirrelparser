@@ -46,7 +46,7 @@ public final class MemoEntry {
         if (inRecPath) {
             if (result == null) {
                 foundLeftRec = true;
-                result = (MatchResult) mismatch();
+                result = mismatch();
             }
             if (result.isMismatch()) {
                 return lrPending();

@@ -1,12 +1,17 @@
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.SquirrelParser.squirrelParseCST;
+import static com.squirrelparser.SquirrelParser.squirrelParsePT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static com.squirrelparser.SquirrelParser.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * Simple test CST node for testing.
@@ -55,10 +60,8 @@ class CSTTest {
             """;
 
         // Only provide factory for Greeting, missing Name and <Terminal>
-        List<CSTNodeFactory> factories = List.of(
-            new CSTNodeFactory("Greeting", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            )
+        Map<String, CSTNodeFactoryFn> factories = Map.of(
+            "Greeting", (astNode, children) -> new SimpleCST(astNode, children)
         );
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -73,13 +76,9 @@ class CSTTest {
             """;
 
         // Provide factory for Greeting and extra Name
-        List<CSTNodeFactory> factories = List.of(
-            new CSTNodeFactory("Greeting", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            ),
-            new CSTNodeFactory("ExtraRule", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            )
+        Map<String, CSTNodeFactoryFn> factories = Map.of(
+            "Greeting", (astNode, children) -> new SimpleCST(astNode, children),
+            "ExtraRule", (astNode, children) -> new SimpleCST(astNode, children)
         );
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -94,16 +93,10 @@ class CSTTest {
             Item <- "test";
             """;
 
-        List<CSTNodeFactory> factories = List.of(
-            new CSTNodeFactory("Main", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            ),
-            new CSTNodeFactory("Item", (astNode, children) ->
-                new SimpleCST(astNode, children, "test")
-            ),
-            new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            )
+        Map<String, CSTNodeFactoryFn> factories = Map.of(
+            "Main", (astNode, children) -> new SimpleCST(astNode, children),
+            "Item", (astNode, children) -> new SimpleCST(astNode, children, "test"),
+            "<Terminal>", (astNode, children) -> new SimpleCST(astNode, children)
         );
 
         CSTNodeBase cst = squirrelParseCST(grammar, "Main", factories, "test", false);
@@ -118,40 +111,15 @@ class CSTTest {
             Test <- "hello";
             """;
 
-        List<CSTNodeFactory> factories = List.of(
-            new CSTNodeFactory("Test", (astNode, children) ->
-                new SimpleCST(astNode, children, "hello")
-            ),
-            new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            )
+        Map<String, CSTNodeFactoryFn> factories = Map.of(
+            "Test", (astNode, children) -> new SimpleCST(astNode, children, "hello"),
+            "<Terminal>", (astNode, children) -> new SimpleCST(astNode, children)
         );
 
         CSTNodeBase cst = squirrelParseCST(grammar, "Test", factories, "hello", false);
 
         assertNotNull(cst);
         assertEquals("Test", cst.label());
-    }
-
-    @Test
-    void duplicateRuleNamesThrowArgumentError() {
-        String grammar = """
-            Main <- "test";
-            """;
-
-        // Provide two factories with the same rule name
-        List<CSTNodeFactory> factories = List.of(
-            new CSTNodeFactory("Main", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            ),
-            new CSTNodeFactory("Main", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            )
-        );
-
-        assertThrows(IllegalArgumentException.class, () ->
-            squirrelParseCST(grammar, "Main", factories, "test", false)
-        );
     }
 
     @Test
@@ -163,16 +131,10 @@ class CSTTest {
             """;
 
         // Should only need factories for Expr and Term, not Whitespace (which is transparent)
-        List<CSTNodeFactory> factories = List.of(
-            new CSTNodeFactory("Expr", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            ),
-            new CSTNodeFactory("Term", (astNode, children) ->
-                new SimpleCST(astNode, children, "x")
-            ),
-            new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                new SimpleCST(astNode, children)
-            )
+        Map<String, CSTNodeFactoryFn> factories = Map.of(
+            "Expr", (astNode, children) -> new SimpleCST(astNode, children),
+            "Term", (astNode, children) -> new SimpleCST(astNode, children, "x"),
+            "<Terminal>", (astNode, children) -> new SimpleCST(astNode, children)
         );
 
         // This should work without a factory for Whitespace

@@ -4,7 +4,7 @@ Squirrel Parser - A packrat parser with left recursion and error recovery.
 
 from .clause import Clause
 from .match_result import MatchResult, Match, SyntaxError, mismatch, lr_pending
-from .cst_node import Node, ASTNode, CSTNode, CSTNodeFactory, build_ast, build_cst
+from .cst_node import Node, ASTNode, CSTNode, CSTNodeFactoryFn, build_ast, build_cst
 from .terminals import Terminal, Str, Char, CharSet, AnyChar, Nothing
 from .combinators import (
     HasOneSubClause, HasMultipleSubClauses, Seq, First,
@@ -21,7 +21,7 @@ __all__ = [
     # Match results
     'MatchResult', 'Match', 'SyntaxError', 'mismatch', 'lr_pending',
     # Tree nodes
-    'Node', 'ASTNode', 'CSTNode', 'CSTNodeFactory', 'build_ast', 'build_cst',
+    'Node', 'ASTNode', 'CSTNode', 'CSTNodeFactoryFn', 'build_ast', 'build_cst',
     # Terminals
     'Terminal', 'Str', 'Char', 'CharSet', 'AnyChar', 'Nothing',
     # Combinators

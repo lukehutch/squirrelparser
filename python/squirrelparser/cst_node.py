@@ -196,54 +196,48 @@ class CSTNode(Node['CSTNode'], ABC):
 # ------------------------------------------------------------------------------------------------------------------
 
 
-class CSTNodeFactory:
-    """Factory for creating CST nodes from AST nodes."""
-
-    __slots__ = ('rule_name', 'factory')
-
-    def __init__(
-        self,
-        *,
-        rule_name: str,
-        factory: Callable[[ASTNode, list[CSTNode]], CSTNode],
-    ) -> None:
-        self.rule_name = rule_name
-        self.factory = factory
+# Type alias for factory functions that create CST nodes from AST nodes
+CSTNodeFactoryFn = Callable[[ASTNode, list['CSTNode']], 'CSTNode']
 
 
 # ------------------------------------------------------------------------------------------------------------------
 
 
-def build_cst(ast: ASTNode, factories: list[CSTNodeFactory], allow_syntax_errors: bool) -> CSTNode:
-    """Build a CST from an AST."""
-    factories_map: dict[str, CSTNodeFactory] = {}
-    for factory in factories:
-        if factory.rule_name in factories_map:
-            raise ValueError(f'Duplicate factory for rule "{factory.rule_name}"')
-        factories_map[factory.rule_name] = factory
-    return _build_cst_internal(ast, factories_map, allow_syntax_errors)
+def build_cst(
+    ast: ASTNode,
+    factories: dict[str, CSTNodeFactoryFn],
+    allow_syntax_errors: bool,
+) -> CSTNode:
+    """
+    Build a CST from an AST using the provided factory map.
+
+    The factories map should contain an entry for each rule name in the grammar, plus:
+    - '<Terminal>' for terminal matches (string literals, character classes, etc.)
+    - '<SyntaxError>' if allow_syntax_errors is True
+    """
+    return _build_cst_internal(ast, factories, allow_syntax_errors)
 
 
 def _build_cst_internal(
     ast: ASTNode,
-    factories_map: dict[str, CSTNodeFactory],
+    factories: dict[str, CSTNodeFactoryFn],
     allow_syntax_errors: bool,
 ) -> CSTNode:
     if ast.syntax_error is not None:
         if not allow_syntax_errors:
             raise ValueError(f'Syntax error: {ast.syntax_error}')
-        error_factory = factories_map.get('<SyntaxError>')
+        error_factory = factories.get('<SyntaxError>')
         if error_factory is None:
             raise ValueError('No factory found for <SyntaxError>')
-        return error_factory.factory(ast, [])
+        return error_factory(ast, [])
 
-    factory = factories_map.get(ast.label)
+    factory = factories.get(ast.label)
 
     if factory is None and ast.label == Terminal.node_label:
-        factory = factories_map.get('<Terminal>')
+        factory = factories.get('<Terminal>')
 
     if factory is None:
         raise ValueError(f'No factory found for rule "{ast.label}"')
 
-    child_cst_nodes = [_build_cst_internal(child, factories_map, allow_syntax_errors) for child in ast.children]
-    return factory.factory(ast, child_cst_nodes)
+    child_cst_nodes = [_build_cst_internal(child, factories, allow_syntax_errors) for child in ast.children]
+    return factory(ast, child_cst_nodes)

@@ -1,6 +1,7 @@
 import {
   ASTNode,
   CSTNode,
+  CSTNodeFactoryFn,
   squirrelParseCST,
 } from '../src/index.js';
 
@@ -93,23 +94,16 @@ describe('CST/AST Creation Scenarios', () => {
       Term <- [0-9]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Expr', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['Term', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['<Terminal>', (astNode, children) => new InclusiveNode(astNode, children)],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'Expr',
-      factories: [
-        {
-          ruleName: 'Expr',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: 'Term',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-      ],
+      factories,
       input: '1+2',
     });
 
@@ -129,27 +123,20 @@ describe('CST/AST Creation Scenarios', () => {
       Number <- [0-9]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Sum', (astNode, children) => {
+        const childCount = children.length;
+        const concatenated = children.map((c) => c.label).join(',');
+        return new ComputedNode(astNode, children, childCount, concatenated);
+      }],
+      ['Number', (astNode, children) => new ComputedNode(astNode, children, 0, 'Number')],
+      ['<Terminal>', (astNode, children) => new ComputedNode(astNode, children, 0, 'Terminal')],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'Sum',
-      factories: [
-        {
-          ruleName: 'Sum',
-          factory: (astNode, children) => {
-            const childCount = children.length;
-            const concatenated = children.map((c) => c.label).join(',');
-            return new ComputedNode(astNode, children, childCount, concatenated);
-          },
-        },
-        {
-          ruleName: 'Number',
-          factory: (astNode, children) => new ComputedNode(astNode, children, 0, 'Number'),
-        },
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, children) => new ComputedNode(astNode, children, 0, 'Terminal'),
-        },
-      ],
+      factories,
       input: '42',
     });
 
@@ -170,26 +157,19 @@ describe('CST/AST Creation Scenarios', () => {
       Element <- [a-z]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['List', (astNode, children) => {
+        const labels = children.map((c) => c.label.toUpperCase());
+        return new TransformedNode(astNode, [...children], labels);
+      }],
+      ['Element', (astNode, children) => new TransformedNode(astNode, [...children], ['ELEMENT'])],
+      ['<Terminal>', (astNode, children) => new TransformedNode(astNode, [...children], ['TERMINAL'])],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'List',
-      factories: [
-        {
-          ruleName: 'List',
-          factory: (astNode, children) => {
-            const labels = children.map((c) => c.label.toUpperCase());
-            return new TransformedNode(astNode, [...children], labels);
-          },
-        },
-        {
-          ruleName: 'Element',
-          factory: (astNode, children) => new TransformedNode(astNode, [...children], ['ELEMENT']),
-        },
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, children) => new TransformedNode(astNode, [...children], ['TERMINAL']),
-        },
-      ],
+      factories,
       input: 'abc',
     });
 
@@ -210,31 +190,21 @@ describe('CST/AST Creation Scenarios', () => {
       Second <- [0-9]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Pair', (astNode, children) => {
+        // Only keep First and Second, skip terminals
+        const selected = children.filter((c) => c.label === 'First' || c.label === 'Second');
+        return new SelectiveNode(astNode, children, selected);
+      }],
+      ['First', (astNode, children) => new SelectiveNode(astNode, children, children)],
+      ['Second', (astNode, children) => new SelectiveNode(astNode, children, children)],
+      ['<Terminal>', (astNode, children) => new SelectiveNode(astNode, children, [])],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'Pair',
-      factories: [
-        {
-          ruleName: 'Pair',
-          factory: (astNode, children) => {
-            // Only keep First and Second, skip terminals
-            const selected = children.filter((c) => c.label === 'First' || c.label === 'Second');
-            return new SelectiveNode(astNode, children, selected);
-          },
-        },
-        {
-          ruleName: 'First',
-          factory: (astNode, children) => new SelectiveNode(astNode, children, children),
-        },
-        {
-          ruleName: 'Second',
-          factory: (astNode, children) => new SelectiveNode(astNode, children, children),
-        },
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, children) => new SelectiveNode(astNode, children, []),
-        },
-      ],
+      factories,
       input: '(abc,123)',
     });
 
@@ -255,23 +225,16 @@ describe('CST/AST Creation Scenarios', () => {
       Word <- [a-z]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Text', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['Word', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['<Terminal>', (astNode, _children) => new TerminalNode(astNode, 'terminal')],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'Text',
-      factories: [
-        {
-          ruleName: 'Text',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: 'Word',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, _children) => new TerminalNode(astNode, 'terminal'),
-        },
-      ],
+      factories,
       input: 'hello',
     });
 
@@ -290,27 +253,17 @@ describe('CST/AST Creation Scenarios', () => {
       Number <- [0-9]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Expr', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['Number', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['<Terminal>', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['<SyntaxError>', (astNode, _children) => new ErrorNode(astNode, `Syntax error at ${astNode.pos}`)],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'Expr',
-      factories: [
-        {
-          ruleName: 'Expr',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: 'Number',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: '<SyntaxError>',
-          factory: (astNode, _children) => new ErrorNode(astNode, `Syntax error at ${astNode.pos}`),
-        },
-      ],
+      factories,
       input: 'abc',
       allowSyntaxErrors: true,
     });
@@ -330,34 +283,24 @@ describe('CST/AST Creation Scenarios', () => {
       Title <- [a-z]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      // Inclusive factory
+      ['Doc', (astNode, children) => new InclusiveNode(astNode, children)],
+      // Selective factory
+      ['Section', (astNode, children) => {
+        const selected = children.filter((c) => c.label === 'Title');
+        return new SelectiveNode(astNode, children, selected);
+      }],
+      // Computed factory
+      ['Title', (astNode, children) => new ComputedNode(astNode, children, children.length, 'Title')],
+      // Terminal factory
+      ['<Terminal>', (astNode, _children) => new TerminalNode(astNode, 'terminal')],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'Doc',
-      factories: [
-        // Inclusive factory
-        {
-          ruleName: 'Doc',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        // Selective factory
-        {
-          ruleName: 'Section',
-          factory: (astNode, children) => {
-            const selected = children.filter((c) => c.label === 'Title');
-            return new SelectiveNode(astNode, children, selected);
-          },
-        },
-        // Computed factory
-        {
-          ruleName: 'Title',
-          factory: (astNode, children) => new ComputedNode(astNode, children, children.length, 'Title'),
-        },
-        // Terminal factory
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, _children) => new TerminalNode(astNode, 'terminal'),
-        },
-      ],
+      factories,
       input: 'abc',
     });
 
@@ -375,23 +318,16 @@ describe('CST/AST Creation Scenarios', () => {
       Word <- [a-z]+;
     `;
 
+    const factories = new Map<string, CSTNodeFactoryFn>([
+      ['Sentence', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['Word', (astNode, children) => new InclusiveNode(astNode, children)],
+      ['<Terminal>', (astNode, children) => new InclusiveNode(astNode, children)],
+    ]);
+
     const cst = squirrelParseCST({
       grammarSpec: grammar,
       topRuleName: 'Sentence',
-      factories: [
-        {
-          ruleName: 'Sentence',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: 'Word',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-        {
-          ruleName: '<Terminal>',
-          factory: (astNode, children) => new InclusiveNode(astNode, children),
-        },
-      ],
+      factories,
       input: 'hello world test',
     });
 

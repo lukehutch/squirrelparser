@@ -110,7 +110,9 @@ public final class TestUtils {
      * Count occurrences of a rule in the parse tree.
      */
     public static int countRuleDepth(MatchResult result, String ruleName) {
-        if (result == null || result.isMismatch()) return 0;
+        if (result == null || result.isMismatch()) {
+            return 0;
+        }
         int count = 0;
         if (result.clause() instanceof Ref ref && ref.ruleName().equals(ruleName)) {
             count = 1;
@@ -127,17 +129,25 @@ public final class TestUtils {
      * Check if tree has left-associative binding for a rule.
      */
     public static boolean isLeftAssociative(MatchResult result, String ruleName) {
-        if (result == null || result.isMismatch()) return false;
+        if (result == null || result.isMismatch()) {
+            return false;
+        }
 
         List<MatchResult> instances = findRuleInstances(result, ruleName);
-        if (instances.size() < 2) return false;
+        if (instances.size() < 2) {
+            return false;
+        }
 
         for (MatchResult instance : instances) {
             FirstSemanticChildResult firstChildResult = getFirstSemanticChild(instance, ruleName);
-            if (!firstChildResult.isSameRule || firstChildResult.child == null) continue;
+            if (!firstChildResult.isSameRule || firstChildResult.child == null) {
+                continue;
+            }
 
             FirstSemanticChildResult nestedResult = getFirstSemanticChild(firstChildResult.child, ruleName);
-            if (nestedResult.isSameRule) return true;
+            if (nestedResult.isSameRule) {
+                return true;
+            }
         }
         return false;
     }
@@ -146,7 +156,9 @@ public final class TestUtils {
      * Verify operator count in parse tree.
      */
     public static boolean verifyOperatorCount(MatchResult result, String opStr, int expectedOps) {
-        if (result == null || result.isMismatch()) return false;
+        if (result == null || result.isMismatch()) {
+            return false;
+        }
         return countOperators(result, opStr) == expectedOps;
     }
 
@@ -169,14 +181,18 @@ public final class TestUtils {
         List<MatchResult> children = result.subClauseMatches().stream()
             .filter(c -> !c.isMismatch())
             .toList();
-        if (children.isEmpty()) return new FirstSemanticChildResult(null, false);
+        if (children.isEmpty()) {
+            return new FirstSemanticChildResult(null, false);
+        }
 
         MatchResult firstChild = children.get(0);
         while (firstChild.clause() instanceof Seq || firstChild.clause() instanceof First) {
             List<MatchResult> innerChildren = firstChild.subClauseMatches().stream()
                 .filter(c -> !c.isMismatch())
                 .toList();
-            if (innerChildren.isEmpty()) return new FirstSemanticChildResult(null, false);
+            if (innerChildren.isEmpty()) {
+                return new FirstSemanticChildResult(null, false);
+            }
             firstChild = innerChildren.get(0);
         }
 

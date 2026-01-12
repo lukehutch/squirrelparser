@@ -9,7 +9,7 @@ export { Clause } from './clause.js';
 export { MatchResult, Match, SyntaxError, mismatch, lrPending } from './matchResult.js';
 
 // Tree nodes
-export { Node, ASTNode, CSTNode, CSTNodeFactory, buildAST, buildCST } from './cstNode.js';
+export { Node, ASTNode, CSTNode, CSTNodeFactoryFn, buildAST, buildCST } from './cstNode.js';
 
 // Terminals
 export { Terminal, Str, Char, CharSet, AnyChar, Nothing } from './terminals.js';

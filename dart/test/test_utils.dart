@@ -177,7 +177,7 @@ int _countOperators(MatchResult result, String opStr) {
   String grammarSpec,
   String topRule,
   String input,
-  List<CSTNodeFactory> factories,
+  Map<String, CSTNodeFactoryFn> factories,
 ) {
   final rules = MetaGrammar.parseGrammar(grammarSpec);
   _validateCSTFactories(rules, factories);
@@ -195,21 +195,10 @@ int _countOperators(MatchResult result, String opStr) {
   return (cst, parseResult.getSyntaxErrors());
 }
 
-void _validateCSTFactories(Map<String, Clause> rules, List<CSTNodeFactory> factories) {
-  final factoriesMap = <String, int>{};
-  for (final factory in factories) {
-    factoriesMap[factory.ruleName] = (factoriesMap[factory.ruleName] ?? 0) + 1;
-  }
-
-  for (final entry in factoriesMap.entries) {
-    if (entry.value > 1) {
-      throw ArgumentError('Rule "${entry.key}" appears ${entry.value} times in factory list');
-    }
-  }
-
+void _validateCSTFactories(Map<String, Clause> rules, Map<String, CSTNodeFactoryFn> factories) {
   final transparentRules = rules.keys.where((k) => k.startsWith('~')).toSet();
   final requiredRules = rules.keys.toSet()..removeAll(transparentRules);
-  final factoryRules = factories.map((f) => f.ruleName).toSet();
+  final factoryRules = factories.keys.toSet();
 
   final specialFactories = {'<Terminal>', '<SyntaxError>'};
   final regularFactoryRules = factoryRules.difference(specialFactories);

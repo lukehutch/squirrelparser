@@ -177,32 +177,26 @@ export abstract class CSTNode extends Node<CSTNode> {
 // -----------------------------------------------------------------------------------------------------------------
 
 /**
- * Factory for creating CST nodes from AST nodes.
+ * Type alias for factory functions that create CST nodes from AST nodes.
  */
-export interface CSTNodeFactory {
-  ruleName: string;
-  factory: (astNode: ASTNode, children: readonly CSTNode[]) => CSTNode;
-}
+export type CSTNodeFactoryFn = (astNode: ASTNode, children: readonly CSTNode[]) => CSTNode;
 
 // -----------------------------------------------------------------------------------------------------------------
 
 /**
  * Build a CST from an AST.
  */
-export function buildCST(ast: ASTNode, factories: CSTNodeFactory[], allowSyntaxErrors: boolean): CSTNode {
-  const factoriesMap = new Map<string, CSTNodeFactory>();
-  for (const factory of factories) {
-    if (factoriesMap.has(factory.ruleName)) {
-      throw new Error(`Duplicate factory for rule "${factory.ruleName}"`);
-    }
-    factoriesMap.set(factory.ruleName, factory);
-  }
-  return buildCSTInternal(ast, factoriesMap, allowSyntaxErrors);
+export function buildCST(
+  ast: ASTNode,
+  factories: Map<string, CSTNodeFactoryFn>,
+  allowSyntaxErrors: boolean
+): CSTNode {
+  return buildCSTInternal(ast, factories, allowSyntaxErrors);
 }
 
 function buildCSTInternal(
   ast: ASTNode,
-  factoriesMap: Map<string, CSTNodeFactory>,
+  factoriesMap: Map<string, CSTNodeFactoryFn>,
   allowSyntaxErrors: boolean
 ): CSTNode {
   if (ast.syntaxError !== null) {
@@ -213,7 +207,7 @@ function buildCSTInternal(
     if (errorFactory === undefined) {
       throw new Error('No factory found for <SyntaxError>');
     }
-    return errorFactory.factory(ast, []);
+    return errorFactory(ast, []);
   }
 
   let factory = factoriesMap.get(ast.label);
@@ -227,5 +221,5 @@ function buildCSTInternal(
   }
 
   const childCSTNodes = ast.children.map((child) => buildCSTInternal(child, factoriesMap, allowSyntaxErrors));
-  return factory.factory(ast, childCSTNodes);
+  return factory(ast, childCSTNodes);
 }

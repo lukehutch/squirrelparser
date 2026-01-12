@@ -7,10 +7,16 @@
 
 package com.squirrelparser;
 
-import org.junit.jupiter.api.Test;
+import static com.squirrelparser.TestUtils.countRuleDepth;
+import static com.squirrelparser.TestUtils.isLeftAssociative;
+import static com.squirrelparser.TestUtils.parseForTree;
+import static com.squirrelparser.TestUtils.verifyOperatorCount;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static com.squirrelparser.TestUtils.*;
+import org.junit.jupiter.api.Test;
 
 class LRFigureTest {
 

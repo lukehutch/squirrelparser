@@ -125,133 +125,69 @@ num parseNumber(String numStr) {
   final syntaxErrors = parseResult.getSyntaxErrors();
   final errorStrings = syntaxErrors.map((e) => input.substring(e.pos, e.pos + e.len)).toList();
 
-  final factories = [
-    CSTNodeFactory(
-      ruleName: 'JSON',
-      factory: (astNode, children) {
-        var values = children.whereType<JsonValue>().toList();
-        if (values.isEmpty) return JsonNull(astNode: astNode, children: children);
-        return values[0];
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Value',
-      factory: (astNode, children) {
-        var values = children.whereType<JsonValue>().toList();
-        if (values.isEmpty) return JsonNull(astNode: astNode, children: children);
-        return values[0];
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Object',
-      factory: (astNode, children) {
-        var members = children.whereType<JsonMember>().toList();
-        return JsonObject(astNode: astNode, children: children, members: members);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Member',
-      factory: (astNode, children) {
-        JsonString? keyNode;
-        JsonValue? valueNode;
+  final factories = <String, CSTNodeFactoryFn>{
+    'JSON': (astNode, children) {
+      var values = children.whereType<JsonValue>().toList();
+      if (values.isEmpty) return JsonNull(astNode: astNode, children: children);
+      return values[0];
+    },
+    'Value': (astNode, children) {
+      var values = children.whereType<JsonValue>().toList();
+      if (values.isEmpty) return JsonNull(astNode: astNode, children: children);
+      return values[0];
+    },
+    'Object': (astNode, children) {
+      var members = children.whereType<JsonMember>().toList();
+      return JsonObject(astNode: astNode, children: children, members: members);
+    },
+    'Member': (astNode, children) {
+      JsonString? keyNode;
+      JsonValue? valueNode;
 
-        for (var child in children) {
-          if (child is JsonString && keyNode == null) {
-            keyNode = child;
-          }
-          if (child is JsonValue && child is! JsonString && valueNode == null) {
-            valueNode = child;
-          }
+      for (var child in children) {
+        if (child is JsonString && keyNode == null) {
+          keyNode = child;
         }
+        if (child is JsonValue && child is! JsonString && valueNode == null) {
+          valueNode = child;
+        }
+      }
 
-        String keyStr = keyNode?.value ?? '';
-        return JsonMember(
-          astNode: astNode,
-          children: children,
-          key: keyStr,
-          value: valueNode ?? JsonNull(astNode: astNode, children: []),
-        );
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Array',
-      factory: (astNode, children) {
-        var elements = children.whereType<JsonValue>().toList();
-        return JsonArray(astNode: astNode, children: children, elements: elements);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'String',
-      factory: (astNode, children) {
-        final quoted = astNode.getInputSpan(input);
-        final value = extractStringValue(quoted);
-        return JsonString(astNode: astNode, children: children, value: value);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Character',
-      factory: (astNode, children) {
-        return JsonString(astNode: astNode, children: children, value: astNode.getInputSpan(input));
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Escape',
-      factory: (astNode, children) {
-        return JsonString(astNode: astNode, children: children, value: '');
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Number',
-      factory: (astNode, children) {
-        final numStr = astNode.getInputSpan(input);
-        return JsonNumber(astNode: astNode, children: children, value: parseNumber(numStr));
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Integer',
-      factory: (astNode, children) {
-        return JsonNull(astNode: astNode, children: children);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Fraction',
-      factory: (astNode, children) {
-        return JsonNull(astNode: astNode, children: children);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Exponent',
-      factory: (astNode, children) {
-        return JsonNull(astNode: astNode, children: children);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Boolean',
-      factory: (astNode, children) {
-        final boolStr = astNode.getInputSpan(input);
-        return JsonBoolean(astNode: astNode, children: children, value: boolStr == 'true');
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: 'Null',
-      factory: (astNode, children) {
-        return JsonNull(astNode: astNode, children: children);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: '<Terminal>',
-      factory: (astNode, children) {
-        // Return a terminal node, not a JsonValue
-        return JsonTerminal(astNode: astNode);
-      },
-    ),
-    CSTNodeFactory(
-      ruleName: '<SyntaxError>',
-      factory: (astNode, children) {
-        return JsonNull(astNode: astNode, children: children);
-      },
-    ),
-  ];
+      String keyStr = keyNode?.value ?? '';
+      return JsonMember(
+        astNode: astNode,
+        children: children,
+        key: keyStr,
+        value: valueNode ?? JsonNull(astNode: astNode, children: []),
+      );
+    },
+    'Array': (astNode, children) {
+      var elements = children.whereType<JsonValue>().toList();
+      return JsonArray(astNode: astNode, children: children, elements: elements);
+    },
+    'String': (astNode, children) {
+      final quoted = astNode.getInputSpan(input);
+      final value = extractStringValue(quoted);
+      return JsonString(astNode: astNode, children: children, value: value);
+    },
+    'Character': (astNode, children) =>
+        JsonString(astNode: astNode, children: children, value: astNode.getInputSpan(input)),
+    'Escape': (astNode, children) => JsonString(astNode: astNode, children: children, value: ''),
+    'Number': (astNode, children) {
+      final numStr = astNode.getInputSpan(input);
+      return JsonNumber(astNode: astNode, children: children, value: parseNumber(numStr));
+    },
+    'Integer': (astNode, children) => JsonNull(astNode: astNode, children: children),
+    'Fraction': (astNode, children) => JsonNull(astNode: astNode, children: children),
+    'Exponent': (astNode, children) => JsonNull(astNode: astNode, children: children),
+    'Boolean': (astNode, children) {
+      final boolStr = astNode.getInputSpan(input);
+      return JsonBoolean(astNode: astNode, children: children, value: boolStr == 'true');
+    },
+    'Null': (astNode, children) => JsonNull(astNode: astNode, children: children),
+    '<Terminal>': (astNode, children) => JsonTerminal(astNode: astNode),
+    '<SyntaxError>': (astNode, children) => JsonNull(astNode: astNode, children: children),
+  };
 
   try {
     final cst = squirrelParseCST(
@@ -259,7 +195,7 @@ num parseNumber(String numStr) {
       topRuleName: 'JSON',
       factories: factories,
       input: input,
-      allowSyntaxErrors: true,  // Always allow syntax errors during parsing for recovery
+      allowSyntaxErrors: true, // Always allow syntax errors during parsing for recovery
     );
     return (cst, errorStrings);
   } on ArgumentError catch (e) {

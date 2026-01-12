@@ -86,31 +86,11 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'Expr',
-        factories: [
-          CSTNodeFactory(
-            ruleName: 'Expr',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'Term',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              // Terminals don't have access to the full input text here
-              // Instead, just create a node without the computed value
-              return InclusiveNode(
-                astNode: astNode,
-                children: children,
-              );
-            },
-          ),
-        ],
+        factories: {
+          'Expr': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          'Term': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          '<Terminal>': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+        },
         input: '1+2',
       );
 
@@ -133,43 +113,30 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'Sum',
-        factories: [
-          CSTNodeFactory(
-            ruleName: 'Sum',
-            factory: (astNode, children) {
-              final childCount = children.length;
-              final concatenated = children.map((c) => c.label).join(',');
-              return ComputedNode(
-                astNode: astNode,
-                children: children,
-                childCount: childCount,
-                concatenated: concatenated,
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'Number',
-            factory: (astNode, children) {
-              return ComputedNode(
+        factories: {
+          'Sum': (astNode, children) {
+            final childCount = children.length;
+            final concatenated = children.map((c) => c.label).join(',');
+            return ComputedNode(
+              astNode: astNode,
+              children: children,
+              childCount: childCount,
+              concatenated: concatenated,
+            );
+          },
+          'Number': (astNode, children) => ComputedNode(
                 astNode: astNode,
                 children: children,
                 childCount: 0,
                 concatenated: 'Number',
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              return ComputedNode(
+              ),
+          '<Terminal>': (astNode, children) => ComputedNode(
                 astNode: astNode,
                 children: children,
                 childCount: 0,
                 concatenated: 'Terminal',
-              );
-            },
-          ),
-        ],
+              ),
+        },
         input: '42',
       );
 
@@ -193,39 +160,26 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'List',
-        factories: [
-          CSTNodeFactory(
-            ruleName: 'List',
-            factory: (astNode, children) {
-              final labels = children.map((c) => c.label.toUpperCase()).toList();
-              return TransformedNode(
-                astNode: astNode,
-                children: children,
-                transformedLabels: labels,
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'Element',
-            factory: (astNode, children) {
-              return TransformedNode(
+        factories: {
+          'List': (astNode, children) {
+            final labels = children.map((c) => c.label.toUpperCase()).toList();
+            return TransformedNode(
+              astNode: astNode,
+              children: children,
+              transformedLabels: labels,
+            );
+          },
+          'Element': (astNode, children) => TransformedNode(
                 astNode: astNode,
                 children: children,
                 transformedLabels: ['ELEMENT'],
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              return TransformedNode(
+              ),
+          '<Terminal>': (astNode, children) => TransformedNode(
                 astNode: astNode,
                 children: children,
                 transformedLabels: ['TERMINAL'],
-              );
-            },
-          ),
-        ],
+              ),
+        },
         input: 'abc',
       );
 
@@ -249,50 +203,32 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'Pair',
-        factories: [
-          CSTNodeFactory(
-            ruleName: 'Pair',
-            factory: (astNode, children) {
-              // Only keep First and Second, skip terminals
-              final selected = children.where((c) => c.label == 'First' || c.label == 'Second').toList();
-              return SelectiveNode(
-                astNode: astNode,
-                children: children,
-                selectedChildren: selected,
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'First',
-            factory: (astNode, children) {
-              return SelectiveNode(
+        factories: {
+          'Pair': (astNode, children) {
+            // Only keep First and Second, skip terminals
+            final selected = children.where((c) => c.label == 'First' || c.label == 'Second').toList();
+            return SelectiveNode(
+              astNode: astNode,
+              children: children,
+              selectedChildren: selected,
+            );
+          },
+          'First': (astNode, children) => SelectiveNode(
                 astNode: astNode,
                 children: children,
                 selectedChildren: children,
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'Second',
-            factory: (astNode, children) {
-              return SelectiveNode(
+              ),
+          'Second': (astNode, children) => SelectiveNode(
                 astNode: astNode,
                 children: children,
                 selectedChildren: children,
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              return SelectiveNode(
+              ),
+          '<Terminal>': (astNode, children) => SelectiveNode(
                 astNode: astNode,
                 children: children,
                 selectedChildren: [],
-              );
-            },
-          ),
-        ],
+              ),
+        },
         input: '(abc,123)',
       );
 
@@ -316,32 +252,11 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'Text',
-        factories: [
-          CSTNodeFactory(
-            ruleName: 'Text',
-            factory: (astNode, children) {
-              return InclusiveNode(
-                astNode: astNode,
-                children: children,
-              );
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'Word',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              return TerminalNode(
-                astNode: astNode,
-                text: 'terminal',
-              );
-            },
-          ),
-        ],
+        factories: {
+          'Text': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          'Word': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          '<Terminal>': (astNode, children) => TerminalNode(astNode: astNode, text: 'terminal'),
+        },
         input: 'hello',
       );
 
@@ -363,35 +278,15 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'Expr',
-        factories: [
-          CSTNodeFactory(
-            ruleName: 'Expr',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'Number',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<SyntaxError>',
-            factory: (astNode, children) {
-              return ErrorNode(
+        factories: {
+          'Expr': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          'Number': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          '<Terminal>': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          '<SyntaxError>': (astNode, children) => ErrorNode(
                 astNode: astNode,
                 errorMessage: 'Syntax error at ${astNode.pos}',
-              );
-            },
-          ),
-        ],
+              ),
+        },
         input: 'abc',
         allowSyntaxErrors: true,
       );
@@ -414,49 +309,28 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'Doc',
-        factories: [
+        factories: {
           // Inclusive factory
-          CSTNodeFactory(
-            ruleName: 'Doc',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
+          'Doc': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
           // Selective factory
-          CSTNodeFactory(
-            ruleName: 'Section',
-            factory: (astNode, children) {
-              final selected = children.where((c) => c.label == 'Title').toList();
-              return SelectiveNode(
-                astNode: astNode,
-                children: children,
-                selectedChildren: selected,
-              );
-            },
-          ),
+          'Section': (astNode, children) {
+            final selected = children.where((c) => c.label == 'Title').toList();
+            return SelectiveNode(
+              astNode: astNode,
+              children: children,
+              selectedChildren: selected,
+            );
+          },
           // Computed factory
-          CSTNodeFactory(
-            ruleName: 'Title',
-            factory: (astNode, children) {
-              return ComputedNode(
+          'Title': (astNode, children) => ComputedNode(
                 astNode: astNode,
                 children: children,
                 childCount: children.length,
                 concatenated: 'Title',
-              );
-            },
-          ),
+              ),
           // Terminal factory
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              return TerminalNode(
-                astNode: astNode,
-                text: 'terminal',
-              );
-            },
-          ),
-        ],
+          '<Terminal>': (astNode, children) => TerminalNode(astNode: astNode, text: 'terminal'),
+        },
         input: 'abc',
       );
 
@@ -477,26 +351,11 @@ void main() {
       final cst = squirrelParseCST(
         grammarSpec: grammar,
         topRuleName: 'Sentence',
-        factories: [
-          CSTNodeFactory(
-            ruleName: 'Sentence',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: 'Word',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-          CSTNodeFactory(
-            ruleName: '<Terminal>',
-            factory: (astNode, children) {
-              return InclusiveNode(astNode: astNode, children: children);
-            },
-          ),
-        ],
+        factories: {
+          'Sentence': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          'Word': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+          '<Terminal>': (astNode, children) => InclusiveNode(astNode: astNode, children: children),
+        },
         input: 'hello world test',
       );
 

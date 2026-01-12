@@ -1,8 +1,13 @@
 package com.squirrelparser;
 
-import java.util.*;
-
 import static com.squirrelparser.MatchResult.mismatch;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * The squirrel parser with bounded error recovery.
@@ -47,13 +52,16 @@ public final class Parser {
      * Match a clause at a position, using memoization.
      */
     public MatchResult match(Clause clause, int pos, Clause bound) {
-        if (pos > input.length()) return mismatch();
+        if (pos > input.length()) {
+            return mismatch();
+        }
 
         // C5 (Ref Transparency): Don't memoize Ref independently
         if (clause instanceof Ref) {
             return clause.match(this, pos, bound);
         }
 
+        @SuppressWarnings("unused")
         MemoEntry memoEntry = memoTable
             .computeIfAbsent(clause, k -> new HashMap<>())
             .computeIfAbsent(pos, k -> new MemoEntry());

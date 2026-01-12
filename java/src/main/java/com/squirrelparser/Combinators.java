@@ -1,11 +1,11 @@
 package com.squirrelparser;
 
+import static com.squirrelparser.MatchResult.mismatch;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.squirrelparser.MatchResult.mismatch;
 
 /**
  * Helper: check if all children are complete.
@@ -98,8 +98,9 @@ final class Seq extends HasMultipleSubClauses {
             }
 
             for (int grammarSkip = 0; grammarSkip < maxGrammar; grammarSkip++) {
-                if (grammarSkip == 0 && inputSkip == 0) continue;
-                if (grammarSkip > 0) continue;
+                if ((grammarSkip == 0 && inputSkip == 0) || (grammarSkip > 0)) {
+                    continue;
+                }
 
                 int clauseIdx = i + grammarSkip;
                 Clause clause = subClauses.get(clauseIdx);
@@ -177,7 +178,9 @@ final class First extends HasMultipleSubClauses {
                                 bestLen = altLen;
                                 bestErrors = altErrors;
                             }
-                            if (altErrors == 0 && altLen >= bestLen) break;
+                            if (altErrors == 0 && altLen >= bestLen) {
+                                break;
+                            }
                         }
                     }
                     return Match.withChildren(this, List.of(bestResult), bestResult.isComplete());
@@ -247,7 +250,9 @@ sealed class Repetition extends HasOneSubClause permits OneOrMore, ZeroOrMore {
                 }
                 break;
             }
-            if (result.len() == 0) break;
+            if (result.len() == 0) {
+                break;
+            }
             children.add(result);
             curr += result.len();
         }
@@ -360,7 +365,9 @@ final class Ref extends Clause {
             throw new IllegalArgumentException("Rule \"" + ruleName + "\" not found");
         }
         MatchResult result = parser.match(clause, pos, bound);
-        if (result.isMismatch()) return result;
+        if (result.isMismatch()) {
+            return result;
+        }
         return Match.withChildren(this, List.of(result), result.isComplete());
     }
 

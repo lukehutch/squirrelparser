@@ -61,22 +61,30 @@ public final class ParserStats {
 
     /** Record a clause match attempt. */
     public static void recordMatch() {
-        if (instance != null) instance.clauseMatches++;
+        if (instance != null) {
+            instance.clauseMatches++;
+        }
     }
 
     /** Record a cache hit. */
     public static void recordCacheHit() {
-        if (instance != null) instance.cacheHits++;
+        if (instance != null) {
+            instance.cacheHits++;
+        }
     }
 
     /** Record a left recursion expansion. */
     public static void recordLRExpansion() {
-        if (instance != null) instance.lrExpansions++;
+        if (instance != null) {
+            instance.lrExpansions++;
+        }
     }
 
     /** Record a recovery attempt. */
     public static void recordRecovery() {
-        if (instance != null) instance.recoveryAttempts++;
+        if (instance != null) {
+            instance.recoveryAttempts++;
+        }
     }
 
     /** Reset all statistics. */

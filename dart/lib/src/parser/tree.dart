@@ -211,63 +211,50 @@ abstract class CSTNode extends Node<CSTNode> {
 
 // -----------------------------------------------------------------------------------------------------------------
 
-/// Metadata for creating a CST node from an AST node, and child CST nodes that have already been converted.
-/// Allows you to intercept AST nodes and transform them in some way (e.g. evaluating child nodes, or
-/// modifying structure) when forming the CST from the AST.
-class CSTNodeFactory {
-  /// The grammar rule name this factory corresponds to
-  final String ruleName;
-
-  /// Factory function that creates a CST node from an AST node, and the children that have already
-  /// been converted to CST nodes.
-  final CSTNode Function(ASTNode astNode, List<CSTNode> children) factory;
-
-  CSTNodeFactory({
-    required this.ruleName,
-    required this.factory,
-  });
-}
+/// Factory function type that creates a CST node from an AST node and its already-converted children.
+typedef CSTNodeFactoryFn = CSTNode Function(ASTNode astNode, List<CSTNode> children);
 
 // -----------------------------------------------------------------------------------------------------------------
 
 /// Build a CST from an AST, using the provided factories to create CST nodes for each rule.
 ///
+/// The factories map should contain an entry for each rule name in the grammar, plus:
+/// - `'<Terminal>'` for terminal matches (string literals, character classes, etc.)
+/// - `'<SyntaxError>'` if allowSyntaxErrors is true
+///
 /// If allowSyntaxErrors is false, and a syntax error is encountered in the AST, an ArgumentError will be
 /// thrown describing only the first syntax error encountered.
 ///
-/// If allowSyntaxErrors is true, then you must define a [CSTNodeFactory] for the label `'<SyntaxError>'`,
+/// If allowSyntaxErrors is true, then you must define a factory for the label `'<SyntaxError>'`,
 /// in order to decide how to construct CST nodes when there are syntax errors.
-CSTNode buildCST({required ASTNode ast, required List<CSTNodeFactory> factories, required bool allowSyntaxErrors}) {
-  var factoriesMap = <String, CSTNodeFactory>{};
-  for (final factory in factories) {
-    if (factoriesMap.containsKey(factory.ruleName)) {
-      throw ArgumentError('Duplicate factory for rule "${factory.ruleName}"');
-    }
-    factoriesMap[factory.ruleName] = factory;
-  }
-  return _buildCST(ast, factoriesMap, allowSyntaxErrors);
+CSTNode buildCST({
+  required ASTNode ast,
+  required Map<String, CSTNodeFactoryFn> factories,
+  required bool allowSyntaxErrors,
+}) {
+  return _buildCST(ast, factories, allowSyntaxErrors);
 }
 
-CSTNode _buildCST(ASTNode ast, Map<String, CSTNodeFactory> factoriesMap, bool allowSyntaxErrors) {
+CSTNode _buildCST(ASTNode ast, Map<String, CSTNodeFactoryFn> factories, bool allowSyntaxErrors) {
   // Handle syntax errors
   if (ast.syntaxError != null) {
     if (!allowSyntaxErrors) {
       throw ArgumentError('Syntax error: ${ast.syntaxError}');
     }
     // If syntax errors are allowed, use the <SyntaxError> factory
-    var errorFactory = factoriesMap['<SyntaxError>'];
+    var errorFactory = factories['<SyntaxError>'];
     if (errorFactory == null) {
       throw ArgumentError('No factory found for <SyntaxError>');
     }
-    return errorFactory.factory(ast, []);
+    return errorFactory(ast, []);
   }
 
   // Look up factory by label
-  var factory = factoriesMap[ast.label];
+  var factory = factories[ast.label];
 
   // For terminals, use the <Terminal> factory if no specific factory exists
   if (factory == null && ast.label == Terminal.nodeLabel) {
-    factory = factoriesMap['<Terminal>'];
+    factory = factories['<Terminal>'];
   }
 
   if (factory == null) {
@@ -275,6 +262,6 @@ CSTNode _buildCST(ASTNode ast, Map<String, CSTNodeFactory> factoriesMap, bool al
   }
 
   final childCSTNodes =
-      ast.children.map((childAstNode) => _buildCST(childAstNode, factoriesMap, allowSyntaxErrors)).toList();
-  return factory.factory(ast, childCSTNodes);
+      ast.children.map((childAstNode) => _buildCST(childAstNode, factories, allowSyntaxErrors)).toList();
+  return factory(ast, childCSTNodes);
 }

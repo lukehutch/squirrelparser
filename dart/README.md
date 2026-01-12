@@ -88,54 +88,33 @@ class TerminalNode extends CSTNode {
   TerminalNode({required super.astNode}) : super(children: const []);
 }
 
-// Factory functions that parse values during CST construction
-List<CSTNodeFactory> createFactories(String input) => [
-  CSTNodeFactory(
-    ruleName: 'Assignments',
-    factory: (astNode, children) => AssignmentsNode(
-      astNode: astNode,
-      assignments: children.cast<AssignmentNode>(),
-    ),
-  ),
-  CSTNodeFactory(
-    ruleName: 'Assignment',
-    factory: (astNode, children) {
-      final nameNode = children[0];
-      final valueNode = children[1] as NumberNode;
-      return AssignmentNode(
+// Factory map that creates CST nodes (input captured by closure)
+Map<String, CSTNodeFactoryFn> createFactories(String input) => {
+  'Assignments': (astNode, children) => AssignmentsNode(
         astNode: astNode,
-        name: input.substring(nameNode.pos, nameNode.pos + nameNode.len),
-        value: valueNode.value,
-      );
-    },
-  ),
-  CSTNodeFactory(
-    ruleName: 'Name',
-    factory: (astNode, children) => TerminalNode(astNode: astNode),
-  ),
-  CSTNodeFactory(
-    ruleName: 'Number',
-    factory: (astNode, children) => children.first as NumberNode,
-  ),
-  CSTNodeFactory(
-    ruleName: 'HexNumber',
-    factory: (astNode, children) {
-      final text = input.substring(astNode.pos, astNode.pos + astNode.len);
-      return NumberNode(astNode: astNode, value: int.parse(text.substring(2), radix: 16));
-    },
-  ),
-  CSTNodeFactory(
-    ruleName: 'DecNumber',
-    factory: (astNode, children) {
-      final text = input.substring(astNode.pos, astNode.pos + astNode.len);
-      return NumberNode(astNode: astNode, value: int.parse(text));
-    },
-  ),
-  CSTNodeFactory(
-    ruleName: '<Terminal>',
-    factory: (astNode, children) => TerminalNode(astNode: astNode),
-  ),
-];
+        assignments: children.cast<AssignmentNode>(),
+      ),
+  'Assignment': (astNode, children) {
+    final nameNode = children[0];
+    final valueNode = children[1] as NumberNode;
+    return AssignmentNode(
+      astNode: astNode,
+      name: input.substring(nameNode.pos, nameNode.pos + nameNode.len),
+      value: valueNode.value,
+    );
+  },
+  'Name': (astNode, children) => TerminalNode(astNode: astNode),
+  'Number': (astNode, children) => children.first as NumberNode,
+  'HexNumber': (astNode, children) {
+    final text = input.substring(astNode.pos, astNode.pos + astNode.len);
+    return NumberNode(astNode: astNode, value: int.parse(text.substring(2), radix: 16));
+  },
+  'DecNumber': (astNode, children) {
+    final text = input.substring(astNode.pos, astNode.pos + astNode.len);
+    return NumberNode(astNode: astNode, value: int.parse(text));
+  },
+  '<Terminal>': (astNode, children) => TerminalNode(astNode: astNode),
+};
 
 void main() {
   const input = 'x=32;y=0x20;z=255;';

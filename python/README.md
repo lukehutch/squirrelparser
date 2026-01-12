@@ -59,7 +59,7 @@ cst = squirrel_parse_cst(grammar_spec=grammar, top_rule_name='Number',
 This example parses `x=32;y=0x20;` and converts numeric literals to actual integers:
 
 ```python
-from squirrelparser import CSTNode, CSTNodeFactory, ASTNode, squirrel_parse_cst
+from squirrelparser import CSTNode, CSTNodeFactoryFn, ASTNode, squirrel_parse_cst
 
 # Grammar for variable assignments with decimal and hex numbers
 GRAMMAR = r'''
@@ -99,46 +99,25 @@ class TerminalNode(CSTNode):
         super().__init__(ast_node, [])
 
 
-# Factory functions that parse values during CST construction
-def create_factories(input_str: str) -> list[CSTNodeFactory]:
-    return [
-        CSTNodeFactory(
-            rule_name='Assignments',
-            factory=lambda ast_node, children: AssignmentsNode(ast_node, children),
+# Factory map that creates CST nodes (input_str captured by closure)
+def create_factories(input_str: str) -> dict[str, CSTNodeFactoryFn]:
+    return {
+        'Assignments': lambda ast_node, children: AssignmentsNode(ast_node, children),
+        'Assignment': lambda ast_node, children: AssignmentNode(
+            ast_node,
+            name=input_str[children[0].pos:children[0].pos + children[0].len],
+            value=children[1].value,  # type: ignore
         ),
-        CSTNodeFactory(
-            rule_name='Assignment',
-            factory=lambda ast_node, children: AssignmentNode(
-                ast_node,
-                name=input_str[children[0].pos:children[0].pos + children[0].len],
-                value=children[1].value,  # type: ignore
-            ),
+        'Name': lambda ast_node, children: TerminalNode(ast_node),
+        'Number': lambda ast_node, children: children[0],  # type: ignore
+        'HexNumber': lambda ast_node, children: NumberNode(
+            ast_node, int(input_str[ast_node.pos:ast_node.pos + ast_node.len][2:], 16)
         ),
-        CSTNodeFactory(
-            rule_name='Name',
-            factory=lambda ast_node, children: TerminalNode(ast_node),
+        'DecNumber': lambda ast_node, children: NumberNode(
+            ast_node, int(input_str[ast_node.pos:ast_node.pos + ast_node.len])
         ),
-        CSTNodeFactory(
-            rule_name='Number',
-            factory=lambda ast_node, children: children[0],  # type: ignore
-        ),
-        CSTNodeFactory(
-            rule_name='HexNumber',
-            factory=lambda ast_node, children: NumberNode(
-                ast_node, int(input_str[ast_node.pos:ast_node.pos + ast_node.len][2:], 16)
-            ),
-        ),
-        CSTNodeFactory(
-            rule_name='DecNumber',
-            factory=lambda ast_node, children: NumberNode(
-                ast_node, int(input_str[ast_node.pos:ast_node.pos + ast_node.len])
-            ),
-        ),
-        CSTNodeFactory(
-            rule_name='<Terminal>',
-            factory=lambda ast_node, children: TerminalNode(ast_node),
-        ),
-    ]
+        '<Terminal>': lambda ast_node, children: TerminalNode(ast_node),
+    }
 
 
 if __name__ == '__main__':

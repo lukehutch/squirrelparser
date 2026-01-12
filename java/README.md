@@ -60,7 +60,9 @@ This example parses `x=32;y=0x20;` and converts numeric literals to actual integ
 
 ```java
 import com.squirrelparser.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class VariableAssignmentParser {
 
@@ -110,36 +112,28 @@ public class VariableAssignmentParser {
         }
     }
 
-    // Factory functions that parse values during CST construction
-    static List<CSTNodeFactory> createFactories(String input) {
-        return List.of(
-            new CSTNodeFactory("Assignments", (astNode, children) ->
-                new AssignmentsNode(astNode, children)
-            ),
-            new CSTNodeFactory("Assignment", (astNode, children) -> {
+    // Factory map that creates CST nodes (input captured by closure)
+    static Map<String, CSTNodeFactoryFn> createFactories(String input) {
+        return new HashMap<>() {{
+            put("Assignments", (astNode, children) -> new AssignmentsNode(astNode, children));
+            put("Assignment", (astNode, children) -> {
                 var nameNode = children.get(0);
                 var valueNode = (NumberNode) children.get(1);
                 var name = input.substring(nameNode.pos(), nameNode.pos() + nameNode.len());
                 return new AssignmentNode(astNode, children, name, valueNode.value);
-            }),
-            new CSTNodeFactory("Name", (astNode, children) ->
-                new TerminalNode(astNode)
-            ),
-            new CSTNodeFactory("Number", (astNode, children) ->
-                (NumberNode) children.get(0)
-            ),
-            new CSTNodeFactory("HexNumber", (astNode, children) -> {
+            });
+            put("Name", (astNode, children) -> new TerminalNode(astNode));
+            put("Number", (astNode, children) -> (NumberNode) children.get(0));
+            put("HexNumber", (astNode, children) -> {
                 var text = input.substring(astNode.pos(), astNode.pos() + astNode.len());
                 return new NumberNode(astNode, Integer.parseInt(text.substring(2), 16));
-            }),
-            new CSTNodeFactory("DecNumber", (astNode, children) -> {
+            });
+            put("DecNumber", (astNode, children) -> {
                 var text = input.substring(astNode.pos(), astNode.pos() + astNode.len());
                 return new NumberNode(astNode, Integer.parseInt(text));
-            }),
-            new CSTNodeFactory("<Terminal>", (astNode, children) ->
-                new TerminalNode(astNode)
-            )
-        );
+            });
+            put("<Terminal>", (astNode, children) -> new TerminalNode(astNode));
+        }};
     }
 
     public static void main(String[] args) {
