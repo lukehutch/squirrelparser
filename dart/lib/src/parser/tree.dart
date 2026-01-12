@@ -92,12 +92,11 @@ class ASTNode extends Node<ASTNode> {
         );
 
   /// Private constructor for non-terminal nodes (AST nodes with children).
-  ASTNode._nonTerminal(String label, List<ASTNode> children)
-      : assert(children.isNotEmpty, 'children must not be empty'),
-        super(
+  ASTNode._nonTerminal(String label, int pos, int len, List<ASTNode> children)
+      : super(
           label: label,
-          pos: children.first.pos,
-          len: children.last.pos + children.last.len - children.first.pos,
+          pos: pos,
+          len: len,
           children: children,
           syntaxError: null,
         );
@@ -147,7 +146,7 @@ ASTNode _newASTNode({
   if (addExtraASTNode != null) {
     childASTNodes.add(addExtraASTNode);
   }
-  return ASTNode._nonTerminal(label, childASTNodes);
+  return ASTNode._nonTerminal(label, refdMatchResult.pos, refdMatchResult.len, childASTNodes);
 }
 
 /// Recursively collect child AST nodes from a MatchResult, skipping transparent rules and mismatches
