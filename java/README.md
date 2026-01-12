@@ -60,6 +60,7 @@ This example parses `x=32;y=0x20;` and converts numeric literals to actual integ
 
 ```java
 import com.squirrelparser.*;
+import com.squirrelparser.tree.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,9 +78,9 @@ public class VariableAssignmentParser {
         """;
 
     // Custom CST node classes
-    static class AssignmentsNode extends CSTNodeBase {
+    static class AssignmentsNode extends CSTNode {
         final List<AssignmentNode> assignments;
-        AssignmentsNode(ASTNode astNode, List<CSTNodeBase> children) {
+        AssignmentsNode(ASTNode astNode, List<CSTNode> children) {
             super(astNode, children);
             this.assignments = children.stream()
                 .filter(c -> c instanceof AssignmentNode)
@@ -88,17 +89,17 @@ public class VariableAssignmentParser {
         }
     }
 
-    static class AssignmentNode extends CSTNodeBase {
+    static class AssignmentNode extends CSTNode {
         final String name;
         final int value;
-        AssignmentNode(ASTNode astNode, List<CSTNodeBase> children, String name, int value) {
+        AssignmentNode(ASTNode astNode, List<CSTNode> children, String name, int value) {
             super(astNode, children);
             this.name = name;
             this.value = value;
         }
     }
 
-    static class NumberNode extends CSTNodeBase {
+    static class NumberNode extends CSTNode {
         final int value;
         NumberNode(ASTNode astNode, int value) {
             super(astNode, List.of());
@@ -106,7 +107,7 @@ public class VariableAssignmentParser {
         }
     }
 
-    static class TerminalNode extends CSTNodeBase {
+    static class TerminalNode extends CSTNode {
         TerminalNode(ASTNode astNode) {
             super(astNode, List.of());
         }
