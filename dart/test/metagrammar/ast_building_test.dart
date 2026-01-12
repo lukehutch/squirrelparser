@@ -97,5 +97,25 @@ void main() {
       expect(prettyString, contains('A'));
       expect(prettyString, contains('B'));
     });
+
+    test('AST allows zero children when all sub-rules are transparent', () {
+      // When a rule only contains transparent rules, the AST node has zero children
+      const grammar = '''
+        Main <- ~A;
+        ~A <- "a";
+      ''';
+
+      final rules = MetaGrammar.parseGrammar(grammar);
+      final parser = Parser(topRuleName: 'Main', rules: rules, input: 'a');
+      final parseResult = parser.parse();
+      final ast = buildAST(parseResult: parseResult);
+
+      expect(ast, isNotNull);
+      expect(ast.label, equals('Main'));
+      expect(ast.pos, equals(0));
+      expect(ast.len, equals(1));
+      // Main has zero children because A is transparent
+      expect(ast.children.length, equals(0));
+    });
   });
 }

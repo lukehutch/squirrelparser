@@ -95,3 +95,22 @@ class TestAstBuilding:
         assert 'Main' in pretty_string
         assert 'A' in pretty_string
         assert 'B' in pretty_string
+
+    def test_ast_allows_zero_children_when_all_sub_rules_are_transparent(self):
+        # When a rule only contains transparent rules, the AST node has zero children
+        grammar = '''
+            Main <- ~A;
+            ~A <- "a";
+        '''
+
+        rules = MetaGrammar.parse_grammar(grammar)
+        parser = Parser(top_rule_name='Main', rules=rules, input='a')
+        parse_result = parser.parse()
+        ast = build_ast(parse_result)
+
+        assert ast is not None
+        assert ast.label == 'Main'
+        assert ast.pos == 0
+        assert ast.len == 1
+        # Main has zero children because A is transparent
+        assert len(ast.children) == 0

@@ -37,7 +37,7 @@ public final class ASTBuilder {
         if (addExtraASTNode != null) {
             childASTNodes.add(addExtraASTNode);
         }
-        return ASTNode.nonTerminal(label, childASTNodes);
+        return ASTNode.nonTerminal(label, refdMatchResult.pos(), refdMatchResult.len(), childASTNodes);
     }
 
     private static void collectChildASTNodes(MatchResult matchResult,

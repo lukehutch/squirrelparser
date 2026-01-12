@@ -116,4 +116,25 @@ class AstBuildingTest {
         assertTrue(prettyString.contains("A"));
         assertTrue(prettyString.contains("B"));
     }
+
+    @Test
+    void astAllowsZeroChildrenWhenAllSubRulesAreTransparent() {
+        // When a rule only contains transparent rules, the AST node has zero children
+        String grammar = """
+            Main <- ~A;
+            ~A <- "a";
+        """;
+
+        Map<String, Clause> rules = MetaGrammar.parseGrammar(grammar);
+        Parser parser = new Parser(rules, "Main", "a");
+        ParseResult parseResult = parser.parse();
+        ASTNode ast = ASTBuilder.buildAST(parseResult);
+
+        assertNotNull(ast);
+        assertEquals("Main", ast.label());
+        assertEquals(0, ast.pos());
+        assertEquals(1, ast.len());
+        // Main has zero children because A is transparent
+        assertEquals(0, ast.children().size());
+    }
 }

@@ -88,12 +88,7 @@ export class ASTNode extends Node<ASTNode> {
     return new ASTNode(Terminal.nodeLabel, terminalMatch.pos, terminalMatch.len, null, []);
   }
 
-  static nonTerminal(label: string, children: readonly ASTNode[]): ASTNode {
-    if (children.length === 0) {
-      throw new Error('children must not be empty');
-    }
-    const pos = children[0].pos;
-    const len = children[children.length - 1].pos + children[children.length - 1].len - pos;
+  static nonTerminal(label: string, pos: number, len: number, children: readonly ASTNode[]): ASTNode {
     return new ASTNode(label, pos, len, null, children);
   }
 
@@ -132,7 +127,7 @@ function newASTNode(
   if (addExtraASTNode !== null) {
     childASTNodes.push(addExtraASTNode);
   }
-  return ASTNode.nonTerminal(label, childASTNodes);
+  return ASTNode.nonTerminal(label, refdMatchResult.pos, refdMatchResult.len, childASTNodes);
 }
 
 function collectChildASTNodes(

@@ -1,3 +1,4 @@
+- 1.0.4: Allow nonterminal AST nodes to have zero children
 - 1.0.3: Make the CST node factory syntax simpler
 - 1.0.2: Make buildAST/buildCST methods take named parameters
 - 1.0.1: Code cleanup; improved API

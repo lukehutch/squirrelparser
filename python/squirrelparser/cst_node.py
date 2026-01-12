@@ -100,11 +100,7 @@ class ASTNode(Node['ASTNode']):
         )
 
     @classmethod
-    def non_terminal(cls, label: str, children: list[ASTNode]) -> ASTNode:
-        if not children:
-            raise ValueError('children must not be empty')
-        pos = children[0].pos
-        length = children[-1].pos + children[-1].len - pos
+    def non_terminal(cls, label: str, pos: int, length: int, children: list[ASTNode]) -> ASTNode:
         return cls(label=label, pos=pos, length=length, children=children)
 
     @classmethod
@@ -146,7 +142,7 @@ def _new_ast_node(
     _collect_child_ast_nodes(refd_match_result, child_ast_nodes, transparent_rules)
     if add_extra_ast_node is not None:
         child_ast_nodes.append(add_extra_ast_node)
-    return ASTNode.non_terminal(label, child_ast_nodes)
+    return ASTNode.non_terminal(label, refd_match_result.pos, refd_match_result.len, child_ast_nodes)
 
 
 def _collect_child_ast_nodes(

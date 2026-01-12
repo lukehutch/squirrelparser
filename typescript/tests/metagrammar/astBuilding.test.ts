@@ -95,4 +95,24 @@ describe('MetaGrammar - AST Building', () => {
     expect(prettyString).toContain('A');
     expect(prettyString).toContain('B');
   });
+
+  test('AST allows zero children when all sub-rules are transparent', () => {
+    // When a rule only contains transparent rules, the AST node has zero children
+    const grammar = `
+      Main <- ~A;
+      ~A <- "a";
+    `;
+
+    const rules = MetaGrammar.parseGrammar(grammar);
+    const parser = new Parser({ topRuleName: 'Main', rules, input: 'a' });
+    const parseResult = parser.parse();
+    const ast = buildAST(parseResult);
+
+    expect(ast).not.toBeNull();
+    expect(ast.label).toBe('Main');
+    expect(ast.pos).toBe(0);
+    expect(ast.len).toBe(1);
+    // Main has zero children because A is transparent
+    expect(ast.children.length).toBe(0);
+  });
 });

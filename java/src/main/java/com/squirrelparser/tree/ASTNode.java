@@ -18,12 +18,7 @@ public final class ASTNode extends Node<ASTNode> {
         return new ASTNode(Terminal.NODE_LABEL, terminalMatch.pos(), terminalMatch.len(), null, List.of());
     }
 
-    static ASTNode nonTerminal(String label, List<ASTNode> children) {
-        if (children.isEmpty()) {
-            throw new IllegalArgumentException("children must not be empty");
-        }
-        int pos = children.getFirst().pos();
-        int len = children.getLast().pos() + children.getLast().len() - pos;
+    static ASTNode nonTerminal(String label, int pos, int len, List<ASTNode> children) {
         return new ASTNode(label, pos, len, null, children);
     }
 
