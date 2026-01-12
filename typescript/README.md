@@ -1,4 +1,4 @@
-# Squirrel Parser - TypeScript
+# The Squirrel Parser 🐿️
 
 A fast linear-time PEG packrat parser with full left recursion support and optimal error recovery.
 
@@ -10,7 +10,7 @@ A fast linear-time PEG packrat parser with full left recursion support and optim
 - Meta-grammar for defining PEG grammars
 - AST and CST construction
 
-See [the paper](../paper/squirrel_parser.pdf) for details on the algorithm.
+See [the paper](../paper/squirrel_parser.pdf) for details on the algorithm, and see [the GitHub repo](https://github.com/lukehutch/squirrelparser) for ports to other languages.
 
 ## Requirements
 
