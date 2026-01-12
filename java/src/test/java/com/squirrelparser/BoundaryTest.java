@@ -14,6 +14,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
+
 class BoundaryTest {
 
     @Test

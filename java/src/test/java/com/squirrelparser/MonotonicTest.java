@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import com.squirrelparser.TestUtils.ParseTestResult;
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
 
 /**
  * SECTION 10: MONOTONIC INVARIANT TESTS (50 tests)

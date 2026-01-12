@@ -1,6 +1,8 @@
-package com.squirrelparser;
+package com.squirrelparser.clause.nonterminal;
 
 import java.util.Map;
+
+import com.squirrelparser.clause.Clause;
 
 /**
  * Base class for clauses with one sub-clause.

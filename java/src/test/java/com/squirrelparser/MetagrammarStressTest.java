@@ -9,6 +9,14 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.clause.Clause;
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.MetaGrammar;
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.Parser;
+import com.squirrelparser.tree.ASTBuilder;
+import com.squirrelparser.tree.ASTNode;
+
 class MetagrammarStressTest {
 
     @Test

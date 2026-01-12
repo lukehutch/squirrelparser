@@ -13,17 +13,22 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.tree.ASTNode;
+import com.squirrelparser.tree.CSTNode;
+import com.squirrelparser.tree.CSTNodeFactoryFn;
+
 /**
  * Simple test CST node for testing.
  */
-class SimpleCST extends CSTNodeBase {
+class SimpleCST extends CSTNode {
     private final String value;
 
-    SimpleCST(ASTNode astNode, List<CSTNodeBase> children) {
+    SimpleCST(ASTNode astNode, List<CSTNode> children) {
         this(astNode, children, null);
     }
 
-    SimpleCST(ASTNode astNode, List<CSTNodeBase> children, String value) {
+    SimpleCST(ASTNode astNode, List<CSTNode> children, String value) {
         super(astNode, children);
         this.value = value;
     }
@@ -99,7 +104,7 @@ class CSTTest {
             "<Terminal>", (astNode, children) -> new SimpleCST(astNode, children)
         );
 
-        CSTNodeBase cst = squirrelParseCST(grammar, "Main", factories, "test", false);
+        CSTNode cst = squirrelParseCST(grammar, "Main", factories, "test", false);
 
         assertNotNull(cst);
         assertEquals("Main", cst.label());
@@ -116,7 +121,7 @@ class CSTTest {
             "<Terminal>", (astNode, children) -> new SimpleCST(astNode, children)
         );
 
-        CSTNodeBase cst = squirrelParseCST(grammar, "Test", factories, "hello", false);
+        CSTNode cst = squirrelParseCST(grammar, "Test", factories, "hello", false);
 
         assertNotNull(cst);
         assertEquals("Test", cst.label());
@@ -138,7 +143,7 @@ class CSTTest {
         );
 
         // This should work without a factory for Whitespace
-        CSTNodeBase cst = squirrelParseCST(grammar, "Expr", factories, " x ", false);
+        CSTNode cst = squirrelParseCST(grammar, "Expr", factories, " x ", false);
 
         assertNotNull(cst);
     }

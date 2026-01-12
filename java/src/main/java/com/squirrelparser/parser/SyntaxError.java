@@ -1,6 +1,8 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
 import java.util.List;
+
+import com.squirrelparser.clause.Clause;
 
 /**
  * A syntax error node: records skipped input or deleted grammar elements.

@@ -1,4 +1,4 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
 /**
  * Statistics tracker for measuring parser work (validates O(n·|G|) complexity).

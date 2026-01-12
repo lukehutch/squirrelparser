@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.SyntaxError;
+
 class LookaheadTest {
 
     @Nested

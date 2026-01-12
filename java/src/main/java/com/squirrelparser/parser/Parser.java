@@ -1,13 +1,14 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
-import static com.squirrelparser.MatchResult.mismatch;
+import static com.squirrelparser.parser.MatchResult.mismatch;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.squirrelparser.clause.Clause;
+import com.squirrelparser.clause.nonterminal.Ref;
 
 /**
  * The squirrel parser with bounded error recovery.
@@ -140,44 +141,5 @@ public final class Parser {
                 ? new SyntaxError(result.len(), input.length() - result.len())
                 : null
         );
-    }
-}
-
-// -----------------------------------------------------------------------------------------------------------------
-
-/**
- * The result of parsing the input.
- */
-record ParseResult(
-    String input,
-    MatchResult root,
-    String topRuleName,
-    Set<String> transparentRules,
-    boolean hasSyntaxErrors,
-    SyntaxError unmatchedInput
-) {
-    /**
-     * Get the syntax errors from the parse.
-     */
-    public List<SyntaxError> getSyntaxErrors() {
-        if (!hasSyntaxErrors) {
-            return List.of();
-        }
-        List<SyntaxError> errors = new ArrayList<>();
-        collectErrors(root, errors);
-        if (unmatchedInput != null) {
-            errors.add(unmatchedInput);
-        }
-        return errors;
-    }
-
-    private void collectErrors(MatchResult result, List<SyntaxError> errors) {
-        if (result instanceof SyntaxError se) {
-            errors.add(se);
-        } else {
-            for (MatchResult child : result.subClauseMatches()) {
-                collectErrors(child, errors);
-            }
-        }
     }
 }

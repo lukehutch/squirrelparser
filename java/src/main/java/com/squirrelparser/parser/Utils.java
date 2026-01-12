@@ -1,4 +1,4 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
 /**
  * Utility functions for string escaping and unescaping.

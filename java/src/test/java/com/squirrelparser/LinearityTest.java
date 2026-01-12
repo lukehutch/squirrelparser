@@ -9,6 +9,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.ParserStats;
+
 /**
  * SECTION 12: LINEARITY TESTS (10 tests)
  *

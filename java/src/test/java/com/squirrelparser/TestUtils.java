@@ -3,6 +3,14 @@ package com.squirrelparser;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.squirrelparser.clause.nonterminal.First;
+import com.squirrelparser.clause.nonterminal.Ref;
+import com.squirrelparser.clause.nonterminal.Seq;
+import com.squirrelparser.clause.terminal.Str;
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.SyntaxError;
+
 /**
  * Test utilities for Squirrel Parser tests.
  */

@@ -1,6 +1,8 @@
-package com.squirrelparser;
+package com.squirrelparser.clause.terminal;
 
 import java.util.Map;
+
+import com.squirrelparser.clause.Clause;
 
 /**
  * Abstract base class for terminal clauses.

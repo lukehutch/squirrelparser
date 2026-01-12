@@ -1,6 +1,8 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
 import java.util.List;
+
+import com.squirrelparser.clause.Clause;
 
 /**
  * Result of matching a clause at a position.

@@ -2,6 +2,15 @@ package com.squirrelparser;
 
 import java.util.Map;
 
+import com.squirrelparser.parser.MetaGrammar;
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.Parser;
+import com.squirrelparser.tree.ASTBuilder;
+import com.squirrelparser.tree.ASTNode;
+import com.squirrelparser.tree.CSTBuilder;
+import com.squirrelparser.tree.CSTNode;
+import com.squirrelparser.tree.CSTNodeFactoryFn;
+
 /**
  * Public Squirrel Parser API.
  */
@@ -37,7 +46,7 @@ public final class SquirrelParser {
      * @param allowSyntaxErrors Whether to allow syntax errors
      * @return The CST root node
      */
-    public static CSTNodeBase squirrelParseCST(
+    public static CSTNode squirrelParseCST(
             String grammarSpec,
             String topRuleName,
             Map<String, CSTNodeFactoryFn> factories,

@@ -1,12 +1,29 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
-import static com.squirrelparser.Utils.unescapeChar;
-import static com.squirrelparser.Utils.unescapeString;
+import static com.squirrelparser.parser.Utils.unescapeChar;
+import static com.squirrelparser.parser.Utils.unescapeString;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.squirrelparser.clause.Clause;
+import com.squirrelparser.clause.nonterminal.First;
+import com.squirrelparser.clause.nonterminal.FollowedBy;
+import com.squirrelparser.clause.nonterminal.NotFollowedBy;
+import com.squirrelparser.clause.nonterminal.OneOrMore;
+import com.squirrelparser.clause.nonterminal.Optional;
+import com.squirrelparser.clause.nonterminal.Ref;
+import com.squirrelparser.clause.nonterminal.Seq;
+import com.squirrelparser.clause.nonterminal.ZeroOrMore;
+import com.squirrelparser.clause.terminal.AnyChar;
+import com.squirrelparser.clause.terminal.Char;
+import com.squirrelparser.clause.terminal.CharSet;
+import com.squirrelparser.clause.terminal.Nothing;
+import com.squirrelparser.clause.terminal.Str;
+import com.squirrelparser.tree.ASTBuilder;
+import com.squirrelparser.tree.ASTNode;
 
 /**
  * MetaGrammar: A grammar for defining PEG grammars.

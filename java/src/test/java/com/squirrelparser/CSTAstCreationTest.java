@@ -12,6 +12,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.tree.ASTNode;
+import com.squirrelparser.tree.CSTNode;
+
 // ============================================================================
 // Custom CST Node Classes for Testing
 // ============================================================================
@@ -19,14 +22,14 @@ import org.junit.jupiter.api.Test;
 /**
  * A simple CST node that includes all its children.
  */
-class InclusiveNode extends CSTNodeBase {
+class InclusiveNode extends CSTNode {
     private final String computedValue;
 
-    InclusiveNode(ASTNode astNode, List<CSTNodeBase> children) {
+    InclusiveNode(ASTNode astNode, List<CSTNode> children) {
         this(astNode, children, null);
     }
 
-    InclusiveNode(ASTNode astNode, List<CSTNodeBase> children, String computedValue) {
+    InclusiveNode(ASTNode astNode, List<CSTNode> children, String computedValue) {
         super(astNode, children);
         this.computedValue = computedValue;
     }
@@ -39,11 +42,11 @@ class InclusiveNode extends CSTNodeBase {
 /**
  * A CST node that computes from children without storing them.
  */
-class ComputedNode extends CSTNodeBase {
+class ComputedNode extends CSTNode {
     private final int childCount;
     private final String concatenated;
 
-    ComputedNode(ASTNode astNode, List<CSTNodeBase> children, int childCount, String concatenated) {
+    ComputedNode(ASTNode astNode, List<CSTNode> children, int childCount, String concatenated) {
         super(astNode, List.of());
         this.childCount = childCount;
         this.concatenated = concatenated;
@@ -61,10 +64,10 @@ class ComputedNode extends CSTNodeBase {
 /**
  * A CST node that transforms children.
  */
-class TransformedNode extends CSTNodeBase {
+class TransformedNode extends CSTNode {
     private final List<String> transformedLabels;
 
-    TransformedNode(ASTNode astNode, List<CSTNodeBase> children, List<String> transformedLabels) {
+    TransformedNode(ASTNode astNode, List<CSTNode> children, List<String> transformedLabels) {
         super(astNode, children);
         this.transformedLabels = transformedLabels;
     }
@@ -77,15 +80,15 @@ class TransformedNode extends CSTNodeBase {
 /**
  * A CST node that selects specific children.
  */
-class SelectiveNode extends CSTNodeBase {
-    private final List<CSTNodeBase> selectedChildren;
+class SelectiveNode extends CSTNode {
+    private final List<CSTNode> selectedChildren;
 
-    SelectiveNode(ASTNode astNode, List<CSTNodeBase> children, List<CSTNodeBase> selectedChildren) {
+    SelectiveNode(ASTNode astNode, List<CSTNode> children, List<CSTNode> selectedChildren) {
         super(astNode, selectedChildren);
         this.selectedChildren = selectedChildren;
     }
 
-    public List<CSTNodeBase> selectedChildren() {
+    public List<CSTNode> selectedChildren() {
         return selectedChildren;
     }
 }
@@ -93,7 +96,7 @@ class SelectiveNode extends CSTNodeBase {
 /**
  * A CST node for terminals.
  */
-class TerminalNode extends CSTNodeBase {
+class TerminalNode extends CSTNode {
     private final String text;
 
     TerminalNode(ASTNode astNode, String text) {
@@ -109,7 +112,7 @@ class TerminalNode extends CSTNodeBase {
 /**
  * A CST node for syntax errors.
  */
-class ErrorNode extends CSTNodeBase {
+class ErrorNode extends CSTNode {
     private final String errorMessage;
 
     ErrorNode(ASTNode astNode, String errorMessage) {
@@ -138,7 +141,7 @@ class CSTAstCreationTest {
             Term <- [0-9]+;
             """;
 
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "Expr",
             Map.of(
@@ -167,7 +170,7 @@ class CSTAstCreationTest {
             Number <- [0-9]+;
             """;
 
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "Sum",
             Map.of(
@@ -201,7 +204,7 @@ class CSTAstCreationTest {
             Element <- [a-z]+;
             """;
 
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "List",
             Map.of(
@@ -234,13 +237,13 @@ class CSTAstCreationTest {
             Second <- [0-9]+;
             """;
 
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "Pair",
             Map.of(
                 "Pair", (astNode, children) -> {
                     // Only keep First and Second, skip terminals
-                    List<CSTNodeBase> selected = children.stream()
+                    List<CSTNode> selected = children.stream()
                         .filter(c -> c.label().equals("First") || c.label().equals("Second"))
                         .toList();
                     return new SelectiveNode(astNode, children, selected);
@@ -272,7 +275,7 @@ class CSTAstCreationTest {
             """;
 
         @SuppressWarnings("unused")
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "Text",
             Map.of(
@@ -301,7 +304,7 @@ class CSTAstCreationTest {
             """;
 
         @SuppressWarnings("unused")
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "Expr",
             Map.of(
@@ -331,7 +334,7 @@ class CSTAstCreationTest {
             """;
 
         @SuppressWarnings("unused")
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "Doc",
             Map.of(
@@ -339,7 +342,7 @@ class CSTAstCreationTest {
                 "Doc", (astNode, children) -> new InclusiveNode(astNode, children),
                 // Selective factory
                 "Section", (astNode, children) -> {
-                    List<CSTNodeBase> selected = children.stream()
+                    List<CSTNode> selected = children.stream()
                         .filter(c -> c.label().equals("Title"))
                         .toList();
                     return new SelectiveNode(astNode, children, selected);
@@ -368,7 +371,7 @@ class CSTAstCreationTest {
             Word <- [a-z]+;
             """;
 
-        CSTNodeBase cst = squirrelParseCST(
+        CSTNode cst = squirrelParseCST(
             grammar,
             "Sentence",
             Map.of(

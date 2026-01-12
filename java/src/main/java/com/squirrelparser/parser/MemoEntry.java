@@ -1,7 +1,9 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
-import static com.squirrelparser.MatchResult.lrPending;
-import static com.squirrelparser.MatchResult.mismatch;
+import static com.squirrelparser.parser.MatchResult.lrPending;
+import static com.squirrelparser.parser.MatchResult.mismatch;
+
+import com.squirrelparser.clause.Clause;
 
 /**
  * A memo table entry for a (clause, position) pair.

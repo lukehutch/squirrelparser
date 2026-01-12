@@ -1,7 +1,9 @@
-package com.squirrelparser;
+package com.squirrelparser.clause.nonterminal;
 
 import java.util.List;
 import java.util.Map;
+
+import com.squirrelparser.clause.Clause;
 
 /**
  * Base class for clauses with multiple sub-clauses.

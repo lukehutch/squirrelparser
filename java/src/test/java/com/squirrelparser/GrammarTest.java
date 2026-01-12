@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.MetaGrammar;
+
 /**
  * Grammar parsing tests.
  */

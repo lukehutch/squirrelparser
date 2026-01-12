@@ -1,11 +1,14 @@
-package com.squirrelparser;
+package com.squirrelparser.clause;
 
 import java.util.Map;
+
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.Parser;
 
 /**
  * Base class for all grammar clauses.
  */
-public abstract sealed class Clause permits Terminal, HasOneSubClause, HasMultipleSubClauses, Ref {
+public abstract class Clause {
 
     /**
      * Match this clause at the given position.

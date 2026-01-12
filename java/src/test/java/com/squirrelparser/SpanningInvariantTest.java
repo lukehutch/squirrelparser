@@ -19,6 +19,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.Match;
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.SyntaxError;
+
 class SpanningInvariantTest {
 
     /**

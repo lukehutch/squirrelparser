@@ -14,6 +14,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.SyntaxError;
+
 class SequenceTest {
     @Test
     void s01_2elem() {

@@ -14,6 +14,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.squirrelparser.TestUtils.ParseTestResult;
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.Parser;
+import com.squirrelparser.parser.SyntaxError;
 
 /**
  * PERFORMANCE & EDGE CASE TESTS

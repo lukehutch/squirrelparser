@@ -1,6 +1,9 @@
-package com.squirrelparser;
+package com.squirrelparser.parser;
 
 import java.util.List;
+
+import com.squirrelparser.clause.Clause;
+import com.squirrelparser.clause.nonterminal.Ref;
 
 /**
  * A successful match (unified type for all match results).

@@ -1,6 +1,10 @@
-package com.squirrelparser;
+package com.squirrelparser.tree;
 
 import java.util.List;
+
+import com.squirrelparser.clause.terminal.Terminal;
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.SyntaxError;
 
 /**
  * An AST node representing either a rule match or a terminal match.

@@ -10,6 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.squirrelparser.TestUtils.ParseTestResult;
+import com.squirrelparser.parser.MatchResult;
+import com.squirrelparser.parser.ParseResult;
 
 /**
  * SECTION 11: ALL SIX FIXES WITH MONOTONIC INVARIANT (20 tests)

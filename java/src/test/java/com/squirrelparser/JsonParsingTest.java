@@ -16,12 +16,18 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.squirrelparser.parser.ParseResult;
+import com.squirrelparser.parser.SyntaxError;
+import com.squirrelparser.tree.ASTNode;
+import com.squirrelparser.tree.CSTNode;
+import com.squirrelparser.tree.CSTNodeFactoryFn;
+
 // ============================================================================
 // JSON CST Node Classes
 // ============================================================================
 
-abstract class JsonValue extends CSTNodeBase {
-    JsonValue(ASTNode astNode, List<CSTNodeBase> children) {
+abstract class JsonValue extends CSTNode {
+    JsonValue(ASTNode astNode, List<CSTNode> children) {
         super(astNode, children);
     }
 }
@@ -29,7 +35,7 @@ abstract class JsonValue extends CSTNodeBase {
 class JsonObject extends JsonValue {
     private final List<JsonMember> members;
 
-    JsonObject(ASTNode astNode, List<CSTNodeBase> children, List<JsonMember> members) {
+    JsonObject(ASTNode astNode, List<CSTNode> children, List<JsonMember> members) {
         super(astNode, children);
         this.members = members;
     }
@@ -42,7 +48,7 @@ class JsonObject extends JsonValue {
 class JsonArray extends JsonValue {
     private final List<JsonValue> elements;
 
-    JsonArray(ASTNode astNode, List<CSTNodeBase> children, List<JsonValue> elements) {
+    JsonArray(ASTNode astNode, List<CSTNode> children, List<JsonValue> elements) {
         super(astNode, children);
         this.elements = elements;
     }
@@ -55,7 +61,7 @@ class JsonArray extends JsonValue {
 class JsonString extends JsonValue {
     private final String value;
 
-    JsonString(ASTNode astNode, List<CSTNodeBase> children, String value) {
+    JsonString(ASTNode astNode, List<CSTNode> children, String value) {
         super(astNode, children);
         this.value = value;
     }
@@ -68,7 +74,7 @@ class JsonString extends JsonValue {
 class JsonNumber extends JsonValue {
     private final double value;
 
-    JsonNumber(ASTNode astNode, List<CSTNodeBase> children, double value) {
+    JsonNumber(ASTNode astNode, List<CSTNode> children, double value) {
         super(astNode, children);
         this.value = value;
     }
@@ -81,7 +87,7 @@ class JsonNumber extends JsonValue {
 class JsonBoolean extends JsonValue {
     private final boolean value;
 
-    JsonBoolean(ASTNode astNode, List<CSTNodeBase> children, boolean value) {
+    JsonBoolean(ASTNode astNode, List<CSTNode> children, boolean value) {
         super(astNode, children);
         this.value = value;
     }
@@ -92,16 +98,16 @@ class JsonBoolean extends JsonValue {
 }
 
 class JsonNull extends JsonValue {
-    JsonNull(ASTNode astNode, List<CSTNodeBase> children) {
+    JsonNull(ASTNode astNode, List<CSTNode> children) {
         super(astNode, children);
     }
 }
 
-class JsonMember extends CSTNodeBase {
+class JsonMember extends CSTNode {
     private final String key;
     private final JsonValue value;
 
-    JsonMember(ASTNode astNode, List<CSTNodeBase> children, String key, JsonValue value) {
+    JsonMember(ASTNode astNode, List<CSTNode> children, String key, JsonValue value) {
         super(astNode, children);
         this.key = key;
         this.value = value;
@@ -116,7 +122,7 @@ class JsonMember extends CSTNodeBase {
     }
 }
 
-class JsonTerminal extends CSTNodeBase {
+class JsonTerminal extends CSTNode {
     JsonTerminal(ASTNode astNode) {
         super(astNode, List.of());
     }
@@ -192,7 +198,7 @@ class JsonParsingTest {
     // Parse Function
     // ============================================================================
 
-    record ParseJsonResult(CSTNodeBase cst, List<String> errors) {}
+    record ParseJsonResult(CSTNode cst, List<String> errors) {}
 
     static ParseJsonResult parseJson(String input, boolean allowErrors) {
         // Parse and get syntax errors using high-level API
@@ -286,7 +292,7 @@ class JsonParsingTest {
         }};
 
         try {
-            CSTNodeBase cst = squirrelParseCST(
+            CSTNode cst = squirrelParseCST(
                 JSON_GRAMMAR,
                 "JSON",
                 factories,
