@@ -1,0 +1,3 @@
+- 1.0.2: Make buildAST/buildCST methods take named parameters
+- 1.0.1: Code cleanup; improved API
+- 1.0.0: Initial release

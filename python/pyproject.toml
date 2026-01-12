@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "squirrel-parser"
+version = "1.0.0"
+description = "The squirrel parser: a linear-time PEG parser capable of left recursion and optimal error recovery"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Text Processing :: General",
+]
+keywords = ["parser", "peg", "packrat", "left-recursion", "error-recovery"]
+
+[project.urls]
+Homepage = "https://github.com/lukehutch/squirrelparser"
+Repository = "https://github.com/lukehutch/squirrelparser"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["squirrelparser*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

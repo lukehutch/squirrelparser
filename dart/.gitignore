@@ -1,0 +1,11 @@
+# Dart
+.dart_tool/
+.packages
+build/
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+*.g.dart
+*.freezed.dart
+*.mocks.dart

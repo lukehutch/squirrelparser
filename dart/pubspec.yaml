@@ -1,0 +1,15 @@
+name: squirrel_parser
+description: "The squirrel parser: a linear-time PEG parser capable of left recursion and optimal error recovery"
+version: 1.0.2
+homepage: https://github.com/lukehutch/squirrelparser
+repository: https://github.com/lukehutch/squirrelparser
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  indent: ^2.0.0
+
+dev_dependencies:
+  test: ^1.24.0
+  lints: ^6.0.0

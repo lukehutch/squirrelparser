@@ -1,0 +1,12 @@
+.pytest_cache/
+__pycache__/
+.mypy_cache/
+.claude/
+.vscode/
+.idea/
+node_modules/
+dist/
+build/
+target/
+.package-lock.json
+*.log
