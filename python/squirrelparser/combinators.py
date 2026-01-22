@@ -54,6 +54,23 @@ class HasMultipleSubClauses(Clause, ABC):
 class Seq(HasMultipleSubClauses):
     """Sequence: matches all sub-clauses in order, with error recovery."""
 
+    def _find_meaningful_bound(self, start_idx: int, parser: Parser) -> Clause | None:
+        """
+        Find the first meaningful bound among remaining siblings.
+        Skips over transparent rules (marked with ~) since they don't produce AST nodes
+        and shouldn't be used as structural boundaries.
+        """
+        for j in range(start_idx, len(self.sub_clauses)):
+            clause = self.sub_clauses[j]
+
+            # Check if this clause is a Ref to a transparent rule
+            if isinstance(clause, Ref) and clause.rule_name in parser.transparent_rules:
+                continue
+
+            # Found a non-transparent clause - use as bound
+            return clause
+        return None
+
     def match(self, parser: Parser, pos: int, *, bound: Clause | None = None) -> MatchResult:
 
         children: list[MatchResult] = []
@@ -62,8 +79,9 @@ class Seq(HasMultipleSubClauses):
 
         while i < len(self.sub_clauses):
             clause = self.sub_clauses[i]
-            next_clause = self.sub_clauses[i + 1] if i + 1 < len(self.sub_clauses) else None
-            effective_bound = next_clause if (parser.in_recovery_phase and next_clause is not None) else bound
+            # Find meaningful bound by looking past transparent rules
+            sibling_bound = self._find_meaningful_bound(i + 1, parser)
+            effective_bound = sibling_bound if (parser.in_recovery_phase and sibling_bound is not None) else bound
             result = parser.match(clause, curr, bound=effective_bound)
 
             if result.is_mismatch:
@@ -205,7 +223,6 @@ class Repetition(HasOneSubClause):
         children: list[MatchResult] = []
         curr = pos
         incomplete = False
-        has_recovered = False
 
         while curr <= len(parser.input):
             if parser.in_recovery_phase and bound is not None:
@@ -218,13 +235,14 @@ class Repetition(HasOneSubClause):
                     incomplete = True
 
                 if parser.in_recovery_phase:
-                    recovery = self._recover(parser, curr, has_recovered)
+                    # Only pass has_valid_match=True if we have at least one non-error child
+                    has_valid_match = any(not isinstance(c, SyntaxError) for c in children)
+                    recovery = self._recover(parser, curr, has_valid_match, bound)
                     if recovery is not None:
                         if stats_module.parser_stats is not None:
                             stats_module.parser_stats.record_recovery()
                         skip, probe = recovery
                         children.append(SyntaxError(pos=curr, length=skip))
-                        has_recovered = True
                         if probe is not None:
                             children.append(probe)
                             curr += skip + probe.len
@@ -244,13 +262,51 @@ class Repetition(HasOneSubClause):
             return Match(self, pos, 0, is_complete=not incomplete)
         return Match(self, 0, 0, sub_clause_matches=children, is_complete=not incomplete and _all_complete(children))
 
-    def _recover(self, parser: Parser, curr: int, has_recovered: bool) -> tuple[int, MatchResult | None] | None:
+    def _recover(self, parser: Parser, curr: int, has_valid_match: bool, bound: Clause | None) -> tuple[int, MatchResult | None] | None:
+        """
+        Attempt recovery within repetition.
+
+        Key principle: Repetitions only do recovery for COMPLEX sub_clauses (Seq, First, Ref).
+        For character-level terminals (CharSet, Char, AnyChar), the repetition should NOT
+        try to extend itself by skipping over errors. Instead, return what we have and
+        let the parent Seq handle errors with better structural context.
+
+        has_valid_match: indicates if we've already matched at least one valid element.
+        bound: the next sibling clause that must not be skipped over.
+        """
+        from .terminals import CharSet, Char, AnyChar
+
+        # For character-level terminals, don't do repetition recovery
+        if isinstance(self.sub_clause, (CharSet, Char, AnyChar)):
+            return None
+
+        # Scan for more matches
         for skip in range(1, len(parser.input) - curr + 1):
-            probe = parser.probe(self.sub_clause, curr + skip)
-            if not probe.is_mismatch:
+            probe_pos = curr + skip
+
+            # Don't skip past the bound - let parent Seq handle recovery there
+            if bound is not None and parser.can_match_nonzero_at(bound, probe_pos):
+                break
+
+            # Use match to allow internal recovery within complex sub_clauses
+            probe = parser.match(self.sub_clause, probe_pos)
+            if not probe.is_mismatch and probe.len > 0:
                 return (skip, probe)
-        if has_recovered and curr < len(parser.input):
+
+        # No more matches found.
+        # Only skip remaining as error if we already have valid matches
+        # (otherwise OneOrMore would incorrectly succeed with just errors).
+        # But don't skip past the bound!
+        if has_valid_match and curr < len(parser.input):
             skip_to_end = len(parser.input) - curr
+            # Check if bound matches anywhere before end of input
+            if bound is not None:
+                for skip in range(1, skip_to_end + 1):
+                    if parser.can_match_nonzero_at(bound, curr + skip):
+                        # Bound matches at this position - only skip up to here
+                        if skip > 0:
+                            return (skip, None)
+                        return None  # Can't skip anything without hitting bound
             return (skip_to_end, None)
         return None
 

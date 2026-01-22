@@ -196,7 +196,7 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-We present the squirrel parser, a PEG parser that directly handles all forms of left recursion with optimal error recovery, while maintaining linear time complexity in the length of the input even in the presence of an arbitrary number of errors. Traditional approaches to handling left recursion in a recursive descent parser require grammar rewriting or complex algorithmic extensions. We derive a minimal algorithm from first principles: cycle detection via per-position state tracking and $O(1)$-per-LR-cycle communication from descendant to ancestor recursion frames, and fixed-point search via iterative expansion. For error recovery, we derived a set of four axioms and twelve constraints that must be imposed upon an optimal error recovery design to ensure completeness, correctness, optimality of performance, and intuitiveness of behavior. We utilized a constraint satisfaction mechanism to search the space of all possibilities, arriving at a provably optimal and robust error recovery strategy that maintains perfect performance linearity.
+We present the squirrel parser, a PEG parser that directly handles all forms of left recursion with optimal error recovery, while maintaining linear time complexity in the length of the input even in the presence of an arbitrary number of errors. Traditional approaches to handling left recursion in a recursive descent parser require grammar rewriting or complex algorithmic extensions. We derive a minimal algorithm from first principles: cycle detection via per-position state tracking and $O(1)$-per-LR-cycle communication from descendant to ancestor recursion frames, and fixed-point search via iterative expansion. For error recovery, we derived a set of four axioms and fifteen constraints that must be imposed upon an optimal error recovery design to ensure completeness, correctness, optimality of performance, and intuitiveness of behavior. We utilized a constraint satisfaction mechanism to search the space of all possibilities, arriving at a provably optimal and robust error recovery strategy that maintains perfect performance linearity.
 \end{abstract}
 
 %%
@@ -606,27 +606,79 @@ From PEG axioms and the goal of intuitive error recovery behavior while maintain
 \subsubsection{Linearity Constraints}
 
 \begin{constraint}[Single-Pass Parsing]
-The parser must scan input left-to-right exactly once per phase (where a phase is either standard parsing, or recovery), without backtracking to earlier positions. This preserves $O(n)$ character inspection cost.
+\label{constraint:single_pass}
+The parser must scan input left-to-right exactly once per phase (where a phase is either standard parsing, or recovery), without backtracking to earlier positions.
 \end{constraint}
 
+\textbf{Justification.} Consider parsing input of length $n$ with a grammar containing alternatives. Without single-pass parsing, the parser might speculatively try alternative $A$, consume $k$ characters, fail, backtrack to the starting position, and try alternative $B$.
+
+In the worst case (deeply nested alternatives), this produces $O(2^n)$ character inspections---the classic PEG exponential blowup. For example, the grammar \texttt{S <- A A A ... / B B B ...} with $m$ alternatives, each inspecting $n/m$ characters before failing, requires $O(m \cdot n)$ inspections per alternative, and exponentially many alternative combinations.
+
+Memoization transforms this to $O(n \cdot |G|)$ by caching results at each $(clause, position)$ pair. The single-pass constraint ensures memoization is valid: once position $k$ is evaluated for clause $C$, the result cannot change, so caching is safe.
+
 \begin{constraint}[Memoization Validity]
+\label{constraint:memo_validity}
 Each $(clause, position)$ pair can be evaluated at most once per recovery phase. Cache entries must remain valid throughout their phase.
 \end{constraint}
 
+\textbf{Justification.} Consider the grammar \texttt{S <- E "+" E} where \texttt{E <- "x"}. When parsing \texttt{"x+x"}, the clause \texttt{E} is evaluated at positions 0 and 2. If memoization stores the result at position 0, subsequent references to \texttt{E} at position 0 reuse the cached result.
+
+Without this constraint, recovery could invalidate cached results. Suppose parsing \texttt{"x+Z"} where \texttt{Z} is an error. In Phase 1 (no recovery), \texttt{E} at position 2 returns mismatch. If Phase 2 recovery modifies this result (e.g., skipping \texttt{Z}), but the cache still holds the Phase 1 mismatch, the parser produces incorrect results.
+
+The constraint requires either: (1) separate caches per phase, or (2) cache entries tagged with their phase, validated on lookup. Our implementation uses approach (2) with a \texttt{cachedInRecoveryPhase} flag, achieving $O(1)$ validation overhead.
+
 \begin{constraint}[Bounded Recovery]
-Recovery operations must terminate in $O(n \cdot |G|)$ steps total. Therefore, each recovery must consume at least one input character, bounding total recovery activations to $n$.
+\label{constraint:bounded_recovery}
+Recovery operations must terminate in $O(n \cdot |G|)$ steps total. Therefore, each recovery activation must consume at least one input character, bounding total recovery activations to $n$.
 \end{constraint}
+
+\textbf{Justification.} Consider a grammar with nested repetitions parsing input with many errors. Each error triggers recovery, which scans forward looking for synchronization points.
+
+Without this constraint, recovery could enter infinite loops. For example, if recovery at position $k$ fails to consume any input but also fails to abort, the parser re-attempts recovery at position $k$ indefinitely.
+
+The ``consume at least one character'' requirement provides a progress guarantee: after at most $n$ recovery activations, the parser has consumed all input. Combined with memoization (at most $|G|$ clause evaluations per position), total work is bounded by $O(n \cdot |G|)$.
+
+This constraint directly implies the recovery strategy: when scanning for synchronization, either find a match (consuming the skipped characters plus the match) or skip to EOF (consuming remaining input). Zero-consumption recovery is forbidden.
 
 \subsubsection{Composability Constraints}
 
 \begin{constraint}[Clause Independence]
-The behavior of each grammar clause must be definable independently. A $Seq$'s recovery behavior must depend only on its subclauses' behaviors, not on where the $Seq$ appears in the larger grammar.
+\label{constraint:clause_independence}
+The behavior of each grammar clause must be definable independently. A clause's recovery behavior must depend only on its subclauses' behaviors and explicitly passed parameters (such as bounds), not on implicit context from where the clause appears in the larger grammar.
 \end{constraint}
+
+\textbf{Justification.} Consider reusing a rule in multiple contexts:
+\begin{verbatim}
+    Expr  <- Term ("+" Term)* ;
+    Array <- "[" Term ("," Term)* "]" ;
+    Term  <- [0-9]+ ;
+\end{verbatim}
+The rule \texttt{Term} appears in both \texttt{Expr} and \texttt{Array}. Without clause independence, \texttt{Term}'s recovery behavior might depend on whether it's inside an array (where \texttt{]} is a boundary) or an expression (where \texttt{+} is a boundary).
+
+This would require either: (1) duplicating \texttt{Term} for each context, destroying grammar modularity, or (2) passing implicit context through the call stack, making behavior unpredictable and difficult to reason about.
+
+The constraint requires that context-dependent information (like sibling bounds) be passed explicitly as parameters. This enables local reasoning: a clause's behavior can be understood by examining only its definition and its explicit inputs, not the transitive closure of all call sites.
 
 \begin{constraint}[Ref Transparency]
 \label{constraint:ref_transparency}
-Rule references must behave identically to inline expansion of the referenced rule. The distinction between $Ref('E')$ and directly writing $E$'s clause should be purely organizational.
+Rule references must behave identically to inline expansion of the referenced rule. The distinction between \texttt{Ref('E')} and directly writing \texttt{E}'s clause should be purely organizational.
 \end{constraint}
+
+\textbf{Justification.} Consider two equivalent grammars:
+\begin{verbatim}
+    Grammar 1: S <- "x"+ "end" ;
+    Grammar 2: S <- A "end" ;   A <- "x"+ ;
+\end{verbatim}
+Both should parse \texttt{"xxxend"} identically. If \texttt{Ref} introduced different behavior (e.g., different memoization, different recovery boundaries), Grammar 2 would produce different results despite being a pure refactoring of Grammar 1.
+
+Without this constraint, grammar authors cannot safely extract common patterns into named rules---a fundamental software engineering practice. The constraint ensures that:
+\begin{itemize}
+\item Extracting a subexpression into a named rule preserves semantics
+\item Inlining a rule reference preserves semantics
+\item Performance characteristics (memoization) are the only difference
+\end{itemize}
+
+The implementation achieves this by having \texttt{Ref} pass through all parameters (including bounds) transparently to the referenced rule, and by ensuring \texttt{Ref} itself performs no recovery or transformation.
 
 \subsubsection{Correctness Constraints}
 
@@ -640,35 +692,98 @@ Repetition &: complete \iff \neg truncated \land \bigwedge_{i} children[i].compl
 \end{align*}
 \end{constraint}
 
+\textbf{Justification.} Consider an IDE using parse results for syntax highlighting and error display. The IDE needs to distinguish between:
+\begin{itemize}
+\item Complete parses: input fully matches grammar, no errors
+\item Incomplete parses: input partially matches, recovery was used
+\end{itemize}
+
+Without compositional completeness tracking, the IDE would need to traverse the entire parse tree searching for error nodes---an $O(tree~size)$ operation repeated for every edit. With the \texttt{isComplete} flag propagated to the root, the check is $O(1)$.
+
+The Boolean algebra formulation ensures compositionality: a parent's completeness depends only on its immediate children's completeness, not on the global parse state. This enables incremental updates: when a subtree changes, only ancestors need completeness recalculation.
+
+The \texttt{usedRecovery} term in the Seq rule captures the semantic requirement that recovery, even when successful, indicates the input didn't match the grammar exactly. A Seq that required recovery to proceed is incomplete by definition.
+
 \begin{constraint}[Phase Isolation]
 \label{constraint:phase_isolation}
 Cache entries from Phase 1 (discovery without recovery) must not be reused in Phase 2 (recovery enabled) where they would give different results. Cache validation must check phase consistency.
 \end{constraint}
+
+\textbf{Justification.} Consider parsing \texttt{"x+Z"} with grammar \texttt{S <- E "+" E} where \texttt{E <- "x"}. In Phase 1 (structure discovery), \texttt{E} at position 2 returns mismatch (no \texttt{x} at \texttt{Z}). This mismatch is cached.
+
+In Phase 2 (recovery enabled), the parser re-evaluates from the root. When it reaches position 2, recovery could skip \texttt{Z} and succeed. But if the Phase 1 mismatch is still cached and blindly reused, Phase 2 incorrectly reports failure.
+
+Without phase isolation, the parser exhibits non-deterministic behavior depending on cache state---a debugging nightmare. The constraint ensures determinism: Phase 1 always produces the same result (the ``clean'' parse), and Phase 2 always produces the same result (the ``recovered'' parse).
+
+Implementation options include: (1) clearing the cache between phases (simple but wasteful), (2) tagging entries with phase and validating on lookup (our approach), or (3) maintaining separate caches (higher memory cost). Option (2) achieves correctness with minimal overhead.
 
 \begin{constraint}[Boundary Preservation]
 \label{constraint:boundaries}
 Recovery at grammar level $L$ must not consume input belonging to level $L+1$. When parsing $Seq([A, B, C])$, recovery for $A$ must not skip past the beginning of $B$'s expected position.
 \end{constraint}
 
+\textbf{Justification.} Consider the grammar \texttt{S <- Items "end"} where \texttt{Items <- "x"+}. When parsing \texttt{"xxZend"}, the \texttt{Items} repetition encounters error \texttt{Z}.
+
+Without boundary preservation, recovery might skip \texttt{"Zend"} looking for more \texttt{x}'s, consuming the delimiter \texttt{"end"}. The outer Seq then fails because \texttt{"end"} is missing. The user sees a confusing error: ``expected 'end' at EOF'' rather than the intuitive ``unexpected 'Z' in items''.
+
+With boundary preservation, \texttt{Items} receives \texttt{"end"} as its bound. Recovery checks \texttt{canMatchNonzeroAt("end", pos)} before each skip. When it reaches position 3, the bound matches, so recovery stops. The error is correctly localized to \texttt{Z}, and \texttt{"end"} parses successfully.
+
+This constraint requires explicit bound propagation through the grammar. Each clause must receive and respect bounds from its parent, passing appropriate bounds to its children.
+
 \begin{constraint}[Non-Cascading Errors]
+\label{constraint:non_cascading}
 Each error has a bounded \emph{affected region}. Errors must not propagate globally:
 \begin{equation}
 \forall error~e: \quad e.affectedRegion \subseteq [e.pos, e.pos + e.len]
 \end{equation}
 \end{constraint}
 
+\textbf{Justification.} Consider a large source file with one typo on line 50. Without this constraint, the error could cascade: the typo causes a parse failure, which causes the enclosing block to fail, which causes the function to fail, eventually marking the entire file as unparseable.
+
+For IDE use cases, cascading errors are catastrophic. Syntax highlighting disappears for the entire file. Code folding breaks. Symbol extraction fails. The user experience degrades from ``one error on line 50'' to ``your entire file is broken.''
+
+The constraint requires \emph{error containment}: recovery must localize errors to the smallest region that semantically makes sense. A typo in an expression should affect only that expression, not its enclosing statement, block, or file.
+
+Implementation requires recovery at multiple grammar levels. When a low-level recovery fails, it returns mismatch to its parent, which attempts its own recovery. This hierarchical recovery ensures errors are caught at the appropriate granularity.
+
 \begin{constraint}[LR-Recovery Separation]
 \label{constraint:lr_recovery}
 During left-recursive seed phase (when a cycle is detected), recovery operations must be blocked. The seed mismatch is a control signal for fixed-point iteration, not a parse error.
 \end{constraint}
 
+\textbf{Justification.} Consider the left-recursive grammar \texttt{E <- E "+" T / T}. When parsing \texttt{"1+2"}, the parser:
+\begin{enumerate}
+\item Calls \texttt{E} at position 0
+\item Detects cycle, returns mismatch as seed
+\item Tries alternative \texttt{T}, matches \texttt{"1"}
+\item Re-expands \texttt{E} with seed length 1
+\item Matches \texttt{"1+2"} via first alternative
+\end{enumerate}
+
+The seed mismatch in step 2 is not an error---it's a control signal initiating fixed-point iteration. Without this constraint, recovery might interpret the seed mismatch as an error and skip input, corrupting the LR expansion.
+
+The \texttt{isFromLRContext} flag distinguishes seed mismatches from genuine errors. Recovery checks this flag: if true, the mismatch is propagated without recovery attempts. This ensures LR expansion completes correctly before any recovery is considered.
+
+This constraint interacts with Phase Isolation: LR expansion occurs in Phase 1 (no recovery), and the flag ensures Phase 2 recovery doesn't interfere with LR results marked as ``from LR context.''
+
 \begin{constraint}[Visibility]
 \label{constraint:visibility}
-Recovery may skip visible input characters (marking them as errors) or delete grammar elements at EOF (accepting incomplete input), but may not insert grammar elements mid-parse, which would reorganize visible structure with invisible insertions:
+Recovery may skip visible input characters (marking them as errors) or delete grammar elements at EOF (accepting incomplete input), but may not insert grammar elements mid-parse:
 \begin{equation}
 \forall edit \in Recovery: \quad (edit = InputSkip) \lor (edit = GrammarDelete \land pos = EOF)
 \end{equation}
 \end{constraint}
+
+\textbf{Justification.} Consider what recovery operations are possible:
+\begin{enumerate}
+\item \textbf{Input Skip}: Mark characters as errors, continue parsing. The user sees exactly which characters were problematic.
+\item \textbf{Grammar Delete (at EOF)}: Accept incomplete input. The user sees ``unexpected EOF, expected X.''
+\item \textbf{Grammar Insert (mid-parse)}: Pretend missing tokens exist. The user sees valid structure that doesn't correspond to their input.
+\end{enumerate}
+
+Option 3 is problematic: if the parser inserts an imaginary \texttt{";"}, the parse tree shows a semicolon that isn't in the source. IDE features like ``go to definition'' or ``find references'' would operate on phantom structure. Error messages would reference non-existent tokens.
+
+The constraint restricts recovery to operations with visible effects: skipped characters are explicitly marked as \texttt{SyntaxError} nodes, and grammar deletions only occur at EOF where the ``missing'' content is clearly absent. This ensures the parse tree is a faithful representation of the input, annotated with explicit error regions.
 
 \begin{constraint}[Parse Tree Spanning Invariant]
 \label{constraint:spanning}
@@ -676,8 +791,67 @@ Every parse result must completely span the input from position 0 to the end:
 \begin{equation}
 \forall result: \quad result.len = |input|
 \end{equation}
-Total parsing failures return a \texttt{SyntaxError} node covering all input. Partial grammar matches are wrapped with a trailing \texttt{SyntaxError} node capturing unconsumed input. This invariant ensures all parse trees are structurally complete and can be processed uniformly without special case handling for unconsumed input.
 \end{constraint}
+
+\textbf{Justification.} Consider consuming parse results in an IDE. Without this constraint, a parse of \texttt{"x+y garbage"} might return a tree covering only \texttt{"x+y"} (length 3), leaving \texttt{" garbage"} unaccounted for.
+
+Downstream consumers must then handle two cases: (1) tree covers all input, (2) tree covers partial input with implicit trailing content. This bifurcation propagates through every consumer: syntax highlighters, error reporters, code formatters, and refactoring tools must all handle the partial case.
+
+With the spanning invariant, there is exactly one case: the tree always covers all input. Unconsumed input is wrapped in a trailing \texttt{SyntaxError} node, making it explicit. Consumers can uniformly traverse the tree knowing it accounts for every character.
+
+Total parse failures also satisfy this invariant: a \texttt{SyntaxError} node covering positions $[0, |input|)$ is returned. This means ``parse failed completely'' and ``parse succeeded with errors'' have the same structural representation, differing only in node types.
+
+\subsubsection{Recovery Behavior Constraints}
+
+The following three constraints emerged from systematic testing of error recovery behavior. Each addresses a specific failure mode discovered when recovery mechanisms interact with grammar structure.
+
+\begin{constraint}[Transparent Rule Boundary Skipping]
+\label{constraint:transparent_skip}
+When determining the effective bound for a clause within a sequence, transparent rules (those marked with \texttt{\textasciitilde{}} that produce no AST nodes) must be skipped. The effective bound is the first non-transparent sibling:
+\begin{equation}
+effectiveBound(i) = \min\{j > i : \neg isTransparent(sibling_j)\} \cup \{parentBound\}
+\end{equation}
+\end{constraint}
+
+\textbf{Justification.} Consider the grammar \texttt{S <- "[" WS Items WS "]"} where \texttt{WS} is transparent (matches optional whitespace) and \texttt{Items <- "x"*}. When parsing \texttt{"[xZx]"} (with error \texttt{Z}), the \texttt{Items} repetition needs a bound to prevent consuming the closing bracket.
+
+Without this constraint, the immediate sibling \texttt{WS} becomes the bound. Since \texttt{WS} matches zero characters at any position (including at \texttt{Z}), the bound check \texttt{canMatchNonzeroAt(WS, pos)} always fails, providing no useful stopping signal. The repetition's recovery scan may then consume the \texttt{]}, causing the outer sequence to fail.
+
+With this constraint, transparent siblings are skipped and \texttt{"]"} becomes the effective bound. The bound check \texttt{canMatchNonzeroAt("]", pos)} correctly identifies when to stop, preserving the delimiter for the parent sequence.
+
+This constraint interacts with Constraint~\ref{constraint:boundaries} (Boundary Preservation): both ensure recovery respects grammatical structure, but this constraint specifically handles the case where intervening transparent rules would otherwise obscure structural boundaries.
+
+\begin{constraint}[Character-Level Terminal Recovery Suppression]
+\label{constraint:terminal_recovery}
+Repetitions of character-level terminals (\texttt{CharSet}, \texttt{Char}, \texttt{AnyChar}) must not perform internal recovery. When a character terminal repetition encounters a mismatch, it should return what it has matched and delegate error handling to the parent sequence:
+\begin{equation}
+\forall rep \in Repetition: \quad isCharTerminal(rep.subClause) \Rightarrow rep.recovery = \emptyset
+\end{equation}
+\end{constraint}
+
+\textbf{Justification.} Consider a whitespace rule \texttt{WS <- [ ]*} (repetition of space characters) within \texttt{S <- "[" WS Items WS "]"}. When parsing \texttt{"[ x ]"}, the first \texttt{WS} should match the space, then \texttt{Items} should match \texttt{x}.
+
+Without this constraint, if \texttt{WS} encounters a non-space character, its recovery mechanism would attempt to skip over it to find more spaces. This causes \texttt{WS} to consume content that belongs to \texttt{Items} or even structural delimiters like \texttt{]}.
+
+The key insight is that character-level repetitions lack structural context. A repetition of \texttt{[a-z]+} cannot distinguish between ``this non-letter is an error within my domain'' versus ``this non-letter marks the boundary of my domain.'' Only the parent sequence, which knows the sibling structure, can make this determination correctly.
+
+By suppressing recovery at the character level, errors bubble up to the sequence level where Constraint~\ref{constraint:boundaries} can be applied with full knowledge of sibling bounds. This division of responsibility---character repetitions handle matching, sequences handle recovery---produces more intuitive error localization.
+
+\begin{constraint}[Valid Match Requirement for Trailing Recovery]
+\label{constraint:valid_match}
+Repetition recovery may only skip trailing content (content between the last match attempt and the bound or EOF) if the repetition has accumulated at least one valid (non-error) match:
+\begin{equation}
+trailingSkip \Rightarrow \exists c \in children: \neg isSyntaxError(c)
+\end{equation}
+\end{constraint}
+
+\textbf{Justification.} Consider \texttt{S <- Items "!"} where \texttt{Items <- "x"+} (one or more). When parsing \texttt{"Z!"}, the \texttt{Items} repetition fails to match any \texttt{x}.
+
+Without this constraint, recovery could skip \texttt{Z} as trailing error content, causing \texttt{Items} to ``succeed'' with only a \texttt{SyntaxError} child and zero valid matches. This violates the semantic meaning of \texttt{+} (one or more): the operator requires at least one successful match, not merely the presence of child nodes.
+
+With this constraint, trailing skip is only permitted when \texttt{hasValidMatch} is true (at least one non-error child exists). For \texttt{OneOrMore}, this ensures the operator fails cleanly when no valid matches exist, allowing the parent to attempt alternative recovery strategies. For \texttt{ZeroOrMore}, the constraint is naturally satisfied since zero valid matches is semantically acceptable.
+
+This constraint preserves the semantic distinction between \texttt{+} and \texttt{*} under error recovery: \texttt{+} requires substantive content, while \texttt{*} accepts vacuous success. Without this distinction, error recovery would conflate two fundamentally different grammatical intentions.
 
 \subsection{Mathematical Insights}
 
@@ -904,19 +1078,42 @@ By induction on $|S|$, Phase 2 successfully applies all skips in $S$ and produce
 \subsection{Proof of Correctness}
 
 \begin{theorem}[Correctness]
-The algorithm satisfies all constraints $C1$--$C10$ and produces sound parse trees.
+The algorithm satisfies all constraints and produces sound parse trees.
 \end{theorem}
 
 \begin{proof}[Proof sketch]
 We verify each constraint:
 
-\textbf{Completeness (C6):} \texttt{isComplete} computed by Boolean algebra (Theorem 2). Seq, First, Repetition implement $\bigwedge, id, \bigwedge$ respectively. Correct by construction.
+\textbf{Linearity Constraints:}
+\begin{itemize}
+\item \textbf{Single-Pass (C1):} Parser processes input left-to-right. Memoization prevents re-evaluation at any position.
+\item \textbf{Memoization Validity (C2):} \texttt{cachedInRecoveryPhase} flag tags entries. Lookup validates phase match before reuse.
+\item \textbf{Bounded Recovery (C3):} Each recovery consumes $\geq 1$ character (skip or match). At most $n$ activations possible.
+\end{itemize}
 
-\textbf{Phase Isolation (C7):} \texttt{cachedInRecoveryPhase} tracks phase. Cache validity checks \texttt{phaseMatches}. Complete results are phase-independent. Correct by Lemma~\ref{lemma:boolean_phase}.
+\textbf{Composability Constraints:}
+\begin{itemize}
+\item \textbf{Clause Independence (C4):} Context passed explicitly via \texttt{bound} parameter. No implicit state inheritance.
+\item \textbf{Ref Transparency (C5):} Ref clauses pass through all parameters, calling target rule directly. Satisfies Constraint~\ref{constraint:ref_transparency}.
+\end{itemize}
 
-\textbf{Ref Transparency (C5):} Ref clauses bypass memo table, calling through to target rule. Behavior identical to inline expansion, satisfying Constraint~\ref{constraint:ref_transparency}.
+\textbf{Correctness Constraints:}
+\begin{itemize}
+\item \textbf{Completeness (C6):} \texttt{isComplete} computed by Boolean algebra (Theorem 2). Seq, First, Repetition implement $\bigwedge, id, \bigwedge$ respectively.
+\item \textbf{Phase Isolation (C7):} Complete results cached without phase tag (phase-independent by Lemma~\ref{lemma:boolean_phase}). Incomplete results tagged and validated.
+\item \textbf{Boundary Preservation (C8):} \texttt{bound} parameter propagated through grammar. \texttt{canMatchNonzeroAt} checks prevent overrun.
+\item \textbf{Non-Cascading (C9):} Hierarchical recovery catches errors at appropriate granularity. Failed low-level recovery propagates to parent.
+\item \textbf{LR-Recovery Separation (C10):} \texttt{isFromLRContext} flag blocks recovery on seed mismatches. Satisfies Constraint~\ref{constraint:lr_recovery}.
+\item \textbf{Visibility (C11):} Recovery produces only InputSkip (SyntaxError nodes) or GrammarDelete at EOF. No mid-parse insertions.
+\item \textbf{Spanning (C12):} Root wrapper adds trailing SyntaxError for unconsumed input. Total failures wrapped as single SyntaxError.
+\end{itemize}
 
-\textbf{Remaining constraints (C1--C4, C8--C11):} Similar direct verification. Each constraint maps to a specific algorithm component. Proof by construction.
+\textbf{Recovery Behavior Constraints:}
+\begin{itemize}
+\item \textbf{Transparent Rule Skipping (C13):} Seq's \texttt{findMeaningfulBound} iterates past transparent rules to find structural delimiters.
+\item \textbf{Character Terminal Recovery (C14):} Repetition's \texttt{recover} checks \texttt{isCharTerminal(subClause)}, returning null to delegate to parent Seq.
+\item \textbf{Valid Match Requirement (C15):} \texttt{hasValidMatch} tracks presence of non-error children. Trailing skip gated on this flag.
+\end{itemize}
 
 \textbf{Soundness:} Parse tree nodes correspond to successfully parsed input or explicit error annotations (SyntaxError nodes). No invisible structure modification occurs; Visibility Constraint~\ref{constraint:visibility} is enforced.
 \end{proof}
@@ -993,11 +1190,11 @@ Combined: $O(n \cdot |G|) + O(n) = O(n \cdot |G|)$.
 
 \subsection{Constraint Satisfaction Methodology}
 
-Given the difficulty of simultaneously satisfying all twelve constraints in the context of the four axioms, we used dueling ``deep thinking'' modes of two leading LLMs to try to search for a single algorithm that satisfies all requirements.
+Given the difficulty of simultaneously satisfying all fifteen constraints in the context of the four axioms, we used dueling ``deep thinking'' modes of two leading LLMs to try to search for a single algorithm that satisfies all requirements.
 
 These LLM models were tasked with proving whether or not the algorithm was optimal in all important metrics: completeness; correctness; compactness; elegance; linearity with respect to the input length, regardless of the grammar complexity or the number of errors encountered; and intuitiveness of behavior, relative to some model of how a user would reasonably expect the parser to behave in a range of situations.
 
-An exhaustive search was also performed for corner cases that might violate the constraints, or that might pit constraints against each other via mutual interaction. This resulted in the creation of a large unit test test suite, consisting of 631 unit tests, that were used to carefully and exhaustively detect progress and regressions, and to generate new ideas that informed iterative algorithm improvement.
+An exhaustive search was also performed for corner cases that might violate the constraints, or that might pit constraints against each other via mutual interaction. This resulted in the creation of a large unit test suite, consisting of 716 unit tests, that were used to carefully and exhaustively detect progress and regressions, and to generate new ideas that informed iterative algorithm improvement.
 
 This intensive search converged on a single solution to all of the presented constraints, and was able to demonstrate with some certainty that there is not a fundamentally simpler solution to PEG error recovery than what was discovered, given the rigor of the constraints.
 
@@ -1010,19 +1207,21 @@ The error recovery algorithm is too long to include in this paper, but full impl
 
 \subsubsection{Test Suite}
 
-The implementation is validated through a comprehensive test suite of 631 tests covering:
+The implementation is validated through a comprehensive test suite of 716 tests covering:
 
 \textbf{Left-recursion handling:} Direct, indirect, and mutual left recursion; hidden left recursion through sequences and alternatives; left recursion through multiple indirection levels; cache invalidation during LR expansion; interaction between LR and recovery; reference transparency with LR clauses.
 
-\textbf{Error recovery mechanisms:} Character skipping and deletion; recovery at sequence, alternative, and repetition boundaries; bound propagation through nested clauses; error localization and visibility constraints; recovery with partial matches; interaction between recovery and all operator types.
+\textbf{Error recovery mechanisms:} Character skipping and deletion; recovery at sequence, alternative, and repetition boundaries; bound propagation through nested clauses and transparent rules; error localization and visibility constraints; recovery with partial matches; interaction between recovery and all operator types; character-level terminal recovery suppression; valid match requirements for trailing recovery.
 
 \textbf{Operator correctness:} Sequence composition with complete/incomplete results; first-match (ordered choice) selection with backtracking; repetition (one-or-more, zero-or-more) with recovery; optional clauses; edge cases including empty matches, boundary conditions, and nested structures.
 
 \textbf{Performance and linearity:} Linear time complexity $O(n \cdot |G|)$ verification on inputs up to 100,000 characters; stress tests with deeply nested structures and complex grammars; performance edge cases including pathological backtracking scenarios that would cause exponential behavior in non-packrat parsers.
 
-\textbf{Constraint verification:} Tests explicitly validate all design constraints including phase isolation, monotonic consumption, completeness propagation, LR-recovery separation, parse tree spanning, and visibility.
+\textbf{Constraint verification:} Tests explicitly validate all design constraints including phase isolation, monotonic consumption, completeness propagation, LR-recovery separation, parse tree spanning, visibility, transparent rule boundary skipping, character-level terminal recovery suppression, and valid match requirements.
 
 \textbf{Parse tree spanning invariant:} 20 comprehensive tests verify that all parse results completely span the input from position 0 to end, with total failures returning \texttt{SyntaxError} nodes covering all input, and partial matches wrapped with trailing \texttt{SyntaxError} nodes.
+
+\textbf{Bound propagation:} 32 tests verify correct bound propagation through arbitrary nesting levels, including: repetitions stopping at sibling boundaries; transparent rule skipping when finding meaningful bounds; nested arrays and objects with whitespace; ref dereferencing for bound determination; recovery stopping at structural delimiters; and character-level terminal recovery suppression.
 
 \textbf{Complex interactions:} Combined scenarios testing multiple features simultaneously (e.g., left recursion with error recovery, nested repetitions with boundaries, recovery within LR contexts); unicode handling; real-world parsing patterns.
 
@@ -1038,7 +1237,7 @@ We have presented the squirrel parser, a packrat parser that directly handles le
 
 \textbf{Theoretical contributions.} Four deep insights emerged from the derivations: (1) LR expansion implements the Y combinator in imperative form, computing the least fixed point via Kleene iteration; (2) the \texttt{isComplete} flag forms a compositional Boolean algebra, enabling modular reasoning about parser correctness; (3) two-phase parsing is minimal due to existential/universal quantifier separation; (4) a boolean phase flag suffices because only two phases exist.
 
-\textbf{Empirical validation.} The implementation passes over 500 comprehensive tests covering all left-recursion types, error recovery scenarios, operator correctness, performance edge cases, constraint verification, and complex feature interactions. Tests confirm linear performance up to 100,000-character inputs and validate correct handling of pathological cases.
+\textbf{Empirical validation.} The implementation passes over 700 comprehensive tests covering all left-recursion types, error recovery scenarios, operator correctness, performance edge cases, constraint verification, and complex feature interactions. Tests confirm linear performance up to 100,000-character inputs and validate correct handling of pathological cases.
 
 \textbf{Broader implications.} This work demonstrates that neither left recursion nor error recovery fundamentally increases parsing complexity. Both challenges yield to precise algorithmic design grounded in mathematical necessity. The approach generalizes: derive constraints from axioms, construct minimal solutions, prove necessity by contradiction. The resulting algorithms achieve theoretical optimality (every mechanism is necessary, complexity matches the packrat lower bound) while remaining simple enough for straightforward implementation.
 

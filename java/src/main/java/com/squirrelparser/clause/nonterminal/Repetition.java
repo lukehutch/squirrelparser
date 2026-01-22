@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.squirrelparser.clause.Clause;
+import com.squirrelparser.clause.terminal.AnyChar;
+import com.squirrelparser.clause.terminal.Char;
+import com.squirrelparser.clause.terminal.CharSet;
 import com.squirrelparser.parser.Match;
 import com.squirrelparser.parser.MatchResult;
 import com.squirrelparser.parser.Parser;
@@ -28,7 +31,6 @@ public sealed class Repetition extends HasOneSubClause permits OneOrMore, ZeroOr
         List<MatchResult> children = new ArrayList<>();
         int curr = pos;
         boolean incomplete = false;
-        boolean hasRecovered = false;
 
         while (curr <= parser.input().length()) {
             if (parser.inRecoveryPhase() && bound != null) {
@@ -44,13 +46,14 @@ public sealed class Repetition extends HasOneSubClause permits OneOrMore, ZeroOr
                 }
 
                 if (parser.inRecoveryPhase()) {
-                    var recovery = recover(parser, curr, hasRecovered);
+                    // Only pass hasValidMatch=true if we have at least one non-error child.
+                    boolean hasValidMatch = children.stream().anyMatch(c -> !(c instanceof SyntaxError));
+                    var recovery = recover(parser, curr, hasValidMatch, bound);
                     if (recovery != null) {
                         ParserStats.recordRecovery();
                         int skip = recovery.skip;
                         MatchResult probe = recovery.probe;
                         children.add(new SyntaxError(curr, skip));
-                        hasRecovered = true;
                         if (probe != null) {
                             children.add(probe);
                             curr += skip + probe.len();
@@ -80,15 +83,57 @@ public sealed class Repetition extends HasOneSubClause permits OneOrMore, ZeroOr
 
     private record RepetitionRecovery(int skip, MatchResult probe) {}
 
-    private RepetitionRecovery recover(Parser parser, int curr, boolean hasRecovered) {
+    /**
+     * Attempt recovery within repetition.
+     *
+     * Key principle: Repetitions only do recovery for COMPLEX subClauses (Seq, First, Ref).
+     * For character-level terminals (CharSet, Char, AnyChar), the repetition should NOT
+     * try to extend itself by skipping over errors. Instead, return what we have and
+     * let the parent Seq handle errors with better structural context.
+     *
+     * @param hasValidMatch indicates if we've already matched at least one valid element.
+     * @param bound is the next sibling clause that must not be skipped over.
+     */
+    private RepetitionRecovery recover(Parser parser, int curr, boolean hasValidMatch, Clause bound) {
+        // For character-level terminals, don't do repetition recovery.
+        if (subClause instanceof CharSet || subClause instanceof Char || subClause instanceof AnyChar) {
+            return null;
+        }
+
+        // Scan for more matches
         for (int skip = 1; skip < parser.input().length() - curr + 1; skip++) {
-            MatchResult probe = parser.probe(subClause, curr + skip);
-            if (!probe.isMismatch()) {
+            int probePos = curr + skip;
+
+            // Don't skip past the bound - let parent Seq handle recovery there
+            if (bound != null && parser.canMatchNonzeroAt(bound, probePos)) {
+                break;
+            }
+
+            // Use match to allow internal recovery within complex subClauses.
+            MatchResult probe = parser.match(subClause, probePos);
+            if (!probe.isMismatch() && probe.len() > 0) {
                 return new RepetitionRecovery(skip, probe);
             }
         }
-        if (hasRecovered && curr < parser.input().length()) {
+
+        // No more matches found.
+        // Only skip remaining as error if we already have valid matches
+        // (otherwise OneOrMore would incorrectly succeed with just errors).
+        // But don't skip past the bound!
+        if (hasValidMatch && curr < parser.input().length()) {
             int skipToEnd = parser.input().length() - curr;
+            // Check if bound matches anywhere before end of input
+            if (bound != null) {
+                for (int skip = 1; skip <= skipToEnd; skip++) {
+                    if (parser.canMatchNonzeroAt(bound, curr + skip)) {
+                        // Bound matches at this position - only skip up to here
+                        if (skip > 0) {
+                            return new RepetitionRecovery(skip, null);
+                        }
+                        return null; // Can't skip anything without hitting bound
+                    }
+                }
+            }
             return new RepetitionRecovery(skipToEnd, null);
         }
         return null;

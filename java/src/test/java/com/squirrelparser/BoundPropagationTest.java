@@ -128,4 +128,285 @@ class BoundPropagationTest {
         assertTrue(result.ok(), "should succeed (bound through complex nesting)");
         assertEquals(0, result.errorCount(), "should have 0 errors");
     }
+
+    // ===========================================================================
+    // Additional tests for transparent rule skipping and repetition bounds
+    // ===========================================================================
+
+    @Test
+    void bpr01_repetitionStopsAtSiblingTerminal() {
+        // OneOrMore should stop when sibling terminal can match
+        var result = testParse("S <- \"x\"+ \"Y\" ;", "xxY");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void bpr02_repetitionStopsAtSiblingAfterError() {
+        // After recovering from error, repetition should still respect sibling
+        var result = testParse("S <- \"x\"+ \"Y\" ;", "xZxY");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(result.skippedStrings().contains("Z"), "should skip Z");
+        assertTrue(!result.skippedStrings().contains("Y"), "should NOT skip Y");
+    }
+
+    @Test
+    void bpr03_repetitionStopsAtOptionalSibling() {
+        // Repetition should stop when optional sibling can match
+        var result = testParse("S <- \"x\"+ \"!\"? ;", "xx!");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void bpr04_repetitionWithErrorStopsAtOptionalSibling() {
+        // After error recovery, repetition should stop at optional sibling
+        var result = testParse("S <- \"x\"+ \"!\"? ;", "xZx!");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(!result.skippedStrings().contains("!"), "should NOT skip !");
+    }
+
+    @Test
+    void wbs01_bracketBoundThroughWhitespace() {
+        // The "]" should be the effective bound, not WS
+        String grammar = """
+            S <- "[" WS Items WS "]" ;
+            Items <- Item* ;
+            Item <- "x" ;
+            ~WS <- [ ]* ;
+            """;
+        var result = testParse(grammar, "[xx]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void wbs03_bracketBoundWithErrorBeforeClose() {
+        // Error recovery should stop at "]", not consume it
+        String grammar = """
+            S <- "[" WS Items WS "]" ;
+            Items <- Item* ;
+            Item <- "x" ;
+            ~WS <- [ ]* ;
+            """;
+        var result = testParse(grammar, "[xZx]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void als01_simpleArrayValid() {
+        String grammar = """
+            S <- "[" (V ("," V)*)? "]" ;
+            V <- [0-9]+ ;
+            """;
+        var result = testParse(grammar, "[1,2,3]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void als03_arrayWithErrorInMiddle() {
+        // Error between values should be recovered, ] should still match
+        String grammar = """
+            S <- "[" WS (V (WS "," WS V)*)? WS "]" ;
+            V <- [0-9]+ ;
+            ~WS <- [ ]* ;
+            """;
+        var result = testParse(grammar, "[1,2X,3]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (X)");
+        assertTrue(result.skippedStrings().contains("X"), "should skip X");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void als06_nestedArrays() {
+        // Nested arrays - inner ] should not be consumed by outer repetition
+        String grammar = """
+            S <- "[" WS (V (WS "," WS V)*)? WS "]" ;
+            V <- S / [0-9]+ ;
+            ~WS <- [ ]* ;
+            """;
+        var result = testParse(grammar, "[[1,2],3]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void rdr01_refToWhitespaceSkipped() {
+        // Transparent WS should be skipped, non-transparent RBRACKET should be bound
+        String grammar = """
+            S <- "[" WS Items WS RBRACKET ;
+            Items <- Item* ;
+            Item <- "x" ;
+            ~WS <- [ ]* ;
+            RBRACKET <- "]" ;
+            """;
+        var result = testParse(grammar, "[xZx]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void rsb01_noTrailingSkipPastDelimiter() {
+        // Trailing garbage recovery should stop at delimiter
+        String grammar = """
+            S <- "[" Items "]" ;
+            Items <- "x"+ ;
+            """;
+        var result = testParse(grammar, "[xZ]");
+        assertTrue(result.ok(), "should succeed");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void ctr01_charsetRepetitionNoRecovery() {
+        // CharSet repetition should NOT try to skip over non-matching content
+        String grammar = """
+            S <- [a-z]+ "!" ;
+            """;
+        var result = testParse(grammar, "abXcd!");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error");
+    }
+
+    @Test
+    void ctr03_complexSubclauseDoesRecovery() {
+        // Repetition of complex clauses (Seq) SHOULD do recovery
+        String grammar = """
+            S <- ("ab")+ "!" ;
+            """;
+        var result = testParse(grammar, "abXab!");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (X)");
+        assertTrue(!result.skippedStrings().contains("!"), "should NOT skip !");
+    }
+
+    // ===========================================================================
+    // Additional tests to match Dart test coverage
+    // ===========================================================================
+
+    @Test
+    void bpr05_nestedRepetitionRespectsOuterBound() {
+        String grammar = """
+            S <- "[" Items "]" ;
+            Items <- Item* ;
+            Item <- "x" ;
+            """;
+        var result = testParse(grammar, "[xx]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void bpr06_nestedRepetitionWithErrorRespectsBound() {
+        String grammar = """
+            S <- "[" Items "]" ;
+            Items <- Item* ;
+            Item <- "x" ;
+            """;
+        var result = testParse(grammar, "[xZx]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void wbs02_bracketBoundWithActualWhitespace() {
+        String grammar = """
+            S <- "[" WS Items WS "]" ;
+            Items <- (WS Item)* ;
+            Item <- "x" ;
+            ~WS <- [ ]* ;
+            """;
+        var result = testParse(grammar, "[ x x ]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void wbs04_braceBoundThroughWhitespace() {
+        String grammar = """
+            S <- "{" WS Items WS "}" ;
+            Items <- Item* ;
+            Item <- "x" ;
+            ~WS <- [ ]* ;
+            """;
+        var result = testParse(grammar, "{xZx}");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(!result.skippedStrings().contains("}"), "should NOT skip }");
+    }
+
+    @Test
+    void wbs05_multipleWhitespaceLayers() {
+        String grammar = """
+            S <- "[" WS1 WS2 Items WS1 WS2 "]" ;
+            Items <- Item* ;
+            Item <- "x" ;
+            ~WS1 <- [ ]* ;
+            ~WS2 <- [\t]* ;
+            """;
+        var result = testParse(grammar, "[xZx]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void als02_arrayWithWhitespaceValid() {
+        String grammar = """
+            S <- "[" WS (V (WS "," WS V)*)? WS "]" ;
+            V <- [0-9]+ ;
+            ~WS <- [ ]* ;
+            """;
+        var result = testParse(grammar, "[ 1 , 2 , 3 ]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(0, result.errorCount(), "should have no errors");
+    }
+
+    @Test
+    void rdr02_multipleRefsWhitespaceAllSkipped() {
+        String grammar = """
+            S <- "[" SP TAB Items SP TAB RBRACKET ;
+            Items <- Item* ;
+            Item <- "x" ;
+            ~SP <- [ ]* ;
+            ~TAB <- [\t]* ;
+            RBRACKET <- "]" ;
+            """;
+        var result = testParse(grammar, "[xZx]");
+        assertTrue(result.ok(), "should succeed");
+        assertEquals(1, result.errorCount(), "should have 1 error (Z)");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void rsb02_recoveryScanStopsAtDelimiter() {
+        String grammar = """
+            S <- "[" Items "]" ;
+            Items <- ("ab")+ ;
+            """;
+        var result = testParse(grammar, "[abZ]");
+        assertTrue(result.ok(), "should succeed");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
+
+    @Test
+    void rsb03_multipleDelimitersNested() {
+        String grammar = """
+            S <- "[" Inner "]" ;
+            Inner <- "{" Items "}" ;
+            Items <- "x"+ ;
+            """;
+        var result = testParse(grammar, "[{xZ}]");
+        assertTrue(result.ok(), "should succeed");
+        assertTrue(!result.skippedStrings().contains("}"), "should NOT skip }");
+        assertTrue(!result.skippedStrings().contains("]"), "should NOT skip ]");
+    }
 }

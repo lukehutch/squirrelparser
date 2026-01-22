@@ -39,6 +39,25 @@ abstract class HasMultipleSubClauses extends Clause {
 class Seq extends HasMultipleSubClauses {
   const Seq(super.subClauses);
 
+  /// Find the first meaningful bound among remaining siblings.
+  /// Skips over transparent rules (marked with ~) since they don't produce AST nodes
+  /// and shouldn't be used as structural boundaries.
+  /// [parser] is needed to check if rules are transparent.
+  Clause? _findMeaningfulBound(int startIdx, Parser parser) {
+    for (int j = startIdx; j < subClauses.length; j++) {
+      final clause = subClauses[j];
+
+      // Check if this clause is a Ref to a transparent rule
+      if (clause is Ref && parser.transparentRules.contains(clause.ruleName)) {
+        continue;
+      }
+
+      // Found a non-transparent clause - use as bound
+      return clause;
+    }
+    return null;
+  }
+
   @override
   MatchResult match(Parser parser, int pos, {Clause? bound}) {
     final children = <MatchResult>[];
@@ -47,8 +66,9 @@ class Seq extends HasMultipleSubClauses {
 
     while (i < subClauses.length) {
       final clause = subClauses[i];
-      final next = (i + 1 < subClauses.length) ? subClauses[i + 1] : null;
-      final effectiveBound = (parser.inRecoveryPhase && next != null) ? next : bound;
+      // Find meaningful bound by looking past nullable clauses like whitespace
+      final siblingBound = _findMeaningfulBound(i + 1, parser);
+      final effectiveBound = (parser.inRecoveryPhase && siblingBound != null) ? siblingBound : bound;
       final result = parser.match(clause, curr, bound: effectiveBound);
 
       if (result.isMismatch) {
@@ -214,7 +234,6 @@ class Repetition extends HasOneSubClause {
     final children = <MatchResult>[];
     int curr = pos;
     bool incomplete = false;
-    bool hasRecovered = false;
 
     while (curr <= parser.input.length) {
       if (parser.inRecoveryPhase && bound != null) {
@@ -230,13 +249,14 @@ class Repetition extends HasOneSubClause {
         }
 
         if (parser.inRecoveryPhase) {
-          final recovery = _recover(parser, curr, hasRecovered);
+          // Only pass hasValidMatch=true if we have at least one non-error child.
+          final hasValidMatch = children.any((c) => c is! SyntaxError);
+          final recovery = _recover(parser, curr, hasValidMatch, bound);
           if (recovery != null) {
             parserStats?.recordRecovery();
             final (skip, probe) = recovery;
             // Add a syntax error for the skipped input
             children.add(SyntaxError(pos: curr, len: skip));
-            hasRecovered = true;
             if (probe != null) {
               children.add(probe);
               curr += skip + probe.len;
@@ -264,19 +284,60 @@ class Repetition extends HasOneSubClause {
   }
 
   /// Attempt recovery within repetition.
-  /// If [hasRecovered] is true, we've already recovered from errors, so we'll
-  /// try to skip to end of input even if no recovery point is found.
-  (int, MatchResult?)? _recover(Parser parser, int curr, bool hasRecovered) {
+  ///
+  /// Key principle: Repetitions only do recovery for COMPLEX subClauses (Seq, First, Ref).
+  /// For character-level terminals (CharSet, Char, AnyChar), the repetition should NOT
+  /// try to extend itself by skipping over errors. Instead, return what we have and
+  /// let the parent Seq handle errors with better structural context.
+  ///
+  /// This prevents whitespace repetitions (ZeroOrMore(CharSet)) from skipping over
+  /// content that should be handled as structural errors by the parent.
+  ///
+  /// [hasValidMatch] indicates if we've already matched at least one valid element.
+  /// Only skip trailing garbage if we have valid matches (otherwise OneOrMore fails).
+  /// [bound] is the next sibling clause that must not be skipped over.
+  (int, MatchResult?)? _recover(Parser parser, int curr, bool hasValidMatch, Clause? bound) {
+    // For character-level terminals (CharSet, Char, AnyChar), don't do repetition recovery.
+    // These are typically used for whitespace or single-character patterns where recovery
+    // doesn't make sense. Let the parent Seq handle errors with better structural context.
+    if (subClause is CharSet || subClause is Char || subClause is AnyChar) {
+      return null;
+    }
+
+    // Scan for more matches
     for (int skip = 1; skip < parser.input.length - curr + 1; skip++) {
-      final probe = parser.probe(subClause, curr + skip);
-      if (!probe.isMismatch) {
+      final probePos = curr + skip;
+
+      // Don't skip past the bound - let parent Seq handle recovery there
+      if (bound != null && parser.canMatchNonzeroAt(bound, probePos)) {
+        break;
+      }
+
+      // Use match to allow internal recovery within complex subClauses.
+      final probe = parser.match(subClause, probePos);
+      if (!probe.isMismatch && probe.len > 0) {
         return (skip, probe);
       }
     }
-    // If we've already recovered from previous errors and we're at or near
-    // end of input, try to skip to end of input as a recovery
-    if (hasRecovered && curr < parser.input.length) {
-      final skipToEnd = parser.input.length - curr;
+
+    // No more matches found.
+    // Only skip remaining as error if we already have valid matches
+    // (otherwise OneOrMore would incorrectly succeed with just errors).
+    // But don't skip past the bound!
+    if (hasValidMatch && curr < parser.input.length) {
+      int skipToEnd = parser.input.length - curr;
+      // Check if bound matches anywhere before end of input
+      if (bound != null) {
+        for (int skip = 1; skip <= skipToEnd; skip++) {
+          if (parser.canMatchNonzeroAt(bound, curr + skip)) {
+            // Bound matches at this position - only skip up to here
+            if (skip > 0) {
+              return (skip, null);
+            }
+            return null; // Can't skip anything without hitting bound
+          }
+        }
+      }
       return (skipToEnd, null);
     }
     return null;

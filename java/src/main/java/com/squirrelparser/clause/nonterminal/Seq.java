@@ -22,6 +22,26 @@ public final class Seq extends HasMultipleSubClauses {
         super(subClauses);
     }
 
+    /**
+     * Find the first meaningful bound among remaining siblings.
+     * Skips over transparent rules (marked with ~) since they don't produce AST nodes
+     * and shouldn't be used as structural boundaries.
+     */
+    private Clause findMeaningfulBound(int startIdx, Parser parser) {
+        for (int j = startIdx; j < subClauses.size(); j++) {
+            Clause clause = subClauses.get(j);
+
+            // Check if this clause is a Ref to a transparent rule
+            if (clause instanceof Ref ref && parser.transparentRules().contains(ref.ruleName())) {
+                continue;
+            }
+
+            // Found a non-transparent clause - use as bound
+            return clause;
+        }
+        return null;
+    }
+
     @Override
     public MatchResult match(Parser parser, int pos, Clause bound) {
         List<MatchResult> children = new ArrayList<>();
@@ -30,8 +50,9 @@ public final class Seq extends HasMultipleSubClauses {
 
         while (i < subClauses.size()) {
             Clause clause = subClauses.get(i);
-            Clause next = (i + 1 < subClauses.size()) ? subClauses.get(i + 1) : null;
-            Clause effectiveBound = (parser.inRecoveryPhase() && next != null) ? next : bound;
+            // Find meaningful bound by looking past transparent rules
+            Clause siblingBound = findMeaningfulBound(i + 1, parser);
+            Clause effectiveBound = (parser.inRecoveryPhase() && siblingBound != null) ? siblingBound : bound;
             MatchResult result = parser.match(clause, curr, effectiveBound);
 
             if (result.isMismatch()) {

@@ -133,10 +133,12 @@ class MetaGrammar {
     'CharClass': Seq([
       Str('['),
       Optional(Str('^')),
-      OneOrMore(First([
+      Optional(Str('-')), // Literal dash at start (not part of a range)
+      ZeroOrMore(First([
         Ref('CharRange'),
         Ref('CharClassChar'),
       ])),
+      Optional(Str('-')), // Literal dash at end (not part of a range)
       Str(']'),
     ]),
     'CharRange': Seq([
@@ -405,6 +407,9 @@ class MetaGrammar {
       } else if (child.label == 'CharClassChar') {
         final ch = _extractCharClassCharValue(child, input);
         ranges.add((ch.codeUnitAt(0), ch.codeUnitAt(0)));
+      } else if (child.label == _terminalLabel && child.getInputSpan(input) == '-') {
+        // Literal dash at start or end of character class
+        ranges.add(('-'.codeUnitAt(0), '-'.codeUnitAt(0)));
       }
     }
 

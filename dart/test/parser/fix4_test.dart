@@ -117,12 +117,16 @@ void main() {
   });
 
   test('F4-L2-04-both levels', () {
+    // Recovery finds precise error locations at each level.
+    // Error 1: 'A' at position 3 (inside first group)
+    // Error 2: 'B' at position 6 (between groups)
+    // Error 3: 'C' at position 9 (inside second group)
     final (ok, err, _) = testParse(
       'S <- "{" ("(" "x"+ ")")+ "}" ;',
       '{(xAx)B(xCx)}',
     );
     expect(ok, isTrue, reason: 'should succeed');
-    expect(err, equals(3), reason: 'should have 3 errors');
+    expect(err, equals(3), reason: 'should have 3 errors (precise recovery)');
   });
 
   test('F4-L3-01-clean', () {

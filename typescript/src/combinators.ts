@@ -1,7 +1,7 @@
 import { Clause } from './clause.js';
 import { Match, mismatch, SyntaxError, type MatchResult } from './matchResult.js';
 import type { Parser } from './parser.js';
-import { Str } from './terminals.js';
+import { Str, CharSet, Char, AnyChar } from './terminals.js';
 import { parserStats } from './parserStats.js';
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -61,6 +61,26 @@ export class Seq extends HasMultipleSubClauses {
     super(subClauses);
   }
 
+  /**
+   * Find the first meaningful bound among remaining siblings.
+   * Skips over transparent rules (marked with ~) since they don't produce AST nodes
+   * and shouldn't be used as structural boundaries.
+   */
+  private findMeaningfulBound(startIdx: number, parser: Parser): Clause | undefined {
+    for (let j = startIdx; j < this.subClauses.length; j++) {
+      const clause = this.subClauses[j];
+
+      // Check if this clause is a Ref to a transparent rule
+      if (clause instanceof Ref && parser.transparentRules.has(clause.ruleName)) {
+        continue;
+      }
+
+      // Found a non-transparent clause - use as bound
+      return clause;
+    }
+    return undefined;
+  }
+
   match(parser: Parser, pos: number, bound?: Clause): MatchResult {
     const children: MatchResult[] = [];
     let curr = pos;
@@ -68,8 +88,9 @@ export class Seq extends HasMultipleSubClauses {
 
     while (i < this.subClauses.length) {
       const clause = this.subClauses[i];
-      const next = i + 1 < this.subClauses.length ? this.subClauses[i + 1] : undefined;
-      const effectiveBound = parser.inRecoveryPhase && next !== undefined ? next : bound;
+      // Find meaningful bound by looking past transparent rules
+      const siblingBound = this.findMeaningfulBound(i + 1, parser);
+      const effectiveBound = parser.inRecoveryPhase && siblingBound !== undefined ? siblingBound : bound;
       const result = parser.match(clause, curr, effectiveBound);
 
       if (result.isMismatch) {
@@ -244,7 +265,6 @@ export class Repetition extends HasOneSubClause {
     const children: MatchResult[] = [];
     let curr = pos;
     let incomplete = false;
-    let hasRecovered = false;
 
     while (curr <= parser.input.length) {
       if (parser.inRecoveryPhase && bound !== undefined) {
@@ -260,12 +280,13 @@ export class Repetition extends HasOneSubClause {
         }
 
         if (parser.inRecoveryPhase) {
-          const recovery = this.recover(parser, curr, hasRecovered);
+          // Only pass hasValidMatch=true if we have at least one non-error child
+          const hasValidMatch = children.some((c) => !(c instanceof SyntaxError));
+          const recovery = this.recover(parser, curr, hasValidMatch, bound);
           if (recovery !== null) {
             parserStats?.recordRecovery();
             const { skip, probe } = recovery;
             children.push(new SyntaxError({ pos: curr, len: skip }));
-            hasRecovered = true;
             if (probe !== null) {
               children.push(probe);
               curr += skip + probe.len;
@@ -291,19 +312,62 @@ export class Repetition extends HasOneSubClause {
     return new Match(this, 0, 0, { subClauseMatches: children, isComplete: !incomplete && allComplete(children) });
   }
 
+  /**
+   * Attempt recovery within repetition.
+   *
+   * Key principle: Repetitions only do recovery for COMPLEX subClauses (Seq, First, Ref).
+   * For character-level terminals (CharSet, Char, AnyChar), the repetition should NOT
+   * try to extend itself by skipping over errors. Instead, return what we have and
+   * let the parent Seq handle errors with better structural context.
+   *
+   * @param hasValidMatch indicates if we've already matched at least one valid element.
+   * @param bound is the next sibling clause that must not be skipped over.
+   */
   private recover(
     parser: Parser,
     curr: number,
-    hasRecovered: boolean
+    hasValidMatch: boolean,
+    bound: Clause | undefined
   ): { skip: number; probe: MatchResult | null } | null {
+    // For character-level terminals, don't do repetition recovery
+    if (this.subClause instanceof CharSet || this.subClause instanceof Char || this.subClause instanceof AnyChar) {
+      return null;
+    }
+
+    // Scan for more matches
     for (let skip = 1; skip < parser.input.length - curr + 1; skip++) {
-      const probe = parser.probe(this.subClause, curr + skip);
-      if (!probe.isMismatch) {
+      const probePos = curr + skip;
+
+      // Don't skip past the bound - let parent Seq handle recovery there
+      if (bound !== undefined && parser.canMatchNonzeroAt(bound, probePos)) {
+        break;
+      }
+
+      // Use match to allow internal recovery within complex subClauses
+      const probe = parser.match(this.subClause, probePos);
+      if (!probe.isMismatch && probe.len > 0) {
         return { skip, probe };
       }
     }
-    if (hasRecovered && curr < parser.input.length) {
+
+    // No more matches found.
+    // Only skip remaining as error if we already have valid matches
+    // (otherwise OneOrMore would incorrectly succeed with just errors).
+    // But don't skip past the bound!
+    if (hasValidMatch && curr < parser.input.length) {
       const skipToEnd = parser.input.length - curr;
+      // Check if bound matches anywhere before end of input
+      if (bound !== undefined) {
+        for (let skip = 1; skip <= skipToEnd; skip++) {
+          if (parser.canMatchNonzeroAt(bound, curr + skip)) {
+            // Bound matches at this position - only skip up to here
+            if (skip > 0) {
+              return { skip, probe: null };
+            }
+            return null; // Can't skip anything without hitting bound
+          }
+        }
+      }
       return { skip: skipToEnd, probe: null };
     }
     return null;
