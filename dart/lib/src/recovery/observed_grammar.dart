@@ -35,8 +35,21 @@ class FailureObserver {
   /// The farthest position at which any terminal failed.
   int farthestFail = -1;
 
+  /// The farthest input position consulted by ANY character test, successful
+  /// or failed (the "horizon"). Successful lookaheads read input beyond the
+  /// farthest failure, so edits up to the horizon (not just the failure
+  /// frontier) can change the parse; a string that agrees with the input on
+  /// every consulted position parses identically.
+  int horizon = -1;
+
+  void recordTerminalSuccess(int pos, int len) {
+    final last = len > 0 ? pos + len - 1 : pos - 1;
+    if (last > horizon) horizon = last;
+  }
+
   void recordTerminalFailure(int pos, ExpectedChar? expected) {
     if (pos > farthestFail) farthestFail = pos;
+    if (pos > horizon) horizon = pos;
     if (expected != null) {
       (expected.isExact ? exactExpectedAt : fillerExpectedAt).putIfAbsent(pos, () => {}).add(expected.char);
     }
@@ -57,6 +70,7 @@ class FailureObserver {
     failedRulesAt.clear();
     blockedSpans.clear();
     farthestFail = -1;
+    horizon = -1;
   }
 }
 
@@ -116,6 +130,10 @@ class ObservedTerminal extends Clause {
   @override
   MatchResult match(Parser parser, int pos) {
     final result = terminal.match(parser, pos);
+    if (!result.isMismatch) {
+      observer.recordTerminalSuccess(pos, result.len);
+      return result;
+    }
     if (result.isMismatch) {
       // For multi-character Str terminals, the failure position is the point
       // of divergence from the expected text, not the terminal's start.

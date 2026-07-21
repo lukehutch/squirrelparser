@@ -146,6 +146,27 @@ void main() {
     });
   });
 
+  group('Consulted horizon (edits beyond the failure frontier)', () {
+    // A successful positive lookahead reads to position 10; the failure
+    // frontier stays near 1 (trailing garbage after a length-1 match). The
+    // minimal repair substitutes at position 10 -- beyond the frontier but
+    // within the consulted horizon -- flipping the lookahead so the second
+    // alternative matches. Regression test for the window-sufficiency lemma:
+    // a frontier-bounded candidate window returns cost 3 here.
+    const g = 'S <- (&("xxxxxxxxxxq") \'x\') / "xxxxxxxxxxz" ;';
+
+    for (final mode in [RepairMode.committed, RepairMode.global]) {
+      test('lookahead-consulted region is repairable ($mode)', () {
+        final rules = MetaGrammar.parseGrammar(g);
+        final r = RepairSearch(rules: rules, topRuleName: 'S', mode: mode)
+            .repair('xxxxxxxxxxq');
+        expect(r, isNotNull);
+        expect(r!.cost, equals(1));
+        expect(r.repaired, equals('xxxxxxxxxxz'));
+      });
+    }
+  });
+
   group('Edit reporting', () {
     test('edits are reported in original coordinates', () {
       final r = doRepair('S <- "a" "b" "c" ;', 'aXbc');

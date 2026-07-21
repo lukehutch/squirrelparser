@@ -257,6 +257,19 @@ void main() {
   check('Alphabet example: repair of "1" is cost 1',
       rLook == null ? 'null' : '${rLook.cost}', '1');
 
+  // ---- Sec. Observers: horizon example S <- (&"xxxxxxxxxxq" 'x') / "xxxxxxxxxxz".
+  // The successful positive lookahead reads to position 10 while the failure
+  // frontier stays near 1; the minimal repair substitutes at position 10,
+  // beyond the frontier but within the horizon (window-sufficiency lemma).
+  final horizonG = MetaGrammar.parseGrammar(
+      'S <- (&("xxxxxxxxxxq") \'x\') / "xxxxxxxxxxz" ;');
+  for (final mode in [RepairMode.committed, RepairMode.global]) {
+    final rh = RepairSearch(rules: horizonG, topRuleName: 'S', mode: mode)
+        .repair('xxxxxxxxxxq');
+    check('Horizon example ($mode): repair is cost 1 to "...z"',
+        rh == null ? 'null' : '${rh.cost}/${rh.repaired}', '1/xxxxxxxxxxz');
+  }
+
   print(_failures == 0 ? '\nALL CHECKS PASSED' : '\n$_failures CHECK(S) FAILED');
   if (_failures > 0) throw StateError('$_failures verification failures');
 }

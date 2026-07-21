@@ -314,6 +314,7 @@ class RepairSearch {
       return (ok, frontier, result);
     }
 
+
     // Committed mode: repair errors left-to-right. Each round runs a
     // uniform-cost search from the current base string; the round ends
     // either with a full parse (done) or by committing to the minimal-cost
@@ -484,7 +485,16 @@ class RepairSearch {
 
       // Build this state's candidate list from the observer's failure data,
       // and enqueue a cursor for it plus eager macro (witness) insertions.
-      final built = _buildCands(s, frontier, observer);
+      // The candidate window extends to the consulted horizon: the farthest
+      // position any character test read in this parse, successful lookahead
+      // reads included. Edits beyond the horizon cannot change the parse (the
+      // trace replays identically), so [0, horizon] is a complete window;
+      // edits between the frontier and the horizon CAN matter (e.g. breaking
+      // a positive lookahead that succeeded on damaged input).
+      var horizon = observer.horizon;
+      if (horizon < frontier) horizon = frontier;
+      if (horizon > s.length) horizon = s.length;
+      final built = _buildCands(s, frontier, horizon, observer);
       final src = _Source(++sourceSeq, s, entry.g, marks, built.cands, built.endOfTargeted);
       if (src.cands.isNotEmpty) {
         heap.push(_Entry(entry.g + 1, src.seq, 0, source: src));
@@ -510,7 +520,7 @@ class RepairSearch {
   /// frontier-expected characters; then lookahead-block perturbations; then
   /// the whole-alphabet completeness net (character-major).
   ({List<_Cand> cands, int endOfTargeted, List<(int, String)> macros}) _buildCands(
-      String s, int frontier, FailureObserver observer) {
+      String s, int frontier, int horizon, FailureObserver observer) {
     final cands = <_Cand>[];
     final macros = <(int, String)>[];
     final jmin = window == null ? 0 : (frontier - window!).clamp(0, frontier);
@@ -621,6 +631,26 @@ class RepairSearch {
     final jnet = (frontier - 4).clamp(jmin, frontier);
     for (final c in _alphabet) {
       for (var j = frontier; j >= jnet; j--) {
+        cands.add(_Cand(_Op.insert, j, c));
+        if (j < s.length && s[j] != c) {
+          cands.add(_Cand(_Op.substitute, j, c));
+        }
+      }
+    }
+
+    // Consulted region beyond the failure frontier: positions the parse read
+    // (via successful lookaheads or matched-then-discarded branches) without
+    // failing there. An edit here can flip a lookahead's outcome and change
+    // the parse, so completeness requires every edit type over the full
+    // region up to the horizon; nearest the frontier first.
+    for (var j = frontier + 1; j <= horizon; j++) {
+      if (j + 1 < s.length && s[j] != s[j + 1]) {
+        cands.add(_Cand(_Op.transpose, j));
+      }
+      if (j < s.length) {
+        cands.add(_Cand(_Op.delete, j));
+      }
+      for (final c in _alphabet) {
         cands.add(_Cand(_Op.insert, j, c));
         if (j < s.length && s[j] != c) {
           cands.add(_Cand(_Op.substitute, j, c));
