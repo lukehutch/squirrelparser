@@ -34,16 +34,6 @@ void main() {
     expect(err, equals(0), reason: 'should have 0 errors');
   });
 
-  test('FR04-with recovery', () {
-    final (ok, err, skip) = testParse(
-      'S <- "x"+ "!" / "fallback" ;',
-      'xZx!',
-    );
-    expect(ok, isTrue, reason: 'should succeed');
-    expect(err, equals(1), reason: 'should have 1 error');
-    expect(skip.contains('Z'), isTrue, reason: 'should skip Z');
-  });
-
   test('FR05-fallback', () {
     final (ok, err, _) = testParse(
       'S <- "a" "b" / "x" ;',

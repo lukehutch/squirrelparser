@@ -18,7 +18,10 @@ import 'package:squirrel_parser/squirrel_parser.dart';
   final isCompleteFailure = result is SyntaxError && result.len == parseResult.input.length;
   final ok = !isCompleteFailure;
 
-  var totErrors = result.totDescendantErrors;
+  // The pure algorithm produces no in-tree SyntaxError nodes; the only
+  // possible errors are a complete failure (root is a SyntaxError) or
+  // unmatched trailing input.
+  var totErrors = result is SyntaxError ? 1 : 0;
   if (parseResult.unmatchedInput != null && parseResult.unmatchedInput!.pos >= 0) {
     totErrors += 1;
   }

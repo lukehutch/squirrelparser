@@ -3,7 +3,6 @@ class ParserStats {
   int _clauseMatches = 0;
   int _cacheHits = 0;
   int _lrExpansions = 0;
-  int _recoveryAttempts = 0;
 
   /// Total work performed (clause match attempts, not cache hits).
   int get totalWork => _clauseMatches;
@@ -14,9 +13,6 @@ class ParserStats {
   /// Number of left recursion expansions.
   int get lrExpansions => _lrExpansions;
 
-  /// Number of recovery attempts.
-  int get recoveryAttempts => _recoveryAttempts;
-
   /// Record a clause match attempt.
   void recordMatch() => _clauseMatches++;
 
@@ -26,15 +22,11 @@ class ParserStats {
   /// Record a left recursion expansion.
   void recordLRExpansion() => _lrExpansions++;
 
-  /// Record a recovery attempt.
-  void recordRecovery() => _recoveryAttempts++;
-
   /// Reset all statistics.
   void reset() {
     _clauseMatches = 0;
     _cacheHits = 0;
     _lrExpansions = 0;
-    _recoveryAttempts = 0;
   }
 }
 

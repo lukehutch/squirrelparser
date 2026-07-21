@@ -26,7 +26,7 @@ class Str extends Terminal {
   const Str(this.text);
 
   @override
-  MatchResult match(Parser parser, int pos, {Clause? bound}) {
+  MatchResult match(Parser parser, int pos) {
     if (pos + text.length > parser.input.length) return mismatch;
     for (int i = 0; i < text.length; i++) {
       if (parser.input.codeUnitAt(pos + i) != text.codeUnitAt(i)) {
@@ -48,7 +48,7 @@ class Char extends Terminal {
   const Char(this.char) : assert(char.length == 1);
 
   @override
-  MatchResult match(Parser parser, int pos, {Clause? bound}) {
+  MatchResult match(Parser parser, int pos) {
     if (pos + char.length > parser.input.length) return mismatch;
     for (int i = 0; i < char.length; i++) {
       if (parser.input.codeUnitAt(pos + i) != char.codeUnitAt(i)) {
@@ -94,7 +94,7 @@ class CharSet extends Terminal {
         inverted = true;
 
   @override
-  MatchResult match(Parser parser, int pos, {Clause? bound}) {
+  MatchResult match(Parser parser, int pos) {
     if (pos >= parser.input.length) return mismatch;
     final c = parser.input.codeUnitAt(pos);
 
@@ -137,7 +137,7 @@ class AnyChar extends Terminal {
   const AnyChar();
 
   @override
-  MatchResult match(Parser parser, int pos, {Clause? bound}) {
+  MatchResult match(Parser parser, int pos) {
     if (pos >= parser.input.length) return mismatch;
     return Match(this, pos, 1);
   }
@@ -153,7 +153,7 @@ class Nothing extends Terminal {
   const Nothing();
 
   @override
-  MatchResult match(Parser parser, int pos, {Clause? bound}) {
+  MatchResult match(Parser parser, int pos) {
     return Match(this, pos, 0);
   }
 

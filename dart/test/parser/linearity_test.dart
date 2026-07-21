@@ -120,6 +120,8 @@ void main() {
           for (var i = 0; i < size; i++) {
             parts.add(i % 3 == 0 ? '.x' : '(n)');
           }
+          // The input must end with '.x' to be in the language of L
+          parts.add('.x');
           return parts.join();
         },
         [5, 10, 20, 50],
@@ -219,28 +221,5 @@ void main() {
           reason: 'long LR input should be linear (ratio change: $change)');
     });
 
-    test('LINEAR-10-recovery', () {
-      const grammar = '''
-        S <- ("(" "x"+ ")")+ ;
-      ''';
-      final (passed, change) = testLinearity(
-        grammar,
-        'S',
-        (size) {
-          final parts = <String>[];
-          for (var i = 0; i < size; i++) {
-            if (i > 0 && i % 10 == 0) {
-              parts.add('(xZx)'); // Error
-            } else {
-              parts.add('(xx)');
-            }
-          }
-          return parts.join();
-        },
-        [10, 20, 50, 100],
-      );
-      expect(passed, isTrue,
-          reason: 'recovery should be linear (ratio change: $change)');
-    });
   });
 }

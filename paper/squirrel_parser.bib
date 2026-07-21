@@ -1,260 +1,364 @@
 % =============================================================================
-% Complete Bibliography for Squirrel Parser Paper
+% Bibliography for "The Squirrel Parser: Packrat Parsing with Left Recursion
+% and Minimum-Edit-Distance Error Repair"
+% All entries metadata-verified against Crossref/DBLP/publisher records and,
+% where marked in verification/bib.md, quote-verified against fetched full text.
 % =============================================================================
 
-% -----------------------------------------------------------------------------
-% Bryan Ford's foundational work
-% -----------------------------------------------------------------------------
-
-@mastersthesis{ford2002b,
-  author = {Bryan Ford},
-  title = {Packrat Parsing: a Practical Linear-Time Algorithm with Backtracking},
-  school = {Massachusetts Institute of Technology},
-  year = {2002},
-  month = {September},
-  address = {Cambridge, MA},
-}
-
-@inproceedings{ford2002,
-  author = {Bryan Ford},
-  title = {Packrat Parsing: Simple, Powerful, Lazy, Linear Time},
-  booktitle = {Proceedings of the 7th ACM SIGPLAN International Conference on Functional Programming},
-  series = {ICFP '02},
-  year = {2002},
-  month = {October},
-  pages = {36--47},
-  publisher = {ACM},
-  address = {New York, NY, USA},
-  doi = {10.1145/581478.581483},
-}
-
-@inproceedings{ford2004,
-  author = {Bryan Ford},
-  title = {Parsing Expression Grammars: A Recognition-Based Syntactic Foundation},
-  booktitle = {Proceedings of the 31st ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages},
-  series = {POPL '04},
-  year = {2004},
-  month = {January},
-  pages = {111--122},
-  publisher = {ACM},
-  address = {New York, NY, USA},
-  doi = {10.1145/964001.964011},
-}
-
-% -----------------------------------------------------------------------------
-% Left recursion handling
-% -----------------------------------------------------------------------------
-
-@inproceedings{warth2008,
-  author = {Alessandro Warth and James R. Douglass and Todd Millstein},
-  title = {Packrat Parsers Can Support Left Recursion},
-  booktitle = {Proceedings of the 2008 ACM SIGPLAN Symposium on Partial Evaluation and Semantics-Based Program Manipulation},
-  series = {PEPM '08},
-  year = {2008},
-  month = {January},
-  pages = {103--110},
-  publisher = {ACM},
-  address = {New York, NY, USA},
-  doi = {10.1145/1328408.1328424},
-}
-
-@techreport{tratt2010,
-  author = {Laurence Tratt},
-  title = {Direct Left-Recursive Parsing Expression Grammars},
-  institution = {School of Engineering and Information Sciences, Middlesex University},
-  year = {2010},
-  month = {October},
-  number = {EIS-10-01},
-}
-
-% -----------------------------------------------------------------------------
-% ANTLR and related work
-% -----------------------------------------------------------------------------
-
-@inproceedings{parr2014,
-  author = {Terence Parr and Sam Harwell and Kathleen Fisher},
-  title = {Adaptive {LL}(*) Parsing: The Power of Dynamic Analysis},
-  booktitle = {Proceedings of the 2014 ACM International Conference on Object Oriented Programming Systems Languages \& Applications},
-  series = {OOPSLA '14},
-  year = {2014},
-  pages = {579--598},
-  publisher = {ACM},
-  address = {New York, NY, USA},
-  doi = {10.1145/2660193.2660202},
-}
-
-@inproceedings{parr2011,
-  author = {Terence Parr and Kathleen Fisher},
-  title = {{LL}(*): The Foundation of the {ANTLR} Parser Generator},
-  booktitle = {Proceedings of the 32nd ACM SIGPLAN Conference on Programming Language Design and Implementation},
-  series = {PLDI '11},
-  year = {2011},
-  month = {June},
-  pages = {425--436},
-  publisher = {ACM},
-  address = {New York, NY, USA},
-  doi = {10.1145/1993498.1993548},
-}
-
-@book{antlr4,
-  author = {Terence Parr},
-  title = {The Definitive {ANTLR} 4 Reference},
-  publisher = {Pragmatic Bookshelf},
-  year = {2013},
-  edition = {2nd},
-  address = {Dallas, TX},
-  isbn = {978-1-93435-699-9},
-}
-
-% -----------------------------------------------------------------------------
-% Mouse parser
-% -----------------------------------------------------------------------------
-
-@inproceedings{mouse,
-  author = {Roman R. Redziejowski},
-  title = {Mouse: From Parsing Expressions to a Practical Parser},
-  booktitle = {Proceedings of the CS\&P'2009 Workshop},
-  year = {2009},
-  month = {September},
-  pages = {514--525},
-  editor = {L. Czaja and M. Szczuka},
-  publisher = {Warsaw University},
-  address = {Warsaw, Poland},
-}
-
-% -----------------------------------------------------------------------------
-% Parboiled
-% -----------------------------------------------------------------------------
-
-@misc{parboiled1,
-  author = {Mathias Doenitz},
-  title = {parboiled: Elegant Parsing in {Java} and {Scala}},
-  howpublished = {\url{https://github.com/sirthias/parboiled}},
-  year = {2022},
-  note = {Version 1.4.1},
-}
-
-@misc{parboiled2,
-  author = {Mathias Doenitz},
-  title = {parboiled2: A Macro-Based {PEG} Parser Generator for {Scala}},
-  howpublished = {\url{https://github.com/sirthias/parboiled2}},
-  year = {2023},
-}
-
-% -----------------------------------------------------------------------------
-% Memoization
-% -----------------------------------------------------------------------------
-
-@article{norvig1991,
-  author = {Peter Norvig},
-  title = {Techniques for Automatic Memoization with Applications to Context-Free Parsing},
-  journal = {Computational Linguistics},
-  volume = {17},
-  number = {1},
-  pages = {91--98},
-  year = {1991},
-  month = {March},
-}
-
-% -----------------------------------------------------------------------------
-% Historical parsing references
-% -----------------------------------------------------------------------------
+% ------------------------- Foundations of top-down parsing ------------------
 
 @article{irons1961syntax,
-  author = {Edgar T. Irons},
-  title = {A Syntax Directed Compiler for {ALGOL} 60},
+  author  = {Irons, Edgar T.},
+  title   = {A Syntax Directed Compiler for {ALGOL} 60},
   journal = {Communications of the ACM},
-  volume = {4},
-  number = {1},
-  pages = {51--55},
-  year = {1961},
-  month = {January},
-  doi = {10.1145/366062.366083},
+  volume  = {4},
+  number  = {1},
+  pages   = {51--55},
+  year    = {1961},
+  month   = jan,
+  doi     = {10.1145/366062.366083},
 }
 
 @article{lucas1961structure,
-  author = {P. Lucas},
-  title = {The Structure of Formula-Translators},
-  journal = {ALGOL Bulletin Supplement},
-  volume = {16},
-  pages = {1--27},
-  year = {1961},
-  month = {September},
+  author  = {Lucas, Peter},
+  title   = {The Structure of Formula-Translators},
+  journal = {{ALGOL} Bulletin},
+  volume  = {Supplement 16},
+  pages   = {1--27},
+  year    = {1961},
+  month   = sep,
+  note    = {English reprint of part of Final Report DA-91-591-EUC-1430; German version in Elektronische Rechenanlagen 3 (August 1961)},
 }
 
 @misc{kegler2023parsing,
-  author = {Jeffrey Kegler},
-  title = {Parsing: A Timeline},
+  author       = {Kegler, Jeffrey},
+  title        = {Parsing: A Timeline},
   howpublished = {\url{https://jeffreykegler.github.io/personal/timeline_v3}},
-  year = {2023},
-  note = {Accessed: 2024},
+  year         = {2023},
+  note         = {Accessed 2026-07-20},
 }
 
-% -----------------------------------------------------------------------------
-% PEG implementations
-% -----------------------------------------------------------------------------
-
-@misc{pegged,
-  author = {{D Language Foundation}},
-  title = {Pegged: A Parsing Expression Grammar ({PEG}) Library for {D}},
-  howpublished = {\url{https://github.com/dlang-community/pegged}},
-  year = {2021},
+@phdthesis{birman1970,
+  author  = {Birman, Alexander},
+  title   = {The {TMG} Recognition Schema},
+  school  = {Princeton University, Department of Electrical Engineering},
+  address = {Princeton, NJ},
+  year    = {1970},
+  month   = feb,
 }
 
-% -----------------------------------------------------------------------------
-% PEG parsing machine
-% -----------------------------------------------------------------------------
+@article{birman1973,
+  author  = {Birman, Alexander and Ullman, Jeffrey D.},
+  title   = {Parsing Algorithms with Backtrack},
+  journal = {Information and Control},
+  volume  = {23},
+  number  = {1},
+  pages   = {1--34},
+  year    = {1973},
+  month   = aug,
+  doi     = {10.1016/S0019-9958(73)90851-6},
+}
 
-@inproceedings{medeiros2008,
-  author    = {S\'{e}rgio Medeiros and Roberto Ierusalimschy},
-  title     = {A Parsing Machine for {PEG}s},
-  booktitle = {Proceedings of the 2008 Symposium on Dynamic Languages},
-  series    = {DLS '08},
-  year      = {2008},
-  month     = {July},
-  pages     = {1--12},
+@article{norvig1991,
+  author  = {Norvig, Peter},
+  title   = {Techniques for Automatic Memoization with Applications to Context-Free Parsing},
+  journal = {Computational Linguistics},
+  volume  = {17},
+  number  = {1},
+  pages   = {91--98},
+  year    = {1991},
+  month   = mar,
+}
+
+% ------------------------- Packrat parsing and PEGs -------------------------
+
+@inproceedings{ford2002,
+  author    = {Ford, Bryan},
+  title     = {Packrat Parsing: Simple, Powerful, Lazy, Linear Time (Functional Pearl)},
+  booktitle = {Proceedings of the Seventh {ACM} {SIGPLAN} International Conference on Functional Programming ({ICFP} '02)},
+  year      = {2002},
+  month     = oct,
+  pages     = {36--47},
   publisher = {ACM},
   address   = {New York, NY, USA},
-  doi       = {10.1145/1408681.1408683}
+  doi       = {10.1145/581478.581483},
 }
 
-% -----------------------------------------------------------------------------
-% GLL Parsing
-% -----------------------------------------------------------------------------
-
-@inproceedings{scott2010gll,
-  author = {Elizabeth Scott and Adrian Johnstone},
-  title = {{GLL} Parsing},
-  booktitle = {Proceedings of the 9th Workshop on Language Descriptions, Tools, and Applications},
-  series = {LDTA '10},
-  year = {2010},
-  pages = {177--189},
-  publisher = {Elsevier},
-  doi = {10.1016/j.entcs.2010.08.041}
+@mastersthesis{ford2002b,
+  author  = {Ford, Bryan},
+  title   = {Packrat Parsing: A Practical Linear-Time Algorithm with Backtracking},
+  school  = {Massachusetts Institute of Technology},
+  address = {Cambridge, MA},
+  year    = {2002},
+  month   = sep,
 }
 
-% -----------------------------------------------------------------------------
-% Precedence Climbing
-% -----------------------------------------------------------------------------
-
-@article{pratt1973,
-  author = {Vaughan R. Pratt},
-  title = {Top Down Operator Precedence},
-  journal = {Proceedings of the 1st Annual ACM SIGACT-SIGPLAN Symposium on Principles of Programming Languages},
-  year = {1973},
-  pages = {41--51},
-  doi = {10.1145/512927.512931}
+@inproceedings{ford2004,
+  author    = {Ford, Bryan},
+  title     = {Parsing Expression Grammars: A Recognition-Based Syntactic Foundation},
+  booktitle = {Proceedings of the 31st {ACM} {SIGPLAN}-{SIGACT} Symposium on Principles of Programming Languages ({POPL} '04)},
+  year      = {2004},
+  month     = jan,
+  pages     = {111--122},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/964001.964011},
 }
 
-% -----------------------------------------------------------------------------
-% Fixed-point theory
-% -----------------------------------------------------------------------------
+% ------------------------- Left recursion in top-down parsing ---------------
 
-@book{davey2002,
-  author = {B. A. Davey and H. A. Priestley},
-  title = {Introduction to Lattices and Order},
-  publisher = {Cambridge University Press},
-  year = {2002},
-  edition = {2nd},
-  isbn = {978-0-521-78451-1}
+@inproceedings{warth2008,
+  author    = {Warth, Alessandro and Douglass, James R. and Millstein, Todd},
+  title     = {Packrat Parsers Can Support Left Recursion},
+  booktitle = {Proceedings of the 2008 {ACM} {SIGPLAN} Symposium on Partial Evaluation and Semantics-Based Program Manipulation ({PEPM} '08)},
+  year      = {2008},
+  month     = jan,
+  pages     = {103--110},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/1328408.1328424},
+}
+
+@techreport{tratt2010,
+  author      = {Tratt, Laurence},
+  title       = {Direct Left-Recursive Parsing Expression Grammars},
+  institution = {School of Engineering and Information Sciences, Middlesex University},
+  number      = {EIS-10-01},
+  year        = {2010},
+  month       = oct,
+  address     = {London, United Kingdom},
+}
+
+@article{medeiros2014,
+  author  = {Medeiros, S{\'e}rgio and Mascarenhas, Fabio and Ierusalimschy, Roberto},
+  title   = {Left Recursion in Parsing Expression Grammars},
+  journal = {Science of Computer Programming},
+  volume  = {96},
+  pages   = {177--190},
+  year    = {2014},
+  month   = dec,
+  doi     = {10.1016/j.scico.2014.01.013},
+}
+
+@inproceedings{frost2008,
+  author    = {Frost, Richard A. and Hafiz, Rahmatullah and Callaghan, Paul},
+  title     = {Parser Combinators for Ambiguous Left-Recursive Grammars},
+  booktitle = {Practical Aspects of Declarative Languages ({PADL} 2008)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {4902},
+  editor    = {Hudak, Paul and Warren, David S.},
+  publisher = {Springer},
+  address   = {Berlin, Heidelberg},
+  year      = {2008},
+  pages     = {167--181},
+  doi       = {10.1007/978-3-540-77442-6_12},
+}
+
+@inproceedings{parr2014,
+  author    = {Parr, Terence and Harwell, Sam and Fisher, Kathleen},
+  title     = {Adaptive {LL}(*) Parsing: The Power of Dynamic Analysis},
+  booktitle = {Proceedings of the 2014 {ACM} International Conference on Object Oriented Programming Systems Languages \& Applications ({OOPSLA} '14)},
+  year      = {2014},
+  pages     = {579--598},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/2660193.2660202},
+}
+
+@misc{pegged,
+  author       = {Sigaud, Philippe and {Pegged contributors}},
+  title        = {Pegged Wiki: Left-Recursion},
+  howpublished = {\url{https://github.com/PhilippeSigaud/Pegged/wiki/Left-Recursion}},
+  year         = {2021},
+  note         = {Accessed 2026-07-20},
+}
+
+@misc{hutchison2020,
+  author        = {Hutchison, Luke A. D.},
+  title         = {Pika Parsing: Reformulating Packrat Parsing as a Dynamic Programming Algorithm Solves the Left Recursion and Error Recovery Problems},
+  year          = {2020},
+  eprint        = {2005.06444},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.PL},
+  note          = {arXiv:2005.06444},
+}
+
+% ------------------------- Edit distance --------------------------------------
+
+@article{damerau1964,
+  author  = {Damerau, Fred J.},
+  title   = {A Technique for Computer Detection and Correction of Spelling Errors},
+  journal = {Communications of the ACM},
+  volume  = {7},
+  number  = {3},
+  pages   = {171--176},
+  year    = {1964},
+  month   = mar,
+  doi     = {10.1145/363958.363994},
+}
+
+@article{levenshtein1966,
+  author  = {Levenshtein, Vladimir I.},
+  title   = {Binary Codes Capable of Correcting Deletions, Insertions, and Reversals},
+  journal = {Soviet Physics Doklady},
+  volume  = {10},
+  number  = {8},
+  pages   = {707--710},
+  year    = {1966},
+  note    = {Translated from Doklady Akademii Nauk SSSR 163(4):845--848, 1965},
+}
+
+@article{wagner1974,
+  author  = {Wagner, Robert A. and Fischer, Michael J.},
+  title   = {The String-to-String Correction Problem},
+  journal = {Journal of the ACM},
+  volume  = {21},
+  number  = {1},
+  pages   = {168--173},
+  year    = {1974},
+  month   = jan,
+  doi     = {10.1145/321796.321811},
+}
+
+@article{dijkstra1959,
+  author  = {Dijkstra, Edsger W.},
+  title   = {A Note on Two Problems in Connexion with Graphs},
+  journal = {Numerische Mathematik},
+  volume  = {1},
+  pages   = {269--271},
+  year    = {1959},
+  doi     = {10.1007/BF01386390},
+}
+
+% ------------------------- Syntax error recovery ----------------------------
+
+@article{aho1972,
+  author  = {Aho, Alfred V. and Peterson, Thomas G.},
+  title   = {A Minimum Distance Error-Correcting Parser for Context-Free Languages},
+  journal = {SIAM Journal on Computing},
+  volume  = {1},
+  number  = {4},
+  pages   = {305--312},
+  year    = {1972},
+  month   = dec,
+  doi     = {10.1137/0201022},
+}
+
+@article{lyon1974,
+  author  = {Lyon, Gordon},
+  title   = {Syntax-Directed Least-Errors Analysis for Context-Free Languages: A Practical Approach},
+  journal = {Communications of the ACM},
+  volume  = {17},
+  number  = {1},
+  pages   = {3--14},
+  year    = {1974},
+  month   = jan,
+  doi     = {10.1145/360767.360771},
+}
+
+@article{burke1987,
+  author  = {Burke, Michael G. and Fisher, Gerald A.},
+  title   = {A Practical Method for {LR} and {LL} Syntactic Error Diagnosis and Recovery},
+  journal = {ACM Transactions on Programming Languages and Systems},
+  volume  = {9},
+  number  = {2},
+  pages   = {164--197},
+  year    = {1987},
+  month   = mar,
+  doi     = {10.1145/22719.22720},
+}
+
+@incollection{swierstra1996,
+  author    = {Swierstra, S. Doaitse and Duponcheel, Luc},
+  title     = {Deterministic, Error-Correcting Combinator Parsers},
+  booktitle = {Advanced Functional Programming},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {1129},
+  pages     = {184--207},
+  publisher = {Springer},
+  address   = {Berlin, Heidelberg},
+  year      = {1996},
+  doi       = {10.1007/3-540-61628-4_7},
+}
+
+@article{dejonge2012,
+  author    = {de Jonge, Maartje and Kats, Lennart C. L. and Visser, Eelco and S{\"o}derberg, Emma},
+  title     = {Natural and Flexible Error Recovery for Generated Modular Language Environments},
+  journal   = {ACM Transactions on Programming Languages and Systems},
+  volume    = {34},
+  number    = {4},
+  pages     = {15:1--15:50},
+  articleno = {15},
+  year      = {2012},
+  month     = dec,
+  doi       = {10.1145/2400676.2400678},
+}
+
+@inproceedings{medeiros2018,
+  author    = {Medeiros, S{\'e}rgio and Mascarenhas, Fabio},
+  title     = {Syntax Error Recovery in Parsing Expression Grammars},
+  booktitle = {Proceedings of the 33rd Annual {ACM} Symposium on Applied Computing ({SAC} '18)},
+  pages     = {1195--1202},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  year      = {2018},
+  doi       = {10.1145/3167132.3167261},
+}
+
+@article{medeiros2020,
+  author  = {de Medeiros, S{\'e}rgio Queiroz and de Azevedo Alvez Junior, Gilney and Mascarenhas, Fabio},
+  title   = {Automatic Syntax Error Reporting and Recovery in Parsing Expression Grammars},
+  journal = {Science of Computer Programming},
+  volume  = {187},
+  pages   = {102373},
+  year    = {2020},
+  month   = feb,
+  doi     = {10.1016/j.scico.2019.102373},
+}
+
+@inproceedings{diekmann2020,
+  author    = {Diekmann, Lukas and Tratt, Laurence},
+  title     = {Don't Panic! {B}etter, Fewer, Syntax Errors for {LR} Parsers},
+  booktitle = {34th European Conference on Object-Oriented Programming ({ECOOP} 2020)},
+  series    = {Leibniz International Proceedings in Informatics (LIPIcs)},
+  volume    = {166},
+  pages     = {6:1--6:32},
+  publisher = {Schloss Dagstuhl -- Leibniz-Zentrum f{\"u}r Informatik},
+  address   = {Dagstuhl, Germany},
+  year      = {2020},
+  doi       = {10.4230/LIPIcs.ECOOP.2020.6},
+}
+
+@misc{treesitter,
+  author       = {Brunsfeld, Max and contributors},
+  title        = {Tree-sitter: An Incremental Parsing System for Programming Tools},
+  howpublished = {\url{https://github.com/tree-sitter/tree-sitter}},
+  year         = {2018},
+  note         = {Accessed 2026-07-20},
+}
+
+% ------------------------- Incremental parsing ------------------------------
+
+@article{larcheveque1995,
+  author  = {Larchev{\^e}que, Jean-Marie},
+  title   = {Optimal Incremental Parsing},
+  journal = {ACM Transactions on Programming Languages and Systems},
+  volume  = {17},
+  number  = {1},
+  pages   = {1--15},
+  year    = {1995},
+  month   = jan,
+  doi     = {10.1145/200994.200996},
+}
+
+@inproceedings{dubroy2017,
+  author    = {Dubroy, Patrick and Warth, Alessandro},
+  title     = {Incremental Packrat Parsing},
+  booktitle = {Proceedings of the 10th {ACM} {SIGPLAN} International Conference on Software Language Engineering ({SLE} 2017)},
+  year      = {2017},
+  month     = oct,
+  pages     = {14--25},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/3136014.3136022},
 }

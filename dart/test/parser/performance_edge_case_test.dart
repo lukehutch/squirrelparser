@@ -61,14 +61,6 @@ void main() {
       expect(ok, isTrue, reason: 'should handle 1000 repetitions');
     });
 
-    test('PERF-05-many-errors', () {
-      // 500 errors in input
-      final input = List.generate(500, (i) => 'Xx').join();
-      final (ok, err, _) = testParse('S <- "x"+ ;', input);
-      expect(ok, isTrue, reason: 'should succeed');
-      expect(err, equals(500), reason: 'should count all 500 errors');
-    });
-
     test('PERF-06-lr-expansion-depth', () {
       // LR with 100 expansions
       final input =
@@ -152,66 +144,6 @@ void main() {
       );
       expect(ok, isTrue, reason: 'should handle Unicode');
       expect(err, equals(0), reason: 'should have 0 errors');
-    });
-
-    test('EDGE-07-mixed-unicode-and-ascii', () {
-      // Mix of Unicode and ASCII with errors
-      final (ok, err, skip) = testParse(
-        'S <- "hello" "世界" ;',
-        'helloX世界',
-      );
-      expect(ok, isTrue, reason: 'should succeed');
-      expect(err, equals(1), reason: 'should have 1 error');
-      expect(skip.contains('X'), isTrue, reason: 'should skip X');
-    });
-
-    test('EDGE-08-newlines-and-whitespace', () {
-      // Newlines and whitespace as errors
-      final (ok, err, _) = testParse('S <- "a" "b" ;', 'a\n\tb');
-      expect(ok, isTrue, reason: 'should succeed');
-      expect(err, equals(1), reason: 'should have 1 error (newline+tab)');
-    });
-
-    test('EDGE-09-eof-at-various-positions', () {
-      // EOF at different points in grammar
-      final cases = [
-        ('ab', 2), // EOF after full match
-        ('a', 1), // EOF after partial match
-        ('', 0), // EOF at start
-      ];
-
-      for (final (input, _) in cases) {
-        final parseResult = squirrelParsePT(
-          grammarSpec: 'S <- "a" "b" ;',
-          topRuleName: 'S',
-          input: input,
-        );
-        final result = parseResult.root;
-        expect(result is! SyntaxError || input.isEmpty, isTrue,
-            reason: 'result should exist or input empty for "$input"');
-      }
-    });
-
-    test('EDGE-10-recovery-with-moderate-skip', () {
-      // Recovery with moderate skip distance
-      final (ok, err, skip) = testParse(
-        'S <- "a" "b" "c" ;',
-        'aXXXXXXXXXbc',
-      );
-      expect(ok, isTrue, reason: 'should succeed (skip to find b)');
-      expect(err, equals(1), reason: 'should have 1 error (skip region)');
-      expect(skip[0].length, greaterThan(5),
-          reason: 'should skip multiple chars');
-    });
-
-    test('EDGE-11-alternating-success-failure', () {
-      // Pattern that alternates between success and failure
-      final (ok, err, _) = testParse(
-        'S <- ("a" "b")+ ;',
-        'abXabYabZab',
-      );
-      expect(ok, isTrue, reason: 'should succeed');
-      expect(err, equals(3), reason: 'should have 3 errors');
     });
 
     test('EDGE-12-boundary-at-every-position', () {

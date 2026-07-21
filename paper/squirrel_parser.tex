@@ -1,26 +1,3 @@
-%%
-%% This is file `sample-manuscript.tex',
-%% generated with the docstrip utility.
-%%
-%% The original source files were:
-%%
-%% samples.dtx  (with options: `manuscript')
-%% 
-%% IMPORTANT NOTICE:
-%% 
-%% For the copyright see the source file.
-%% 
-%% Any modified versions of this file must be renamed
-%% with new filenames distinct from sample-manuscript.tex.
-%% 
-%% For distribution of the original source see the terms
-%% for copying and modification in the file samples.dtx.
-%% 
-%% This generated file may be distributed as long as the
-%% original source files, as listed above, are part of the
-%% same distribution. (The sources need not necessarily be
-%% in the same archive or directory.)
-%%
 %% The first command in your LaTeX source must be the \documentclass command.
 \documentclass[manuscript]{acmart}
 
@@ -31,42 +8,18 @@
 \evensidemargin 0.25in
 \oddsidemargin 0.25in
 
-%% Rights management information.  This information is sent to you
-%% when you complete the rights form.  These commands have SAMPLE
-%% values in them; it is your responsibility as an author to replace
-%% the commands and values with those provided to you when you
-%% complete the rights form.
+%% Rights management information.
 \setcopyright{acmlicensed}
-\copyrightyear{2025}
-\acmYear{2025}
+\copyrightyear{2026}
+\acmYear{2026}
 \acmDOI{00.0000/0000000.0000000}
 
-%%
 %% These commands are for a JOURNAL article.
 \acmJournal{TOPLAS}
 \acmVolume{0}
 \acmNumber{0}
 \acmArticle{0}
 \acmMonth{8}
-
-%%
-%% Submission ID.
-%% Use this when submitting an article to a sponsored event. You'll
-%% receive a unique submission ID from the organizers
-%% of the event, and this ID should be used as the parameter to this command.
-%%\acmSubmissionID{123-A56-BU3}
-
-%%
-%% The majority of ACM publications use numbered citations and
-%% references.  The command \citepstyle{authoryear} switches to the
-%% "author year" style.
-%%
-%% If you are preparing content for an event
-%% sponsored by ACM SIGGRAPH, you must use the "author year" style of
-%% citations and references.
-%% Uncommenting
-%% the next command will enable that style.
-%%\citepstyle{acmauthoryear}
 
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
@@ -76,133 +29,43 @@
     colorlinks=true,
 }
 
-\usepackage{newtxtt}
-
 \usepackage{listings}
-\usepackage{xcolor}
-
-% Define colors for syntax highlighting
-\definecolor{codegreen}{rgb}{0,0.6,0}
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{codeblue}{rgb}{0.13,0.13,0.67}
-\definecolor{backcolour}{rgb}{0.98,0.98,0.98}
-
-% Dart language definition for listings
-\lstdefinelanguage{Dart}{
-  keywords={abstract, as, assert, async, await, break, case, catch, class, const, continue, covariant, default, deferred, do, dynamic, else, enum, export, extends, extension, external, factory, false, final, finally, for, Function, get, hide, if, implements, import, in, interface, is, late, library, mixin, new, null, on, operator, part, required, rethrow, return, set, show, static, super, switch, sync, this, throw, true, try, typedef, var, void, while, with, yield},
-  keywordstyle=\color{codeblue}\bfseries,
-  ndkeywords={int, double, String, bool, List, Map, Set, Future, Stream, Iterable, Object, dynamic, void, Never, Null},
-  ndkeywordstyle=\color{codepurple},
-  identifierstyle=\color{black},
-  sensitive=true,
-  comment=[l]{//},
-  morecomment=[s]{/*}{*/},
-  commentstyle=\color{codegreen}\itshape,
-  stringstyle=\color{codegray},
-  morestring=[b]',
-  morestring=[b]",
-}
-
-% Default listing style
 \lstset{
-  language=Dart,
-  backgroundcolor=\color{backcolour},
-  frame=lines,
-  framesep=2mm,
   basicstyle=\footnotesize\ttfamily,
-  numbers=left,
-  numberstyle=\tiny\color{codegray},
-  numbersep=5pt,
-  xleftmargin=4mm,
-  breaklines=true,
-  breakatwhitespace=true,
-  breakautoindent=true,
-  breakindent=12mm,
-  showstringspaces=false,
-  tabsize=2,
+  columns=fullflexible,
   keepspaces=true,
-  columns=flexible,
-  aboveskip=1em,
-  belowskip=1em,
+  breaklines=false,
+  frame=none,
+  numbers=left,
+  numberstyle=\tiny,
+  numbersep=6pt,
+  xleftmargin=2em,
+  showstringspaces=false,
 }
 
 \usepackage{caption}
 \usepackage{subcaption}
 
-% Environment for code listings with captions
-\newenvironment{code}{\captionsetup{type=lstlisting}}{}
-
-% Prevent footnote page breaks
-\usepackage{manyfoot}
-
-\usepackage{bm}
-
-\newtheorem{theorem}{Theorem}
-\newtheorem{coroll}{Corollary}
-\newtheorem{defn}{Definition}
-\newtheorem{lemma}[theorem]{Lemma}
-\newtheorem{axiom}{Axiom}
-\newtheorem{constraint}{Constraint}
-
-\newfloat{grammar}{h}{Grammar}
-
 \usepackage{graphicx}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-
-% Needed for \toprule
 \usepackage{booktabs}
 
-% Additional lstset options for pseudocode
-\lstset{
-  escapeinside={(*@}{@*)},
-  literate={·}{{$\cdot$}}1
-}
-
-% Inline code with syntax highlighting
-\newcommand{\cd}[1]{\lstinline[language=Dart,basicstyle=\ttfamily,keywordstyle=\color{codeblue}\bfseries,ndkeywordstyle=\color{codepurple},commentstyle=\color{codegreen}\itshape,stringstyle=\color{codegray}]!#1!}
+% Shorthand for inline code.
+\newcommand{\cd}[1]{\texttt{#1}}
 
 %%
 %% end of the preamble, start of the body of the document source.
 \begin{document}
 
-%%
-%% The "title" command has an optional parameter,
-%% allowing the author to define a "short title" to be used in page headers.
-\title[The Squirrel Parser]{The Squirrel Parser}
-\subtitle{A Linear-Time PEG Parser Capable of Left Recursion and Optimal Error Recovery}
+\title[The Squirrel Parser]{The Squirrel Parser: Packrat Parsing with Left Recursion and Minimum-Edit-Distance Error Repair}
 
-%%
-%% The "author" command and its associated commands are used to define
-%% the authors and their affiliations.
-%% Of note is the shared affiliation of the first two authors, and the
-%% "authornote" and "authornotemark" commands
-%% used to denote shared contribution to the research.
 \author{Luke A. D. Hutchison}
 \email{luke.hutch@alum.mit.edu}
 \orcid{0000-0002-2937-8619}
-%\affiliation{\institution{Massachusetts Institute of Technology}}
 
-%%
-%% By default, the full list of authors will be used in the page
-%% headers. Often, this list is too long, and will overlap
-%% other information printed in the page headers. This command allows
-%% the author to define a more concise list
-%% of authors' names for this purpose.
-% \renewcommand{\shortauthors}{Luke A. D. Hutchison}
-
-%%
-%% The abstract is a short summary of the work to be presented in the
-%% article.
 \begin{abstract}
-We present the squirrel parser, a PEG parser that directly handles all forms of left recursion with optimal error recovery, while maintaining linear time complexity in the length of the input even in the presence of an arbitrary number of errors. Traditional approaches to handling left recursion in a recursive descent parser require grammar rewriting or complex algorithmic extensions. We derive a minimal algorithm from first principles: cycle detection via per-position state tracking and $O(1)$-per-LR-cycle communication from descendant to ancestor recursion frames, and fixed-point search via iterative expansion. For error recovery, we derived a set of four axioms and fifteen constraints that must be imposed upon an optimal error recovery design to ensure completeness, correctness, optimality of performance, and intuitiveness of behavior. We utilized a constraint satisfaction mechanism to search the space of all possibilities, arriving at a provably optimal and robust error recovery strategy that maintains perfect performance linearity.
+The \emph{squirrel parsing algorithm} extends packrat parsing to directly support all forms of left recursion: direct, indirect, input-dependent, and interwoven left-recursive cycles, to any degree of complexity. The extension consists of adding three metadata fields to each memo table entry and an expansion loop to the memo-table access function, and it reduces exactly to standard packrat parsing whenever no left-recursive cycle is encountered, so its cost on non-left-recursive grammars is negligible. For left-recursive grammars, parsing time remains linear in the length of the input whenever the expansion regions of left-recursive cycles are disjoint, a condition satisfied by every practical grammar we examined; we exhibit an adversarial grammar, nesting syntactic lookahead over a left-recursive rule, for which the algorithm (in common with prior bounded-left-recursion approaches) requires quadratic time. This paper also introduces an error repair algorithm for recursive descent parsing that inverts the usual architecture: instead of modifying the parser to tolerate errors, it keeps the parser intact and searches the space of \emph{edited inputs}, using the parser as an oracle, for a nearest member of the grammar's language under Damerau-Levenshtein distance. Because the parser is never modified, repair composes with left recursion, adds zero overhead to the parsing of valid input, and inherits a precise, declarative semantics: the repair of an invalid input is a minimum-edit-distance transformation of that input into the language. In systematic mutation testing over a JSON grammar, the repair search recovered a provably minimum-cost repair for all 519 single-character mutations tested, restoring the exact structural parse tree of the unmutated document in 94.4\% of cases, where a previous in-parser recovery design produced cascading errors on the majority of the same mutants; minimality was further verified against a brute-force oracle across five grammars, including a left-recursive expression grammar.
 \end{abstract}
 
-%%
-%% The code below is generated by the tool at http://dl.acm.org/ccs.cfm.
-%% Please copy and paste the code instead of the example below.
-%%
 \begin{CCSXML}
 <ccs2012>
    <concept>
@@ -221,25 +84,35 @@ We present the squirrel parser, a PEG parser that directly handles all forms of 
 \ccsdesc[500]{Software and its engineering~Parsers}
 \ccsdesc[400]{Theory of computation~Grammars and context-free languages}
 
-%%
-%% Keywords. The author(s) should pick words that accurately describe
-%% the work being presented. Separate the keywords with commas.
-\keywords{parsing, recursive descent parsing, top-down parsing, PEG parsing, PEG grammars, packrat parsing, precedence, associativity, left-recursive grammars, left recursion, memoization}
+\keywords{parsing, recursive descent parsing, top-down parsing, PEG parsing, packrat parsing, left recursion, memoization, error recovery, error repair, edit distance}
 
-%%
-%% This command processes the author and affiliation and title
-%% information and builds the first part of the formatted document.
 \maketitle
 
+%----------------------------------------------------------------------
 \section{Introduction}
+\label{sec:intro}
+%----------------------------------------------------------------------
 
-Recursive descent parsing~\cite{irons1961syntax,lucas1961structure} remains widely used due to its simplicity and the direct correspondence between grammar and implementation. Memoization enables linear-time parsing~\cite{norvig1991}, formalized as packrat parsing by Ford~\cite{ford2002,ford2004}.%
-\footnote{Note: Ford's 2002 thesis~\cite{ford2002} discusses packrat parsers; PEGs are introduced in the 2004 paper~\cite{ford2004}.} %
-Parsing Expression Grammars (PEG) provide an unambiguous formalism for greedy pattern matching, replacing generative productions with deterministic recognition.
+The earliest described parsing algorithms, used to parse programs written in ALGOL~60~\cite{irons1961syntax,lucas1961structure}, were recursive algorithms that worked top-down. Despite the many parsing algorithms developed since~\cite{kegler2023parsing}, recursive descent parsing has remained popular, because it is simple to implement, and because the structure of a recursive descent parser's code directly mirrors the structure of the underlying grammar. Recursive descent parsers have, however, suffered from three longstanding drawbacks: in their direct formulations they repeat work, and can require exponential time when backtracking; they cannot parse left-recursive grammars, because a left-recursive rule calls itself before consuming any input, triggering infinite recursion; and they recover poorly from syntax errors, typically reporting a single failure position and stopping.
 
-\subsection{\label{sec:peg_grammars}PEG Formalism}
+The first drawback has been solved. Norvig showed that memoizing a top-down parser eliminates its repeated work~\cite{norvig1991}, and Ford developed this observation into \emph{packrat parsing}, a memoizing recursive descent algorithm that parses in time linear in the length of the input~\cite{ford2002,ford2002b}, building on top-down backtracking recognition schemes studied three decades earlier by Birman and Ullman~\cite{birman1970,birman1973}. Ford subsequently introduced \emph{parsing expression grammars} (PEGs) as a recognition-based formalism for specifying the grammars that packrat parsers accept~\cite{ford2004}. In contrast to the generative formalisms that preceded them, PEG rules denote greedily recognized patterns, and the PEG choice operator is ordered, replacing the ambiguity of context-free grammars with deterministic choice, so that a PEG grammar yields exactly one parse of any input it accepts.
 
-A PEG grammar $G$ consists of rules $A \leftarrow e$ where $A$ is a rule name and $e$ is a parsing expression. Expressions combine via operators (Table~\ref{tab:peg_operators}): \cd{Seq} (sequence $e_1 e_2$), \cd{First} (ordered choice $e_1 / e_2$), \cd{OneOrMore} (repetition $e+$), and \cd{NotFollowedBy} (negative lookahead $!e$). Derived operators include \cd{Optional} ($e? \equiv e / \epsilon$), \cd{ZeroOrMore} ($e* \equiv e+ / \epsilon$), and \cd{FollowedBy} ($\&e \equiv !!e$). Terminals match character sequences; $\epsilon$ matches zero characters at any position.
+The second and third drawbacks have both remained open, in the specific sense that no known solution preserves the properties that make packrat parsing attractive in the first place: implementation simplicity, unmodified grammars, faithful parse tree structure, and linear-time performance.
+
+For left recursion, the available workarounds each give up one of those properties. Rewriting a left-recursive grammar into non-left-recursive form, whether manually or automatically, changes the shape of the resulting parse tree, so the semantic structure of the grammar is no longer directly represented in the structure of the parse, and postprocessing is needed to recover it. ANTLR handles direct left recursion by exactly such an internal rewriting step, and does not accept indirect left recursion~\cite{parr2014}. Warth et al.\ modified the packrat memoization mechanism to grow left-recursive matches iteratively from a seed~\cite{warth2008}, but the resulting algorithm requires substantial bookkeeping beyond the memo table (recursion heads, involved-rule sets, and a rule invocation stack), and Tratt later showed that its treatment of some grammars is surprising or incorrect, proposing a restricted alternative that handles direct left recursion only~\cite{tratt2010}. Medeiros et al.\ gave a formal semantics for left-recursive PEGs in terms of bounded left recursion, in which a left-recursive rule is re-evaluated under successively larger recursion bounds until its match length stops growing~\cite{medeiros2014}. Frost et al.\ handle left recursion in parser combinators by curtailing recursion depth against the remaining input length~\cite{frost2008}. These approaches collectively established that left-recursive top-down parsing is possible, but each is either restricted in the forms of left recursion it accepts, or requires machinery whose complexity has discouraged adoption.
+
+For error recovery, the situation is starker: fifty years of work on syntax error recovery has produced practical methods for LR and LL table-driven parsers, yet almost none of it transfers to recursive descent parsers in general or to PEG parsers in particular, for structural reasons. Aho and Peterson showed in 1972 that a context-free parser can be made globally error-correcting, producing a parse whose distance from the input is minimal, by extending the grammar with error productions and parsing with an Earley-style algorithm in cubic time~\cite{aho1972}; Lyon gave a practical variant~\cite{lyon1974}. The minimum-distance objective was thereafter largely abandoned as impractical, in favor of local repair heuristics: Burke and Fisher's method considers single-token repairs at the failure point, validated by parsing ahead a fixed number of tokens~\cite{burke1987}, and the recent CPCT+ algorithm of Diekmann and Tratt computes complete sets of minimum-cost repair sequences at the failure point of an LR parser~\cite{diekmann2020}. All of these operate on the parser's internal configuration at the moment of failure, and therefore cannot repair an error whose edit lies \emph{before} the failure point, as an unclosed string literal requires. In the PEG setting, proposed recovery mechanisms attach recovery expressions to labeled failure points in the grammar~\cite{medeiros2018,medeiros2020}, which requires per-grammar recovery engineering; in the scannerless generalized-LR setting, de Jonge et al.\ derive permissive grammars with recovery productions automatically~\cite{dejonge2012}. The pika parser, our earlier work, inverts packrat parsing into a right-to-left dynamic programming algorithm, which handles left recursion and supports recovery after syntax errors, at a significant constant-factor performance cost, and with recovery anchored to user-designated recovery rules~\cite{hutchison2020}.
+
+Both problems, we contend, yield to the same discipline: identify the invariants that make the packrat architecture work, and extend the architecture only in ways that preserve them. For left recursion, the load-bearing invariant is the purity of memoization, and re-examining what a left-recursive cycle means to a memoizing parser leads to an algorithm, the \emph{squirrel parser}, that handles every form of left recursion by adding three metadata fields to each memo entry and one expansion loop to the memo access function, reducing exactly to packrat parsing whenever no cycle is met. For error recovery, the load-bearing invariant is the parser itself: prior methods modify the parser, or the grammar, to tolerate errors, and the modification is what cascades. Keeping the parser intact and searching instead over \emph{edited copies of the input}, with the parser as an acceptance oracle, turns recovery into a shortest-path problem in edit space whose answer is declarative, the nearest member of the grammar's language under Damerau-Levenshtein distance, in place of a collection of heuristics.
+
+%----------------------------------------------------------------------
+\subsection{Parsing expression grammars}
+\label{sec:peg_grammars}
+%----------------------------------------------------------------------
+
+A PEG grammar consists of a finite set of \emph{rules}. Each rule has the form $A \leftarrow e$, where $A$ is a unique \emph{rule name}, and $e$ is a \emph{parsing expression}, also referred to as a \emph{clause}. One rule is designated as the \emph{top rule}, which becomes the root for top-down recursive parsing. Clauses are constructed from \emph{subclauses}, \emph{terminals}, and \emph{rule references}. The subclauses within a rule's clause form a tree, with \emph{PEG operators} at the non-leaf nodes, and terminals or rule references at the leaf nodes.
+
+There are four principal PEG operators (Table~\ref{tab:peg_operators}): \cd{Seq} advances the parser through a series of subclause matches; \cd{First} (ordered choice) matches as soon as one of its subclauses, tried in order, matches; \cd{OneOrMore} matches a sequence of one or more instances of its subclause; and \cd{NotFollowedBy} is a lookahead operator that consumes no input, and matches only if its subclause does not match at the current position. Three further operators can be implemented directly or derived from the first four: \cd{Optional} matches zero or one instances of its subclause; \cd{ZeroOrMore} matches zero or more instances; and \cd{FollowedBy} is a lookahead operator that matches only if its subclause matches at the current position, without consuming any input. Terminals match individual characters, strings, or character classes. One special terminal is the empty string $\epsilon$, which matches at any position, even beyond the end of the input, and consumes zero characters.
 
 \begin{table*}[tbp]
     \centering
@@ -247,1004 +120,749 @@ A PEG grammar $G$ consists of rules $A \leftarrow e$ where $A$ is a rule name an
     \begin{minipage}{0.45\textwidth}
         \centering
         \begin{tabular}{lcc}\toprule
-        \textbf{Name}  & \textbf{Subclauses} & \textbf{Notation}     \\\midrule
+        \textbf{Name}          & \textbf{Num subclauses} & \textbf{Notation}     \\\midrule
         \cd{Seq}           & 2+                      & $e_1$ $e_2$ $e_3$     \\
         \cd{First}         & 2+                      & $e_1$ / $e_2$ / $e_3$ \\
         \cd{OneOrMore}     & 1                       & $e+$                  \\
         \cd{NotFollowedBy} & 1                       & $!e$                  \\\bottomrule
         \end{tabular}
-        \subcaption{Principal operators}
+        \subcaption{Principal PEG operators}
         \label{tab:peg_standard}
     \end{minipage}
     \hfill
     \begin{minipage}{0.45\textwidth}
         \centering
         \begin{tabular}{lcc}\toprule
-        \textbf{Name}       & \textbf{Notation} & \textbf{Equivalent} \\\midrule
+        \textbf{Name}       & \textbf{Notation} & \textbf{Equivalent to} \\\midrule
         \cd{Optional}   & $e?$              & $e / \epsilon$         \\
         \cd{ZeroOrMore} & $e*$              & ${e+} / \epsilon$      \\
         \cd{FollowedBy} & $\&e$             & $!!e$                  \\\bottomrule
         \end{tabular}
-        \subcaption{Derived operators}
+        \subcaption{Derived PEG operators}
         \label{tab:peg_derived}
     \end{minipage}
     }
     \caption{\label{tab:peg_operators}PEG operators, defined in terms of subclauses $e$ and $e_i$, and the empty string $\epsilon$.}
-    \Description[PEG operators]{PEG operators split into standard and derived operators, defined in terms of subclauses $e$ and $e_i$, and the empty string $\epsilon$.}
+    \Description[PEG operators]{PEG operators split into principal and derived operators, defined in terms of subclauses $e$ and $e_i$, and the empty string $\epsilon$.}
 \end{table*}
 
-Packrat parsing achieves $O(n \cdot |G|)$ complexity by memoizing match results at each $(\textit{clause}, \textit{position})$ pair. However, standard packrat parsers face two fundamental limitations that have resisted simple solutions.
+A clause matches at a given input position, or fails to match there; when it matches, it consumes zero or more characters, and the parsing position advances by the length of the match. We write $n$ for the length of the input, $|G|$ for the number of rules in the grammar, and $L(G)$ for the language of the grammar: the set of strings that the top rule matches in their entirety. A \emph{parser state} is a pair $(R, p)$ of a rule and an input position, $p \in [0, n]$; position $n$, one past the last character, is a legal match position because lookaheads and $\epsilon$ may be evaluated there.
 
-\subsection{Motivation: Shortcomings of Existing Approaches}
+All non-left-recursive PEG grammars can be parsed directly by a recursive descent parser, and can be parsed in linear time by a packrat parser. PEGs are strictly more powerful than regular expressions, and can express some non-context-free languages, but it is conjectured, and still open, that some context-free languages cannot be recognized by any PEG~\cite{ford2004}. A PEG parser inherits the limitations of other recursive descent parsers: without special handling it cannot parse left-recursive grammars, and it reports errors poorly.
 
-\textbf{Left recursion.} Rules like $E \leftarrow E \mathbin{\texttt{+}} T \;|\; T$ trigger infinite recursion: matching $E$ at position $p$ immediately recurses to $E$ at $p$ before consuming input. Prior solutions have significant drawbacks:
+Throughout the paper, grammars are written in the ASCII notation of the reference implementation: \cd{A <- e ;} defines a rule, \cd{'x'} and \cd{"abc"} are literal terminals, \cd{[0-9]} is a character class, and the operators are as in Table~\ref{tab:peg_operators}.
 
-\begin{itemize}
-\item \textbf{Grammar rewriting}~\cite{pegged}: Transforms left-recursive rules into right-recursive equivalents, fundamentally altering parse tree structure and requiring post-processing to recover semantic intent.
-\item \textbf{Precedence climbing}~\cite{parr2014,antlr4}: Handles operator precedence but requires separate mechanisms for each precedence level, increasing implementation complexity.
-\item \textbf{Iterative algorithms}~\cite{warth2008,tratt2010}: Handle direct left recursion through seed-and-grow approaches but exhibit complex control flow and often fail on indirect or mutually recursive cycles.
-\item \textbf{GLL/ALL(*) extensions}~\cite{parr2011,parboiled1,parboiled2,mouse}: Support left recursion but sacrifice linear performance or introduce non-deterministic state exploration.
-\end{itemize}
+%----------------------------------------------------------------------
+\section{Deconstructing left recursion}
+\label{sec:deconstruct}
+%----------------------------------------------------------------------
 
-\textbf{Error recovery.} Packrat parsers commit to the first matching alternative (greedy choice), making robust error recovery difficult~\cite{parr2014}. Existing approaches either abandon memoization guarantees or require grammar annotations specifying recovery points, undermining the simplicity of PEG.
+The only state visible to a recursion frame in a recursive descent parser, setting aside the memo table for the moment, is the parser state $(R, p)$: the rule being matched, and the input position at which it is being matched. If the same state is visited twice within one recursion path, then zero characters were consumed between the two visits, since $p$ is the same both times, and nothing else distinguishes the two frames. The parser will therefore repeat the same descent from the second visit that it began from the first, and recurse forever. A cycle in the grammar is \emph{left recursive}, for a given input, exactly when the parser can traverse the whole cycle without consuming a character. Conversely, if every loop around a cycle consumes at least one character, the parser makes monotonic progress toward the end of the finite input, the recursion depth is bounded by a linear function of the input length, and the cycle is harmless: this is why an ordinary recursive descent parser handles so-called right-recursive rules such as $E \leftarrow N \; \texttt{'+'} \; E \; / \; N$ without difficulty. The distinction between left recursion and non-left recursion is not which operand position refers back into the cycle, but whether the parser must consume input before it can re-enter the cycle.
 
-Both problems share a common theme: previous solutions compromise parse tree semantics, sacrifice $O(n \cdot |G|)$ complexity, or introduce algorithmic complexity disproportionate to the problem's conceptual simplicity. This work demonstrates that no such tradeoff is necessary.
+\begin{lemma}[Monotonic progress]
+\label{lem:monotonic}
+A recursive descent parser terminates on a grammar cycle if and only if each loop around the cycle consumes at least one character of the input. Consequently, the only consistent interpretation of a left-recursive cycle, other than infinite recursion, requires each successive expansion of the cycle to consume at least one additional character.
+\end{lemma}
 
-\section{Left Recursion: Formal Derivation}
+For parse tree nodes corresponding to matches of a left-recursive rule, Lemma~\ref{lem:monotonic} means that each successively higher node in the parse tree must match at least one more character of the input than the node below it.
 
-\subsection{Problem Formalization}
+%----------------------------------------------------------------------
+\subsection{Parse trees are built bottom-up}
+\label{sec:postorder}
+%----------------------------------------------------------------------
 
-\begin{defn}[Parser State]
-A parser state is a pair $(C, p)$ where $C \in G$ is a clause and $p \in [0, n]$ is an input position.
-\end{defn}
+It is a common belief that a recursive descent parser builds the parse tree from the top down, and this belief makes left recursion look unresolvable, since the parser would have to know how tall the left-recursive subtree will be before descending into it. But a recursive descent parser does not create the parse tree node for the current recursion frame until all requisite descendant clauses have been found to match the input: a clause is determined to match only after its subclauses have been matched, and the node is created on \emph{exit} from the frame. Recursive descent is a postorder traversal of the grammar with respect to the input, and a postorder traversal builds the tree on the way back up. In this respect top-down and bottom-up parsers both build the parse tree from the bottom up, which makes intuitive sense: the larger-scale structure of the input cannot be known until its finer-grained structure has been determined.
 
-\begin{defn}[Left-Recursive Cycle]
-A clause $C$ is left-recursive at position $p$ if evaluation of $C.match(p)$ recursively invokes $C.match(p)$ before consuming any input.
-\end{defn}
+There is also a stronger reason to handle left recursion bottom-up. It is not possible to know \emph{a priori} how many times to recurse around a left-recursive cycle before terminating the descent: the number of loops that will match is a property of the input, discoverable only by attempting successively larger matches until a larger match can no longer be found. Lemma~\ref{lem:monotonic} requires each loop to consume at least one additional character, but does not say how many more than one, and the number of characters a given loop consumes cannot be known until the number consumed by the next-lower loop is known.
 
-Naive recursive descent on $E \leftarrow E \mathbin{\texttt{+}} T \;|\; T$ at position $p$ immediately recurses to $E$ at $p$, producing infinite recursion. The packrat memo table cannot prevent this: memoization requires a complete result for caching, but recursive calls occur \emph{during} result computation.
+\begin{lemma}[Bottom-up expansion]
+\label{lem:bottomup}
+A left-recursive cycle must be matched against the input bottom-up, by attempting successively taller stacks of loops around the cycle, because the height at which the cycle stops matching is discoverable only from below.
+\end{lemma}
 
-\subsection{Derivation from First Principles}
+%----------------------------------------------------------------------
+\subsection{The fixed point of a left-recursive cycle}
+\label{sec:fixedpoint}
+%----------------------------------------------------------------------
 
-\begin{theorem}[Fixed Point Existence]
-\label{thm:fixed_point}
-For any left-recursive cycle at position $p$, there exists a fixed point: a terminal state where the cycle cannot match additional input.
-\end{theorem}
+Under Lemma~\ref{lem:monotonic}, consider the deepest frames of a descent into a left-recursive cycle. Any higher recursion frame in the same recursive path must match monotonically more characters than a lower frame, the input is finite, and in the extreme case the topmost frame for the cycle matches the entire input; so each successively lower frame has strictly less input available to it, and after finitely many frames the rule can no longer match at all. We term this bottom-most mismatch the \emph{fixed point} of the cycle. The fixed point seeds the bottom-up expansion of Lemma~\ref{lem:bottomup}: the first expansion attempt matches the cycle's non-recursive alternative (if any) above the seeded mismatch, and each subsequent attempt may incorporate the previous, shorter match as a subtree of a taller, longer match.
 
-\begin{proof}
-Let input have length $n$. Each successful iteration must consume $\geq 1$ character (otherwise infinite recursion occurs). After $\leq n$ iterations, all characters are consumed and the cycle terminates with mismatch. This mismatch is the fixed point.
-\end{proof}
+Expansion cannot continue forever, again because the input is finite, so a stopping criterion is needed, and Lemma~\ref{lem:monotonic} supplies it: expansion stops as soon as a successively longer match can no longer be found. In a memoizing parser this criterion takes the form of two update rules for the memo table: a match may only ever be replaced by a longer match, and a match may never be replaced by a mismatch. The intent of a grammar author writing a left-recursive rule is for the rule to match as much of the input as it can at its start position, so the last and longest match found becomes the match for the cycle.
 
-\begin{theorem}[Bottom-Up Necessity]
-Left-recursive matches must be computed bottom-up from the fixed point.
-\end{theorem}
+\begin{lemma}[Fixed point and stopping criterion]
+\label{lem:fixpoint}
+Descent into a left-recursive cycle terminates at a mismatch, the fixed point, from which the cycle is expanded bottom-up; expansion terminates when the match length stops increasing, and the longest match found is the match for the cycle.
+\end{lemma}
 
-\begin{proof}
-The iteration count $k$ satisfying the cycle's continuation condition cannot be determined \emph{a priori}: it depends on input content. Top-down evaluation requires knowing $k$ before recursion; bottom-up computation discovers $k$ through iterative attempts. The fixed point (Theorem~\ref{thm:fixed_point}) provides the base case; expansion proceeds upward until stagnation.
-\end{proof}
+%----------------------------------------------------------------------
+\subsection{Direct, indirect, and input-dependent left recursion}
+\label{sec:lrforms}
+%----------------------------------------------------------------------
 
-\begin{theorem}[Monotonic Length Increase]
-Each successful expansion iteration produces a match strictly longer than the previous iteration.
-\end{theorem}
+Much of the literature distinguishes \emph{direct} left recursion, where a rule refers to itself in leftmost position, from \emph{indirect} left recursion, where the cycle passes through other rules, and several algorithms handle only the direct form~\cite{tratt2010,parr2014}. From the standpoint of the analysis above, the distinction is immaterial: what classifies a path through the grammar as left recursive is whether a loop around the cycle can consume zero characters, and the length of the cycle plays no role in that criterion, in the detection of a repeated parser state, or in bottom-up expansion from the fixed point.
 
-\begin{proof}
-The grammar is finite; each clause composition is deterministic (PEG semantics). For iteration $i$ to succeed beyond iteration $i-1$, it must match additional input the previous seed could not. Thus $len_i > len_{i-1}$ or the iteration fails.
-\end{proof}
+Nor is left recursion a static property of a rule. Whether a given cycle causes the parser to re-enter the same parser state depends on the input. The rule $A \leftarrow \texttt{'x'?} \; (A \; \texttt{'y'} \; / \; A \; / \; \texttt{'y'})$ recurses left recursively exactly when \cd{'x'} fails to match at the current position, since \cd{'x'?} then consumes zero characters; and in the grammar $A \leftarrow B \; / \; \texttt{'z'};\; B \leftarrow (\texttt{'x'} \; A) \; / \; (A \; \texttt{'y'})$, the cycle through $B$'s second alternative is entered only where the input diverts matching away from the first alternative. A parser therefore cannot soundly decide where to apply left recursion handling by inspecting the grammar alone.
 
-\subsection{Algorithmic Components}
+\begin{lemma}[Dynamic detection]
+\label{lem:dynamic}
+Left recursion handling must be triggered by detecting a repeated parser state $(R, p)$ during parsing, not by static analysis of the grammar, and must treat cycles of every length identically.
+\end{lemma}
 
-The theorems necessitate three mechanisms:
+%----------------------------------------------------------------------
+\subsection{Algorithm outline}
+\label{sec:sketch}
+%----------------------------------------------------------------------
 
-\paragraph{(1) Cycle Detection via State Tracking.}
-Maintain per-position recursion state. When matching $C$ at $p$, check if $(C, p)$ is on the current call stack. If so, return mismatch (the fixed point) and set \cd{foundLeftRec = true} in the memo entry for $(C, p)$. This $O(1)$ write communicates the cycle condition from descendant to ancestor recursion frame.
-
-\paragraph{(2) Iterative Expansion with Seed Growth.}
-After a recursive call returns, check \cd{foundLeftRec}. If true, enter expansion: repeatedly re-invoke $C.match(p)$, using the previous iteration's cached result as the seed for the next. Terminate when $len_{i+1} \leq len_i$ (no progress).
-
-\paragraph{(3) Version-Tagged Memoization.}
-Each $(C, p)$ memo entry includes version tag \cd{memoVersion[p]}. Each expansion iteration increments the version counter. Cache lookups validate \cd{entry.version == memoVersion[p]}. This ensures inner clauses see the current iteration's seed, not stale results from prior iterations, preserving length monotonicity (Theorem~3).
-
-\begin{theorem}[Correctness]
-The three-component algorithm correctly computes left-recursive matches for all cycle types (direct, indirect, mutual).
-\end{theorem}
-
-\begin{proof}
-(Sketch) Cycle detection identifies all left-recursive states via call-stack membership. Iterative expansion computes the least fixed point via Kleene iteration on the finite input domain. Version tagging maintains cache coherence across iterations, ensuring monotonic progress. Termination follows from finite input length.
-\end{proof}
-
-\begin{theorem}[Complexity Preservation]
-Left recursion handling adds $O(1)$ overhead per $(C, p)$ pair, maintaining overall $O(n \cdot |G|)$ complexity.
-\end{theorem}
-
-\begin{proof}
-Cycle detection: $O(1)$ per call. Expansion: at most $n$ iterations (bounded by input length), each performing one memoized match. Amortized over all positions: $O(n)$ total expansion overhead. Combined with packrat's $O(n \cdot |G|)$ base cost: $O(n \cdot |G|) + O(n) = O(n \cdot |G|)$.
-\end{proof}
-
-The squirrel parser implements this minimal algorithm. Unlike prior work~\cite{warth2008,tratt2010}, it handles all recursion types uniformly, requires no grammar preprocessing, and maintains linear performance.
-
-\section{Implementation}
-
-Fig.~\ref{fig:Code} presents the complete implementation. The code uses C-like syntax for clarity. Key data structures:
+Lemmas \ref{lem:monotonic} through \ref{lem:dynamic} together determine the shape of a left-recursion-capable memoizing recursive descent parser:
 
 \begin{itemize}
-\item \cd{Match}: Represents parse results with clause, position, length, and submatches.
-\item \cd{MemoEntry}: Caches results per $(\textit{clause}, \textit{pos})$ with LR tracking fields \cd{inRecPath}, \cd{foundLeftRec}, and \cd{version}.
-\item \cd{MemoTable}: Maps $(\textit{clause}, \textit{pos})$ to \cd{MemoEntry}. Implementable as dense 2D array or sparse hashmap.
-\item \cd{Parser}: Maintains \cd{cycleDepthForPos[]} for version tagging.
+    \item On entering a recursion frame to match rule $R$ at position $p$, determine whether the parser state $(R, p)$ was already visited in a higher frame of the current recursion path.
+    \begin{itemize}
+        \item If not, proceed with standard memoized recursive descent.
+        \item If so, this frame is the fixed point of a left-recursive cycle (Lemma~\ref{lem:fixpoint}): record a mismatch for $(R, p)$, and signal to the ancestral frame with the same parser state that it must expand the cycle bottom-up.
+    \end{itemize}
+    \item If the current frame was signaled, iteratively re-match the same rule at the same position until the match no longer grows (Lemma~\ref{lem:fixpoint}).
+    \item Update the memo entry for $(R, p)$ only when a match grows longer; never replace a match with a mismatch.
 \end{itemize}
 
-\begin{figure}[!p]
+The ideas behind bottom-up growth of a left-recursive match are shared with the seed-growing algorithm of Warth et al.~\cite{warth2008} and with the bounded left recursion semantics of Medeiros et al.~\cite{medeiros2014}. What has been missing is a formulation that is simple, uniform across all of the cases of Lemma~\ref{lem:dynamic}, and correct: Warth et al.'s algorithm requires auxiliary data structures beyond the memo table (a rule invocation stack, recursion ``heads,'' and per-head involved-rule sets), and both Tratt and Medeiros et al.\ report grammars for which it produces incorrect or surprising parses~\cite{tratt2010,medeiros2014}; Tratt's own alternative deliberately restricts itself to direct left recursion~\cite{tratt2010}; and Medeiros et al.'s semantics re-evaluates the rule under an explicit increasing bound. The algorithm presented next implements the outline with three metadata fields added to each memo entry and no other data structures, handling direct and indirect left recursion identically per Lemma~\ref{lem:dynamic}. We term it the \emph{squirrel parser}.
+
+%----------------------------------------------------------------------
+\section{The squirrel parsing algorithm}
+\label{sec:algorithm}
+%----------------------------------------------------------------------
+
+Fig.~\ref{fig:Code} gives implementation-level pseudocode for the complete algorithm (left), and for representative PEG clause types (right).
+
+The pseudocode style was chosen to be unambiguous but generically readable by anyone familiar with a C-like object-oriented language, which we prefer to inventing a new abstract pseudocode notation. Classes are declared with the keyword \cd{class}, followed by an optional parenthesized list of fields set by an implicit constructor, an optional superclass after a colon, and the class body. Memory allocation with \cd{new} zero-initializes all fields and array elements, storing zero, \cd{null}, or \cd{false} as appropriate. \cd{[]} denotes the empty array, and \cd{[m]} an array containing the single element \cd{m}. Standard C syntax is used for local variables, loops, and pre-increment (\cd{++x}). The \cd{MemoTable} class (not shown) has a single method \cd{getOrCreateEntry(rule, pos)}, which returns the \cd{MemoEntry} stored under the key $(R, p)$, first creating and storing a new zero-initialized entry if none exists; it may be implemented as a dense two-dimensional array indexed by rule and position, which is faster, or as a hashmap keyed by the pair, which uses less memory. The clause types not shown follow directly from the PEG operator definitions of Table~\ref{tab:peg_operators}, with one caveat: \cd{OneOrMore} and \cd{ZeroOrMore} must stop iterating if their subclause yields a zero-length match, since otherwise the empty match would be consumed forever, the iterative counterpart of an unhandled left-recursive cycle.
+
+\begin{figure}
 \centering
-\begin{subfigure}[t]{.45\textwidth}
-\begin{lstlisting}[frame=none,xleftmargin=0\textwidth,basicstyle=\scriptsize\ttfamily]
-class Match(Clause clause, int pos, int len, Match[] subClauseMatches);
+\begin{subfigure}[t]{.46\linewidth}
+\begin{lstlisting}
+class Match(Clause clause, int pos, int len,
+            Match[] subClauseMatches);
 
-const Match MISMATCH = new Match(null, -1, -1, []);
+
+const Match MISMATCH =
+    new Match(null, -1, -1, []);
+
 
 class Parser(Clause topRule) {
-. String input;
-. MemoTable memoTable;
-. int[] cycleDepthForPos;
-.
-. Match match(Clause rule, int pos) {
-. . var memoEntry = memoTable.getOrCreateEntry(rule, pos);
-. . return memoEntry.match(this, rule, pos);
-. }
-.
-. Match parse(String inputStr) {
-. . input = inputStr;
-. . cycleDepthForPos = new int[input.length + 1];
-. . memoTable = new MemoTable();
-. . return match(topRule, 0);
-. }
+  String input;
+  MemoTable memoTable;
+  int[] memoVersionForPos;
+
+  Match match(Clause rule, int pos) {
+    var memoEntry =
+        memoTable.getOrCreateEntry(rule, pos);
+    return memoEntry.match(this, rule, pos);
+  }
+
+  Match parse(String inputStr) {
+    input = inputStr;
+    memoVersionForPos =
+        new int[input.length + 1];
+    memoTable = new MemoTable();
+    return match(topRule, 0);
+  }
 }
 
+
 class MemoEntry {
-. Match match;
-. boolean inRecPath;
-. boolean inLeftRecCycle;
-. int cycleDepth;
-.
-. Match match(Parser parser, Clause rule, int pos) {
-. . if (match == null || cycleDepth < parser.cycleDepthForPos[pos]) {
-. . . if (inRecPath) {
-. . . . if (match == null) {
-. . . . . inLeftRecCycle = true;
-. . . . . match = MISMATCH;
-. . . . }
-. . . } else {
-. . . . inRecPath = true;
-. . . . while (true) {
-. . . . . var newMatch = rule.match(parser, pos);
-. . . . . if (match != null && newMatch.len <= match.len)
-. . . . . . break;
-. . . . . match = newMatch;
-. . . . . if (!inLeftRecCycle)
-. . . . . . break;
-. . . . . cycleDepth = ++(parser.cycleDepthForPos[pos]);
-. . . . }
-. . . . inRecPath = false;
-. . . }
-. . . cycleDepth = parser.cycleDepthForPos[pos];
-. . }
-. . return match;
-. }
+  Match match;
+  boolean inRecPath;
+  boolean foundLeftRec;
+  int memoVersion;
+
+  Match match(Parser parser, Clause rule,
+              int pos) {
+    if (match == null || memoVersion
+        < parser.memoVersionForPos[pos]) {
+      if (inRecPath) {
+        if (match == null) {
+          foundLeftRec = true;
+          match = MISMATCH;
+        }
+      } else {
+        inRecPath = true;
+        while (true) {
+          var newMatch = rule.match(parser, pos);
+          if (match != null
+              && newMatch.len <= match.len)
+            break;
+          match = newMatch;
+          if (!foundLeftRec)
+            break;
+          memoVersion =
+              ++(parser.memoVersionForPos[pos]);
+        }
+        inRecPath = false;
+      }
+      memoVersion = parser.memoVersionForPos[pos];
+    }
+    return match;
+  }
 }
 \end{lstlisting}
 \end{subfigure}
 \hspace{5mm}
-\begin{subfigure}[t]{.45\textwidth}
-\begin{lstlisting}[firstnumber=59,frame=none,xleftmargin=0\textwidth,basicstyle=\scriptsize\ttfamily]
+\begin{subfigure}[t]{.46\linewidth}
+\begin{lstlisting}[firstnumber=66]
 abstract class Clause {
-. abstract Match match(Parser parser, int pos);
+  abstract Match match(Parser parser, int pos);
 }
+
 
 class First(Clause[] subClauses) : Clause {
-. Match match(Parser parser, int pos) {
-. . for (var i = 0; i < subClauses.length; i++) {
-. . . var m = subClauses[i].match(parser, pos);
-. . . if (m != MISMATCH) {
-. . . . return new Match(this, pos, m.len, [m]);
-. . . }
-. . }
-. . return MISMATCH;
-. }
+  Match match(Parser parser, int pos) {
+    for (var i = 0;
+         i < subClauses.length; i++) {
+      var m = subClauses[i].match(parser, pos);
+      if (m != MISMATCH) {
+        return new Match(this, pos, m.len, [m]);
+      }
+    }
+    return MISMATCH;
+  }
 }
+
 
 class Seq(Clause[] subClauses) : Clause {
-. Match match(Parser parser, int pos) {
-. . var ma = new Match[subClauses.length];
-. . var p = pos;
-. . for (var i = 0; i < subClauses.length; i++) {
-. . . var m = subClauses[i].match(parser, p);
-. . . if (m == MISMATCH) {
-. . . . return MISMATCH;
-. . . }
-. . . ma[i] = m;
-. . . p += m.len;
-. . }
-. . return new Match(this, pos, p - pos, ma);
-. }
+  Match match(Parser parser, int pos) {
+    var ma = new Match[subClauses.length];
+    var p = pos;
+    for (var i = 0;
+         i < subClauses.length; i++) {
+      var m = subClauses[i].match(parser, p);
+      if (m == MISMATCH) {
+        return MISMATCH;
+      }
+      ma[i] = m;
+      p += m.len;
+    }
+    return new Match(this, pos, p - pos, ma);
+  }
 }
+
 
 class Char(char c) : Clause {
-. Match match(Parser parser, int pos) {
-. . if (pos < parser.input.length && parser.input[pos] == c) {
-. . . return new Match(this, pos, 1, []);
-. . }
-. . return MISMATCH;
-. }
+  Match match(Parser parser, int pos) {
+    if (pos < parser.input.length
+        && parser.input[pos] == c) {
+      return new Match(this, pos, 1, []);
+    }
+    return MISMATCH;
+  }
 }
 
-class RuleRef(String refdRuleName, Clause refdRule) : Clause {
-. Match match(Parser parser, int pos) {
-. . var m = parser.match(refdRule, pos);
-. . if (m == MISMATCH) {
-. . . return MISMATCH;
-. . }
-. . return new Match(this, pos, m.len, [m]);
-. }
+
+class RuleRef(String refdRuleName,
+              Clause refdRule) : Clause {
+  Match match(Parser parser, int pos) {
+    var m = parser.match(refdRule, pos);
+    if (m == MISMATCH) {
+      return MISMATCH;
+    }
+    return new Match(this, pos, m.len, [m]);
+  }
 }
 \end{lstlisting}
 \end{subfigure}
-\caption{Implementation-level pseudocode for the entire squirrel parsing algorithm without error recovery (left), and several PEG clause types (right). The other PEG clause types can be easily implemented following the pattern shown, based on the PEG operator definitions.}
-\Description{Two columns of pseudocode showing the Match class definition, MemoEntry class with recursion tracking fields, and clause matching methods including RuleRef, Seq, and First clause implementations.}
+\caption{Implementation-level pseudocode for the entire squirrel parsing algorithm (left), and several PEG clause types (right). The remaining clause types follow the pattern shown, directly from the PEG operator definitions of Table~\ref{tab:peg_operators}.}
+\Description[Squirrel parser pseudocode]{Two columns of pseudocode: the Match class, MISMATCH constant, Parser class, and MemoEntry class with its match method on the left; the Clause, First, Seq, Char, and RuleRef clause classes on the right.}
 \label{fig:Code}
 \end{figure}
 
+In this implementation, each rule of the grammar is a tree of clauses, and the rule is represented by a reference to the topmost clause of that tree. For example, the rule $A \leftarrow (B \; / \; C) \; \texttt{'x'}$ has the name $A$ and consists of the clause tree \cd{Seq(First(RuleRef("B"), RuleRef("C")), Char('x'))}, with the \cd{Seq} clause reference standing for the whole rule. The result of matching the top clause of a rule at a given position is memoized; the results of matching the interior clauses of the tree are deliberately not.
 
-\subsection{Algorithm Mechanics}
+%----------------------------------------------------------------------
+\subsection{Walk-through}
+\label{sec:walkthrough}
+%----------------------------------------------------------------------
 
-The implementation folds all bookkeeping into the memo table. Each \cd{MemoEntry} augments the cached match with LR tracking state, eliminating auxiliary data structures.
+The code in Fig.~\ref{fig:Code} is short and appears simple, but there is a great deal of nuance in how it operates. The key trick at the heart of the algorithm is to store metadata about the current recursion path, and about efforts to expand left-recursive cycles, directly in the memo entries, whether or not a memo entry yet holds a match result. Because the descendant frame that detects a cycle and the ancestral frame that must expand it share the same \cd{MemoEntry} object, the memo table itself becomes the communication channel between frames, and the auxiliary data structures of comparable algorithms (Section~\ref{sec:sketch}) disappear into it.
 
-\paragraph{Core Algorithm.}
-The \cd{MemoEntry.match} method implements the algorithm via four mechanisms:
+\cd{Match} objects form the parse tree: each records the clause that matched, the start position and length of the match, and the matches of the subclauses that constitute it. The singleton \cd{MISMATCH} represents a failed match attempt. Its \cd{len} field is the sentinel $-1$, so that a match of any length, including a zero-length match of $\epsilon$, compares longer than a mismatch; the comparison \cd{newMatch.len <= match.len} in \cd{MemoEntry.match} therefore implements both memo update rules of Lemma~\ref{lem:fixpoint} at once, allowing a mismatch to be replaced by any match, a shorter match by a longer one, and never a match by a mismatch.
 
-\textbf{(1) Cache validation.} Check if cached result is fresh: \cd{match != null} and \cd{cycleDepth == parser.cycleDepthForPos}$[p]$. If valid, return cached \cd{match}. Otherwise, proceed to recomputation.
+The \cd{Parser} class holds the input, the memo table, and the array \cd{memoVersionForPos}, which counts how many times left-recursive expansion has been performed at each input position. Since match attempts may be made at position $n$, one past the end of the input (Section~\ref{sec:peg_grammars}), the array is allocated with $n + 1$ entries. \cd{Parser.match} looks up or creates the memo entry for $(R, p)$ and delegates to it; \cd{parse} starts the process by matching the top rule at position 0.
 
-\textbf{(2) Cycle detection.} When matching $(C, p)$, check \cd{inRecPath}. If true, $(C, p)$ is on the call stack: this is the fixed point. Set \cd{foundLeftRec = true} (communicating the cycle condition from descendant to ancestor via $O(1)$ flag write), seed with \cd{MISMATCH}, and return. The shared \cd{MemoEntry} enables this communication without auxiliary data structures.
-
-\textbf{(3) Iterative expansion.} After recursive call returns, check \cd{foundLeftRec}. If true, enter expansion loop: re-invoke \cd{rule.match(parser, pos)}, using previous iteration's cached result as seed. Compare new match length against previous; if \cd{newMatch.len > match.len}, update cache and increment \cd{parser.cycleDepthForPos}$[p]$. Terminate when no length increase occurs.
-
-\textbf{(4) Version validation.} The \cd{cycleDepth} field stores the version from the last cache update. Incrementing \cd{parser.cycleDepthForPos}$[p]$ during expansion invalidates all entries at position $p$, forcing recomputation with the updated seed. This maintains cache coherence across expansion iterations.
-
-\paragraph{PEG Clause Implementations.}
-Each \cd{Clause} subclass implements \cd{match(parser, pos)} by invoking subclauses unmemoized (direct method calls), collecting results, and returning either \cd{MISMATCH} or a new \cd{Match}. The exception is \cd{RuleRef}, which recurses through \cd{parser.match()}, triggering memoization. This rule-level (not clause-level) memoization reduces overhead while maintaining $O(n \cdot |G|)$ complexity.
-
-\subsection{\label{sec:DupdWork}Functional Purity and Version Tagging}
-
-Standard packrat memoization assumes referential transparency: \cd{match(C, p)} returns the same result on every invocation. Left recursion violates this assumption: each expansion iteration produces a strictly longer match at the same $(C, p)$ pair.
-
-Conceptually, memoization should key on $(\textit{clause}, \textit{pos}, \textit{version})$ where version counts expansion iterations. Each iteration operates on distinct input (the previous iteration's cached result), restoring purity: each $(C, p, v)$ triple maps to a unique result.
-
-Physically, storing all versions is unnecessary. Only the \emph{most recent} match matters. The \cd{cycleDepth} field implements version tagging: when \cd{cycleDepth < parser.cycleDepthForPos}$[p]$, the cached result is stale and recomputation occurs; when equal, the result is fresh. Incrementing \cd{parser.cycleDepthForPos}$[p]$ invalidates all entries at position $p$, forcing the next expansion iteration.
-
-This mechanism achieves three properties:
+Each call to \cd{MemoEntry.match} represents one rule-level recursion frame. Its behavior is governed by the entry's four fields:
 
 \begin{itemize}
-\item \textbf{Linear expansion cost:} Stale entries trigger recomputation, but cycle detection (\cd{inRecPath}) prevents redundant recursive descent. Each iteration performs $O(|G|)$ memoized lookups.
-\item \textbf{Cousin deduplication:} Multiple references to the same left-recursive rule (e.g., $A$ in $(A \leftarrow (A\,\texttt{`x'}) / (A\,\texttt{`y'}) / B)$) share the memoized result for the current iteration.
-\item \textbf{Backward compatibility:} When no cycles exist, \cd{cycleDepthForPos} remains zero and the algorithm reduces to standard packrat parsing.
+    \item \cd{match} stores the best (longest) match found so far for this rule at this position, or \cd{null} before any attempt has completed, or \cd{MISMATCH}.
+
+    \item \cd{inRecPath} is true while an attempt to match this entry's rule is anywhere on the current recursion path: it is set before recursing into the rule's clause tree and cleared on exit. If \cd{MemoEntry.match} is entered while \cd{inRecPath} is already true, the parser state $(R, p)$ has been visited twice on one path, which is precisely the dynamic detection of a left-recursive cycle required by Lemma~\ref{lem:dynamic}, achieved without any separate visited-set data structure.
+
+    \item \cd{foundLeftRec} is set by the descendant frame at the moment a cycle is first detected, that is, when $(R, p)$ is re-entered and no match result exists yet. Since the two frames share the entry, setting this flag \emph{signals to the ancestral frame} that its rule is the head of a left-recursive cycle. The ancestor notices the flag after its recursive call returns, and responds by iteratively re-matching the rule, that is, by expanding the cycle bottom-up per Lemma~\ref{lem:bottomup}.
+
+    \item \cd{memoVersion} records the value of \cd{memoVersionForPos[pos]} at the time this entry was last written or validated. A memo entry whose \cd{memoVersion} is behind the current value is stale: expansion work has happened at this position since the entry was last computed, so its result may be improvable, and the rule must be re-matched rather than served from the memo.
 \end{itemize}
 
-\subsection{Left Recursion Coverage}
+The control flow composes these fields as follows. A call finds the entry fresh (non-null \cd{match} and current \cd{memoVersion}), and returns the memoized match: this is the packrat fast path, and it is also taken by every re-entry into the cycle \emph{during} expansion, which is what lets a taller match incorporate the previous, shorter match of the same rule as a subtree, looked up in the memo, rather than recomputing it. Or the call detects re-entry (\cd{inRecPath} true) with no result yet: this frame is the fixed point of Lemma~\ref{lem:fixpoint}, so it seeds the entry with \cd{MISMATCH}, sets \cd{foundLeftRec}, and returns the mismatch. Otherwise the call recurses into the rule's clause tree inside the while-loop. The comparison against the previous best match is made \emph{before} the entry is overwritten, so only a strictly longer match is stored. If \cd{foundLeftRec} was never set, no cycle passes through this entry, the loop exits after one iteration, and the algorithm has behaved exactly as a packrat parser. If \cd{foundLeftRec} was set, the loop continues: each iteration increments \cd{memoVersionForPos[pos]}, invalidating the memo entries at this position so that the next iteration re-matches them against the now-longer seed, and expansion terminates at the first iteration that fails to grow the match, per the stopping criterion of Lemma~\ref{lem:fixpoint}. Note that the loop breaks \emph{after} the longer match has been stored, so the longest match found is what remains in the memo entry. On exit, \cd{inRecPath} is cleared and \cd{memoVersion} is brought current, marking the entry fresh for subsequent callers.
 
-Fig.~\ref{fig:LeftRecTypes} demonstrates uniform handling of all left recursion types:
+Among the clause types, \cd{RuleRef} is the special one. Every other clause type recurses into its subclauses by direct, unmemoized method calls; only \cd{RuleRef} routes back through \cd{parser.match}, and therefore through the memo table. Memoization consequently happens at the granularity of whole rules rather than of every interior clause. This choice roughly doubles parsing speed in our measurements, because a memo table access costs more than a direct call, but speed turns out not to be the only reason for it.
 
-\textbf{(a)-(b) Cycle length independence:} Direct and indirect recursion are handled identically, unlike algorithms limited to direct recursion~\cite{mouse}.
+%----------------------------------------------------------------------
+\subsection{Why memoization remains valid during expansion}
+\label{sec:purity}
+%----------------------------------------------------------------------
 
-\textbf{(c)-(d) Input-dependent recursion:} Cycles conditioned on \cd{First} or \cd{Optional} choices.
+Memoization is only sound for pure functions: two identical calls must return identical results. Standard packrat parsing satisfies this by construction, since matching a given rule at a given position always yields the same result, and the memo table is keyed by $(R, p)$ accordingly. Left-recursive expansion appears to break the assumption: each expansion iteration can store a new, longer match for the same $(R, p)$, and a taller match deliberately reads the previous, shorter match of the same rule out of the memo table and incorporates it as a subtree. The recursion is no longer pure, because the memo table has become external state that changes between calls.
 
-\textbf{(e)-(f) Interwoven cycles:} Multiple interlinked cycles (examples from~\cite{pegged}). In (e): three cycles $(E \leftarrow F \leftarrow E)$, $(G \leftarrow H \leftarrow G)$, $(E \leftarrow F \leftarrow G \leftarrow E)$. In (f): $(L \leftarrow P \leftarrow L)$ and $(P \leftarrow P)$.
+The resolution is to observe that the memo table is conceptually keyed not by $(R, p)$ but by $(R, p, v)$, where $v$ is the number of expansion iterations performed at $p$, exactly the quantity that \cd{memoVersionForPos[pos]} counts. Each iteration of the expansion loop increments $v$, and within a single value of $v$ the parser is pure: matching $R$ at $p$ during iteration $v$ always returns the result computed against the seed of iteration $v - 1$. The hidden external state has been made a component of the key, and memoization is sound again. Physically storing all versions is unnecessary, because a caller only ever needs the newest: a memo entry with \cd{memoVersion} equal to the current version is a valid hit, and an entry that is behind is stale and must be recomputed, possibly incorporating the previous match as a subtree. The comparison \cd{memoVersion < parser.memoVersionForPos[pos]} in Fig.~\ref{fig:Code} is exactly this staleness test, and it collapses the conceptual three-component key back to the physical two-component table.
 
-\textbf{(g)-(i) Associativity:} Left-associative (g) and right-associative (h) grammars produce correct tree structure. Ambiguous-associativity grammars (i) yield right-associative structure, consistent with PEG semantics and other left-recursion handlers~\cite{warth2008}.
+The versioning mechanism serves three distinct purposes. First, it permits re-evaluation at all: without it, the memo entry written by a previous iteration would satisfy every subsequent lookup, and expansion could never make progress. Second, it deduplicates ``cousin'' references. In the rule $A \leftarrow (A \; \texttt{'x'}) \; / \; (A \; \texttt{'y'}) \; / \; B$, both alternatives refer to $A$ at the same position; the first lookup in an iteration re-matches the rule, and the entry's \cd{memoVersion} is then brought current, so the second lookup is a plain memo hit rather than duplicated work. Third, it makes the left recursion machinery free when unused: if no cycle is detected at position $p$, then \cd{memoVersionForPos[p]} is never incremented, every entry at $p$ remains permanently fresh, and the algorithm's behavior and cost are exactly those of standard packrat parsing. The squirrel parsing algorithm is thus a strict superset of the packrat parsing algorithm.
 
-\begin{figure}[!htbp]
+%----------------------------------------------------------------------
+\subsection{Granularity of memoization}
+\label{sec:granularity}
+%----------------------------------------------------------------------
+
+The stopping criterion of Lemma~\ref{lem:fixpoint} forbids ever replacing a match with a mismatch in the memo table. This rule interacts with the \cd{First} operator in a way that makes the \emph{granularity} of memoization semantically significant, not merely a performance choice.
+
+Consider the grammar $A \leftarrow B \; / \; \texttt{'x'}; \;\; B \leftarrow (A \; \texttt{'y'}) \; / \; (A \; \texttt{'x'})$ on the input \cd{xxyx} (this is Fig.~\ref{fig:LeftRecTypes}(b)). The full input is matched by $B$ choosing its second alternative at the top: $(A \; \texttt{'x'})$ with $A$ matching \cd{xxy}. Reaching that parse requires $B$'s \emph{first} alternative $(A \; \texttt{'y'})$, which matched \cd{xxy} in an earlier expansion iteration, to fail in the final iteration, where $A$ has grown to match \cd{xxy} and \cd{'y'} does not follow. If every interior clause were memoized, the entry for the clause $(A \; \texttt{'y'})$ would hold its earlier match of \cd{xxy}, the never-downgrade rule would preserve that match, $B$ could never fail over to its second alternative, and the parse would stop after \cd{xxy}, rejecting the full input. With memoization at rule granularity there is no memo entry for the interior clause $(A \; \texttt{'y'})$: each expansion iteration re-runs $B$'s \cd{First} clause afresh, the first alternative genuinely fails in the final iteration, and the second alternative matches the whole input. The reference implementation, which memoizes at rule granularity, parses this example fully, as shown in Fig.~\ref{fig:LeftRecTypes}(b).
+
+The never-downgrade rule must therefore apply exactly at the granularity at which expansion is seeded, the whole rule, and not inside the rule's clause tree, where \cd{First} must remain free to re-decide its alternative on every iteration as the seed grows.
+
+%----------------------------------------------------------------------
+\subsection{Expansion semantics}
+\label{sec:semantics}
+%----------------------------------------------------------------------
+
+A useful reference point for the semantics of left-recursive PEG matching is an imagined \emph{omniscient parser}: a nondeterministic parser that considers all possible heights of a left-recursive subtree in parallel, discards those that do not fit the input, and keeps the parse that greedy PEG semantics would prefer. The omniscient parser knows \emph{a priori} exactly how many loops around each cycle will match, and so builds the parse tree top-down; the squirrel parser discovers the same information bottom-up, by monotonic expansion from the fixed point.
+
+For every grammar in Fig.~\ref{fig:LeftRecTypes}, and every grammar in the reference implementation's test suite, the two coincide. They are not, however, identical in general, and the divergence is a direct consequence of the stopping criterion, so we state it precisely rather than leave it as folklore. Consider
+\[
+A \leftarrow (B \; \texttt{!'y'}) \; / \; \texttt{'x'}; \qquad B \leftarrow A \; \texttt{'x'}
+\]
+on the input \cd{xxxy}. The omniscient parser reasons as follows: $A$'s first alternative grows through the cycle to match \cd{xx} and then \cd{xxx}, but the full-height match \cd{xxx} is followed by \cd{y}, which the lookahead \cd{!'y'} rejects; each shorter height, \cd{xx} and \cd{x}, is likewise rejected, since it, too, is followed by an \cd{x} that $B$ would have consumed; so the first alternative fails outright, $A$ fails over to its second alternative, and the final match is \cd{x}, of length 1. The squirrel parser instead expands monotonically: the seed mismatch causes the first alternative to fail, \cd{'x'} matches (length 1), and expansion then grows the match to \cd{xx} (length 2), at which point the next iteration's candidate \cd{xxx} is rejected by the lookahead, the match length stops increasing, and expansion stops. The never-downgrade rule retains the length-2 match; the parser does not revisit the failover decision. We verified this behavior in the reference implementation: the parse matches exactly two characters and reports the remaining \cd{xy} as unmatched.
+
+The squirrel parser's semantics for a left-recursive rule is therefore: \emph{the longest match reachable by monotonic bottom-up expansion, with ordered choice re-decided freshly in each iteration, and no backtracking across iterations once expansion stops}. This is a greedy semantics, in the same spirit as PEG's ordered choice itself, which also commits and does not revisit. Bounded left recursion~\cite{medeiros2014} makes the analogous commitment, growing a bound while the match length increases; grammars that require abandoning an already-grown match to accept a shorter one, such as the example above, are pathological for this entire family of semantics. We have not encountered such a grammar outside deliberately constructed examples, all of which involve a lookahead or ordered choice conditioned on input \emph{beyond} the left-recursive match.
+
+%----------------------------------------------------------------------
+\subsection{Coverage of left recursion forms}
+\label{sec:coverage}
+%----------------------------------------------------------------------
+
+Fig.~\ref{fig:LeftRecTypes} shows the parse tree produced by the squirrel parsing algorithm for a range of left recursion types. Each node gives the matching rule or clause, the start position and length of the match (written \cd{pos+len}), and the matched span of the input. Left recursion is visible as long vertical chains in the tree. We verified that the reference implementation reproduces every tree in the figure.
+
+\begin{figure}[tbp]
 \centering
-\includegraphics[width=0.98\textwidth]{LeftRecTypes.pdf}
-\caption{\label{fig:LeftRecTypes}The parse tree created by the squirrel parser for a range of different left recursion types and associativity.}
-\Description{Nine subfigures showing parse trees for: (a) direct left recursion, (b) indirect left recursion, (c) First-clause dependent recursion, (d) Optional-clause dependent recursion, (e-f) interwoven left recursive cycles, and (g-i) grammars with left-associative, right-associative, and ambiguous associativity.}
+\includegraphics[width=0.92\textwidth]{LeftRecTypes.pdf}
+\caption{\label{fig:LeftRecTypes}Parse trees created by the squirrel parser for a range of left recursion types and associativity styles. Each node shows the matching rule or clause, the start position and length of the match (\cd{pos+len}), and the matched span of the input: (a) direct and (b) indirect left recursion; (c) and (d) cycles that are left recursive only for some inputs; (e) and (f) interwoven left-recursive cycles; (g) explicitly left-associative, (h) explicitly right-associative, and (i) ambiguous-associativity expression grammars over the input \cd{0+1+2+3}.}
+\Description[Nine parse trees]{Nine subfigures showing parse trees for direct left recursion, indirect left recursion, two forms of input-dependent left recursion, two forms of interlocking left-recursive cycles, and left-associative, right-associative, and ambiguous-associativity expression grammars.}
 \end{figure}
 
-\section{Complexity Analysis}
+Panels (a) and (b) show direct and indirect left recursion handled identically, as Lemma~\ref{lem:dynamic} requires and in contrast to algorithms that support only the direct form~\cite{tratt2010,parr2014}. Panels (c) and (d) show cycles that are left recursive or not depending on the input, via \cd{First} and via a zero-length \cd{Optional} match respectively. Panels (e) and (f) show interwoven left-recursive cycles (examples due to the Pegged project, whose documentation terms them interlocking cycles~\cite{pegged}): in (e) three cycles $E \leftarrow F \leftarrow E$, $G \leftarrow H \leftarrow G$, and $E \leftarrow F \leftarrow G \leftarrow E$ share rules, and in (f) the cycles $L \leftarrow P \leftarrow L$ and $P \leftarrow P$ interlock. The algorithm handles interwoven cycles without any special treatment, because cycle detection and expansion operate on parser states, not on an enumeration of the grammar's cycles. Tracing how the parse trees of (e) and (f) are built is a good exercise for understanding the algorithm.
 
-\begin{theorem}[Time Complexity]
-\label{thm:time_complexity}
-The squirrel parser runs in $O(n \cdot |G|)$ time where $n = |input|$ and $|G|$ is the grammar size.
+Panels (g) through (i) show a binary expression grammar in three associativity styles. The explicitly left-recursive rule (g) yields a left-associative tree, and the explicitly right-recursive rule (h) a right-associative tree, as expected. For the ambiguous rule $E \leftarrow E \; \texttt{'+'} \; E \; / \; N$ (i), the squirrel parser produces a \emph{right}-associative tree. Warth et al.'s algorithm behaves the same way on such rules, which Tratt criticizes, arguing that the right-associative parse ``violates a fundamental aspect of PEGs, which is that rules match text greedily in order to ensure unambiguous parses''~\cite{tratt2010}. We contend the right-associative result is the correct one, by the following analogy to non-left-recursive parsing. In the absence of left recursion, recursive descent follows the leftmost edge of the grammar as its primary axis of motion, then, before exiting each frame, matches the remaining subclauses to the right, collecting the operands after the first into a subtree on the right: this is exactly the traversal order that produces the right-associative tree of panel (h). The first operand of the ambiguous rule (i) binds at the fixed point of the expansion, and the remainder of the input is collected by the second, non-left-recursive occurrence of $E$, whose traversal order is that of (h). Greedy matching constrains the total length of a match, which is the whole input in all three panels; it does not by itself dictate where the interior operator boundaries fall, and the traversal-order argument fills precisely that gap consistently for both the left-recursive and non-left-recursive occurrences of the rule.
+
+%----------------------------------------------------------------------
+\section{Complexity}
+\label{sec:complexity}
+%----------------------------------------------------------------------
+
+We measure parser work in \emph{rule-match computations}: the number of times \cd{MemoEntry.match} computes a result by recursing into a rule's clause tree, rather than returning a memoized result. Each computation costs time proportional to the size of the rule's clause tree, a constant for a fixed grammar, with every embedded rule reference costing $O(1)$ because it either hits the memo table or is accounted as a rule-match computation of its own. We write $|G|$ for the number of rules, and assume, following Ford's analysis of packrat parsing~\cite{ford2002}, that repetition operators are desugared into right recursion (or, equivalently, that repetition bodies are rule references), so that each rule-match computation is $O(1)$; the reference implementation's statistics counter counts exactly these computations.
+
+%----------------------------------------------------------------------
+\subsection{Reduction to packrat parsing}
+\label{sec:packratreduction}
+%----------------------------------------------------------------------
+
+If no left-recursive cycle is encountered while parsing a given input, then no call to \cd{MemoEntry.match} ever finds \cd{inRecPath} true, so \cd{foundLeftRec} is never set, the while-loop of Fig.~\ref{fig:Code} exits after its first iteration for every entry, and \cd{memoVersionForPos} remains all-zero, so no memo entry is ever stale. Under these conditions every line of \cd{MemoEntry.match} that distinguishes the squirrel parser from a packrat parser is inert, and the two algorithms make identical sequences of calls.
+
+\begin{theorem}[Packrat reduction]
+\label{thm:reduction}
+On any input for which no left-recursive cycle is encountered, the squirrel parser performs exactly the memoized match computations of a standard packrat parser, at most one per parser state $(R, p)$, and therefore runs in $O(n \cdot |G|)$ time~\cite{ford2002}. The overhead of the left recursion machinery on such inputs is one flag write, one flag clear, one version comparison, and one version copy per memo miss.
 \end{theorem}
 
-\begin{proof}
-Partition work into three components:
+%----------------------------------------------------------------------
+\subsection{Cost of left-recursive expansion}
+\label{sec:expansioncost}
+%----------------------------------------------------------------------
 
-\textbf{(1) Memoized matching.} Standard packrat guarantees at most one match attempt per $(C, p)$ pair: $|G| \cdot n$ total. Each memoized call performs $O(1)$ work (cache lookup, cycle detection) excluding recursive subcalls. Total: $O(n \cdot |G|)$.
+Call each iteration of the while-loop of Fig.~\ref{fig:Code} beyond the first, for a given memo entry, an \emph{expansion step}, and let $E$ denote the total number of expansion steps over an entire parse. An expansion step at head $(R, p)$ increments \cd{memoVersionForPos[p]}, which invalidates memo entries at position $p$ only: entries at every other position remain fresh, so the re-match performed by the step reuses them, and the step's cost is the cost of freshly re-matching stale rules at position $p$, at most $O(|G|)$ rule-match computations and as few as $O(1)$. An expansion step is taken only when the previous iteration strictly grew the match at its head (the loop otherwise breaks), so the number of steps at head $(R, p)$ is bounded by the final match length at that head, plus two for the seeding and terminating iterations.
 
-\textbf{(2) Expansion iterations.} Each expansion iteration at position $p$ increments \cd{parser.cycleDepthForPos[p]}. Each iteration must consume $\geq 1$ character (monotonic length increase, Theorem~3 in Section~2). Thus $\leq n$ total expansions across all positions. Each expansion performs one memoized match: $O(|G|)$ work. Total: $O(n \cdot |G|)$.
-
-\textbf{(3) Clause recursion.} Non-\cd{RuleRef} clauses perform unmemoized recursion. Each subclause invocation contributes $O(1)$ work. Parse tree has $O(n)$ nodes (each consumes $\geq 0$ input characters, sum $\leq n$). Total clause recursion: $O(n)$.
-
-Combining: $O(n \cdot |G|) + O(n \cdot |G|) + O(n) = O(n \cdot |G|)$.
-\end{proof}
-
-\begin{theorem}[Space Complexity]
-The algorithm requires $O(n \cdot |G|)$ space.
+\begin{theorem}[General time bound]
+\label{thm:general}
+A squirrel parse runs in $O(|G| \cdot (n + E))$ time, where $E$ is the total number of expansion steps, and $E \leq \sum_{h} (\ell_h + 2)$ over the left recursion heads $h$ encountered, with final match length $\ell_h \leq n - p_h$ at head position $p_h$.
 \end{theorem}
 
-\begin{proof}
-Memo table stores $\leq |G| \cdot n$ entries, each $O(1)$ size. \cd{cycleDepthForPos} array: $O(n)$. Recursion depth bounded by $O(n)$ (each recursive call must eventually consume input). Total: $O(n \cdot |G|)$.
-\end{proof}
+For grammars used in practice, $E$ is linear in $n$. In an expression grammar such as Fig.~\ref{fig:LeftRecTypes}(g), the left-recursive rule has a single head per expression, each expansion step consumes one further operator and operand of that expression, and the spans consumed by distinct heads' expansions are disjoint, so $E$ is at most the number of operators in the input.
+
+\begin{corollary}[Disjoint expansion regions]
+\label{cor:linear}
+If the input spans consumed by the expansion steps of distinct left recursion heads are pairwise disjoint, then $E = O(n)$ and the parse runs in $O(n \cdot |G|)$ time. This condition holds for every grammar in Fig.~\ref{fig:LeftRecTypes} and for every practical left-recursive grammar we have examined.
+\end{corollary}
+
+The condition of Corollary~\ref{cor:linear} is not vacuous, and it would be easy to assume that memoization guarantees linearity unconditionally, so we exhibit the failure case explicitly. The grammar
+\[
+S \leftarrow (\texttt{\&}E \; \texttt{'x'} \; S) \; / \; \texttt{'x'}; \qquad E \leftarrow E \; \texttt{'x'} \; / \; \texttt{'x'}
+\]
+matches the input $\texttt{x}^n$, and the lookahead \cd{\&E} forces a full left-recursive expansion of $E$ at \emph{every} input position: $S$ recurses through every position $p$, and the expansion of $E$ at head $(E, p)$ grows from length 1 to length $n - p$, one character per step, before the lookahead succeeds. No memoization can bridge these expansions, because each head grows bottom-up from its own fixed point: the entries $(E, p)$ and $(E, p{+}1)$ are unrelated in the memo table, in contrast to the right-recursive rule $E' \leftarrow \texttt{'x'} \; E' \; / \; \texttt{'x'}$, whose match at $p$ is computed in $O(1)$ from the memoized match at $p + 1$. The total is $E = \sum_{p} (n - p) = \Theta(n^2)$.
+
+Table~\ref{tab:adversarial} confirms the quadratic behavior empirically: doubling the input length multiplies the measured work by $3.96$ to $3.99$, and the work fits $n^2/2$ closely. The same table shows the expression grammar of Fig.~\ref{fig:LeftRecTypes}(g) at exactly one rule-match computation per input character, flat across a 16-fold size range: the practical case of Corollary~\ref{cor:linear}. This quadratic worst case is shared, not introduced: Warth et al.\ note that their seed-growing algorithm is also super-linear in the worst case~\cite{warth2008}, and bounded left recursion re-evaluates a rule once per bound increase in the same pattern~\cite{medeiros2014}. We consider an input-independent characterization of the grammars that can trigger super-linear expansion an open problem.
+
+\begin{table}[tbp]
+\centering
+{\small
+\begin{tabular}{rrr@{\hspace{2.5em}}rrr}\toprule
+\multicolumn{3}{c}{Expression grammar (Fig.~\ref{fig:LeftRecTypes}(g))} & \multicolumn{3}{c}{Adversarial grammar ($S \leftarrow \texttt{\&}E \; \texttt{'x'} \; S \; / \; \texttt{'x'}$)} \\
+\cmidrule(r{2em}){1-3}\cmidrule{4-6}
+$n$ & work & work$/n$ & $n$ & work & work$/n$ \\\midrule
+  999 &  1\,002 & 1.00 &  250 &    31\,877 &  127.5 \\
+ 1\,999 &  2\,002 & 1.00 &  500 &   126\,252 &  252.5 \\
+ 3\,999 &  4\,002 & 1.00 & 1\,000 &   502\,502 &  502.5 \\
+ 7\,999 &  8\,002 & 1.00 & 2\,000 & 2\,005\,002 & 1002.5 \\
+15\,999 & 16\,002 & 1.00 &      &            &       \\\bottomrule
+\end{tabular}
+}
+\caption{\label{tab:adversarial}Measured rule-match computations (``work'') for the left-recursive expression grammar $E \leftarrow E \; \texttt{'+'} \; N \; / \; N$ on inputs $\texttt{1+1+}\cdots\texttt{+1}$, and for the adversarial lookahead-over-left-recursion grammar on inputs $\texttt{x}^n$. Work per character is flat (linear parsing) for the expression grammar and grows linearly (quadratic parsing, work $\approx n^2/2$) for the adversarial grammar. Dart reference implementation, single-threaded, AMD Ryzen 9 3950X.}
+\end{table}
 
-\section{\label{sec:error_recovery}Error Recovery}
+%----------------------------------------------------------------------
+\subsection{Space}
+\label{sec:space}
+%----------------------------------------------------------------------
 
-Syntax error recovery transforms a parser from a binary classifier (match/mismatch) into an analyzer that identifies minimal-length error spans while matching grammatical structure to input. This section presents a complete formal derivation of a bounded error recovery mechanism maintaining $O(n \cdot |G|)$ complexity. We state required axioms and constraints, derive a solution, and prove completeness, correctness, and minimality.
+The memo table holds at most one entry per parser state, $O(n \cdot |G|)$ entries of constant size, and \cd{memoVersionForPos} adds $O(n)$; expansion steps modify entries in place and allocate no new ones. Match objects are shared: a taller match of a left-recursive rule holds a reference to the previous, shorter match as a subtree, so the matches retained by the memo table form a DAG. Under the conditions of Corollary~\ref{cor:linear} the retained matches total $O(n)$ nodes beyond the memo table itself; in the adversarial case above, each head retains a chain of $n - p$ intermediate matches, and space, like time, degrades to quadratic. Recursion depth is bounded by the length of the input plus the depth of the grammar, as for any recursive descent parser.
 
-\subsection{Foundational Axioms}
+%----------------------------------------------------------------------
+\subsection{Measured linearity on a practical grammar}
+\label{sec:measuredlinearity}
+%----------------------------------------------------------------------
 
-These are immutable properties of PEG packrat parsers:
+Table~\ref{tab:jsonlinearity} reports work per input character for the reference implementation parsing pseudo-randomly generated valid JSON documents, under the full JSON grammar of Fig.~\ref{fig:JsonGrammar}, across a 32-fold range of document sizes. Work per character is essentially flat, drifting from 1.96 down to 1.77 as fixed per-parse costs amortize, confirming linear scaling on a grammar with nested structure, repetition, and no triggered left recursion (Theorem~\ref{thm:reduction}).
 
-\begin{axiom}[Packrat Invariant]
-A memoizing parser evaluates each $(clause, position)$ pair at most once per distinct parsing context. Violating this introduces exponential time complexity.
-\end{axiom}
+\begin{table}[tbp]
+\centering
+{\small
+\begin{tabular}{rrr}\toprule
+$n$ (chars) & work & work$/n$ \\\midrule
+   987 &  1\,933 & 1.96 \\
+ 1\,997 &  3\,792 & 1.90 \\
+ 3\,993 &  7\,269 & 1.82 \\
+ 8\,000 & 14\,485 & 1.81 \\
+15\,994 & 28\,793 & 1.80 \\
+31\,987 & 56\,563 & 1.77 \\\bottomrule
+\end{tabular}
+}
+\caption{\label{tab:jsonlinearity}Measured rule-match computations per input character for valid JSON documents of increasing size. Flat work per character confirms linear-time parsing. Same environment as Table~\ref{tab:adversarial}.}
+\end{table}
 
-\begin{axiom}[PEG Ordered Choice Semantics]
-Parsing Expression Grammars use ordered choice: $First([A, B])$ commits to $A$ if it matches, never trying $B$. This distinguishes PEG from CFG parsers with ambiguity.
-\end{axiom}
+%----------------------------------------------------------------------
+\section{Why error recovery has resisted recursive descent parsing}
+\label{sec:whyhard}
+%----------------------------------------------------------------------
 
-\begin{axiom}[Monotonic Consumption]
-Once a packrat parser consumes input characters $0$ through $k$ and returns a result, backtracking to re-parse positions $< k$ violates memoization guarantees and can introduce non-termination.
-\end{axiom}
+Syntax error recovery has a long literature for table-driven LL and LR parsers, and a remarkably thin one for recursive descent. The asymmetry is structural, not accidental, and it is worth stating its causes precisely, because they jointly motivate the design in Section~\ref{sec:repair}.
 
-Additionally, the Squirrel parser introduces the following axiom for handling left recursion:
+A table-driven parser that encounters an error possesses a well-defined machine configuration: a stack of states, a current token, and tables from which the set of acceptable continuations can be read off. Fifty years of recovery methods are built on interrogating that configuration. Burke and Fisher consider single-token insertions, deletions, substitutions, and merges at the error point, validated by checking that the parse can proceed some fixed number of tokens past the repair~\cite{burke1987}; scope and phrase-level recovery extend the same idea. CPCT+ searches the LR automaton's configuration graph breadth-first at the error state for the complete set of minimum-cost repair sequences over token insertions and deletions~\cite{diekmann2020}. De Jonge et al.\ derive \emph{permissive grammars}, with water rules that skip tokens and insertion rules that supply missing ones, automatically from a grammar, for scannerless generalized-LR parsing~\cite{dejonge2012}. Each method reads the parser's frozen state at the failure point and repairs forward from it.
 
-\begin{axiom}[Left-Recursion Fixed Point]
-Left-recursive rules expand iteratively from a base case, growing the parse until a fixed point is reached. Each expansion must extend the previous match to ensure progress and termination.
-\end{axiom}
+A recursive descent parser at the moment of ultimate failure has no such configuration to interrogate, for four reasons that compound one another.
 
-\subsection{Design Constraints}
+First, in a backtracking parser, \emph{failure is control flow}. A PEG parser fails constantly and routinely: every \cd{First} alternative that does not match, every \cd{NotFollowedBy} that succeeds, every speculative descent that unwinds is a ``failure,'' indistinguishable in the machinery from the failure that a human would call the syntax error. By the time the top rule definitively rejects the input, the recursion has fully unwound and the interesting configurations are gone. The standard mitigation, reporting the farthest position reached by any match attempt, was already present in Ford's packrat work~\cite{ford2002b}, and identifies a plausible error \emph{location}, but the set of clauses that failed there mixes genuine expectations with exploratory ones, and provides no repair.
 
-From PEG axioms and the goal of intuitive error recovery behavior while maintaining linearity, we derive constraints that a complete, correct, and minimal error recovery mechanism must satisfy:
+Second, \emph{ordered choice commits}. Once \cd{First} selects an alternative, the other alternatives are never revisited, and a rule that has matched is never re-examined (Section~\ref{sec:semantics} extends the same commitment to left-recursive expansion). An error whose natural repair lies inside an already-committed region cannot be reached by any recovery scheme that only acts at the failure frontier: in \cd{\{"a":1,"bc:[2,3]\}} the missing close quote causes a JSON parser to commit to a long string literal \cd{"bc:[2,3]\}} and fail far away, at the end of the input, while the minimal repair inserts one character well \emph{before} the failure point. Configuration-based methods, including CPCT+, repair at or after the point of failure by construction; repairs behind the frontier are structurally out of reach.
 
-\subsubsection{Linearity Constraints}
+Third, \emph{scannerless parsing removes the token safety net}. Classic panic-mode recovery skips to a synchronizing token; PEG parsers of the packrat family parse at character granularity, where no reserved delimiter set exists and any ``synchronizing'' character may equally occur inside a string literal or comment. Recovery mechanisms that have been proposed for PEGs re-introduce synchronization by hand: labeled failures with per-label recovery expressions require the grammar author to anticipate error points and write recovery expressions for them~\cite{medeiros2018}, and the follow-up work inserts such expressions automatically using FIRST- and FOLLOW-set heuristics~\cite{medeiros2020}. These methods make PEG recovery practical, at the cost of per-grammar engineering or heuristic annotation, and the recovered parse has no characterization beyond the behavior of the annotations themselves.
 
-\begin{constraint}[Single-Pass Parsing]
-\label{constraint:single_pass}
-The parser must scan input left-to-right exactly once per phase (where a phase is either standard parsing, or recovery), without backtracking to earlier positions.
-\end{constraint}
+Fourth, and specific to the setting of this paper, \emph{recovery machinery woven into a memoizing parser corrupts the memo table's meaning}. A memo entry is sound because matching a rule at a position always yields the same result (Section~\ref{sec:purity}); a recovery mode that skips characters or fabricates matches makes results depend on recovery context, which is not part of the memo key. With left recursion the interaction is worse, since expansion relies on the never-downgrade rule and version invalidation, and recovery-induced matches feed back into seeds. We report a cautionary datum: an earlier design of ours that threaded error tolerance through the squirrel matching algorithm itself, propagating per-clause skip bounds through the memo table, produced cascading errors on 79\% of single-character mutations of a valid JSON document, recovering the ideal single-error parse for only 2\%, under the same mutation methodology as Section~\ref{sec:evaluation}. The failure mode was not a bug but the architecture: each locally tolerated error perturbed downstream memoization and choice commitment, manufacturing further spurious errors.
 
-\textbf{Justification.} Consider parsing input of length $n$ with a grammar containing alternatives. Without single-pass parsing, the parser might speculatively try alternative $A$, consume $k$ characters, fail, backtrack to the starting position, and try alternative $B$.
+The pika parser~\cite{hutchison2020} escapes several of these constraints by abandoning recursive descent altogether, parsing bottom-up and right to left by dynamic programming, so that structure after an error is recovered independently of the error; but it pays a large constant-factor cost on every input, valid or not, and its recovery is organized around designated rules of interest rather than a criterion of repair quality.
 
-In the worst case (deeply nested alternatives), this produces $O(2^n)$ character inspections---the classic PEG exponential blowup. For example, the grammar \texttt{S <- A A A ... / B B B ...} with $m$ alternatives, each inspecting $n/m$ characters before failing, requires $O(m \cdot n)$ inspections per alternative, and exponentially many alternative combinations.
+What is common to every approach above is that it modifies the parser, or the grammar, to tolerate errors. The parser is the most delicate machine in the system, and its invariants, greedy choice, memoization purity, and monotonic left-recursive expansion, are exactly what error tolerance perturbs.
 
-Memoization transforms this to $O(n \cdot |G|)$ by caching results at each $(clause, position)$ pair. The single-pass constraint ensures memoization is valid: once position $k$ is evaluated for clause $C$, the result cannot change, so caching is safe.
+%----------------------------------------------------------------------
+\section{Error recovery as minimum-distance repair search}
+\label{sec:repair}
+%----------------------------------------------------------------------
 
-\begin{constraint}[Memoization Validity]
-\label{constraint:memo_validity}
-Each $(clause, position)$ pair can be evaluated at most once per recovery phase. Cache entries must remain valid throughout their phase.
-\end{constraint}
+We instead leave the parser untouched, and move recovery outside it: if the input does not parse, search for the nearest input that does. The parser's role in recovery is reduced to that of an \emph{oracle}, deciding membership in $L(G)$ and reporting where and why candidate inputs fail; recovery becomes a shortest-path search over \emph{edited copies of the input}.
 
-\textbf{Justification.} Consider the grammar \texttt{S <- E "+" E} where \texttt{E <- "x"}. When parsing \texttt{"x+x"}, the clause \texttt{E} is evaluated at positions 0 and 2. If memoization stores the result at position 0, subsequent references to \texttt{E} at position 0 reuse the cached result.
+%----------------------------------------------------------------------
+\subsection{Problem statement}
+\label{sec:problem}
+%----------------------------------------------------------------------
 
-Without this constraint, recovery could invalidate cached results. Suppose parsing \texttt{"x+Z"} where \texttt{Z} is an error. In Phase 1 (no recovery), \texttt{E} at position 2 returns mismatch. If Phase 2 recovery modifies this result (e.g., skipping \texttt{Z}), but the cache still holds the Phase 1 mismatch, the parser produces incorrect results.
+\begin{definition}[Repair]
+\label{def:repair}
+Given a grammar $G$ and an input $s \notin L(G)$, a \emph{repair} of $s$ is a string $s^* \in L(G)$ together with a sequence of single-character edit operations, insertions, deletions, substitutions, and transpositions of adjacent characters, transforming $s$ into $s^*$. The \emph{cost} of the repair is the number of operations, and a repair is \emph{minimal} if no repair of $s$ has lower cost. The minimal cost is the Damerau-Levenshtein distance from $s$ to the language, $d(s, L(G)) = \min_{t \in L(G)} d_{\mathrm{DL}}(s, t)$.
+\end{definition}
 
-The constraint requires either: (1) separate caches per phase, or (2) cache entries tagged with their phase, validated on lookup. Our implementation uses approach (2) with a \texttt{cachedInRecoveryPhase} flag, achieving $O(1)$ validation overhead.
+The output of recovery is the parse tree of $s^*$, which is an ordinary, complete parse tree of the unmodified grammar, plus the edit list, recovered by edit-distance alignment of $s^*$ against $s$~\cite{wagner1974} and mapped back to the coordinates of the original input, which tells the client exactly which characters of the user's input were added, removed, altered, or swapped. Tooling that requires error nodes embedded in the tree can reconstruct them from the edit list and the alignment of $s$ with $s^*$.
 
-\begin{constraint}[Bounded Recovery]
-\label{constraint:bounded_recovery}
-Recovery operations must terminate in $O(n \cdot |G|)$ steps total. Therefore, each recovery activation must consume at least one input character, bounding total recovery activations to $n$.
-\end{constraint}
+Definition~\ref{def:repair} is the entire semantics of recovery: which parse is produced for an invalid input is determined by a distance metric over inputs, not by properties of the recovery implementation. The choice of edit moves follows Damerau's classic observation that over 80 percent of human spelling errors are a single insertion, deletion, substitution, or transposition~\cite{damerau1964,levenshtein1966}; a syntax error in source code is a human transcription error of the same species. The metric is defined without reference to the grammar's structure, so recovery makes no assumption about what kind of language is being parsed, and requires no annotation, no recovery rules, and no synchronization tokens. When more than one repair achieves the minimal cost, some deterministic choice among them must still be made; Section~\ref{sec:determinism} states the tie-breaking policy explicitly, and it is the only part of the design that is policy rather than derived objective.
 
-\textbf{Justification.} Consider a grammar with nested repetitions parsing input with many errors. Each error triggers recovery, which scans forward looking for synchronization points.
+Two properties are immediate. Recovery adds \emph{zero} cost to valid inputs, because the repair machinery is invoked only after the ordinary parse has rejected the input, and that parse is the unmodified linear-time parse of Sections~\ref{sec:algorithm} and~\ref{sec:complexity}. And recovery composes with left recursion \emph{for free}: every candidate the search examines is a plain string handed to the unmodified squirrel parser, whose left recursion handling is input-agnostic, so the class of interactions between recovery and expansion that undermined the in-parser design of Section~\ref{sec:whyhard} cannot arise, structurally.
 
-Without this constraint, recovery could enter infinite loops. For example, if recovery at position $k$ fails to consume any input but also fails to abort, the parser re-attempts recovery at position $k$ indefinitely.
+%----------------------------------------------------------------------
+\subsection{Search structure}
+\label{sec:searchstructure}
+%----------------------------------------------------------------------
 
-The ``consume at least one character'' requirement provides a progress guarantee: after at most $n$ recovery activations, the parser has consumed all input. Combined with memoization (at most $|G|$ clause evaluations per position), total work is bounded by $O(n \cdot |G|)$.
+The search is uniform-cost (Dijkstra's algorithm~\cite{dijkstra1959} with unit edge weights, equivalently breadth-first search by accumulated cost): a state is a candidate string, the start state is the input $s$, and the successors of a state are the strings reachable from it by one edit operation. Expanding a state means parsing it. If the parse succeeds on the whole string, the state is a repair, and because states are dequeued in nondecreasing cost order along non-negative unit edges, the first success dequeued is a minimum-cost repair over the explored move set. If the parse fails, the failure data recorded during that parse is used to propose the state's successors.
 
-This constraint directly implies the recovery strategy: when scanning for synchronization, either find a match (consuming the skipped characters plus the match) or skip to EOF (consuming remaining input). Zero-consumption recovery is forbidden.
+Three refinements make this search practical rather than combinatorial.
 
-\subsubsection{Composability Constraints}
+\emph{Candidate strings are materialized lazily.} A naive implementation allocates every successor string on expansion, $O(n \cdot |\Sigma|)$ strings of length $n$ per state for alphabet $\Sigma$. Instead, each expanded state stores a compact list of edit descriptors, and the priority queue holds cursors into these lists; a concrete string is built only at the moment its cursor is dequeued, and duplicate strings are suppressed at dequeue time. Memory therefore tracks the number of states \emph{parsed}, not the number \emph{proposed}.
 
-\begin{constraint}[Clause Independence]
-\label{constraint:clause_independence}
-The behavior of each grammar clause must be definable independently. A clause's recovery behavior must depend only on its subclauses' behaviors and explicitly passed parameters (such as bounds), not on implicit context from where the clause appears in the larger grammar.
-\end{constraint}
+\emph{Candidates are proposed in evidence-guided tiers.} All successors of a state cost the same one unit, so uniform-cost search leaves their exploration order free; the implementation orders them by how directly the parse's own failure evidence motivates them. This ordering never changes which costs are reachable, so it cannot sacrifice minimality in the global search mode; it determines only which minimum-cost repair is found first, and how quickly.
 
-\textbf{Justification.} Consider reusing a rule in multiple contexts:
-\begin{verbatim}
-    Expr  <- Term ("+" Term)* ;
-    Array <- "[" Term ("," Term)* "]" ;
-    Term  <- [0-9]+ ;
-\end{verbatim}
-The rule \texttt{Term} appears in both \texttt{Expr} and \texttt{Array}. Without clause independence, \texttt{Term}'s recovery behavior might depend on whether it's inside an array (where \texttt{]} is a boundary) or an expression (where \texttt{+} is a boundary).
+\emph{Multi-error inputs are repaired left to right in committed rounds.} The distance $d(s, L(G))$ for an input with $k$ widely separated errors is $k$, but a global uniform-cost search would explore a state space exponential in $k$ before assembling the $k$-edit repair. The default \emph{committed} mode instead runs the search until one error has been convincingly repaired, commits to that repaired prefix, and restarts the search from the committed string, consuming errors one at a time, left to right, exactly as PEG ordered choice commits left to right. A \emph{global} mode with commitment disabled is available, and is exact.
 
-This would require either: (1) duplicating \texttt{Term} for each context, destroying grammar modularity, or (2) passing implicit context through the call stack, making behavior unpredictable and difficult to reason about.
+%----------------------------------------------------------------------
+\subsection{Failure observation without parser modification}
+\label{sec:observers}
+%----------------------------------------------------------------------
 
-The constraint requires that context-dependent information (like sibling bounds) be passed explicitly as parameters. This enables local reasoning: a clause's behavior can be understood by examining only its definition and its explicit inputs, not the transitive closure of all call sites.
+The search needs to know, for a failed candidate, where the parse stopped being able to proceed and what characters would have allowed it to proceed. Extracting this from the parser would ordinarily mean instrumenting the parser, which the design forbids. The instrumentation is instead applied to the \emph{grammar}: a mechanical grammar-to-grammar rewrite wraps every terminal and every rule reference in an observer clause that behaves identically to the wrapped clause, but records, when the wrapped clause fails at a position, what failed and what was expected. The pure parser then parses candidates under the instrumented grammar, unmodified and unaware it is being observed. (The ordinary parse of a valid input uses the plain grammar; the instrumented grammar exists only inside the recovery module.)
 
-\begin{constraint}[Ref Transparency]
-\label{constraint:ref_transparency}
-Rule references must behave identically to inline expansion of the referenced rule. The distinction between \texttt{Ref('E')} and directly writing \texttt{E}'s clause should be purely organizational.
-\end{constraint}
+The observers record, per input position: the characters \emph{exactly} expected by failed single-character terminals, string literals, and singleton character classes, with a failed string literal recorded at its divergence offset, so that matching \cd{"true"} against \cd{trXe} records the expectation \cd{u} at the \cd{X}, not a failure at the \cd{t}; a representative \emph{filler} character for each failed multi-character class, marked as filler rather than exact, since any member of the class serves equally; the names of rules that failed, which anchor whole-rule insertions; and the spans of \cd{NotFollowedBy} lookaheads that \emph{succeeded} in blocking a parse, since a repair may need to alter such a span to unblock it. The \emph{frontier} of a failed parse is the farthest position reached by the longest partial match of the top rule or by any recorded failure, whichever is greater; it generalizes the classic farthest-failure heuristic~\cite{ford2002b} from an error report to a search signal.
 
-\textbf{Justification.} Consider two equivalent grammars:
-\begin{verbatim}
-    Grammar 1: S <- "x"+ "end" ;
-    Grammar 2: S <- A "end" ;   A <- "x"+ ;
-\end{verbatim}
-Both should parse \texttt{"xxxend"} identically. If \texttt{Ref} introduced different behavior (e.g., different memoization, different recovery boundaries), Grammar 2 would produce different results despite being a pure refactoring of Grammar 1.
+Two grammar-level precomputations supplement the observers. A fixpoint computation derives each rule's \emph{witness}, a shortest string that the rule matches, when one of bounded length exists; inserting a whole witness is offered as a macro edit whose cost is the witness's \emph{length}, so macro edits never undercut the character-level metric and Definition~\ref{def:repair} is preserved. The same computation collects the grammar's \emph{alphabet} $\Sigma_G$, a finite set of characters to which insertions and substitutions can be restricted without losing any minimal repair. The construction rests on the observation that the parser consults the input only through \emph{character tests}, each evaluated at a single position: equality with one character of a \cd{Char} or \cd{Str} literal, membership in a character class, and the always-true test of the any-character terminal.
 
-Without this constraint, grammar authors cannot safely extract common patterns into named rules---a fundamental software engineering practice. The constraint ensures that:
-\begin{itemize}
-\item Extracting a subexpression into a named rule preserves semantics
-\item Inlining a rule reference preserves semantics
-\item Performance characteristics (memoization) are the only difference
-\end{itemize}
+\begin{definition}[Character equivalence]
+\label{def:charequiv}
+Two characters are \emph{equivalent with respect to $G$}, written $c \equiv_G c'$, if every character test occurring in $G$ accepts both or rejects both.
+\end{definition}
 
-The implementation achieves this by having \texttt{Ref} pass through all parameters (including bounds) transparently to the referenced rule, and by ensuring \texttt{Ref} itself performs no recovery or transformation.
+The equivalence classes are computable, and few: test outcomes change only at the boundaries of literal characters and class ranges, so the classes are the intervals between these finitely many breakpoints, even over the full Unicode range. $\Sigma_G$ contains one representative of every class that at least one test accepts, with the characters the grammar mentions literally serving as representatives of their own (singleton) classes.
 
-\subsubsection{Correctness Constraints}
-
-\begin{constraint}[Completeness Propagation]
-\label{constraint:completeness}
-Each parse result carries an \texttt{isComplete} flag indicating whether parsing consumed all input the grammar permits. This flag must propagate correctly through PEG operators according to compositional Boolean algebra:
-\begin{align*}
-Seq &: complete \iff \bigwedge_{i} children[i].complete \land \neg usedRecovery \\
-First &: complete \iff chosen.complete \\
-Repetition &: complete \iff \neg truncated \land \bigwedge_{i} children[i].complete
-\end{align*}
-\end{constraint}
-
-\textbf{Justification.} Consider an IDE using parse results for syntax highlighting and error display. The IDE needs to distinguish between:
-\begin{itemize}
-\item Complete parses: input fully matches grammar, no errors
-\item Incomplete parses: input partially matches, recovery was used
-\end{itemize}
-
-Without compositional completeness tracking, the IDE would need to traverse the entire parse tree searching for error nodes---an $O(tree~size)$ operation repeated for every edit. With the \texttt{isComplete} flag propagated to the root, the check is $O(1)$.
-
-The Boolean algebra formulation ensures compositionality: a parent's completeness depends only on its immediate children's completeness, not on the global parse state. This enables incremental updates: when a subtree changes, only ancestors need completeness recalculation.
-
-The \texttt{usedRecovery} term in the Seq rule captures the semantic requirement that recovery, even when successful, indicates the input didn't match the grammar exactly. A Seq that required recovery to proceed is incomplete by definition.
-
-\begin{constraint}[Phase Isolation]
-\label{constraint:phase_isolation}
-Cache entries from Phase 1 (discovery without recovery) must not be reused in Phase 2 (recovery enabled) where they would give different results. Cache validation must check phase consistency.
-\end{constraint}
-
-\textbf{Justification.} Consider parsing \texttt{"x+Z"} with grammar \texttt{S <- E "+" E} where \texttt{E <- "x"}. In Phase 1 (structure discovery), \texttt{E} at position 2 returns mismatch (no \texttt{x} at \texttt{Z}). This mismatch is cached.
-
-In Phase 2 (recovery enabled), the parser re-evaluates from the root. When it reaches position 2, recovery could skip \texttt{Z} and succeed. But if the Phase 1 mismatch is still cached and blindly reused, Phase 2 incorrectly reports failure.
-
-Without phase isolation, the parser exhibits non-deterministic behavior depending on cache state---a debugging nightmare. The constraint ensures determinism: Phase 1 always produces the same result (the ``clean'' parse), and Phase 2 always produces the same result (the ``recovered'' parse).
-
-Implementation options include: (1) clearing the cache between phases (simple but wasteful), (2) tagging entries with phase and validating on lookup (our approach), or (3) maintaining separate caches (higher memory cost). Option (2) achieves correctness with minimal overhead.
-
-\begin{constraint}[Boundary Preservation]
-\label{constraint:boundaries}
-Recovery at grammar level $L$ must not consume input belonging to level $L+1$. When parsing $Seq([A, B, C])$, recovery for $A$ must not skip past the beginning of $B$'s expected position.
-\end{constraint}
-
-\textbf{Justification.} Consider the grammar \texttt{S <- Items "end"} where \texttt{Items <- "x"+}. When parsing \texttt{"xxZend"}, the \texttt{Items} repetition encounters error \texttt{Z}.
-
-Without boundary preservation, recovery might skip \texttt{"Zend"} looking for more \texttt{x}'s, consuming the delimiter \texttt{"end"}. The outer Seq then fails because \texttt{"end"} is missing. The user sees a confusing error: ``expected 'end' at EOF'' rather than the intuitive ``unexpected 'Z' in items''.
-
-With boundary preservation, \texttt{Items} receives \texttt{"end"} as its bound. Recovery checks \texttt{canMatchNonzeroAt("end", pos)} before each skip. When it reaches position 3, the bound matches, so recovery stops. The error is correctly localized to \texttt{Z}, and \texttt{"end"} parses successfully.
-
-This constraint requires explicit bound propagation through the grammar. Each clause must receive and respect bounds from its parent, passing appropriate bounds to its children.
-
-\begin{constraint}[Non-Cascading Errors]
-\label{constraint:non_cascading}
-Each error has a bounded \emph{affected region}. Errors must not propagate globally:
-\begin{equation}
-\forall error~e: \quad e.affectedRegion \subseteq [e.pos, e.pos + e.len]
-\end{equation}
-\end{constraint}
-
-\textbf{Justification.} Consider a large source file with one typo on line 50. Without this constraint, the error could cascade: the typo causes a parse failure, which causes the enclosing block to fail, which causes the function to fail, eventually marking the entire file as unparseable.
-
-For IDE use cases, cascading errors are catastrophic. Syntax highlighting disappears for the entire file. Code folding breaks. Symbol extraction fails. The user experience degrades from ``one error on line 50'' to ``your entire file is broken.''
-
-The constraint requires \emph{error containment}: recovery must localize errors to the smallest region that semantically makes sense. A typo in an expression should affect only that expression, not its enclosing statement, block, or file.
-
-Implementation requires recovery at multiple grammar levels. When a low-level recovery fails, it returns mismatch to its parent, which attempts its own recovery. This hierarchical recovery ensures errors are caught at the appropriate granularity.
-
-\begin{constraint}[LR-Recovery Separation]
-\label{constraint:lr_recovery}
-During left-recursive seed phase (when a cycle is detected), recovery operations must be blocked. The seed mismatch is a control signal for fixed-point iteration, not a parse error.
-\end{constraint}
-
-\textbf{Justification.} Consider the left-recursive grammar \texttt{E <- E "+" T / T}. When parsing \texttt{"1+2"}, the parser:
-\begin{enumerate}
-\item Calls \texttt{E} at position 0
-\item Detects cycle, returns mismatch as seed
-\item Tries alternative \texttt{T}, matches \texttt{"1"}
-\item Re-expands \texttt{E} with seed length 1
-\item Matches \texttt{"1+2"} via first alternative
-\end{enumerate}
-
-The seed mismatch in step 2 is not an error---it's a control signal initiating fixed-point iteration. Without this constraint, recovery might interpret the seed mismatch as an error and skip input, corrupting the LR expansion.
-
-The \texttt{isFromLRContext} flag distinguishes seed mismatches from genuine errors. Recovery checks this flag: if true, the mismatch is propagated without recovery attempts. This ensures LR expansion completes correctly before any recovery is considered.
-
-This constraint interacts with Phase Isolation: LR expansion occurs in Phase 1 (no recovery), and the flag ensures Phase 2 recovery doesn't interfere with LR results marked as ``from LR context.''
-
-\begin{constraint}[Visibility]
-\label{constraint:visibility}
-Recovery may skip visible input characters (marking them as errors) or delete grammar elements at EOF (accepting incomplete input), but may not insert grammar elements mid-parse:
-\begin{equation}
-\forall edit \in Recovery: \quad (edit = InputSkip) \lor (edit = GrammarDelete \land pos = EOF)
-\end{equation}
-\end{constraint}
-
-\textbf{Justification.} Consider what recovery operations are possible:
-\begin{enumerate}
-\item \textbf{Input Skip}: Mark characters as errors, continue parsing. The user sees exactly which characters were problematic.
-\item \textbf{Grammar Delete (at EOF)}: Accept incomplete input. The user sees ``unexpected EOF, expected X.''
-\item \textbf{Grammar Insert (mid-parse)}: Pretend missing tokens exist. The user sees valid structure that doesn't correspond to their input.
-\end{enumerate}
-
-Option 3 is problematic: if the parser inserts an imaginary \texttt{";"}, the parse tree shows a semicolon that isn't in the source. IDE features like ``go to definition'' or ``find references'' would operate on phantom structure. Error messages would reference non-existent tokens.
-
-The constraint restricts recovery to operations with visible effects: skipped characters are explicitly marked as \texttt{SyntaxError} nodes, and grammar deletions only occur at EOF where the ``missing'' content is clearly absent. This ensures the parse tree is a faithful representation of the input, annotated with explicit error regions.
-
-\begin{constraint}[Parse Tree Spanning Invariant]
-\label{constraint:spanning}
-Every parse result must completely span the input from position 0 to the end:
-\begin{equation}
-\forall result: \quad result.len = |input|
-\end{equation}
-\end{constraint}
-
-\textbf{Justification.} Consider consuming parse results in an IDE. Without this constraint, a parse of \texttt{"x+y garbage"} might return a tree covering only \texttt{"x+y"} (length 3), leaving \texttt{" garbage"} unaccounted for.
-
-Downstream consumers must then handle two cases: (1) tree covers all input, (2) tree covers partial input with implicit trailing content. This bifurcation propagates through every consumer: syntax highlighters, error reporters, code formatters, and refactoring tools must all handle the partial case.
-
-With the spanning invariant, there is exactly one case: the tree always covers all input. Unconsumed input is wrapped in a trailing \texttt{SyntaxError} node, making it explicit. Consumers can uniformly traverse the tree knowing it accounts for every character.
-
-Total parse failures also satisfy this invariant: a \texttt{SyntaxError} node covering positions $[0, |input|)$ is returned. This means ``parse failed completely'' and ``parse succeeded with errors'' have the same structural representation, differing only in node types.
-
-\subsubsection{Recovery Behavior Constraints}
-
-The following three constraints emerged from systematic testing of error recovery behavior. Each addresses a specific failure mode discovered when recovery mechanisms interact with grammar structure.
-
-\begin{constraint}[Transparent Rule Boundary Skipping]
-\label{constraint:transparent_skip}
-When determining the effective bound for a clause within a sequence, transparent rules (those marked with \texttt{\textasciitilde{}} that produce no AST nodes) must be skipped. The effective bound is the first non-transparent sibling:
-\begin{equation}
-effectiveBound(i) = \min\{j > i : \neg isTransparent(sibling_j)\} \cup \{parentBound\}
-\end{equation}
-\end{constraint}
-
-\textbf{Justification.} Consider the grammar \texttt{S <- "[" WS Items WS "]"} where \texttt{WS} is transparent (matches optional whitespace) and \texttt{Items <- "x"*}. When parsing \texttt{"[xZx]"} (with error \texttt{Z}), the \texttt{Items} repetition needs a bound to prevent consuming the closing bracket.
-
-Without this constraint, the immediate sibling \texttt{WS} becomes the bound. Since \texttt{WS} matches zero characters at any position (including at \texttt{Z}), the bound check \texttt{canMatchNonzeroAt(WS, pos)} always fails, providing no useful stopping signal. The repetition's recovery scan may then consume the \texttt{]}, causing the outer sequence to fail.
-
-With this constraint, transparent siblings are skipped and \texttt{"]"} becomes the effective bound. The bound check \texttt{canMatchNonzeroAt("]", pos)} correctly identifies when to stop, preserving the delimiter for the parent sequence.
-
-This constraint interacts with Constraint~\ref{constraint:boundaries} (Boundary Preservation): both ensure recovery respects grammatical structure, but this constraint specifically handles the case where intervening transparent rules would otherwise obscure structural boundaries.
-
-\begin{constraint}[Character-Level Terminal Recovery Suppression]
-\label{constraint:terminal_recovery}
-Repetitions of character-level terminals (\texttt{CharSet}, \texttt{Char}, \texttt{AnyChar}) must not perform internal recovery. When a character terminal repetition encounters a mismatch, it should return what it has matched and delegate error handling to the parent sequence:
-\begin{equation}
-\forall rep \in Repetition: \quad isCharTerminal(rep.subClause) \Rightarrow rep.recovery = \emptyset
-\end{equation}
-\end{constraint}
-
-\textbf{Justification.} Consider a whitespace rule \texttt{WS <- [ ]*} (repetition of space characters) within \texttt{S <- "[" WS Items WS "]"}. When parsing \texttt{"[ x ]"}, the first \texttt{WS} should match the space, then \texttt{Items} should match \texttt{x}.
-
-Without this constraint, if \texttt{WS} encounters a non-space character, its recovery mechanism would attempt to skip over it to find more spaces. This causes \texttt{WS} to consume content that belongs to \texttt{Items} or even structural delimiters like \texttt{]}.
-
-The key insight is that character-level repetitions lack structural context. A repetition of \texttt{[a-z]+} cannot distinguish between ``this non-letter is an error within my domain'' versus ``this non-letter marks the boundary of my domain.'' Only the parent sequence, which knows the sibling structure, can make this determination correctly.
-
-By suppressing recovery at the character level, errors bubble up to the sequence level where Constraint~\ref{constraint:boundaries} can be applied with full knowledge of sibling bounds. This division of responsibility---character repetitions handle matching, sequences handle recovery---produces more intuitive error localization.
-
-\begin{constraint}[Valid Match Requirement for Trailing Recovery]
-\label{constraint:valid_match}
-Repetition recovery may only skip trailing content (content between the last match attempt and the bound or EOF) if the repetition has accumulated at least one valid (non-error) match:
-\begin{equation}
-trailingSkip \Rightarrow \exists c \in children: \neg isSyntaxError(c)
-\end{equation}
-\end{constraint}
-
-\textbf{Justification.} Consider \texttt{S <- Items "!"} where \texttt{Items <- "x"+} (one or more). When parsing \texttt{"Z!"}, the \texttt{Items} repetition fails to match any \texttt{x}.
-
-Without this constraint, recovery could skip \texttt{Z} as trailing error content, causing \texttt{Items} to ``succeed'' with only a \texttt{SyntaxError} child and zero valid matches. This violates the semantic meaning of \texttt{+} (one or more): the operator requires at least one successful match, not merely the presence of child nodes.
-
-With this constraint, trailing skip is only permitted when \texttt{hasValidMatch} is true (at least one non-error child exists). For \texttt{OneOrMore}, this ensures the operator fails cleanly when no valid matches exist, allowing the parent to attempt alternative recovery strategies. For \texttt{ZeroOrMore}, the constraint is naturally satisfied since zero valid matches is semantically acceptable.
-
-This constraint preserves the semantic distinction between \texttt{+} and \texttt{*} under error recovery: \texttt{+} requires substantive content, while \texttt{*} accepts vacuous success. Without this distinction, error recovery would conflate two fundamentally different grammatical intentions.
-
-\subsection{Mathematical Insights}
-
-Before presenting the solution, we state mathematical properties emerging from constraint interactions:
-
-\subsubsection{Fixed-Point Structure of Left Recursion}
-
-\begin{theorem}[LR as Fixed-Point Iteration]
-\label{thm:lr_fixedpoint}
-Left-recursive expansion computes the least fixed point of a monotonic function on a finite domain.
-\end{theorem}
-
-\begin{proof}
-Let $F(r) = clause.match(parser, pos)$ where $clause$ is left-recursive. Define the partial order $r_1 \sqsubseteq r_2$ as $r_1.len \leq r_2.len$ (longer matches dominate).
-
-\begin{enumerate}
-\item \textbf{Monotonicity}: If $r_1 \sqsubseteq r_2$, then $F(r_1) \sqsubseteq F(r_2)$ because PEG clauses can only grow or stay the same when given longer seeds.
-\item \textbf{Finite domain}: Match lengths are bounded by $|input|$, giving finite chain $0 \leq len_0 < len_1 < \ldots < |input|$.
-\item \textbf{Termination}: The iteration $r_0 = \bot$, $r_{i+1} = F(r_i)$ terminates when $r_{i+1} \sqsubseteq r_i$ (no progress).
-\item \textbf{Least fixed point}: By Kleene's Fixed-Point Theorem, this computes $lfp(F) = \bigvee_{i=0}^{\infty} F^i(\bot)$.
-\end{enumerate}
-
-The LR expansion loop is the Y combinator in imperative form.
-\end{proof}
-
-\subsubsection{Boolean Algebra of Completeness}
-
-\begin{theorem}[Completeness Composition]
-The \texttt{isComplete} flag forms a Boolean algebra under conjunction, with PEG operators as the algebraic operations.
-\end{theorem}
-
-\begin{proof}
-Define $\land_{complete}$ as the compositional completeness operator:
-\begin{align*}
-complete \land_{complete} complete &= complete \\
-complete \land_{complete} incomplete &= incomplete \\
-incomplete \land_{complete} incomplete &= incomplete
-\end{align*}
-
-This satisfies Boolean algebra axioms (associativity, commutativity, idempotence). PEG operators implement these operations:
-\begin{itemize}
-\item $Seq$: $\bigwedge$ over children
-\item $First$: identity (inherits from chosen alternative)
-\item $Repetition$: $\bigwedge$ over iterations with $truncated \Rightarrow incomplete$
-\end{itemize}
-
-The algebra is well-defined because completeness is compositional: an operator's completeness depends only on its immediate children's completeness, not on global parse state.
-\end{proof}
-
-\subsubsection{Phase Duality}
-
-\begin{theorem}[Two-Phase Minimality]
-\label{thm:two_phase_minimal}
-Exactly two phases are necessary and sufficient for bounded error recovery with cache validity.
-\end{theorem}
-
-\begin{proof}
-\textbf{Necessity (Lower Bound):}
-\begin{enumerate}
-\item Phase 1 (Discovery): Must identify where recovery is needed. Without this phase, positions requiring error correction remain unknown.
-\item Phase 2 (Recovery): Must apply corrections based on Phase 1 findings. Cannot merge with Phase 1: recovery decisions require lookahead (knowing what parsing opportunities exist ahead).
-\end{enumerate}
-
-\textbf{Sufficiency (Upper Bound):}
-More than two phases are unnecessary:
-\begin{enumerate}
-\item Phase 1 finds all incompleteness boundaries ($\exists$ incomplete)
-\item Phase 2 exploits these boundaries ($\forall$ positions, attempt recovery)
-\item The $\exists/\forall$ separation is complete; no third quantifier needed
-\end{enumerate}
-
-Additional phases would duplicate Phase 1/2 work or violate linearity (requiring multiple input scans).
-\end{proof}
-
-\begin{lemma}[Phase Flag Sufficiency]
-\label{lemma:boolean_phase}
-The recovery phase can be represented as a single boolean flag, because there are exactly two phases: discovery (\texttt{recoveryPhase = false}) and recovery (\texttt{recoveryPhase = true}).
+\begin{lemma}[Alphabet sufficiency]
+\label{lem:alphabet}
+For every input $s$, some minimal repair of $s$ draws every inserted and substituted character from $\Sigma_G \cup \mathrm{chars}(s)$.
 \end{lemma}
 
-\subsection{The Solution}
-
-We now derive the unique error recovery design satisfying the axioms and constraints above.
-
-\subsubsection{Match Result Type System}
-
-From Constraint~\ref{constraint:completeness}, parse results must carry an \texttt{isComplete} flag. From Constraint~\ref{constraint:lr_recovery}, they must also carry an \texttt{isFromLRContext} flag. We define a unified match type:
-
-\begin{figure}[htbp]
-\begin{lstlisting}[language=Java,basicstyle=\small\ttfamily]
-class Match {
-  Clause clause;
-  int pos, len;
-  List<Match> children;
-  bool isComplete;        // Constraint 6
-  bool isFromLRContext;   // Constraint 9
-}
-\end{lstlisting}
-\caption{Match result type system}
-\Description{Class definition showing the unified Match type with fields for clause, position, length, children list, isComplete flag for completeness propagation (Constraint 6), and isFromLRContext flag for left-recursion recovery separation (Constraint 9).}
-\label{fig:match_type}
-\end{figure}
-
-\textbf{Key Design Decision}: All match types (terminals, single child, multiple children) are unified into a single class. They differ only in \texttt{|children|}:
-\begin{itemize}
-\item Terminal: \texttt{children = []}
-\item Single child: \texttt{children = [c]}
-\item Multiple children: \texttt{children = [}$c_1, \ldots, c_n$\texttt{]}
-\end{itemize}
-
-This unification simplifies the type system while preserving all necessary information.
-
-\subsubsection{Memoization with Phase Tracking}
-
-From Constraint~\ref{constraint:phase_isolation} and Lemma~\ref{lemma:boolean_phase}, memo entries must track the phase in which they were computed:
-
-\begin{figure}[htbp]
-\begin{lstlisting}[language=Java,basicstyle=\small\ttfamily]
-class MemoEntry {
-  Match result;
-  bool inRecPath;              // LR cycle detection
-  bool foundLeftRec;           // LR expansion needed
-  int memoVersion;             // Per-position LR invalidation
-  bool cachedInRecoveryPhase;  // Phase isolation
-}
-\end{lstlisting}
-\caption{Memoization entry with phase tracking}
-\Description{MemoEntry class with fields for cached result, LR cycle detection flags (inRecPath and foundLeftRec), version counter (memoVersion) for LR invalidation, and phase tracking boolean (cachedInRecoveryPhase) for cache validation across recovery phases.}
-\label{fig:memo_entry}
-\end{figure}
-
-\textbf{Key Design Decision}: By Lemma~\ref{lemma:boolean_phase}, we use a single boolean \texttt{cachedInRecoveryPhase} rather than integer counters. This is sufficient because only two phases exist.
-
-Cache validation logic:
-\begin{figure}[htbp]
-\begin{lstlisting}[language=Java,basicstyle=\small\ttfamily]
-phaseMatches = (cachedInRecoveryPhase == parser.inRecoveryPhase)
-if (result.isComplete || phaseMatches) {
-  return result;  // Complete results phase-independent, or same phase
-}
-// Different phase: must re-parse
-\end{lstlisting}
-\caption{Cache validation with phase tracking}
-\Description{Cache validation logic showing combined check for complete results (which are phase-independent) or same-phase validity, enabling efficient cache reuse while maintaining correctness across discovery and recovery phases.}
-\label{fig:cache_validation}
-\end{figure}
-
-\subsubsection{Bound Propagation via Explicit Parameters}
-
-From Constraint~\ref{constraint:boundaries}, repetitions must check bounds before consuming input belonging to siblings. We derive that bound information must propagate through arbitrary nesting levels.
-
-\textbf{Key Design Decision}: Represent bounds as explicit parameters rather than ambient state. This follows the principle of explicit data flow:
-
-\begin{figure}[htbp]
-\begin{lstlisting}[language=Java,basicstyle=\small\ttfamily]
-match(clause, pos, {Clause bound}) {
-  // Bound is visible in function signature
-}
-
-// In Seq:
-for (i = 0; i < children.length; i++) {
-  next = (i+1 < children.length) ? children[i+1] : null;
-  effectiveBound = next ?? bound;  // Local override or pass-through
-  result = match(children[i], curr, bound: effectiveBound);
-}
-\end{lstlisting}
-\caption{Bound propagation via explicit parameters}
-\Description{Code showing explicit bound parameter in match signature and bound propagation logic in sequence operator, where each child receives the next sibling as its bound or inherits the parent's bound, preventing recovery from consuming input belonging to subsequent siblings.}
-\label{fig:bound_propagation}
-\end{figure}
-
-This eliminates hidden state mutation and makes data flow explicit.
-
-\subsubsection{Two-Phase Algorithm}
-
-From Theorem~\ref{thm:two_phase_minimal}, we derive the complete parsing algorithm:
-
-\begin{figure}[htbp]
-\begin{lstlisting}[basicstyle=\small\ttfamily]
-Match parse(Parser parser, Clause topRule, String input) {
-  parser.input = input;
-  parser.inRecoveryPhase = false;
-
-  // Phase 1: Discovery
-  var result = parser.match(topRule, 0);
-  if (result != null && result.isComplete) {
-    return result;  // Success without recovery
-  }
-
-  // Phase 2: Recovery
-  parser.inRecoveryPhase = true;
-  return parser.match(topRule, 0);
-}
-\end{lstlisting}
-\caption{Two-phase error recovery algorithm}
-\Description{Algorithm showing the two-phase structure: Phase 1 performs discovery without recovery, and if it fails, Phase 2 enables recovery and re-attempts parsing. The parser's state tracks the current phase to ensure correct cache validation and behavior.}
-\label{alg:two_phase}
-\end{figure}
-
-The phases communicate via a single bit: \texttt{isComplete}. This is the minimal communication channel required by Constraint~\ref{constraint:completeness}.
-
-\subsection{Proof of Completeness}
-
-\begin{theorem}[Completeness]
-The two-phase algorithm succeeds on all inputs that can be parsed with a finite sequence of character skips.
-\end{theorem}
-
 \begin{proof}
-Let input $I$ be parseable via skip sequence $S = [s_1, \ldots, s_k]$ where $s_i$ is a character skip at position $p_i$.
+Two preliminary facts. First, every character of every string in $L(G)$ is accepted by some test of $G$: a successful parse consumes its whole input, and the input position advances only across characters that a terminal test has just accepted, so each character of the string is consumed by an accepting test. Second, the parse result is a deterministic function of the outcomes of the character tests at each position: every construct other than a terminal, including sequences, choices, repetitions, lookaheads, rule references, the memo table, and the left recursion expansion loop, manipulates positions and previously computed results without reading the input. Consequently, replacing any character of any input by an equivalent character changes no test outcome and therefore no match result at any position; in particular, $L(G)$ is closed under such replacement.
 
-\textbf{Phase 1:} Attempts clean parse. For each $s_i \in S$, the parse will become incomplete at position $p_i$ (cannot match expected clause). Mark result incomplete.
+Now let $\rho$ be the map on characters that fixes $\Sigma_G \cup \mathrm{chars}(s)$ and sends every other character to the representative in $\Sigma_G$ of its equivalence class, or to an arbitrary fixed member of $\Sigma_G$ when no test accepts the class; extend $\rho$ to strings pointwise. Take a minimal repair of $s$, an operation sequence $s = u_0 \to u_1 \to \cdots \to u_k = s^*$ with $s^* \in L(G)$, and apply $\rho$ to every intermediate string. Each operation maps to the corresponding operation on the images: an insertion of $c$ becomes an insertion of $\rho(c)$, a substitution writing $c$ becomes a substitution writing $\rho(c)$, and deletions and adjacent transpositions carry over unchanged, except that an operation whose images coincide, such as a substitution whose replacement maps to the character already present, is dropped. Since $\rho$ fixes every character of $s$, the mapped sequence transforms $s$ into $\rho(s^*)$ in at most $k$ operations, every inserted or substituted character lies in $\Sigma_G \cup \mathrm{chars}(s)$, and $\rho(s^*) \in L(G)$: each character of $s^*$ belongs to an accepted class by the first fact, so $\rho$ replaces it by an equivalent character, and membership is preserved by the second.
+\end{proof}
 
-\textbf{Phase 2:} Recovery enabled. At each $p_i$:
+The representative-per-class construction is not precision for its own sake. For the grammar $S \leftarrow \texttt{!'a'} \; \texttt{!'z'} \; \texttt{[a-z]}$, the characters mentioned by the grammar, the literals \cd{a} and \cd{z} and the boundaries of the class, are exactly the characters the lookaheads forbid, while every member of $L(G)$ lies strictly inside the class interval. An alphabet of literal and boundary characters alone, a natural first implementation, finds no repair at any cost; the class representative between the boundaries is what Lemma~\ref{lem:alphabet} requires, and with it the minimal repair is found immediately.
+
+%----------------------------------------------------------------------
+\subsection{Candidate tiers}
+\label{sec:tiers}
+%----------------------------------------------------------------------
+
+Successors of a failed state are proposed in the following order. Tiers 1 through 5 form the \emph{targeted} tier group, tightly bounded around the frontier and the recorded evidence; tiers 6 through 8 form the long-range group that restores completeness. Within a tier, positions closer to the frontier are proposed first, and at equal position the operation order is transposition, then exact-expected insertion, then exact-expected substitution, then deletion, then filler insertion and substitution, preferring repairs that preserve or restore the user's own characters over repairs that invent or discard content.
+
 \begin{enumerate}
-\item Recovery search tries skip $s_i$
-\item After skip, clean parse continues (by definition of $S$)
-\item Bounded search guarantees we explore skip $s_i$ within MAX\_SKIP bound
+    \item \emph{Frontier-local edits} (radius 32 around the frontier): per position, the operation sequence above, drawing inserted and substituted characters from the exact expectations recorded at that position, plus single-character rule witnesses.
+    \item \emph{Evidence-position edits}: the same operations at the nearest positions (at most 48) farther from the frontier where this parse recorded failed expectations, reaching repairs behind the frontier that the evidence directly names.
+    \item \emph{Local delimiter sweep}: characters exactly expected at the frontier, or \emph{occurring} near it, inserted or substituted at every position in the local window. A missing or damaged delimiter, a quote, bracket, or comma, re-segments the whole span it delimits, so the observed expectation may be arbitrarily far from the correct repair position within the span; sweeping the delimiter across the window recovers such repairs at cost 1.
+    \item \emph{Frontier-local completeness net} (radius 4): every alphabet character at every position adjacent to the frontier. This covers expectations \emph{shadowed by committed choice}: in JSON's \cd{Number / Boolean} choice, the input \cd{5rue} commits to \cd{Number} at the \cd{5}, so no observer ever records that \cd{t} was expected, yet substituting \cd{t} for \cd{5} is the minimal repair.
+    \item \emph{Lookahead unblocking}: single edits inside recorded blocked spans.
+    \item \emph{Long-range delimiter sweep}: frontier-expected characters inserted at any position in the window, the arbitrary-distance extension of tier 3 for unterminated spans.
+    \item \emph{Long-range deletions and transpositions.}
+    \item \emph{Full completeness net}: every alphabet character at every window position, ordered character-major so that structural characters are tried at all positions before unusual characters such as escapes.
 \end{enumerate}
 
-By induction on $|S|$, Phase 2 successfully applies all skips in $S$ and produces a complete parse.
+Multi-character rule witnesses are enqueued alongside, at their length-cost. With an unbounded window, tiers 6 through 8 together propose every single-character edit over the grammar alphabet, so the move set at every state is complete with respect to Definition~\ref{def:repair} (by Lemma~\ref{lem:alphabet}); the tiers are an ordering of the complete move set, not a pruning of it. A configurable window bounds tiers 6 through 8 for very large inputs, trading long-range repair reach for worst-case cost, and is unbounded by default.
 
-\textbf{Termination:} Each skip consumes $\geq 1$ character. At most $|I|$ skips possible. Recovery terminates in $O(n)$ steps.
-\end{proof}
+%----------------------------------------------------------------------
+\subsection{Committed mode}
+\label{sec:committed}
+%----------------------------------------------------------------------
 
-\subsection{Proof of Correctness}
+In committed mode the search must decide when one error has been repaired, even though the candidate that repairs error $i$ still fails to parse, at error $i{+}1$. The signal is \emph{progress}: a candidate whose parse reaches a strictly farther frontier than the round's starting input has explained the current error and stalled on the next one. Progress is measured \emph{strictly}: synthetic characters, those introduced by the search's own insertions and substitutions, are tracked per state, and only the user's original characters consumed before the frontier count toward progress. Without this discipline, the search can ``paper over'' an error by inserting characters that push the frontier forward without explaining any of the user's input, and commit to a nonsense prefix; with it, a commit certifies that more of the user's own text has been parsed than before. Ties in strict progress are broken by raw progress, which credits deletions for the characters they account for.
 
-\begin{theorem}[Correctness]
-The algorithm satisfies all constraints and produces sound parse trees.
-\end{theorem}
+A round commits when the targeted tier group of the base state is exhausted, when the search crosses a cost-level boundary, or when a state budget is reached, in each case committing to the best-strict-progress state found so far; the next round restarts the search from the committed string. If a round ends with no strict progress at all, a panic ladder applies: delete one character at the frontier and retry, which terminates within $O(n)$ rounds since each step shortens the input, and, should the input empty entirely, fall back to the top rule's witness, the nearest-to-empty member of $L(G)$ known. The panic ladder is the design's last resort.
 
-\begin{proof}[Proof sketch]
-We verify each constraint:
+Committed rounds trade global optimality for tractability in exactly the way PEG ordered choice trades ambiguity for determinism: each round's repair is minimum-cost among the candidates its search explored, errors are consumed left to right, and pathological inputs whose errors are \emph{coupled}, where the jointly optimal repair differs from the greedy left-to-right one, can cost more than $d(s, L(G))$. Global mode closes the gap at exponential-in-$k$ cost.
 
-\textbf{Linearity Constraints:}
-\begin{itemize}
-\item \textbf{Single-Pass (C1):} Parser processes input left-to-right. Memoization prevents re-evaluation at any position.
-\item \textbf{Memoization Validity (C2):} \texttt{cachedInRecoveryPhase} flag tags entries. Lookup validates phase match before reuse.
-\item \textbf{Bounded Recovery (C3):} Each recovery consumes $\geq 1$ character (skip or match). At most $n$ activations possible.
-\end{itemize}
+%----------------------------------------------------------------------
+\subsection{Determinism and tie-breaking}
+\label{sec:determinism}
+%----------------------------------------------------------------------
 
-\textbf{Composability Constraints:}
-\begin{itemize}
-\item \textbf{Clause Independence (C4):} Context passed explicitly via \texttt{bound} parameter. No implicit state inheritance.
-\item \textbf{Ref Transparency (C5):} Ref clauses pass through all parameters, calling target rule directly. Satisfies Constraint~\ref{constraint:ref_transparency}.
-\end{itemize}
+Among equal-cost repairs, the repair returned is determined by the proposal order: lower tier first, then nearer the frontier, then the operation order transposition, exact insertion, exact substitution, deletion, filler, then grammar order among expected characters. The policy content of this order is a preference for repairs that keep the user's characters (transposition reorders but preserves; exact insertion adds what the grammar names; deletion discards; filler invents), applied as close to the detected error as possible. The search is fully deterministic: the same grammar and input always yield the same repair, the same edit list, and the same parse tree.
 
-\textbf{Correctness Constraints:}
-\begin{itemize}
-\item \textbf{Completeness (C6):} \texttt{isComplete} computed by Boolean algebra (Theorem 2). Seq, First, Repetition implement $\bigwedge, id, \bigwedge$ respectively.
-\item \textbf{Phase Isolation (C7):} Complete results cached without phase tag (phase-independent by Lemma~\ref{lemma:boolean_phase}). Incomplete results tagged and validated.
-\item \textbf{Boundary Preservation (C8):} \texttt{bound} parameter propagated through grammar. \texttt{canMatchNonzeroAt} checks prevent overrun.
-\item \textbf{Non-Cascading (C9):} Hierarchical recovery catches errors at appropriate granularity. Failed low-level recovery propagates to parent.
-\item \textbf{LR-Recovery Separation (C10):} \texttt{isFromLRContext} flag blocks recovery on seed mismatches. Satisfies Constraint~\ref{constraint:lr_recovery}.
-\item \textbf{Visibility (C11):} Recovery produces only InputSkip (SyntaxError nodes) or GrammarDelete at EOF. No mid-parse insertions.
-\item \textbf{Spanning (C12):} Root wrapper adds trailing SyntaxError for unconsumed input. Total failures wrapped as single SyntaxError.
-\end{itemize}
+%----------------------------------------------------------------------
+\subsection{Properties}
+\label{sec:properties}
+%----------------------------------------------------------------------
 
-\textbf{Recovery Behavior Constraints:}
-\begin{itemize}
-\item \textbf{Transparent Rule Skipping (C13):} Seq's \texttt{findMeaningfulBound} iterates past transparent rules to find structural delimiters.
-\item \textbf{Character Terminal Recovery (C14):} Repetition's \texttt{recover} checks \texttt{isCharTerminal(subClause)}, returning null to delegate to parent Seq.
-\item \textbf{Valid Match Requirement (C15):} \texttt{hasValidMatch} tracks presence of non-error children. Trailing skip gated on this flag.
-\end{itemize}
+The search of Sections \ref{sec:searchstructure} through \ref{sec:committed} operates on states that are strings over the finite alphabet $\Sigma_G \cup \mathrm{chars}(s)$, with unit-cost edges given by the four edit operations and macro edges costing their inserted length. The number of distinct states reachable at cost $c$ from $s$ is finite for every $c$, since each edit changes the string's length by at most one and draws from a finite alphabet. With the window unbounded, the tiers of Section~\ref{sec:tiers} propose every unit edit of every expanded state, so the search's move set generates, by composition, every string reachable from $s$ by edit operations, and in particular every member of $L(G)$, each reachable at cost at most $|s| + |t|$ for target $t$ by deleting all of $s$ and inserting $t$. Uniform-cost search dequeues states in nondecreasing cost order, so it dequeues a state of cost $d(s, L(G))$ that parses, and no parsing state earlier. The alphabet restriction does not raise the reachable minimum, by Lemma~\ref{lem:alphabet}, and macro edges cannot lower any path's cost below its unit-edit cost, since they are priced at their length.
 
-\textbf{Soundness:} Parse tree nodes correspond to successfully parsed input or explicit error annotations (SyntaxError nodes). No invisible structure modification occurs; Visibility Constraint~\ref{constraint:visibility} is enforced.
-\end{proof}
-
-\subsection{Proof of Minimality}
-
-We now prove that every component of the algorithm is necessary. Removing any component violates at least one constraint.
-
-\begin{theorem}[Minimality]
+\begin{theorem}[Global-mode minimality]
 \label{thm:minimality}
-The algorithm is minimal: every field, flag, and mechanism is necessary for correctness.
+With commitment disabled, an unbounded window, and an unbounded state budget, the repair search terminates for every input whenever $L(G) \neq \emptyset$, and returns a repair of cost exactly $d(s, L(G))$.
 \end{theorem}
 
-\begin{proof}[Proof by contradiction]
-We prove necessity of each component:
-
-\paragraph{Necessity of \texttt{inRecPath} boolean:}
-\textbf{Hypothesis:} Eliminate \texttt{inRecPath}; detect LR via call stack depth.
-
-\textbf{Contradiction:} Call stack is per-invocation, not per-$(\textit{clause}, \textit{pos})$ pair. Multiple clauses can call the same rule at the same position. Call stack produces false positives, incorrectly detecting cycles. Violates Axiom 1 (packrat invariant) and Axiom 4 (LR fixed point).
-
-\paragraph{Necessity of \texttt{foundLeftRec} flag:}
-\textbf{Hypothesis:} Infer LR from iteration count after loop completes.
-
-\textbf{Contradiction:} Need to know LR status \emph{during} loop to: (1) invalidate cache on iterations, (2) mark result with \texttt{isFromLRContext}. Cannot wait until after loop. No alternative detection method works.
-
-\paragraph{Necessity of per-position \texttt{memoVersion}:}
-\textbf{Hypothesis:} Use single global version counter.
-
-\textbf{Contradiction:} Different positions have independent LR expansions. Position $p_1$ expanding LR would increment the global counter, invalidating cache at unrelated position $p_2$. This causes $O(n^2)$ performance degradation. Violates Constraint 2 (memoization validity).
-
-\paragraph{Necessity of \texttt{isFromLRContext} flag:}
-\textbf{Hypothesis:} Allow recovery at all match levels.
-
-\textbf{Contradiction:} Recovery on LR seed (during cycle detection) corrupts fixed-point iteration. LR must expand fully before recovery attempts. Flag is essential to block recovery on LR intermediate results. Violates Constraint~\ref{constraint:lr_recovery}.
-
-\paragraph{Necessity of two-phase architecture:}
-By Theorem~\ref{thm:two_phase_minimal}, exactly two phases required. One phase lacks lookahead for recovery decisions. Three+ phases redundant or violate linearity.
-
-\paragraph{Necessity of \texttt{probe()} method:}
-\textbf{Hypothesis:} Bound checking without phase separation.
-
-\textbf{Contradiction:} Bound checks require "clean" lookahead (no recovery). Without probe, bound check in Phase 2 would use recovery, incorrectly skipping ahead. Violates Constraint~\ref{constraint:boundaries}.
-
-\paragraph{Necessity of linear recovery search:}
-\textbf{Hypothesis:} Use binary search for skip distance.
-
-\textbf{Contradiction:} Binary search requires monotonicity: if match at $k$, must match at $k+1$. Grammar can require exact position (e.g., delimiter). No monotonicity exists. Linear search is optimal for this problem.
-
-All components proven necessary. Algorithm is minimal. \qed
-\end{proof}
-
-\subsection{Complexity Analysis}
-
-\begin{theorem}[Linear Time Complexity]
-The two-phase algorithm runs in $O(n \cdot |G|)$ time where $n = |input|$ and $|G| = |grammar|$.
+\begin{theorem}[Single-error exactness of committed mode]
+\label{thm:singleerror}
+If $d(s, L(G)) = 1$, then committed mode with an unbounded window and state budget returns a repair of cost 1. Commitment points occur only at cost-level boundaries, at exhaustion of the targeted tiers, or at the state budget; the first two cannot fire before every cost-1 candidate has been proposed and, in cost order, dequeued, among which is a full parse by hypothesis, and the third is excluded by assumption.
 \end{theorem}
 
-\begin{proof}
-\textbf{Phase 1:} Each $(clause, pos)$ pair evaluated at most once (packrat invariant). At most $|G| \cdot n$ evaluations. Each evaluation $O(1)$ excluding recursive subcalls. Total: $O(n \cdot |G|)$.
+The implementation's default state budget is finite, chosen so that the targeted tiers and a large margin of the long-range tiers fit within it; Theorem~\ref{thm:singleerror} is therefore conditional in deployment.
 
-\textbf{Phase 2:} Same memoization guarantees. Additional recovery search is bounded:
-\begin{itemize}
-\item Each recovery consumes $\geq 1$ character (skip or successful parse)
-\item At most $n$ recovery activations possible
-\item Each recovery search bounded by MAX\_SKIP (constant)
-\item Total recovery overhead: $O(n)$
-\end{itemize}
+For inputs with multiple errors, committed mode yields a weaker, but well-defined, guarantee. Every commit requires strictly increased strict progress, an integer bounded by $n$, so a repair of any input concludes within $n$ rounds; each round's committed repair is minimum-cost among the candidates that round explored; and errors are consumed left to right. When the errors are independent, in the sense that the minimal repair of each does not change the minimal repair of the others, the total cost is the sum of the per-error minima, which is $d(s, L(G))$. When errors are coupled, the left-to-right commitment can exceed $d(s, L(G))$, the same trade PEG ordered choice makes against exhaustive backtracking, and global mode remains available at cost exponential in the error count.
 
-Combined: $O(n \cdot |G|) + O(n) = O(n \cdot |G|)$.
+Recovery-time complexity separates cleanly by case. A valid input pays nothing (Section~\ref{sec:problem}). A single error costs one failed parse plus one parse per candidate explored until the repair is dequeued, each parse linear by Theorem~\ref{thm:reduction}; the evidence-guided ordering exists to make the number of explored candidates small. The engineered worst case, exhausting the targeted tiers (size bounded by a radius- and evidence-capped constant times $|\Sigma|$) and sweeping the long-range tiers over an unbounded window, parses $O(n \cdot |\Sigma|)$ candidates of length $O(n)$: quadratic in $n$ with a modest constant, and the window parameter trades this ceiling against long-range repair reach. An input with $k$ separated errors runs $k$ committed rounds, linear in $k$.
 
-\textbf{Space:} Memo table stores at most $|G| \cdot n$ entries. Each entry $O(1)$ size. Total: $O(n \cdot |G|)$.
-\end{proof}
+%----------------------------------------------------------------------
+\section{Evaluation of error recovery}
+\label{sec:evaluation}
+%----------------------------------------------------------------------
 
-\subsection{Constraint Satisfaction Methodology}
+All measurements in this section use the Dart reference implementation (Section~\ref{sec:software}), single-threaded on an AMD Ryzen 9 3950X under Dart 3.12.2, with the recovery defaults: committed mode, unbounded window, targeted radius 32.
 
-Given the difficulty of simultaneously satisfying all fifteen constraints in the context of the four axioms, we used dueling ``deep thinking'' modes of two leading LLMs to try to search for a single algorithm that satisfies all requirements.
+%----------------------------------------------------------------------
+\subsection{Methodology: exhaustive single-character mutation}
+\label{sec:methodology}
+%----------------------------------------------------------------------
 
-These LLM models were tasked with proving whether or not the algorithm was optimal in all important metrics: completeness; correctness; compactness; elegance; linearity with respect to the input length, regardless of the grammar complexity or the number of errors encountered; and intuitiveness of behavior, relative to some model of how a user would reasonably expect the parser to behave in a range of situations.
+Recovery quality is easy to overstate with anecdotal examples, so the primary evaluation is exhaustive within its scope, and scored against a ground truth. The subject grammar is the complete JSON grammar of Fig.~\ref{fig:JsonGrammar}, covering objects, arrays, strings with escape sequences, numbers with fraction and exponent parts, booleans, and null. The subject document is the 48-character valid document
+\begin{center}
+\cd{\{"a":1,"bc":[2,33,true],"d":\{"e":null\},"f":"gh"\}}
+\end{center}
+chosen to exercise every construct of the grammar. From it we generate every mutant reachable by one edit operation: deletion of each character (48), transposition of each adjacent unequal pair (47), and insertion and substitution at every position of each character in the probe set \cd{\{Q z \} " , 5\}} (294 insertions, 267 substitutions), the probe set containing an identifier-like character, a lowercase letter, a structural close, a string delimiter, a separator, and a digit. Of the 656 mutants, 137 remain valid JSON, a mutation inside a string literal, for instance, usually yields another valid document, and are excluded, leaving 519 invalid mutants.
 
-An exhaustive search was also performed for corner cases that might violate the constraints, or that might pit constraints against each other via mutual interaction. This resulted in the creation of a large unit test suite, consisting of 716 unit tests, that were used to carefully and exhaustively detect progress and regressions, and to generate new ideas that informed iterative algorithm improvement.
+\begin{figure}[tbp]
+\begin{lstlisting}[numbers=none,basicstyle=\scriptsize\ttfamily]
+JSON      <- WS Value WS;
+Value     <- Object / Array / String / Number / Boolean / Null;
+Object    <- '{' WS (Member (WS ',' WS Member)*)? WS '}';
+Member    <- String WS ':' WS Value;
+Array     <- '[' WS (Value (WS ',' WS Value)*)? WS ']';
+String    <- '"' Character* '"';
+Character <- [^"\\] / ('\\' Escape);
+Escape    <- '"' / '\\' / '/' / 'b' / 'f' / 'n' / 'r' / 't'
+             / ('u' [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]);
+Number    <- Integer Fraction? Exponent?;
+Integer   <- '-'? (([1-9] [0-9]+) / [0-9]);
+Fraction  <- '.' [0-9]+;
+Exponent  <- ("e" / "E") ("+" / "-")? [0-9]+;
+Boolean   <- "true" / "false";
+Null      <- "null";
+~WS       <- [ \t\n\r]*;
+\end{lstlisting}
+\caption{\label{fig:JsonGrammar}The JSON grammar used in the mutation evaluation, in the notation of the reference implementation. The \cd{\~{}} prefix marks a rule as transparent (elided from the abstract syntax tree).}
+\Description[JSON grammar]{Sixteen PEG rules defining JSON documents, values, objects, members, arrays, strings with escapes, numbers, booleans, null, and whitespace.}
+\end{figure}
 
-This intensive search converged on a single solution to all of the presented constraints, and was able to demonstrate with some certainty that there is not a fundamentally simpler solution to PEG error recovery than what was discovered, given the rigor of the constraints.
+Every mutant is, by construction, one inverse edit away from a valid document, so $d(m, L(G)) = 1$ for every tested mutant $m$, and minimality (Definition~\ref{def:repair}) demands that recovery find a cost-1 repair for all 519: the ground truth is exact, not judged. Two further metrics grade repair \emph{quality} beyond minimality. \emph{Exact restoration} asks whether the repaired string is character-for-character the original document. \emph{Structural restoration} asks whether the repaired document's parse tree, projected onto the structural rules \cd{JSON}, \cd{Value}, \cd{Object}, \cd{Array}, \cd{Member}, \cd{String}, \cd{Number}, \cd{Boolean}, and \cd{Null} and compared by shape, ignoring positions and token-internal rules, equals the original's; this is the property an IDE needs so that one typo does not collapse the outline of a file.
 
-The result of this intensive constraint satisfaction search yielded the final error recovery algorithm for the squirrel parser, which does indeed satisfy all completeness, correctness, compactness, performance, and intuitiveness goals.
+%----------------------------------------------------------------------
+\subsection{Mutation results}
+\label{sec:mutationresults}
+%----------------------------------------------------------------------
 
-\subsection{Implementation}
+Table~\ref{tab:mutation} summarizes the sweep. Every one of the 519 mutants was repaired, every repair had the provably minimal cost 1, no repair failed, and the panic ladder was never entered. The repaired string was character-identical to the original document for 338 of 519 mutants (65.1\%), and structurally identical for 490 of 519 (94.4\%). The full sweep of 519 repairs ran 14{,}592 parses (mean 28.1 per mutant, median 5) in 2.35 seconds total, a mean of 4.5\,ms per repair.
+
+\begin{table}[tbp]
+\centering
+{\small
+\begin{tabular}{lrrrr}\toprule
+Mutation class & Tested & Cost-1 repairs & Structural restoration \\\midrule
+Deletion        &  37 &  37 &  34 \\
+Transposition   &  42 &  42 &  41 \\
+Insertion       & 216 & 216 & 211 \\
+Substitution    & 224 & 224 & 204 \\\midrule
+Total           & 519 & 519 (100\%) & 490 (94.4\%) \\\bottomrule
+\end{tabular}
+}
+\caption{\label{tab:mutation}Results over all 519 invalid single-character mutants of the JSON subject document. Every repair achieved the provably minimal cost of 1; no repair failed and the panic fallback was never used.}
+\end{table}
+
+The 29 mutants whose repair restored a different structure are not recovery failures: each received a cost-1 repair, and cost-1 repairs are not unique. In every one of the 29 cases the search selected a \emph{different} minimal repair than the mutation's inverse, in families with a clear character. A deleted or corrupted string-opening quote is repaired by inserting a backslash before the \emph{next} quote, turning it into an escaped quote inside a longer string, which merges two members into one at the same cost of 1:
+\begin{lstlisting}[numbers=none,basicstyle=\scriptsize\ttfamily]
+{"a:1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}     mutant  (deleted " at 3)
+   ^
+{"a:1,\"bc":[2,33,true],"d":{"e":null},"f":"gh"}    repair  (insert \ at 6)
+      ^
+\end{lstlisting}
+A comma corrupted between digits (\cd{[2z33,} $\rightarrow$ \cd{[2.33,}) is repaired by substituting a decimal point, merging two numbers into one; a trailing comma inserted into an array is repaired by inserting a value after it rather than deleting it. These are exactly the ambiguities a human reader faces with one corrupted character and no further context; the search resolves them deterministically by the policy of Section~\ref{sec:determinism}, and reports the edit it chose, so a client can present alternatives if desired.
+
+Under the identical methodology, the earlier in-parser recovery design of Section~\ref{sec:whyhard} recovered the ideal parse for 2\% of mutants and cascaded on 79\%. The architectural inversion, not tuning, accounts for the difference: a repaired input is parsed by the ordinary parser, so a single-edit repair \emph{cannot} cascade, since the repaired document parses cleanly or the candidate is rejected.
+
+%----------------------------------------------------------------------
+\subsection{Oracle-verified minimality and left recursion}
+\label{sec:oracle}
+%----------------------------------------------------------------------
+
+The JSON ground truth certifies cost-1 cases only, so minimality was additionally verified against a brute-force oracle: a breadth-first enumeration of the Damerau-Levenshtein ball of the input, testing membership in $L(G)$ with the plain parser, which computes $d(s, L(G))$ exactly for small inputs by exhaustion. Across five grammars, sequences, choices, delimiter-separated lists, lookahead grammars, and a left-recursive expression grammar, and randomized mutation batteries over them, every repair returned by the search in its default committed mode matched the oracle's minimal cost.
+
+Composition with left recursion was exercised directly on the left-recursive expression grammar
+$E \leftarrow E \; \texttt{'+'} \; T \; / \; E \; \texttt{'-'} \; T \; / \; T$,
+$T \leftarrow T \; \texttt{'*'} \; F \; / \; T \; \texttt{'/'} \; F \; / \; F$,
+$F \leftarrow \texttt{'('} \; E \; \texttt{')'} \; / \; N$,
+$N \leftarrow \texttt{[0-9]+}$:
+all 56 invalid single-character mutants of the input \cd{(12+3)*45-6/(7+89)+1*2} were repaired at cost 1. No part of the recovery module contains any left-recursion-specific code.
+
+%----------------------------------------------------------------------
+\subsection{Recovery performance}
+\label{sec:recoveryperf}
+%----------------------------------------------------------------------
+
+Table~\ref{tab:recoveryperf} reports recovery cost as input size and error count scale. For a single error (a structural comma deleted mid-document) the search parsed 3 to 6 candidates at every size from 500 to 8{,}000 characters: single-error recovery behaves as a small constant number of linear-time parses, as predicted in Section~\ref{sec:properties}. With $k$ errors spread through a 2{,}000-character document, rounds proceed left to right at roughly one thousand parses per error, linear in $k$; the per-error constant is the committed-mode round cost, dominated by re-parsing the whole candidate for every explored state, and is the implementation's main cost center (Section~\ref{sec:conclusion}). Pure garbage input, 400 characters matching nothing in the grammar, is repaired in 22\,ms, and the result is instructive: the minimal repair wraps the garbage in two quotation marks, producing a valid JSON string literal at cost 2, which is genuinely the nearest member of $L(G)$ and a faithful application of Definition~\ref{def:repair}.
+
+\begin{table}[tbp]
+\centering
+{\small
+\begin{minipage}{0.45\textwidth}
+\centering
+\begin{tabular}{rrrr}\toprule
+$n$ & parses & time (ms) \\\midrule
+  496 & 3 &  31 \\
+  987 & 3 &  44 \\
+1\,997 & 6 & 123 \\
+3\,993 & 6 & 255 \\
+8\,000 & 3 &  52 \\\bottomrule
+\end{tabular}
+\subcaption{One deleted comma, mid-document, vs.\ input size. Every repair had cost 1.}
+\label{tab:perf_size}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
+\centering
+\begin{tabular}{rrrr}\toprule
+errors $k$ & cost & parses & time (s) \\\midrule
+ 1 &  1 &     3 &   0.06 \\
+ 2 &  2 & 1\,443 &   6.6 \\
+ 4 &  4 & 4\,106 &  21.6 \\
+ 8 &  7 & 8\,233 &  46.8 \\
+16 & 14 & 17\,763 & 115.4 \\\bottomrule
+\end{tabular}
+\subcaption{$k$ deleted commas spread through an $n \approx 2{,}000$ document.}
+\label{tab:perf_errors}
+\end{minipage}
+}
+\caption{\label{tab:recoveryperf}Recovery scaling. Parses counts candidate parses run by the search. In (b), a deleted comma between array elements can be repaired at lower cost than re-insertion (adjacent digits merge into one number), which is why the measured cost at $k = 8$ and $k = 16$ is below $k$: the search found cheaper minimal repairs than the mutation inverses.}
+\end{table}
+
+%----------------------------------------------------------------------
+\subsection{Relation to prior recovery approaches}
+\label{sec:relatedrecovery}
+%----------------------------------------------------------------------
+
+The minimum-distance \emph{objective} is the classical one of Aho and Peterson~\cite{aho1972} and Lyon~\cite{lyon1974}. Their realization builds a second parsing engine: the grammar is augmented with error productions and every input, valid or not, is parsed by an Earley-style algorithm in cubic time. The present design reaches the same objective with \emph{no} second engine and no always-on cost: the unmodified linear-time parser is the oracle, the metric lives entirely outside it, and only invalid inputs pay for repair. To our knowledge this pay-only-on-error realization of minimum-distance repair, and its composition with left-recursive PEG parsing, have no precedent.
+
+Burke and Fisher~\cite{burke1987} and CPCT+~\cite{diekmann2020} repair over the parser's configuration at the failure point, at token granularity, for LL/LR automata; CPCT+ shares the minimum-cost criterion, restricted to repair sequences applied at the error state. Searching over inputs rather than configurations removes both restrictions at once: repairs land anywhere in the input, including before the failure frontier (the unclosed-quote family of Section~\ref{sec:whyhard}, repaired routinely in Section~\ref{sec:mutationresults}), and character granularity suits scannerless PEG parsing, where no token stream exists. The permissive-grammar approach of de Jonge et al.~\cite{dejonge2012} and the recovery expressions of Medeiros and Mascarenhas~\cite{medeiros2018,medeiros2020} modify the grammar, automatically or by annotation, and the recovered parse is characterized by the behavior of the added rules; here the grammar is untouched and the recovered parse is characterized by Definition~\ref{def:repair} alone. Swierstra and Duponcheel's error-correcting combinators~\cite{swierstra1996} insert and delete tokens greedily during the parse itself, elegantly for LL grammars, but the correction is again woven into the parser, with the attendant coupling that Section~\ref{sec:whyhard} identifies. Tree-sitter~\cite{treesitter} recovers impressively in practice inside a GLR framework, with heuristics that carry no stated optimality property. The pika parser~\cite{hutchison2020} recovers by virtue of its bottom-up direction, at a large always-on constant factor and without a repair-quality criterion.
+
+In summary, what is new here is not the distance metric, nor search, but the architecture that connects them: the parser is treated as a black-box membership oracle with failure observation bolted onto the \emph{grammar}, which is what lets an unmodified, memoizing, left-recursion-capable parser participate in optimal repair without surrendering any of its invariants.
+
+%----------------------------------------------------------------------
+\section{Reference implementation}
 \label{sec:software}
+%----------------------------------------------------------------------
 
-The error recovery algorithm is too long to include in this paper, but full implementations of the complete squirrel parser are available for Dart, Typescript, Java, and Python at: \url{http://github.com/lukehutch/squirrelparser}
+An MIT-licensed reference implementation of the squirrel parser and the repair search is available at \url{https://github.com/lukehutch/squirrelparser}. The Dart implementation comprises the parser core, a direct transcription of Fig.~\ref{fig:Code}; a metagrammar, so grammars are written in the ASCII notation used throughout this paper; automatic conversion of parse trees to abstract syntax trees, with rules prefixed \cd{\~{}} (as \cd{WS} in Fig.~\ref{fig:JsonGrammar}) elided as syntactically transparent; and the recovery module, roughly 1{,}200 lines, containing the grammar instrumentation, witness computation, and repair search of Section~\ref{sec:repair}, none of which touches the parser core. The test suite contains 304 tests, including the mutation, oracle, and performance batteries of Sections \ref{sec:complexity} and~\ref{sec:evaluation}.
 
-\subsubsection{Test Suite}
-
-The implementation is validated through a comprehensive test suite of 716 tests covering:
-
-\textbf{Left-recursion handling:} Direct, indirect, and mutual left recursion; hidden left recursion through sequences and alternatives; left recursion through multiple indirection levels; cache invalidation during LR expansion; interaction between LR and recovery; reference transparency with LR clauses.
-
-\textbf{Error recovery mechanisms:} Character skipping and deletion; recovery at sequence, alternative, and repetition boundaries; bound propagation through nested clauses and transparent rules; error localization and visibility constraints; recovery with partial matches; interaction between recovery and all operator types; character-level terminal recovery suppression; valid match requirements for trailing recovery.
-
-\textbf{Operator correctness:} Sequence composition with complete/incomplete results; first-match (ordered choice) selection with backtracking; repetition (one-or-more, zero-or-more) with recovery; optional clauses; edge cases including empty matches, boundary conditions, and nested structures.
-
-\textbf{Performance and linearity:} Linear time complexity $O(n \cdot |G|)$ verification on inputs up to 100,000 characters; stress tests with deeply nested structures and complex grammars; performance edge cases including pathological backtracking scenarios that would cause exponential behavior in non-packrat parsers.
-
-\textbf{Constraint verification:} Tests explicitly validate all design constraints including phase isolation, monotonic consumption, completeness propagation, LR-recovery separation, parse tree spanning, visibility, transparent rule boundary skipping, character-level terminal recovery suppression, and valid match requirements.
-
-\textbf{Parse tree spanning invariant:} 20 comprehensive tests verify that all parse results completely span the input from position 0 to end, with total failures returning \texttt{SyntaxError} nodes covering all input, and partial matches wrapped with trailing \texttt{SyntaxError} nodes.
-
-\textbf{Bound propagation:} 32 tests verify correct bound propagation through arbitrary nesting levels, including: repetitions stopping at sibling boundaries; transparent rule skipping when finding meaningful bounds; nested arrays and objects with whitespace; ref dereferencing for bound determination; recovery stopping at structural delimiters; and character-level terminal recovery suppression.
-
-\textbf{Complex interactions:} Combined scenarios testing multiple features simultaneously (e.g., left recursion with error recovery, nested repetitions with boundaries, recovery within LR contexts); unicode handling; real-world parsing patterns.
-
-All tests pass, confirming the algorithm handles corner cases correctly while maintaining linear performance and adhering to the spanning invariant.
-
+%----------------------------------------------------------------------
 \section{Conclusion}
+\label{sec:conclusion}
+%----------------------------------------------------------------------
 
-We have presented the squirrel parser, a packrat parser that directly handles left recursion and error recovery while preserving $O(n \cdot |G|)$ time and space complexity. Both extensions are derived from first principles through formal mathematical reasoning.
+Three metadata fields on each memo entry of a packrat parser, a recursion-path flag, a found-recursion flag, and a version stamp validated against a per-position counter, suffice to parse every form of left recursion bottom-up from the fixed point of each cycle, reducing exactly to packrat parsing when no cycle is met (Theorem~\ref{thm:reduction}), remaining linear whenever expansion regions are disjoint (Corollary~\ref{cor:linear}), and degrading, like the prior seed-growing approaches, to quadratic on an adversarial nesting of lookahead over left recursion that we exhibit and measure (Table~\ref{tab:adversarial}). Moving error recovery out of the parser and into a uniform-cost search over edited inputs gives recovery a declarative semantics, minimum Damerau-Levenshtein distance to the language (Definition~\ref{def:repair}, Theorem~\ref{thm:minimality}), at zero cost to valid inputs, with measured results, 519 of 519 provably minimal repairs and 94.4\% structural restoration on exhaustive JSON mutation (Table~\ref{tab:mutation}), that the fifty-year literature of in-parser recovery heuristics does not offer for recursive descent parsing.
 
-\textbf{Left recursion.} The algorithm rests on three theorems: fixed-point existence, bottom-up necessity, and monotonic length increase. These necessitate three mechanisms (cycle detection via per-position state tracking, iterative expansion with seed growth, and version-tagged memoization), each proven necessary by contradiction. The implementation requires only a boolean flag per memo entry and a version counter per input position. Unlike prior approaches~\cite{warth2008,tratt2010}, the algorithm handles all recursion types uniformly, requires no grammar preprocessing, and maintains packrat linearity.
-
-\textbf{Error recovery.} We prove that exactly two phases are necessary and sufficient: discovery marks incomplete parses; recovery performs bounded linear search. Phases communicate via a single bit (\texttt{isComplete}), and complete results are phase-independent, enabling cache reuse. The \texttt{isComplete} flag forms a Boolean algebra under conjunction, with PEG operators implementing algebraic operations. Every component is proven necessary by contradiction, establishing algorithmic minimality.
-
-\textbf{Theoretical contributions.} Four deep insights emerged from the derivations: (1) LR expansion implements the Y combinator in imperative form, computing the least fixed point via Kleene iteration; (2) the \texttt{isComplete} flag forms a compositional Boolean algebra, enabling modular reasoning about parser correctness; (3) two-phase parsing is minimal due to existential/universal quantifier separation; (4) a boolean phase flag suffices because only two phases exist.
-
-\textbf{Empirical validation.} The implementation passes over 700 comprehensive tests covering all left-recursion types, error recovery scenarios, operator correctness, performance edge cases, constraint verification, and complex feature interactions. Tests confirm linear performance up to 100,000-character inputs and validate correct handling of pathological cases.
-
-\textbf{Broader implications.} This work demonstrates that neither left recursion nor error recovery fundamentally increases parsing complexity. Both challenges yield to precise algorithmic design grounded in mathematical necessity. The approach generalizes: derive constraints from axioms, construct minimal solutions, prove necessity by contradiction. The resulting algorithms achieve theoretical optimality (every mechanism is necessary, complexity matches the packrat lower bound) while remaining simple enough for straightforward implementation.
-
-The squirrel parser unifies left-recursion handling and error recovery within a single, coherent framework, offering a complete solution for robust PEG parsing without sacrificing the elegance or efficiency that makes packrat parsing attractive.
+Three open problems follow directly. First, per-candidate re-parsing dominates recovery cost (Table~\ref{tab:recoveryperf}); memo entries whose spans precede a candidate's first edit are unaffected by it, so the version mechanism of Section~\ref{sec:purity} extends naturally to incremental re-parsing across candidates, in the spirit of incremental parsing for LR~\cite{larcheveque1995} and for packrat parsers~\cite{dubroy2017}, and should reduce a round's cost from parses times length toward a single parse. Second, committed mode's left-to-right greed on coupled errors could be relaxed by running the global search within a sliding window around each error cluster, recovering global minimality for all but adversarially entangled errors. Third, an input-independent characterization of the grammars on which left-recursive expansion is super-linear (Section~\ref{sec:expansioncost}) remains open, as does the older question of whether PEGs recognize all context-free languages~\cite{ford2004}.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{squirrel_parser}
 
 \end{document}
-\endinput

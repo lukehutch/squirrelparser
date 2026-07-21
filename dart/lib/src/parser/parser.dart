@@ -3,18 +3,19 @@ import 'combinators.dart';
 import 'match_result.dart';
 import 'memo_entry.dart';
 
-/// The squirrel parser with bounded error recovery.
+/// The squirrel parser: a memoizing recursive descent (packrat) parser that
+/// directly supports left recursive PEG grammars.
 class Parser {
   final Map<String, Clause> rules;
   final Set<String> transparentRules;
   final String topRuleName;
   final String input;
   final Map<Clause, Map<int, MemoEntry>> _memoTable = {};
-  final List<int> memoVersion;
 
-  /// Phase 1 (Discovery): inRecoveryPhase = false
-  /// Phase 2 (Recovery): inRecoveryPhase = true
-  bool inRecoveryPhase = false;
+  /// Records how many times a left recursive cycle has been expanded at each
+  /// input position ("cycleDepthForPos" in the paper). A match attempt may be
+  /// made past the end of the input, hence size input.length + 1.
+  final List<int> memoVersion;
 
   Parser({required Map<String, Clause> rules, required this.topRuleName, required this.input})
       : rules = {},
@@ -32,17 +33,16 @@ class Parser {
     }
   }
 
-  /// Match a clause at a position, using memoization.
-  MatchResult match(Clause clause, int pos, {Clause? bound}) {
+  /// Match a rule's top clause at a position, using memoization.
+  ///
+  /// Memoization is applied only at the granularity of rules (this method is
+  /// only reached via [Ref.match] or the top-level [parse] call); clauses
+  /// within a rule's clause tree recurse directly without memoization.
+  MatchResult match(Clause clause, int pos) {
     if (pos > input.length) return mismatch;
 
-    // C5 (Ref Transparency): Don't memoize Ref independently
-    if (clause is Ref) {
-      return clause.match(this, pos, bound: bound);
-    }
-
     var memoEntry = _memoTable.putIfAbsent(clause, () => {}).putIfAbsent(pos, MemoEntry.new);
-    return memoEntry.match(this, clause, pos, bound);
+    return memoEntry.match(this, clause, pos);
   }
 
   /// Match a named rule at a position.
@@ -59,58 +59,42 @@ class Parser {
     return _memoTable[clause]?[pos];
   }
 
-  /// Probe: Temporarily switch out of recovery mode to check if clause can match.
-  MatchResult probe(Clause clause, int pos) {
-    final savedPhase = inRecoveryPhase;
-    inRecoveryPhase = false;
-    final result = match(clause, pos);
-    inRecoveryPhase = savedPhase;
-    return result;
-  }
-
-  /// Enable recovery mode (Phase 2).
-  void enableRecovery() {
-    inRecoveryPhase = true;
-  }
-
-  /// Check if clause can match non-zero characters at position.
-  bool canMatchNonzeroAt(Clause clause, int pos) {
-    final result = probe(clause, pos);
-    return !result.isMismatch && result.len > 0;
-  }
-
-  /// Parse input with two-phase error recovery.
-  ///
-  /// Returns (result, hasSyntaxErrors) where:
-  ///   - result contains one MatchResult if the whole input matched or was a syntax error, or a list of
-  ///     two MatchResults if there was a match and then the parser did not consume all of the input
-  ///     (in which case, the second MatchResult will be a syntax error for the unconsumed input).
-  ///   - hasSyntaxErrors = true if there were syntax errors
-  ///
-  /// If the grammar cannot match the input at all, returns a SyntaxError
-  /// spanning the entire input. If there is trailing unmatched input,
-  /// it is wrapped in a SyntaxError and included in the result.
-  ParseResult parse() {
-    // Phase 1: Discovery (try to parse without recovery from syntax errors)
-    var result = matchRule(topRuleName, 0);
-    var hasSyntaxErrors = result.isMismatch || result.pos != 0 || result.len != input.length;
-    if (hasSyntaxErrors) {
-      // Phase 2: Attempt to recover from syntax errors
-      enableRecovery();
-      result = matchRule(topRuleName, 0);
+  /// The approximate position of the first syntax error: the largest input
+  /// position of any mismatch recorded in the memo table, or -1 if there is
+  /// none. (See the paper: the location of the first syntax error can
+  /// generally be identified by searching the memo table for the largest
+  /// position of any mismatch.)
+  int syntaxErrorPosition() {
+    var maxPos = -1;
+    for (final entriesForClause in _memoTable.values) {
+      for (final entry in entriesForClause.entries) {
+        if (entry.value.result?.isMismatch == true && entry.key > maxPos) {
+          maxPos = entry.key;
+        }
+      }
     }
+    return maxPos;
+  }
+
+  /// Parse the input, starting by matching the top rule at position 0.
+  ///
+  /// The core algorithm performs no error recovery. If the top rule does not
+  /// match the whole input, [ParseResult.hasSyntaxErrors] is set, and any
+  /// unmatched trailing input is wrapped in a [SyntaxError] node.
+  ParseResult parse() {
+    final result = matchRule(topRuleName, 0);
+    final hasSyntaxErrors = result.isMismatch || result.len != input.length;
     return ParseResult(
       input: input,
-      // If couldn't match the input even after recovery, return a SyntaxError spanning the entire input
+      // If the top rule didn't match at all, return a SyntaxError spanning the entire input
       root: !result.isMismatch ? result : SyntaxError(pos: 0, len: input.length),
       // Save the name of the top rule
       topRuleName: topRuleName,
       // Record which rules are transparent for AST construction
       transparentRules: transparentRules,
-      // If phase 2 was initiated, there must be at least one syntax error
       hasSyntaxErrors: hasSyntaxErrors,
       // If matched only part of the input, create an additional SyntaxError for the unmatched input
-      unmatchedInput: hasSyntaxErrors && result.len < input.length
+      unmatchedInput: !result.isMismatch && result.len < input.length
           ? SyntaxError(pos: result.len, len: input.length - result.len)
           : null,
     );
@@ -133,7 +117,7 @@ class ParseResult {
   /// The set of transparent rules in the grammar (rules that do not generate AST or CST nodes).
   final Set<String> transparentRules;
 
-  /// True if there are syntax errors somewhere in the parse tree, or there was unmatched input.
+  /// True if the top rule failed to match the entire input.
   final bool hasSyntaxErrors;
 
   /// Contains a SyntaxError for any unmatched input if the whole input was not matched.
@@ -153,17 +137,9 @@ class ParseResult {
       return [];
     }
     var errors = <SyntaxError>[];
-    void collectErrors(MatchResult result) {
-      if (result is SyntaxError) {
-        errors.add(result);
-      } else {
-        for (final child in result.subClauseMatches) {
-          collectErrors(child);
-        }
-      }
+    if (root is SyntaxError) {
+      errors.add(root as SyntaxError);
     }
-
-    collectErrors(root);
     if (unmatchedInput != null) {
       errors.add(unmatchedInput!);
     }
