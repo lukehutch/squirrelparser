@@ -167,6 +167,22 @@ void main() {
     }
   });
 
+  group('Setup moves (edits beyond the horizon)', () {
+    // S <- "a" "b", input "bca": the parse fails at position 0 (horizon 0),
+    // yet the unique 2-op repair is delete@1 (beyond the horizon; changes
+    // nothing about the parse) followed by transposing the now-adjacent
+    // "ba". Regression test for sequence-semantics completeness: a search
+    // that prunes beyond-horizon edits returns cost 3 in global mode.
+    test('delete-then-transpose repair is found at cost 2 (global)', () {
+      final rules = MetaGrammar.parseGrammar('S <- "a" "b" ;');
+      final r = RepairSearch(rules: rules, topRuleName: 'S', mode: RepairMode.global)
+          .repair('bca');
+      expect(r, isNotNull);
+      expect(r!.cost, equals(2));
+      expect(r.repaired, equals('ab'));
+    });
+  });
+
   group('Edit reporting', () {
     test('edits are reported in original coordinates', () {
       final r = doRepair('S <- "a" "b" "c" ;', 'aXbc');

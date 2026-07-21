@@ -68,6 +68,11 @@ class RepairResult {
   final ParseResult parseResult;
 
   /// The edits, in original-input coordinates, that produce [repaired].
+  /// Derived by alignment (optimal string alignment), not from the search
+  /// path: an equivalent edit script that can contain more operations than
+  /// [cost] in the rare case where the minimal operation sequence applies a
+  /// transposition to characters made adjacent by an earlier deletion,
+  /// which no fixed-coordinate script can express.
   final List<Edit> edits;
 
   /// Search statistics.
@@ -122,9 +127,9 @@ class _Source {
 
   final List<_Cand> cands;
 
-  /// Index into [cands] marking the end of the targeted candidates (observer
-  /// -driven edits plus deletes); candidates beyond this point are the
-  /// completeness-net tail.
+  /// Index into [cands] marking the end of the within-horizon candidates;
+  /// candidates beyond this point are setup moves, which parse identically
+  /// to this source (replay lemma) and exist only to enable later edits.
   final int endOfTargeted;
 
   _Source(this.seq, this.s, this.g, this.marks, this.cands, this.endOfTargeted);
@@ -235,14 +240,16 @@ class RepairSearch {
   final int? window;
 
   /// Cap on how many characters of a lookahead-blocked span are considered
-  /// for perturbation edits.
+  /// for early perturbation edits. Ordering only: positions past the cap are
+  /// still covered by the completeness tiers.
   final int blockedSpanCap;
 
   /// Radius around the failure frontier within which all edit types are
-  /// "targeted" candidates (tried before any long-range candidates, and
-  /// gating the early commit in committed mode). Evidence-based candidates
-  /// (positions where the parse recorded an expectation) are targeted at any
-  /// distance.
+  /// proposed before any long-range candidates. Ordering only: with the
+  /// window unbounded it affects which equal-cost repair is found first and
+  /// how quickly, never which cost is reachable or when committed mode may
+  /// commit. Evidence-based candidates (positions where the parse recorded
+  /// an expectation) are prioritized at any distance.
   final int targetedRadius;
 
   late final Map<String, String> _witnesses = computeRuleWitnesses(rules);
@@ -405,10 +412,11 @@ class RepairSearch {
           }
           idx++;
         }
-        // Early commit: once the base state's targeted candidates have all
-        // been examined, further single edits are the exhaustive long-range
-        // tail; if real (strict) progress is already in hand, commit to it
-        // instead of materializing the tail.
+        // Early commit: once every within-horizon candidate of the base
+        // state has been examined, the remaining candidates are setup moves,
+        // which parse identically to the base (replay lemma) and so can be
+        // neither repairs nor progress; if real (strict) progress is already
+        // in hand, commit to it instead of materializing them.
         if (source.seq == 1 && !baseSourceExhaustedTargeted && idx >= source.endOfTargeted) {
           baseSourceExhaustedTargeted = true;
           final committed = commitIfStrictProgress();
@@ -485,12 +493,13 @@ class RepairSearch {
 
       // Build this state's candidate list from the observer's failure data,
       // and enqueue a cursor for it plus eager macro (witness) insertions.
-      // The candidate window extends to the consulted horizon: the farthest
-      // position any character test read in this parse, successful lookahead
-      // reads included. Edits beyond the horizon cannot change the parse (the
-      // trace replays identically), so [0, horizon] is a complete window;
-      // edits between the frontier and the horizon CAN matter (e.g. breaking
-      // a positive lookahead that succeeded on damaged input).
+      // The horizon is the farthest position any character test read in this
+      // parse, successful lookahead reads included. Edits between the
+      // frontier and the horizon can change the parse directly (e.g. by
+      // breaking a positive lookahead that succeeded on damaged input) and
+      // are proposed as a targeted tier; edits beyond the horizon cannot
+      // change this parse (the trace replays identically) but can set up a
+      // cheaper later edit, and are proposed last.
       var horizon = observer.horizon;
       if (horizon < frontier) horizon = frontier;
       if (horizon > s.length) horizon = s.length;
@@ -675,8 +684,6 @@ class RepairSearch {
       }
     }
 
-    final endOfTargeted = cands.length;
-
     // Long-range tail, tier 1 — sweep: characters that are exactly expected
     // at the frontier may actually belong at an earlier position, when a
     // clause over-consumed input on its way to the failure (e.g. an
@@ -719,6 +726,40 @@ class RepairSearch {
         cands.add(_Cand(_Op.insert, j, c));
         if (j < s.length && s[j] != c) {
           cands.add(_Cand(_Op.substitute, j, c));
+        }
+      }
+    }
+
+    // End of the within-horizon candidates. Every candidate below this point
+    // is a setup move, which by the replay lemma parses identically to its
+    // source: it can be neither a repair nor a progress improvement. The
+    // committed-mode early commit may therefore fire once the candidates
+    // above this point are exhausted, without any radius condition: every
+    // cost-1 candidate that could possibly parse or progress has been tried.
+    final endOfTargeted = cands.length;
+
+    // Long-range tail, tier 4 — setup moves: every edit type strictly beyond
+    // the horizon. By the replay lemma such an edit cannot change this parse
+    // (the edited string fails identically), but under sequence semantics it
+    // can enable a cheaper later edit — deleting a character can make a
+    // transposable pair adjacent (grammar S <- "a" "b", input "bca": the
+    // 2-op repair is delete@1 then transpose@0, and position 1 is beyond the
+    // horizon 0). Completeness with respect to Damerau-Levenshtein distance
+    // therefore requires proposing edits over the whole string; being unable
+    // to change the current parse, setup moves are ordered last.
+    if (window == null) {
+      for (var j = horizon + 1; j <= s.length; j++) {
+        if (j + 1 < s.length && s[j] != s[j + 1]) {
+          cands.add(_Cand(_Op.transpose, j));
+        }
+        if (j < s.length) {
+          cands.add(_Cand(_Op.delete, j));
+        }
+        for (final c in _alphabet) {
+          cands.add(_Cand(_Op.insert, j, c));
+          if (j < s.length && s[j] != c) {
+            cands.add(_Cand(_Op.substitute, j, c));
+          }
         }
       }
     }

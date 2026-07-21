@@ -257,6 +257,15 @@ void main() {
   check('Alphabet example: repair of "1" is cost 1',
       rLook == null ? 'null' : '${rLook.cost}', '1');
 
+  // ---- Sec. Properties: setup-move example S <- "a" "b", input "bca".
+  // The horizon is 0 but the 2-op repair starts with delete@1, a setup move;
+  // global mode must find cost 2 (unrestricted Damerau-Levenshtein).
+  final setupG = MetaGrammar.parseGrammar('S <- "a" "b" ;');
+  final rSetup = RepairSearch(rules: setupG, topRuleName: 'S', mode: RepairMode.global)
+      .repair('bca');
+  check('Setup-move example: global repair of "bca" is cost 2 to "ab"',
+      rSetup == null ? 'null' : '${rSetup.cost}/${rSetup.repaired}', '2/ab');
+
   // ---- Sec. Observers: horizon example S <- (&"xxxxxxxxxxq" 'x') / "xxxxxxxxxxz".
   // The successful positive lookahead reads to position 10 while the failure
   // frontier stays near 1; the minimal repair substitutes at position 10,
