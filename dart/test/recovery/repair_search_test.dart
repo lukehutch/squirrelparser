@@ -2,6 +2,7 @@
 
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/recovery/recovery.dart';
+import 'package:squirrel_parser/src/recovery/witness.dart' show grammarAlphabet;
 import 'package:test/test.dart';
 
 RepairResult? doRepair(String grammarSpec, String input, {String top = 'S', int? window}) {
@@ -151,7 +152,7 @@ void main() {
     // frontier stays near 1 (trailing garbage after a length-1 match). The
     // minimal repair substitutes at position 10 -- beyond the frontier but
     // within the consulted horizon -- flipping the lookahead so the second
-    // alternative matches. Regression test for the window-sufficiency lemma:
+    // alternative matches. Regression test for the consulted-region tier:
     // a frontier-bounded candidate window returns cost 3 here.
     const g = 'S <- (&("xxxxxxxxxxq") \'x\') / "xxxxxxxxxxz" ;';
 
@@ -180,6 +181,23 @@ void main() {
       expect(r, isNotNull);
       expect(r!.cost, equals(2));
       expect(r.repaired, equals('ab'));
+    });
+  });
+
+  group('Surrogate-only equivalence classes', () {
+    // The parser operates on UTF-16 code units, so a grammar can accept
+    // exactly the surrogate range; the alphabet must include a surrogate
+    // representative or the language is unreachable by repair.
+    test('inverted set accepting only surrogates is repairable', () {
+      final rules = <String, Clause>{
+        'S': const CharSet([(0x0000, 0xd7ff), (0xe000, 0xffff)], inverted: true),
+      };
+      expect(grammarAlphabet(rules), isNotEmpty);
+      final r = RepairSearch(rules: rules, topRuleName: 'S', mode: RepairMode.global)
+          .repair('');
+      expect(r, isNotNull);
+      expect(r!.cost, equals(1));
+      expect(r.repaired.codeUnitAt(0), inInclusiveRange(0xd800, 0xdfff));
     });
   });
 

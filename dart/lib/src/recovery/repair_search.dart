@@ -327,10 +327,14 @@ class RepairSearch {
     // either with a full parse (done) or by committing to the minimal-cost
     // state with maximal strict progress.
     var base = input;
+    // Synthetic-character positions carried across rounds, so that characters
+    // inserted or substituted by an earlier round's commit are never counted
+    // as the user's own text by a later round's strict-progress metric.
+    var baseMarks = const <int>[];
     var totalCost = 0;
     var rounds = 0;
     while (true) {
-      final round = _searchRound(base, tryParse, observer, stats);
+      final round = _searchRound(base, baseMarks, tryParse, observer, stats);
       if (round == null) {
         return _panicFallback(input, base, totalCost, tryParse, stats);
       }
@@ -344,6 +348,7 @@ class RepairSearch {
             stats: stats);
       }
       base = round.s;
+      baseMarks = round.marks;
       // Safety valve: a stuck loop falls through to panic.
       rounds++;
       if (rounds > 2 * (input.length + 8)) {
@@ -356,13 +361,14 @@ class RepairSearch {
   /// - a success outcome (full parse), or
   /// - in committed mode, a committed best-progress state, or
   /// - null if the search exhausted its limits without progress.
-  _RoundOutcome? _searchRound(String base, (bool, int, ParseResult) Function(String) tryParse,
-      FailureObserver observer, RepairStats stats) {
+  _RoundOutcome? _searchRound(String base, List<int> baseMarks,
+      (bool, int, ParseResult) Function(String) tryParse, FailureObserver observer,
+      RepairStats stats) {
     final heap = _Heap();
     final visited = <String>{};
     var sourceSeq = 0;
 
-    heap.push(_Entry(0, -1, 0, s: base, marks: const []));
+    heap.push(_Entry(0, -1, 0, s: base, marks: baseMarks));
 
     // Strict progress: number of the user's own (non-synthetic) characters
     // successfully consumed before the failure frontier. Raw progress: the
@@ -377,7 +383,12 @@ class RepairSearch {
     var lastPoppedG = 0;
     var baseSourceExhaustedTargeted = false;
 
-    final budget = maxStatesExpanded ?? (3 * (targetedRadius + 8) * (_alphabet.length + 4) + 16000);
+    // Deployment safety valve only, deliberately independent of the
+    // scheduling parameters (radii, caps): those must stay ordering-only,
+    // and a budget derived from them would let them alter when commitment
+    // or panic fires. 120 = 3 * (default radius 32 + 8), kept for
+    // continuity of the default budget size.
+    final budget = maxStatesExpanded ?? (120 * (_alphabet.length + 4) + 16000);
 
     // Boundary and early commits require *strict* progress (real user
     // characters consumed): synthetic insertions and substitutions do not
@@ -388,7 +399,7 @@ class RepairSearch {
       final best = bestStrict;
       if (best == null) return null;
       onRoundCommit?.call(base, best.s, best.g, best.raw);
-      return _RoundOutcome(best.s, best.g, success: false);
+      return _RoundOutcome(best.s, best.g, success: false, marks: best.marks);
     }
 
     while (!heap.isEmpty) {
@@ -470,11 +481,11 @@ class RepairSearch {
         final bs = bestStrict;
         if ((bs == null || strict > bs.strict || (strict == bs.strict && raw > bs.raw)) &&
             strict > baseStrict) {
-          bestStrict = _Committable(s, entry.g, strict, raw);
+          bestStrict = _Committable(s, entry.g, strict, raw, marks);
         }
         final br = bestRaw;
         if ((br == null || raw > br.raw) && raw > baseRaw) {
-          bestRaw = _Committable(s, entry.g, strict, raw);
+          bestRaw = _Committable(s, entry.g, strict, raw, marks);
         }
       }
 
@@ -485,7 +496,7 @@ class RepairSearch {
           final best = bestStrict ?? bestRaw;
           if (best != null) {
             onRoundCommit?.call(base, best.s, best.g, best.raw);
-            return _RoundOutcome(best.s, best.g, success: false);
+            return _RoundOutcome(best.s, best.g, success: false, marks: best.marks);
           }
         }
         return null;
@@ -854,13 +865,15 @@ class RepairSearch {
   }
 }
 
-/// A state eligible for committing (with its progress measures).
+/// A state eligible for committing (with its progress measures and its
+/// synthetic-character marks, carried into the next round).
 class _Committable {
   final String s;
   final int g;
   final int strict;
   final int raw;
-  _Committable(this.s, this.g, this.strict, this.raw);
+  final List<int> marks;
+  _Committable(this.s, this.g, this.strict, this.raw, this.marks);
 }
 
 /// Outcome of one search round: either a full parse ([success] true) or a
@@ -870,7 +883,8 @@ class _RoundOutcome {
   final int g;
   final bool success;
   final ParseResult? parseResult;
-  _RoundOutcome(this.s, this.g, {required this.success, this.parseResult});
+  final List<int> marks;
+  _RoundOutcome(this.s, this.g, {required this.success, this.parseResult, this.marks = const []});
 }
 
 // ---------------------------------------------------------------------------

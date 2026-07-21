@@ -94,15 +94,14 @@ Set<String> grammarAlphabet(Map<String, Clause> rules) {
     final hi = (i + 1 < bps.length ? bps[i + 1] : 0x10000) - 1;
     if (!accepted(lo)) continue;
     // Prefer a printable representative; the signature is constant across
-    // the interval, so any member represents the class. Skip intervals that
-    // consist only of unpaired surrogates.
+    // the interval, so any member represents the class. Prefer a
+    // non-surrogate representative when the interval offers one, but keep
+    // surrogate-only intervals: the parser operates on UTF-16 code units, so
+    // a grammar can accept exactly the surrogate range, and dropping the
+    // class would make its language unreachable by repair.
     var rep = hi >= 0x20 && lo <= 0x7e ? (lo < 0x20 ? 0x20 : lo) : lo;
-    if (rep >= 0xd800 && rep <= 0xdfff) {
-      if (hi >= 0xe000) {
-        rep = 0xe000;
-      } else {
-        continue;
-      }
+    if (rep >= 0xd800 && rep <= 0xdfff && hi >= 0xe000) {
+      rep = 0xe000;
     }
     alphabet.add(String.fromCharCode(rep));
   }

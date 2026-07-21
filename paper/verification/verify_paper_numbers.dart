@@ -269,7 +269,7 @@ void main() {
   // ---- Sec. Observers: horizon example S <- (&"xxxxxxxxxxq" 'x') / "xxxxxxxxxxz".
   // The successful positive lookahead reads to position 10 while the failure
   // frontier stays near 1; the minimal repair substitutes at position 10,
-  // beyond the frontier but within the horizon (window-sufficiency lemma).
+  // beyond the frontier but within the horizon (consulted-region tier).
   final horizonG = MetaGrammar.parseGrammar(
       'S <- (&("xxxxxxxxxxq") \'x\') / "xxxxxxxxxxz" ;');
   for (final mode in [RepairMode.committed, RepairMode.global]) {
@@ -278,6 +278,25 @@ void main() {
     check('Horizon example ($mode): repair is cost 1 to "...z"',
         rh == null ? 'null' : '${rh.cost}/${rh.repaired}', '1/xxxxxxxxxxz');
   }
+
+  // ---- Sec. Tiers: radii are ordering-only. The quote-deletion mutant whose
+  // repair lies ~7 chars behind the frontier was non-minimal at small radii
+  // before the within-horizon commit gate; it must now be cost 1 at radius 0.
+  const doc31 = '{"a":1,"bc":[2,33,true],"d":{"e:null},"f":"gh"}';
+  final r31 = RepairSearch(rules: json, topRuleName: 'JSON', targetedRadius: 0).repair(doc31);
+  check('Radius-0 quote-deletion repair is cost 1',
+      r31 == null ? 'null' : '${r31.cost}', '1');
+
+  // ---- Sec. Observers: a grammar accepting only surrogate code units must
+  // keep a surrogate representative in its alphabet (the parser operates on
+  // UTF-16 code units).
+  final surrogateG = <String, Clause>{
+    'S': const CharSet([(0x0000, 0xd7ff), (0xe000, 0xffff)], inverted: true),
+  };
+  final rSur = RepairSearch(rules: surrogateG, topRuleName: 'S', mode: RepairMode.global)
+      .repair('');
+  check('Surrogate-only grammar: repair of "" is cost 1',
+      rSur == null ? 'null' : '${rSur.cost}', '1');
 
   print(_failures == 0 ? '\nALL CHECKS PASSED' : '\n$_failures CHECK(S) FAILED');
   if (_failures > 0) throw StateError('$_failures verification failures');

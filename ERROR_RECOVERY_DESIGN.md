@@ -85,18 +85,24 @@ The recovery module never modifies the core parser. It consists of:
      4. *Frontier-local completeness net* (radius 4): all alphabet characters — covers evidence
         shadowed by PEG's committed choice (e.g. `Number` matching the `5` of `5rue` so that
         `Boolean`'s `t` is never "expected").
-     5. Lookahead-block perturbations.
-     — end of targeted tier —
-     6. Long-range sweep of frontier-expected characters (unterminated-span repairs at any
+     5. *Consulted-region edits*: all edit types over (frontier, horizon] — positions read by
+        successful lookaheads; an edit here can flip the lookahead (see Sec. 9.2).
+     6. Lookahead-block perturbations.
+     7. Long-range sweep of frontier-expected characters (unterminated-span repairs at any
         distance: the unclosed-quote/brace family).
-     7. Far deletions/transpositions.
-     8. Full-window whole-alphabet net, character-major (structural characters take precedence
+     8. Far deletions/transpositions.
+     9. Full-window whole-alphabet net, character-major (structural characters take precedence
         over escape-character tricks).
+     — end of within-horizon candidates (the provable early-commit gate, Sec. 9.3) —
+     10. *Setup moves*: all edit types beyond the horizon; they replay the current parse
+        identically and exist only to enable later edits (bca example, Sec. 9.2).
      Multi-character rule witnesses are enqueued eagerly at cost = length.
-   - **Committed mode** (default): globally minimal search, but at (a) exhaustion of the targeted
-     tier, (b) a cost-level boundary, or (c) the state budget, it *commits* to the best-progress
+   - **Committed mode** (default): globally minimal search, but at (a) exhaustion of the
+     within-horizon candidates of the base state (the setup moves that follow parse identically,
+     so they can be neither repairs nor progress — see Sec. 9), (b) a cost-level boundary, or
+     (c) the state budget (deployment fallback only), it *commits* to the best-progress
      state found and restarts from it — repairing errors left-to-right, exactly as PEG commits
-     choices left-to-right. **Progress is strict**: only the user's own (non-synthetic)
+     choices left-to-right. Synthetic-character marks are carried across rounds. **Progress is strict**: only the user's own (non-synthetic)
      characters consumed before the frontier count, so a repair that merely papers over the
      frontier with invented characters never triggers a premature commit; ties prefer higher raw
      progress (characters *accounted for*, including deletions). `RepairMode.global` disables
@@ -182,3 +188,122 @@ single-edit explanation).
    instead reports an explicit edit list plus the clean parse tree of the repaired string. If
    in-tree error nodes are wanted for IDE tooling, they can be reconstructed from the edit list
    and the s→s* alignment without touching the core.
+
+## 9. Heuristic purification (2026-07-20/21): from radii to rules
+
+Question posed: the candidate tiers used arbitrary numeric heuristics (targetedRadius=32,
+evidenceCap=48, a radius-4 completeness net, blockedSpanCap=16, a state-budget formula).
+Is there a purer, more general way to solve the repair problem that subsumes them?
+Process: three brainstorm rounds, each pairing an independent Claude analysis with an
+independent Codex consultation (Codex session 019f8310-6abf-77c0-8770-e5329e2c6d86),
+with every load-bearing claim tested empirically before adoption.
+
+### 9.1 Diagnosis (measured)
+
+Every constant serves exactly one of three roles: (R1) ordering among equal-cost
+candidates, (R2) gating the committed-mode early commit, (R3) work bounds. A sensitivity
+sweep over the 519-mutation JSON corpus showed targetedRadius in {8,32,128} identical in
+quality and radius<=4 losing 6 repairs to premature commits (all one scenario: damaged
+closing quote, repair ~7 chars behind the frontier, early commit locks in an
+escape-character cascade); blockedSpanCap was inert at any value. So only R2 was
+semantically load-bearing -- and it is exactly the role a pure rule can take over.
+
+### 9.2 Three correctness holes found and fixed along the way
+
+The purification uncovered real soundness bugs, each with a committed counterexample,
+regression test, and machine check:
+
+1. **Horizon (commit a92ecbb).** Successful lookaheads read beyond the farthest failure;
+   the frontier-bounded window missed repairs there. `S <- (&"xxxxxxxxxxq" 'x') /
+   "xxxxxxxxxxz"`, input `xxxxxxxxxxq`: true cost 1 (substitute at position 10, inside
+   the succeeded lookahead), search returned 3. Fix: the observer records the farthest
+   position consulted by ANY character test (the horizon); a consulted-region tier
+   proposes all edits over (frontier, horizon].
+2. **Setup moves (commit 2db78d7, found by Codex round 2).** Definition-of-repair
+   semantics are operation SEQUENCES, so a transpose may act on characters made adjacent
+   by an earlier delete. `S <- "a" "b"`, input `bca`: the unique 2-op repair starts with
+   delete@1 -- beyond the horizon, changing nothing about the current parse. Any window
+   pruning is therefore unsound. Fix: a final tier proposes every edit at every position
+   beyond the horizon ("setup moves"), ordered last, justified by the replay lemma (an
+   edit beyond the horizon replays the parse identically -- it can never itself be a
+   repair, only enable a later one).
+3. **Alphabet lemma gap (commit 9a03fa0).** The search inserts only Sigma_G characters
+   but the lemma guaranteed sufficiency of Sigma_G union chars(s). Strengthened to
+   Sigma_G alone via a persistence argument (no minimal sequence destroys a character it
+   wrote; every written character survives into s*, is accepted by some test, and can be
+   written as its class representative).
+
+### 9.3 The pure rules that replaced the heuristics
+
+- **Move set = every unit edit, every position, Sigma_G characters.** Complete by
+  construction (alphabet lemma for characters; nothing to prove for positions).
+  Radii can then never prune -- only order.
+- **Commit gate = "all within-horizon candidates exhausted."** The candidates skipped
+  (setup moves) provably parse identically to the base, so they can be neither repairs
+  nor progress. Replaces "targeted tiers exhausted" (radius-dependent). Single-error
+  exactness of committed mode is now provable as stated, with no radius condition.
+- **Cost-level boundaries** remain the other commit point (Dijkstra guarantees every
+  cheaper candidate was seen). Committed mode's semantics are now exactly: "commit at
+  the first cost level with strict progress, to the max-progress state of that level" --
+  leftmost-progress-greedy, mirroring PEG's own leftmost commitment.
+- **Result (measured):** across targetedRadius 0..128 and blockedSpanCap 0..16 the
+  519-mutation sweep returns byte-identical repairs at every setting; only work varies
+  (11.4K-16.7K parses). Every remaining numeric constant is ordering-only. The paper's
+  pinned numbers were unchanged throughout (14,592 parses; 519/519 cost-1; 490/519
+  shape; 51 machine checks; 307 tests).
+
+### 9.4 Future work, in priority order (converged Claude+Codex ranking)
+
+(a) **Incremental oracle for the cost-1 sibling fan-out**: snapshot the base parse once
+    and reuse memo results whose read-dependency interval is untouched by the sibling's
+    single edit; certify any proposed success with a cold parse. Attacks the measured
+    dominant cost (a long-range quote repair = ~520 full parses of a 2.2KB doc).
+(b) **Evidence-band ordering with multiple anchors** replacing the remaining ordering
+    radii: bands = causal divergence > moved exact literal > delete/transpose at a read
+    boundary > witness/class-rep > generic net; anchors = farthest causal failure,
+    matched-prefix EOF, ends of successful lookahead reads, blocked spans; Pareto
+    enumeration over (band, distance-to-anchor) rather than any weighted score.
+    Requires observer provenance (root-causal vs branch-rejection failures).
+(c) **Regular-over-approximation A***: h(x) = transpose-aware edit distance to a regular
+    superset language (admissible, consistent); plus certified-incumbent deadline
+    reporting ([lower, upper] interval instead of a silent budget).
+(d) **Exhaustive tiny-PEG pruning-property harness**: enumerate small grammars x inputs
+    x full Damerau neighborhoods; compare the search against brute force. Tests the
+    pruning/ordering theorems themselves, not just repair quality on one corpus.
+(e) **Grammar-derived bounds with honest infinity** for anything that still wants a
+    number (e.g. lookahead reach), never a universal constant.
+
+Rejected en route: PEG-derivative edit product (forfeits the unmodified-oracle claim and
+"left recursion for free"); Aho-Peterson over-grammar k-best (second parser, large
+false-positive plateaus); beam search / learned edit models (reintroduce capricious
+constants); defining the metric as restricted OSA to rescue horizon pruning (would make
+the search's own composed sequences out-of-model).
+
+### 9.5 Round-3 adversarial findings (all addressed or logged, 2026-07-21)
+
+Fixed immediately (with tests/checks):
+- **Surrogate-only equivalence classes** were skipped by `grammarAlphabet`, so a grammar
+  accepting exactly the UTF-16 surrogate range had an empty alphabet and `repair` returned
+  null on a nonempty language. Representatives are now kept (the parser is code-unit-based).
+- **The state budget depended on targetedRadius**, quietly re-making the radius semantic.
+  Decoupled (same default value); the budget is a deployment safety valve only.
+- **Marks reset across rounds**: characters written by an earlier round's commit were counted
+  as user text by later rounds. Marks now persist across rounds.
+- **Paper horizon definition** lacked the end-of-input probe (the replay lemma was false for
+  the test-reads-only definition: S <- "a", input "aX"). Horizon is now defined as
+  max(farthest test read, frontier). Proof-text gaps in the persistence argument closed via
+  an occurrence-projection formulation; the "generates every member of L(G)" reachability
+  overclaim replaced by the Sigma_G-subgraph statement; panic-ladder and budget-commit
+  claims qualified as uncertified deployment fallbacks; edit-list-vs-cost asymmetry
+  documented (the list is an alignment script and can exceed the sequence cost).
+
+Logged as prerequisites for stronger claims (not yet implemented):
+- **Edit-path certificate**: return the actual minimum-cost operation sequence (predecessor
+  tracking or unrestricted-DL traceback) instead of only the alignment script.
+- **Provenance-aware state identity**: `visited` is keyed by string, but strict progress
+  depends on marks; two paths to the same string can carry different marks. Single-error
+  exactness is unaffected (marks do not influence acceptance); multi-round dominance is not
+  yet formalized.
+- **Causal progress**: the frontier includes speculative consumption by rejected
+  alternatives; a causal definition needs observer provenance (also wanted by the
+  evidence-band ordering).
