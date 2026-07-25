@@ -213,7 +213,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m40', 399, (r, t) {
+  Eng('m40', 429, (r, t) {
     final e = g40.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),

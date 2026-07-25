@@ -1,4 +1,4 @@
-// m26 -- the axiomatic engine.
+// m40 -- the axiomatic engine, with budget 0 walked rather than searched.
 //
 // Derived from five axioms and nothing else. A5 is stated at the memo, where it
 // lives; the other four are here.
@@ -19,10 +19,10 @@
 //     log2-width of the accepting class and h(c) is the narrowest class in G
 //     that accepts c. The factor 2 is derived, not tuned: see LESSONS_LEARNED.
 //
-// A3  Delta = cost * M + regret with M above any achievable regret, so ordering
-//     by the single integer Delta orders cost first and min-Delta-per-end is
-//     exactly min-cost. The budget is then a FILTER on that integer, not a memo
-//     key, so one memo serves every iterative-deepening round.
+// A3  Delta = cost * costUnit + regret, with costUnit above any achievable
+//     regret, so ordering by the single integer Delta orders cost first and
+//     min-Delta-per-end is exactly min-cost. The budget is then a FILTER on that
+//     integer, not a memo key, so one memo serves every deepening round.
 //
 // A4  A gap is by definition text BETWEEN two consumed regions, and only a
 //     sequence has a "between". The region separating two adjacent consuming
@@ -37,39 +37,84 @@
 // recurrence with a skip self-edge, and the recursion itself is the dot.
 //
 // What A1 buys: SKIP is a UNIT edge. A span of j characters costs
-// j*M + 2*sum(h) which is exactly j unit steps, so the loop over span lengths
-// that both m15 and m16 carry is not a primitive -- it is a hand-unrolled path.
+// j*costUnit + 2*sum(h), which is exactly j unit steps, so the loop over span
+// lengths that both m15 and m16 carry is not a primitive -- it is a hand-unrolled
+// path.
 //
 // A5 is that left recursion is not a recovery problem: the parser already solves
 // it, and recovery is the same recurrence over a wider value, so it adopts the
 // parser's memo rule verbatim. Without it this engine silently returns
 // non-minimal repairs on any left-recursive grammar -- correct cost only because
-// b == 0 defers to the parser -- which no JSON benchmark can detect. See _Entry.
+// budget 0 defers to the parser -- which no JSON benchmark can detect. See _Entry.
+//
+// What m40 adds over m26: at budget 0 nothing can be edited, so the repaired
+// string IS the input and the pure parser decides an item outright. m26 could
+// only act on that at dot 0, because the oracle matches a clause and not a
+// clause's tail; `_walk` supplies the tail. See LESSONS_LEARNED section 5i.
+//
+// ---------------------------------------------------------------------------
+// PARAMETERS AND HEURISTICS -- the complete list, because "parameter-free" is a
+// claim this engine makes and a reader should be able to check it.
+//
+//   PARAMETER (one): `maxCost`, the deepening ceiling, defaulted to 40. A repair
+//   costing more than that is not found at all -- `recoverCost` returns -1 and
+//   `recover` degrades to reporting the whole input as one error. Nothing else
+//   about the answer depends on it.
+//
+//   HEURISTIC AFFECTING OUTPUT (one): "prefer the shortest head", the tie-break
+//   in `_descend`. It is chosen because it measures better, not derived, and it
+//   cannot change any reported cost -- every candidate it ranks is Delta-tied --
+//   only which witness tree comes back. See the comment there.
+//
+//   HEURISTICS AFFECTING PRESENTATION ONLY (two): consecutive unit SKIPs are
+//   merged into one span so a gap reads as one error rather than one per
+//   character, and a failed witness descent reports the whole input as a single
+//   error rather than failing outright.
+//
+//   EVERYTHING ELSE IS DERIVED. Every weight and constant below traces to A1-A3:
+//   the three edits cost 1 and MATCH costs 0 (A1); the factor 2 on skipped
+//   characters and the FAB price of a full alphabet come from A2; `_costUnit`
+//   and `_costShift` are bounds forced by A3, not settings, and any sufficiently
+//   large value gives identical answers.
+// ---------------------------------------------------------------------------
 import 'dart:math' as math;
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/recovery/skip_recovery.dart'
     show SkipResult, MissingObligation;
 
-const _floor = 20087;
+/// The width of the widest possible character class, in millibits: it is
+/// `round(log2(0x110000) * 1000)`, the log2-width of the whole Unicode code
+/// point range. Derived, not chosen -- committing to a character with no
+/// evidence for it is worth exactly as much information as the alphabet is wide.
+const _widestClass = 20087;
 
-int _width(Clause? c) {
-  if (c is AnyChar) return _floor;
-  if (c is! CharSet) return 0;
-  var n = 0;
-  for (final (lo, hi) in c.ranges) n += hi - lo + 1;
-  n = c.inverted ? 0x110000 - n : n;
-  return n <= 1 ? 0 : (math.log(n) / math.ln2 * 1000).round();
+/// The log2-width of the class a terminal accepts, in millibits -- how much is
+/// being claimed by letting it consume a character (A2).
+///
+/// The x1000 is a fixed-point scale, so widths are integers and Delta stays a
+/// single int. It is a representation choice rather than a tuning knob, with one
+/// visible consequence: two classes whose widths differ by less than a
+/// thousandth of a bit tie instead of ordering.
+int _width(Clause? clause) {
+  if (clause is AnyChar) return _widestClass;
+  if (clause is! CharSet) return 0;
+  var size = 0;
+  for (final (lo, hi) in clause.ranges) {
+    size += hi - lo + 1;
+  }
+  size = clause.inverted ? 0x110000 - size : size;
+  return size <= 1 ? 0 : (math.log(size) / math.ln2 * 1000).round();
 }
 
-bool _has(CharSet c, int ch) {
-  var yes = false;
-  for (final (lo, hi) in c.ranges) {
+bool _accepts(CharSet set, int ch) {
+  var inRange = false;
+  for (final (lo, hi) in set.ranges) {
     if (ch >= lo && ch <= hi) {
-      yes = true;
+      inRange = true;
       break;
     }
   }
-  return c.inverted ? !yes : yes;
+  return set.inverted ? !inRange : inRange;
 }
 
 /// A memo table entry for an (item, position) pair, where an item is a clause
@@ -81,10 +126,10 @@ bool _has(CharSet c, int ch) {
 class _Entry {
   /// The best ends map found so far, or null if nothing has been computed.
   /// `MemoEntry.result`.
-  Map<int, int>? ends_;
+  Map<int, int>? endsMap;
 
-  /// The edit budget `ends_` was computed under. A larger request must recompute;
-  /// a smaller one can filter, because Delta orders cost first (A3).
+  /// The edit budget `endsMap` was computed under. A larger request must
+  /// recompute; a smaller one can filter, because Delta orders cost first (A3).
   int budget = -1;
 
   /// `MemoEntry.inRecPath`: true while this (item, pos) is on the recursion path.
@@ -98,7 +143,7 @@ class _Entry {
   int memoVersion = 0;
 
   /// The budget-0 walk. No round can change it, because no round can spend an
-  /// edit inside it, so it is held apart from `ends_` -- which the first larger
+  /// edit inside it, so it is held apart from `endsMap` -- which the first larger
   /// request overwrites -- and every later round reuses it instead of paying to
   /// recover level 0 by filtering a map that is both slower and wider.
   Map<int, int>? zero;
@@ -108,50 +153,55 @@ class _Entry {
   /// lie in [0, n] and Deltas are bounded non-negative integers, so the chain
   /// ascends only finitely often and the loop below terminates.
   bool _improves(Map<int, int> fresh) {
-    for (final e in fresh.entries) {
-      final o = ends_![e.key];
-      if (o == null || e.value < o) return true;
+    for (final entry in fresh.entries) {
+      final known = endsMap![entry.key];
+      if (known == null || entry.value < known) return true;
     }
     return false;
   }
 
-  Map<int, int> ends(SuperDot3 e, Clause c, int dot, int pos, int b) {
+  Map<int, int> ends(
+      SuperDot3 engine, Clause clause, int dot, int pos, int budgetWanted) {
     if (inRecPath) {
       // On the recursion path already. With no value yet this is the fixed point
       // of a left recursive cycle: seed it with the empty set -- the recovery
       // analogue of the parser's `mismatch` -- and signal the ancestral frame to
       // expand it. Either way a frame inside a cycle reports the best value known
       // and never recomputes, which is what makes the recursion finite.
-      if (ends_ == null) {
+      if (endsMap == null) {
         foundLeftRec = true;
-        budget = b;
-        return ends_ = const {};
+        budget = budgetWanted;
+        return endsMap = const {};
       }
-      return budget > b ? e._filter(ends_!, b) : ends_!;
+      return budget > budgetWanted
+          ? engine._withinBudget(endsMap!, budgetWanted)
+          : endsMap!;
     }
-    if (b == 0 && zero != null) return zero!;
-    if (ends_ != null && memoVersion == e._verAtPos[pos]) {
-      if (budget == b) return ends_!;
-      if (budget > b) return e._filter(ends_!, b);
+    if (budgetWanted == 0 && zero != null) return zero!;
+    if (endsMap != null && memoVersion == engine._versionAtPos[pos]) {
+      if (budget == budgetWanted) return endsMap!;
+      if (budget > budgetWanted) {
+        return engine._withinBudget(endsMap!, budgetWanted);
+      }
     }
     inRecPath = true;
     var first = true;
     while (true) {
-      final fresh = e._compute(c, dot, pos, b);
+      final fresh = engine._compute(clause, dot, pos, budgetWanted);
       if (!first && !_improves(fresh)) break;
       first = false;
-      ends_ = fresh;
-      budget = b;
-      if (b == 0) zero = ends_;
+      endsMap = fresh;
+      budget = budgetWanted;
+      if (budgetWanted == 0) zero = endsMap;
       if (!foundLeftRec) break;
       // Expand the cycle so the value just found can become a sub-derivation of a
       // better one, invalidating memos at this position only: the parser's
       // `memoVersion = ++parser.memoVersion[pos]`, verbatim.
-      memoVersion = ++e._verAtPos[pos];
+      memoVersion = ++engine._versionAtPos[pos];
     }
     inRecPath = false;
-    memoVersion = e._verAtPos[pos];
-    return ends_!;
+    memoVersion = engine._versionAtPos[pos];
+    return endsMap!;
   }
 }
 
@@ -165,39 +215,48 @@ class SuperDot3 {
       (e.key.startsWith('~') ? e.key.substring(1) : e.key): e.value,
   };
   final Map<Str, Clause> _strings = {};
-  Clause _desugar(Clause c) => c is Str && c.text.length > 1
+  Clause _desugar(Clause clause) => clause is Str && clause.text.length > 1
       ? _strings.putIfAbsent(
-          c, () => Seq([for (final x in c.text.split('')) Str(x)]))
-      : c;
+          clause, () => Seq([for (final x in clause.text.split('')) Str(x)]))
+      : clause;
 
   late final List<Clause> _terminals = () {
     final seen = <Clause>{}, out = <Clause>[];
     void visit(Clause raw) {
-      final c = _desugar(raw);
-      if (!seen.add(c)) return;
-      if (c is Ref) {
-        visit(_rules[c.ruleName]!);
-      } else if (c is HasOneSubClause) {
-        visit(c.subClause);
-      } else if (c is HasMultipleSubClauses) {
-        c.subClauses.forEach(visit);
-      } else if (c is Terminal && c is! Nothing) {
-        out.add(c);
+      final clause = _desugar(raw);
+      if (!seen.add(clause)) return;
+      if (clause is Ref) {
+        visit(_rules[clause.ruleName]!);
+      } else if (clause is HasOneSubClause) {
+        visit(clause.subClause);
+      } else if (clause is HasMultipleSubClauses) {
+        clause.subClauses.forEach(visit);
+      } else if (clause is Terminal && clause is! Nothing) {
+        out.add(clause);
       }
     }
+
     visit(_rules[topRuleName]!);
     return out;
   }();
 
   late Parser _parser;
   late String _input;
-  late int _n, _M, _shift;
-  late List<int> _H;
-  final Map<int, int> _charH = {};
+  late int _inputLen;
+
+  /// A3's multiplier: one unit of cost, priced above any achievable regret so
+  /// that comparing Delta compares cost first and regret only to break ties.
+  /// `_costShift` is its log2, so dividing out the cost is a shift.
+  late int _costUnit, _costShift;
+
+  /// Prefix sums of the per-character regret weight h, so the regret of skipping
+  /// any span is one subtraction.
+  late List<int> _regretPrefix;
+  final Map<int, int> _charRegret = {};
   final Map<Clause, int> _widths = {};
-  final Map<MatchResult, int> _scores = {};
+  final Map<MatchResult, int> _cleanRegrets = {};
   MatchResult? _clean;
-  int _steps = 0, _bestInner = -1;
+  int _steps = 0, _bestGoalDelta = -1;
   int lastCost = -1, lastRegret = -1, lastSteps = -1;
 
   /// THE GOAL. `Seq([top, Nothing])` -- the top rule, then the empty match. A4
@@ -209,70 +268,81 @@ class SuperDot3 {
   /// head at dot 0 is the top rule itself.
   late final Clause _goal = Seq([_rules[topRuleName]!, const Nothing()]);
 
-  int _cost(int d) => d >> _shift;
-  int _lost(int a, int z) => _H[z] - _H[a];
-  int _w(Clause c) => _widths.putIfAbsent(c, () => _width(c));
+  /// The edit count carried inside a Delta (A3).
+  int _editCount(int delta) => delta >> _costShift;
+
+  /// The regret of skipping `[from, to)`.
+  int _skipRegret(int from, int to) => _regretPrefix[to] - _regretPrefix[from];
+
+  int _widthOf(Clause clause) =>
+      _widths.putIfAbsent(clause, () => _width(clause));
 
   /// Memo identity. A Seq needs one slot per dot and a Repetition two, because
   /// the recursion carries the dot; everything else needs one. Allocating a
   /// BLOCK per clause is what lets the item (clause, dot) be a memo key without
   /// a wrapper class -- the whole cost of making the dot first-class.
-  final Map<Clause, int> _bases = {};
-  int _nextBase = 0;
-  int _base(Clause c) => _bases.putIfAbsent(c, () {
-        final b = _nextBase;
-        _nextBase += c is Seq
-            ? c.subClauses.length + 1
-            : c is Repetition
+  final Map<Clause, int> _memoBases = {};
+  int _nextMemoBase = 0;
+  int _memoBase(Clause clause) => _memoBases.putIfAbsent(clause, () {
+        final base = _nextMemoBase;
+        _nextMemoBase += clause is Seq
+            ? clause.subClauses.length + 1
+            : clause is Repetition
                 ? 2
                 : 1;
-        return b;
+        return base;
       });
 
-  void _buildH() {
-    _H = [0];
-    for (var p = 0; p < _n; p++) {
-      final ch = _input.codeUnitAt(p);
-      final h = _charH.putIfAbsent(ch, () {
-        var best = _floor;
-        for (final c in _terminals) {
-          final hit = c is Str
-              ? c.text.codeUnitAt(0) == ch
-              : c is Char
-                  ? c.char.codeUnitAt(0) == ch
-                  : c is CharSet
-                      ? _has(c, ch)
+  /// h(c), per input position: the narrowest class in G that accepts the
+  /// character there, or the full alphabet if no terminal accepts it at all.
+  void _buildRegretPrefix() {
+    _regretPrefix = [0];
+    for (var pos = 0; pos < _inputLen; pos++) {
+      final ch = _input.codeUnitAt(pos);
+      final narrowest = _charRegret.putIfAbsent(ch, () {
+        var best = _widestClass;
+        for (final terminal in _terminals) {
+          final hit = terminal is Str
+              ? terminal.text.codeUnitAt(0) == ch
+              : terminal is Char
+                  ? terminal.char.codeUnitAt(0) == ch
+                  : terminal is CharSet
+                      ? _accepts(terminal, ch)
                       : true;
-          if (hit) best = math.min(best, _w(c));
+          if (hit) best = math.min(best, _widthOf(terminal));
           if (best == 0) break;
         }
         return best;
       });
-      _H.add(_H.last + h);
+      _regretPrefix.add(_regretPrefix.last + narrowest);
     }
   }
 
   /// Regret of a clean subtree. Absolute pricing (A2) makes this a closed form:
   /// a kept leaf costs w(class) * len, one multiply, with no per-character loop
   /// and no per-position array.
-  int _score(MatchResult m) {
-    final old = _scores[m];
-    if (old != null) return old;
-    final score = m.subClauseMatches.isEmpty
-        ? _w(m.clause!) * m.len
-        : m.subClauseMatches.fold(0, (v, x) => v + _score(x));
-    return _scores[m] = score;
+  int _cleanRegret(MatchResult m) {
+    final known = _cleanRegrets[m];
+    if (known != null) return known;
+    final regret = m.subClauseMatches.isEmpty
+        ? _widthOf(m.clause!) * m.len
+        : m.subClauseMatches.fold(0, (sum, sub) => sum + _cleanRegret(sub));
+    return _cleanRegrets[m] = regret;
   }
 
-  static void _put(Map<int, int> out, int key, int value) {
-    final old = out[key];
-    if (old == null || value < old) out[key] = value;
+  /// Record `delta` for `end` unless an equal or better one is already there.
+  static void _keepBest(Map<int, int> out, int end, int delta) {
+    final known = out[end];
+    if (known == null || delta < known) out[end] = delta;
   }
 
-  Map<int, int> _filter(Map<int, int> source, int b) {
-    final limit = (b + 1) * _M;
-    for (final d in source.values) {
-      if (d >= limit) {
+  /// Drop the ends that cost more than `budget` edits. Sound as a memo reuse
+  /// because Delta orders cost first (A3), so a smaller budget is a filter on a
+  /// map computed under a larger one, never a recomputation.
+  Map<int, int> _withinBudget(Map<int, int> source, int budget) {
+    final limit = (budget + 1) * _costUnit;
+    for (final delta in source.values) {
+      if (delta >= limit) {
         return {
           for (final e in source.entries)
             if (e.value < limit) e.key: e.value,
@@ -298,54 +368,66 @@ class SuperDot3 {
 
   /// `Parser.memoVersion`: how many times a left recursive cycle has been
   /// expanded at each position.
-  late List<int> _verAtPos;
+  late List<int> _versionAtPos;
 
-  /// Every end position reachable from `pos` by matching (`c`, `dot`), each
-  /// mapped to its minimum Delta, given that at most `b` edits may be spent.
+  /// Every end position reachable from `pos` by matching (`clause`, `dot`), each
+  /// mapped to its minimum Delta, given that at most `budget` edits may be spent.
   ///
   /// This is `Parser.match`: bounds check, find the entry, ask it.
-  Map<int, int> _ends(Clause c, int dot, int pos, int b) {
-    if (pos > _n || b < 0) return const {};
-    final key = (_base(c) + dot) * (_n + 2) + pos;
-    return _entries.putIfAbsent(key, _Entry.new).ends(this, c, dot, pos, b);
+  Map<int, int> _ends(Clause clause, int dot, int pos, int budget) {
+    if (pos > _inputLen || budget < 0) return const {};
+    final key = (_memoBase(clause) + dot) * (_inputLen + 2) + pos;
+    return _entries
+        .putIfAbsent(key, _Entry.new)
+        .ends(this, clause, dot, pos, budget);
   }
 
-  Map<int, int> _compute(Clause c, int dot, int pos, int b) {
+  Map<int, int> _compute(Clause clause, int dot, int pos, int budget) {
     _steps++;
     // COST-0 FAST PATH. With no edits to spend, the repaired string IS the input,
     // so the pure parser decides this item outright -- at EVERY dot, not only at
     // dot 0. There is nothing to search at budget 0, only a walk.
-    if (b == 0) return _walk(c, dot, pos);
-    if (c is Ref) return _ends(_rules[c.ruleName]!, 0, pos, b);
-    if (c is Str && c.text.length > 1) return _ends(_desugar(c), 0, pos, b);
-    if (c is Terminal) {
+    if (budget == 0) return _walk(clause, dot, pos);
+    if (clause is Ref) return _ends(_rules[clause.ruleName]!, 0, pos, budget);
+    if (clause is Str && clause.text.length > 1) {
+      return _ends(_desugar(clause), 0, pos, budget);
+    }
+    if (clause is Terminal) {
       // The three terminal moves of A1, and the only place cost is created
-      // other than SKIP.
+      // other than SKIP. Each edit costs exactly one `_costUnit`; what varies is
+      // only the regret riding along in the low bits.
       final out = <int, int>{};
-      final m = c.match(_parser, pos);
-      if (!m.isMismatch) out[pos + m.len] = _score(m); // MATCH
-      if (m.isMismatch && pos < _n) {
-        out[pos + 1] = _M + 2 * _lost(pos, pos + 1); // SUB
+      final m = clause.match(_parser, pos);
+      if (!m.isMismatch) out[pos + m.len] = _cleanRegret(m); // MATCH
+      if (m.isMismatch && pos < _inputLen) {
+        // SUB: the character is consumed by a terminal that does not accept it,
+        // so its own evidence is discarded -- twice h, by A2.
+        out[pos + 1] = _costUnit + 2 * _skipRegret(pos, pos + 1);
       }
-      if (c is! Nothing) _put(out, pos, _M + _floor); // FAB
+      // FAB: a terminal consumes nothing, so the text it stands for is invented
+      // outright. That commits a full alphabet's worth of information, which is
+      // the most any single move can commit -- the price is forced by A2.
+      if (clause is! Nothing) _keepBest(out, pos, _costUnit + _widestClass);
       return out;
     }
     // A4: the pure unions. No spans, no dots, no recovery logic at all -- an
     // Optional is a First whose last alternative is the empty match.
-    if (c is First || c is Optional) {
-      final out = c is Optional ? {pos: 0} : <int, int>{};
-      for (final sub in _alts(c)) {
-        for (final e in _ends(sub, 0, pos, b).entries) {
-          _put(out, e.key, e.value);
+    if (clause is First || clause is Optional) {
+      final out = clause is Optional ? {pos: 0} : <int, int>{};
+      for (final alternative in _alternatives(clause)) {
+        for (final e in _ends(alternative, 0, pos, budget).entries) {
+          _keepBest(out, e.key, e.value);
         }
       }
       return out;
     }
-    if (c is Seq || c is Repetition) return _chain(c, dot, pos, b);
-    return (c is FollowedBy
-                ? !c.subClause.match(_parser, pos).isMismatch
-                : c is NotFollowedBy &&
-                    c.subClause.match(_parser, pos).isMismatch)
+    if (clause is Seq || clause is Repetition) {
+      return _chain(clause, dot, pos, budget);
+    }
+    return (clause is FollowedBy
+            ? !clause.subClause.match(_parser, pos).isMismatch
+            : clause is NotFollowedBy &&
+                clause.subClause.match(_parser, pos).isMismatch)
         ? {pos: 0}
         : const {};
   }
@@ -355,67 +437,74 @@ class SuperDot3 {
   // loop: Seq advances its dot and finishes at the end of its element list;
   // Repetition returns to dot 1 forever and may finish immediately unless it
   // requires one iteration.
-  List<Clause> _alts(Clause c) =>
-      c is First ? c.subClauses : [(c as HasOneSubClause).subClause];
+  List<Clause> _alternatives(Clause clause) => clause is First
+      ? clause.subClauses
+      : [(clause as HasOneSubClause).subClause];
 
-  Clause _elem(Clause c, int dot) =>
-      c is Seq ? c.subClauses[dot] : (c as HasOneSubClause).subClause;
-  int _after(Clause c, int dot) => c is Seq ? dot + 1 : 1;
-  bool _done(Clause c, int dot) => c is Seq
-      ? dot == c.subClauses.length
-      : dot == 1 || !(c as Repetition).requireOne;
-  bool _more(Clause c, int dot) => c is! Seq || dot < c.subClauses.length;
+  Clause _elementAt(Clause clause, int dot) => clause is Seq
+      ? clause.subClauses[dot]
+      : (clause as HasOneSubClause).subClause;
+  int _nextDot(Clause clause, int dot) => clause is Seq ? dot + 1 : 1;
+  bool _canFinish(Clause clause, int dot) => clause is Seq
+      ? dot == clause.subClauses.length
+      : dot == 1 || !(clause as Repetition).requireOne;
+  bool _hasElement(Clause clause, int dot) =>
+      clause is! Seq || dot < clause.subClauses.length;
 
   /// The budget-0 value of an item: one end, or none. The oracle can match a
   /// clause but not a clause's tail, and a tail at budget 0 is just that same
   /// call repeated over what remains -- deterministic, because no edit is
-  /// affordable. Where the walk stops is the one question `_done` already
+  /// affordable. Where the walk stops is the one question `_canFinish` already
   /// answers: failing mid-Seq leaves the tail with no value, while failing where
   /// the item may already stop IS where a Repetition stops. The singleton result
   /// is also the narrowest possible operand for every product in `_chain`.
-  Map<int, int> _walk(Clause c, int dot, int pos) {
-    if (pos > _n) return const {};
+  Map<int, int> _walk(Clause clause, int dot, int pos) {
+    if (pos > _inputLen) return const {};
     if (dot == 0) {
-      final m = c.match(_parser, pos);
-      return m.isMismatch ? const {} : {pos + m.len: _score(m)};
+      final m = clause.match(_parser, pos);
+      return m.isMismatch ? const {} : {pos + m.len: _cleanRegret(m)};
     }
-    var p = pos, s = 0;
-    for (var d = dot; _more(c, d); d = _after(c, d)) {
-      final m = _elem(c, d).match(_parser, p);
-      if (m.isMismatch || (m.len == 0 && _done(c, d))) {
-        return _done(c, d) ? {p: s} : const {};
+    var at = pos, regret = 0;
+    for (var d = dot; _hasElement(clause, d); d = _nextDot(clause, d)) {
+      final m = _elementAt(clause, d).match(_parser, at);
+      // A zero-width match where the item may stop is the parser's own cut on a
+      // zero-width repetition; taking it again would not advance.
+      if (m.isMismatch || (m.len == 0 && _canFinish(clause, d))) {
+        return _canFinish(clause, d) ? {at: regret} : const {};
       }
-      p += m.len;
-      s += _score(m);
+      at += m.len;
+      regret += _cleanRegret(m);
     }
-    return {p: s};
+    return {at: regret};
   }
 
-  Map<int, int> _chain(Clause c, int dot, int pos, int b) {
+  Map<int, int> _chain(Clause clause, int dot, int pos, int budget) {
     final out = <int, int>{};
-    final limit = (b + 1) * _M;
-    if (_done(c, dot)) out[pos] = 0;
-    if (!_more(c, dot)) return out;
-    final to = _after(c, dot);
-    final sub = _elem(c, dot);
-    for (final h in _ends(sub, 0, pos, b).entries) {
+    final limit = (budget + 1) * _costUnit;
+    if (_canFinish(clause, dot)) out[pos] = 0;
+    if (!_hasElement(clause, dot)) return out;
+    final nextDot = _nextDot(clause, dot);
+    final element = _elementAt(clause, dot);
+    for (final head in _ends(element, 0, pos, budget).entries) {
       // A zero-width iteration would re-enter the identical state: this is the
       // same cut the pure parser applies to a zero-width repetition, and it is
       // the only guard the recursion needs to terminate.
-      if (h.key == pos && to == dot) continue;
-      for (final t in _ends(c, to, h.key, b - _cost(h.value)).entries) {
-        final total = h.value + t.value;
-        if (total < limit) _put(out, t.key, total);
+      if (head.key == pos && nextDot == dot) continue;
+      final rest =
+          _ends(clause, nextDot, head.key, budget - _editCount(head.value));
+      for (final tail in rest.entries) {
+        final total = head.value + tail.value;
+        if (total < limit) _keepBest(out, tail.key, total);
       }
     }
     // SKIP, as a UNIT edge (A1). Reachable only where an element still follows,
     // so a finished state cannot absorb text -- that is what keeps each gap at
     // its canonical attachment point instead of merely at an equal-cost one.
-    if (pos < _n && b >= 1) {
-      final s = _M + 2 * _lost(pos, pos + 1);
-      for (final t in _ends(c, dot, pos + 1, b - 1).entries) {
-        final total = s + t.value;
-        if (total < limit) _put(out, t.key, total);
+    if (pos < _inputLen && budget >= 1) {
+      final skipDelta = _costUnit + 2 * _skipRegret(pos, pos + 1);
+      for (final tail in _ends(clause, dot, pos + 1, budget - 1).entries) {
+        final total = skipDelta + tail.value;
+        if (total < limit) _keepBest(out, tail.key, total);
       }
     }
     return out;
@@ -427,9 +516,13 @@ class SuperDot3 {
   //
   // PREFER THE SHORTEST HEAD. Among Delta-tied decompositions take the one whose
   // head ends earliest: text being discarded anyway should stay outside a subtree
-  // rather than stretch a rule node over it. Worth 6 shape points, and the reason
-  // this is a forward descent -- a backward predecessor walk fixes the tail
-  // first, so by the time the head is reached its tie is already settled.
+  // rather than stretch a rule node over it. THIS IS THE ONE HEURISTIC IN THE
+  // ENGINE THAT CHANGES OUTPUT -- it is kept because it measures better (worth 6
+  // shape points), not because anything above implies it. It cannot change a
+  // reported cost, since every candidate it ranks carries the same Delta; it
+  // decides only which of several minimal witnesses is returned. It is also the
+  // reason this is a forward descent -- a backward predecessor walk fixes the
+  // tail first, so by the time the head is reached its tie is already settled.
   // ---------------------------------------------------------------------------
 
   final List<SyntaxError> _spans = [];
@@ -445,85 +538,94 @@ class SuperDot3 {
   /// edge, so guarding Refs is enough.
   final Set<(Clause, int, int, int)> _path = {};
 
-  MatchResult? _build(Clause c, int pos, int end, int d, int b) {
-    final pure = pos > _n ? mismatch : c.match(_parser, pos);
-    if (!pure.isMismatch && pos + pure.len == end && _score(pure) == d) {
+  MatchResult? _build(Clause clause, int pos, int end, int delta, int budget) {
+    final pure = pos > _inputLen ? mismatch : clause.match(_parser, pos);
+    if (!pure.isMismatch &&
+        pos + pure.len == end &&
+        _cleanRegret(pure) == delta) {
       return pure;
     }
-    if (c is Ref) {
-      final state = (c, pos, end, d);
+    if (clause is Ref) {
+      final state = (clause, pos, end, delta);
       if (!_path.add(state)) return null;
-      final sub = _build(_rules[c.ruleName]!, pos, end, d, b);
+      final sub = _build(_rules[clause.ruleName]!, pos, end, delta, budget);
       _path.remove(state);
       return sub == null
           ? null
-          : Match(c, pos, end - pos, subClauseMatches: [sub]);
+          : Match(clause, pos, end - pos, subClauseMatches: [sub]);
     }
-    if (c is Str && c.text.length > 1) {
-      return _build(_desugar(c), pos, end, d, b);
+    if (clause is Str && clause.text.length > 1) {
+      return _build(_desugar(clause), pos, end, delta, budget);
     }
-    if (c is Terminal) return Match(c, pos, end - pos);
-    if (c is FollowedBy || c is NotFollowedBy) return Match(c, pos, 0);
-    if (c is First || c is Optional) {
-      for (final sub in _alts(c)) {
-        if (_ends(sub, 0, pos, b)[end] != d) continue;
-        final m = _build(sub, pos, end, d, b);
+    if (clause is Terminal) return Match(clause, pos, end - pos);
+    if (clause is FollowedBy || clause is NotFollowedBy) {
+      return Match(clause, pos, 0);
+    }
+    if (clause is First || clause is Optional) {
+      for (final alternative in _alternatives(clause)) {
+        if (_ends(alternative, 0, pos, budget)[end] != delta) continue;
+        final m = _build(alternative, pos, end, delta, budget);
         if (m != null) {
-          return Match(c, pos, end - pos, subClauseMatches: [m]);
+          return Match(clause, pos, end - pos, subClauseMatches: [m]);
         }
       }
-      if (c is Optional && pos == end && d == 0) return Match(c, pos, 0);
+      if (clause is Optional && pos == end && delta == 0) {
+        return Match(clause, pos, 0);
+      }
       return null;
     }
-    final children = _descend(c, 0, pos, end, d, b);
+    final children = _descend(clause, 0, pos, end, delta, budget);
     if (children == null) return null;
     return children.isEmpty
-        ? Match(c, pos, 0)
-        : Match(c, pos, end - pos, subClauseMatches: children);
+        ? Match(clause, pos, 0)
+        : Match(clause, pos, end - pos, subClauseMatches: children);
   }
 
   List<MatchResult>? _descend(
-      Clause c, int dot, int pos, int end, int d, int b) {
-    if (_more(c, dot)) {
-      final to = _after(c, dot);
-      final sub = _elem(c, dot);
-      final heads = _ends(sub, 0, pos, b);
-      final order = heads.keys.toList()..sort(); // shortest head first
-      for (final he in order) {
-        if (he == pos && to == dot) continue;
-        final hv = heads[he]!;
+      Clause clause, int dot, int pos, int end, int delta, int budget) {
+    if (_hasElement(clause, dot)) {
+      final nextDot = _nextDot(clause, dot);
+      final element = _elementAt(clause, dot);
+      final heads = _ends(element, 0, pos, budget);
+      // The one output-affecting heuristic: shortest head first. See above.
+      final order = heads.keys.toList()..sort();
+      for (final headEnd in order) {
+        if (headEnd == pos && nextDot == dot) continue;
+        final headDelta = heads[headEnd]!;
         // The remainder's Delta is non-negative, so a head already past the
         // target cannot belong to any decomposition summing to it.
-        if (hv > d) continue;
-        final rest = _ends(c, to, he, b - _cost(hv))[end];
-        if (rest == null || hv + rest != d) continue;
-        final head = _build(sub, pos, he, hv, b);
+        if (headDelta > delta) continue;
+        final restBudget = budget - _editCount(headDelta);
+        final rest = _ends(clause, nextDot, headEnd, restBudget)[end];
+        if (rest == null || headDelta + rest != delta) continue;
+        final head = _build(element, pos, headEnd, headDelta, budget);
         if (head == null) continue;
-        final tail = _descend(c, to, he, end, rest, b - _cost(hv));
+        final tail = _descend(clause, nextDot, headEnd, end, rest, restBudget);
         if (tail != null) return [head, ...tail];
       }
-      // SKIP one character, then continue from the same dot. Consecutive unit
-      // skips are merged so the tree carries one span per gap, not one per
-      // character.
-      if (pos < _n && b >= 1) {
-        final s = _M + 2 * _lost(pos, pos + 1);
-        final rest = _ends(c, dot, pos + 1, b - 1)[end];
-        if (rest != null && s + rest == d) {
-          final tail = _descend(c, dot, pos + 1, end, rest, b - 1);
+      // SKIP one character, then continue from the same dot. PRESENTATION
+      // HEURISTIC: consecutive unit skips are merged, so the tree carries one
+      // span per gap rather than one per character. The cost is identical either
+      // way -- only the diagnostic reads differently.
+      if (pos < _inputLen && budget >= 1) {
+        final skipDelta = _costUnit + 2 * _skipRegret(pos, pos + 1);
+        final rest = _ends(clause, dot, pos + 1, budget - 1)[end];
+        if (rest != null && skipDelta + rest == delta) {
+          final tail = _descend(clause, dot, pos + 1, end, rest, budget - 1);
           if (tail == null) return null;
           var len = 1;
-          var i = 0;
+          var skip = 0;
           if (tail.isNotEmpty &&
               tail.first is SyntaxError &&
               tail.first.pos == pos + 1) {
             len += tail.first.len;
-            i = 1;
+            skip = 1;
           }
-          return [SyntaxError(pos: pos, len: len), ...tail.skip(i)];
+          return [SyntaxError(pos: pos, len: len), ...tail.skip(skip)];
         }
       }
     }
-    if (_done(c, dot) && pos == end && d == 0) return const [];
+    if (_canFinish(clause, dot) && pos == end && delta == 0) return const [];
     return null;
   }
 
@@ -536,13 +638,15 @@ class SuperDot3 {
   /// bookkeeping at all. `Nothing` is the one terminal that legitimately matches
   /// zero width; predicates and empty repetitions are not terminals.
   void _collect(MatchResult m) {
-    final c = m.clause;
+    final clause = m.clause;
     if (m is SyntaxError) {
       _spans.add(m); // SKIP
-    } else if (m.subClauseMatches.isEmpty && c is Terminal && c is! Nothing) {
+    } else if (m.subClauseMatches.isEmpty &&
+        clause is Terminal &&
+        clause is! Nothing) {
       if (m.len == 0) {
-        _missing.add(MissingObligation(c, m.pos)); // FAB
-      } else if (c.match(_parser, m.pos).isMismatch) {
+        _missing.add(MissingObligation(clause, m.pos)); // FAB
+      } else if (clause.match(_parser, m.pos).isMismatch) {
         _spans.add(SyntaxError(pos: m.pos, len: m.len)); // SUB
       }
     } else {
@@ -550,17 +654,20 @@ class SuperDot3 {
     }
   }
 
+  /// `maxCost` is THE PARAMETER (see the header): the deepening ceiling.
   SkipResult recover(String input, {int maxCost = 40}) {
     final cost = recoverCost(input, maxCost: maxCost);
     _spans.clear();
     _missing.clear();
     _path.clear();
     if (cost == 0) return SkipResult(_clean!, const [], const [], 0, false);
-    final root = cost < 0 ? null : _build(_goal, 0, _n, _bestInner, cost);
+    final root =
+        cost < 0 ? null : _build(_goal, 0, _inputLen, _bestGoalDelta, cost);
     if (root == null) {
-      // No repair within budget, or none whose witness survives the cycle guard:
-      // report the input as one error rather than failing.
-      final error = SyntaxError(pos: 0, len: _n);
+      // PRESENTATION HEURISTIC: no repair within budget, or none whose witness
+      // survives the cycle guard. Report the input as one error rather than
+      // failing, so a caller always gets a tree.
+      final error = SyntaxError(pos: 0, len: _inputLen);
       return SkipResult(error, [error], const [], 1, true);
     }
     _collect(root);
@@ -571,31 +678,40 @@ class SuperDot3 {
 
   int recoverCost(String input, {int maxCost = 40}) {
     _input = input;
-    _n = input.length;
+    _inputLen = input.length;
     _clean = null;
     _parser = Parser(rules: rules, topRuleName: topRuleName, input: input);
     final result = _parser.parse();
+    // Clean input costs nothing and needs no search. This relies on the parser's
+    // own `hasSyntaxErrors` also covering input it did not consume -- it does on
+    // every case measured here, but that is the parser's contract, not something
+    // this file checks.
     if (!result.hasSyntaxErrors) {
       _clean = result.root;
       lastCost = lastRegret = lastSteps = 0;
       return 0;
     }
-    _buildH();
-    _shift = ((2 * _n + maxCost + 2) * (_floor + 1)).bitLength;
-    _M = 1 << _shift;
+    _buildRegretPrefix();
+    // A3's bound, not a setting: one cost unit must outweigh the largest regret
+    // any repair can accumulate -- at most one weight per kept character, two per
+    // skipped one, plus one per edit -- so `_costUnit` is rounded up to a power
+    // of two and the division becomes `_costShift`.
+    _costShift = ((2 * _inputLen + maxCost + 2) * (_widestClass + 1)).bitLength;
+    _costUnit = 1 << _costShift;
     _entries.clear();
-    _verAtPos = List.filled(_n + 2, 0);
-    _scores.clear();
+    _versionAtPos = List.filled(_inputLen + 2, 0);
+    _cleanRegrets.clear();
     _steps = 0;
     // Iterative deepening on the budget. A3 makes each round reuse the previous
     // round's memo, and the goal clause makes the whole query a single lookup:
-    // "consume the entire input".
+    // "consume the entire input". A repair costing more than `maxCost` is not
+    // found at all -- that ceiling is the engine's only parameter.
     for (var k = 0; k <= maxCost; k++) {
-      final best = _ends(_goal, 0, 0, k)[_n];
+      final best = _ends(_goal, 0, 0, k)[_inputLen];
       if (best != null) {
-        _bestInner = best;
-        lastCost = _cost(best);
-        lastRegret = best - lastCost * _M - _lost(0, _n);
+        _bestGoalDelta = best;
+        lastCost = _editCount(best);
+        lastRegret = best - lastCost * _costUnit - _skipRegret(0, _inputLen);
         lastSteps = _steps;
         return lastCost;
       }
