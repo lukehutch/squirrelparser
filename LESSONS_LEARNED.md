@@ -265,6 +265,50 @@ are O(1). Recovery cost tracks the *amount of damage*, not the document size.
 
 Both 517 variants miss exactly `del@13` and `swap@13`, which `dot` also misses.
 
+### m15 vs m16: where the 54 lines went
+
+The two were equal-accuracy siblings (517/519, identical cost histogram), so the
+difference is entirely in *how regret is priced*, and every other divergence follows
+from that one choice.
+
+m15 charges regret **relative to the input**: a kept character costs
+`w(class) − h(char)`, the bits the grammar asserts minus the bits the input already
+supplied. That is defensible in isolation — it reads as "how much did we assume that
+the input did not tell us" — but it is a *per-character* quantity, so `_regretOf`
+must loop over `[pos, pos+len)` character by character (`m15.dart:206`), and it needs
+`_h[]` for the point value alongside `_hSum[]` for spans (`m15.dart:102,185`).
+
+m16 charges the **absolute** `w(class)`, and pays for the input's information once,
+in `_lost`, where text is discarded. A clean leaf is then `_w(clause) * m.len`
+(`m16.dart:110`) — one multiply, a closed form, no loop. The `_h[]` array disappears
+entirely; only the prefix sum `_H` survives (`m16.dart:67`), consulted solely via
+`_lost` for text the repair throws away. The factor 2 in A2 is exactly the
+bookkeeping this shift moves to the skip edge.
+
+Everything else is downstream. Because `_score` is closed-form it memoises on the
+`MatchResult` with no per-character work; because there is one array instead of two,
+initialisation shrinks; because the regret of a subtree no longer depends on where in
+the input it sits, the value is *positional-invariant* and the memo is sound without
+carrying `h` through it.
+
+| axis | m15 | m16 | verdict |
+|---|---|---|---|
+| pricing | relative, `w − h(p)` per char | absolute `w`, `h` paid once at the skip | m16: one concept, not two |
+| regret of a clean leaf | loop over the span | `_w(c) * len` | m16 |
+| info arrays | `_h[]` + `_hSum[]` | `_H` only | m16 |
+| code | 406 | 352 | m16 |
+| battery | 533 ms | 439 ms | m16 |
+| latency vs v6 | ~1.00× | 1.06× | m15, marginally |
+| accuracy | 517/519, `{1:503, 2:16}` | identical | tie |
+
+**The lesson that generalises past both:** m15's relative pricing was not *wrong*,
+it was *non-local* — it entangled a subtree's value with its position in the input.
+Making the objective positional-invariant is what let regret be a closed form, which
+is what made it memoisable, which is what made the budget a filter rather than a memo
+key. m16 was not a cheaper m15; it was the first version whose value function
+factored. Both were then superseded wholesale, because neither had A4 (the recursion
+is the dot) or A5 (left recursion is the parser's, already solved) — see §3.
+
 ## 6. Refuted — do not re-litigate
 
 Each of these was built and measured, not reasoned away:
