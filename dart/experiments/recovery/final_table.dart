@@ -33,6 +33,11 @@ import 'm30.dart' as g30;
 import 'm31.dart' as g31;
 import 'm32.dart' as g32;
 import 'm35.dart' as g35;
+import 'm36.dart' as g36;
+import 'm37.dart' as g37;
+import 'm38.dart' as g38;
+import 'm39.dart' as g39;
+import 'm40.dart' as g40;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -178,13 +183,43 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m32', 0, (r, t) {
+  Eng('m32', 378, (r, t) {
     final e = g32.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m35', 0, (r, t) {
+  Eng('m35', 381, (r, t) {
     final e = g35.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m36', 390, (r, t) {
+    final e = g36.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m37', 385, (r, t) {
+    final e = g37.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m38', 407, (r, t) {
+    final e = g38.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m39', 396, (r, t) {
+    final e = g39.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m40', 399, (r, t) {
+    final e = g40.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m26b', 382, (r, t) {
+    final e = g26.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 ];
@@ -261,7 +296,13 @@ final truthCases = <(String, String, String, List<String>)>[
 ];
 
 // ------------------------------------------------------------------------ main
-void main() {
+void main(List<String> args) {
+  // Comma-separated engine names keep an iteration under a minute; with no
+  // argument every engine runs, which is the table that gets reported.
+  if (args.isNotEmpty) {
+    final keep = args.first.split(',').toSet();
+    engines.retainWhere((e) => keep.contains(e.name));
+  }
   final rules = MetaGrammar.parseGrammar(jsonGrammar);
   const base = '{"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}';
   bool parses(String s) =>
@@ -443,10 +484,12 @@ void main() {
     print('  ...${e.name} done');
   }
 
-  final v6 = lat['v6']!.fold(0.0, (a, b) => a + max(b, 0));
+  // The /v6 column is a ratio to the baseline, so it only exists when the
+  // baseline was one of the engines run.
+  final v6 = lat['v6']?.fold(0.0, (a, b) => a + max(b, 0));
   for (var i = 0; i < engines.length; i++) {
     final t = lat[engines[i].name]!.fold(0.0, (a, b) => a + max(b, 0));
-    rows[i][11] = '${(t / v6).toStringAsFixed(2)}x';
+    rows[i][11] = v6 == null ? '-' : '${(t / v6).toStringAsFixed(2)}x';
   }
 
   const head = ['engine', 'LOC', 'shape', 'cover', 'crsh', 'cost hist', 'valid',

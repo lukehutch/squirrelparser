@@ -862,3 +862,61 @@ m35 does NOT beat m26 on all metrics. It buys robustness -- m26's greedy level 0
 incomplete, and it is only correct in practice because recomputation happens to cover
 it -- and it pays 20% on the cheapest workload for that. The n- and K-exponents are
 unchanged (exponent in n at K=8: m26 1.86, m32 1.88, m35 not completed).
+
+### 5i. Budget 0 is not a cheap case of the search -- it is not a search at all (m36-m40)
+
+The synthesis of m26, m35 and m27 turned on one reading: **the budget measures how
+much of the input is still unknown.** At budget 0 no edit is affordable, so the
+repaired string IS the input, PEG is deterministic on it, and the pure parser
+decides the item outright. Above budget 0 the input is unknown and the CFG
+relaxation is the correct sound over-approximation.
+
+Two consequences, one of which was wrong.
+
+**Wrong: enforcing PEG semantics at budget 0 fixes conformance.** m36 guards the
+Repetition stop and the ordered choice with `!earlier` evaluated on the input, but
+only where `b == 0`. Round 0 then rejects the non-PEG parses, as intended -- with
+`maxCost: 0`, m26 and m36 both return -1 on `('a' / "ab") 'b'` against `abb`, while
+m35 returns 0. But the full run still returns 0, because the illegal parse costs
+ZERO edits and simply surfaces at round 1, where the guard is off. A guard keyed on
+the round's remaining budget cannot fix this; the predicate would have to be "no
+edit anywhere in this derivation", which is not local. m36 also bought nothing:
+434 battms against m26's 349 in the same run.
+
+**Right, and it corrects §5h: m26's greedy level 0 was never incomplete.** It is the
+PEG-EXACT level 0, and it is narrow and O(1) for the same reason. m32/m35
+"completed" it toward the CFG language -- toward the very bug peg_conformance
+reports -- and that is where their 20% battery cost came from. What m26 got wrong is
+narrower: its fast path fires only at `dot == 0`, because the oracle can match a
+clause but not a clause's tail, so every TAIL item still ran the full DP at budget 0.
+
+A tail at budget 0 is just that same oracle call repeated over what remains, and
+where the walk stops is a question `_done` already answers: failing mid-Seq leaves
+the tail with no value, while failing where the item may already stop IS where a
+Repetition stops. That is `_walk` -- one loop, no case split -- plus m35's one
+cached field, since the budget-0 value is budget-free. The result is a SINGLETON
+map, which is also the narrowest possible operand for every head-by-tail product in
+`_chain`.
+
+Measured per-process so each engine runs first (the harness warms the heap as it
+goes: the SAME engine costs 377 battms registered first and 314 registered last, so
+every in-run A/B before this was biased by up to 12%). Three runs each:
+
+  metric      m26              m38              m40
+  LOC         382              407              399
+  shape       517/519          517/519          517/519
+  cover/crsh  519/519, 0       identical        identical
+  cost hist   {1:503,2:16}     identical        identical
+  valid/cost/tree  7/7 44/44 44/44   identical  identical
+  battms      383 406 365      318 287 312      299 304 304
+  latms       259 270 255      235 248 235      247 235 254
+  LRmax/RRmax >=4096 / 512     identical        identical
+
+m38 and m40 differ only in how `_walk` is written (explicit Seq/Repetition split vs
+the collapsed `_done` form) and are within noise of each other. Both beat m26 on
+battery by ~21% and on latency by ~7%, with NON-OVERLAPPING ranges on both axes, and
+tie every correctness and depth metric.
+
+This still does not "beat m26 on all metrics": LOC regresses 382 -> 399, and shape
+(517/519), cost hist, truth, LRmax and RRmax are TIES, not wins. Beating those needs
+new capability, not a faster level 0.
