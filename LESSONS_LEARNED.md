@@ -15,6 +15,10 @@ measured, not estimated; anything inferred is labelled as such.
 - **Dart is the reference implementation.** The Java, Python and TypeScript trees
   are contaminated by an earlier attempt and are deliberately left uncommitted
   until the Dart core is settled and ported.
+- **Every new engine gets a row in §5j and a registration in `final_table.dart`,
+  in the same commit.** The table is the project's only complete record of what
+  each variant costs and what is wrong with it; a variant measured but never
+  tabulated gets re-invented later.
 - Run Dart from `dart/`:
   `dart --packages=<repo>/dart/.dart_tool/package_config.json <file>.dart`.
   `dart analyze` is useless on scratch experiment files (package URIs
@@ -920,3 +924,97 @@ tie every correctness and depth metric.
 This still does not "beat m26 on all metrics": LOC regresses 382 -> 399, and shape
 (517/519), cost hist, truth, LRmax and RRmax are TIES, not wins. Beating those needs
 new capability, not a faster level 0.
+
+## 5j. The full comparison table (every engine ever built)
+
+**Maintenance rule: this table and `final_table.dart`'s registry are one artifact.
+Every new engine gets registered there AND gets a row here, in the same commit.**
+
+`dart --packages=... experiments/recovery/final_table.dart`, one process, 2026-07-25.
+`bugs` names defects specific to that engine; four defects are shared by every row
+and are listed once below rather than repeated 32 times.
+
+| engine | LOC | shape | cover | crsh | cost hist | valid | cost | tree | bugs | battms | latms | /v6 | LRmax | RRmax |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| dot | 797 | 515/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | slow, shape | 7876 | 5879.9 | 12.39x | >=4096 | >=4096 |
+| sd3 | 499 | 512/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 32/44 | 39/44 | LR, empty | 434 | 772.2 | 1.63x | >=4096 | 2048 |
+| sd5 | 513 | 512/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 32/44 | 39/44 | LR, empty | 482 | 1040.5 | 2.19x | >=4096 | 2048 |
+| v6 | 526 | 512/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR | 511 | 474.6 | 1.00x | >=4096 | 2048 |
+| m12 | 396 | 516/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 33/44 | 39/44 | LR, shape | 491 | 494.0 | 1.04x | >=4096 | 2048 |
+| m15 | 406 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR | 494 | 487.4 | 1.03x | >=4096 | 2048 |
+| m16 | 352 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR | 404 | 484.3 | 1.02x | >=4096 | 1024 |
+| m17 | 357 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR | 442 | 272.7 | 0.57x | >=4096 | 1024 |
+| m18 | 373 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR | 439 | 240.2 | 0.51x | >=4096 | 1024 |
+| m19 | 362 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR | 429 | 243.4 | 0.51x | >=4096 | 1024 |
+| m20 | 350 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR, slow | 959 | 315.2 | 0.66x | >=4096 | 1024 |
+| m21 | 361 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR, slow | 959 | 288.3 | 0.61x | >=4096 | 1024 |
+| m22 | 337 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 38/44 | 44/44 | LR | 430 | 241.4 | 0.51x | >=4096 | 1024 |
+| m23 | 371 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 42/44 | null | 539 | 288.4 | 0.61x | >=4096 | 512 |
+| m24 | 393 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | — | 537 | 305.7 | 0.64x | >=4096 | 512 |
+| m25 | 394 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | — | 376 | 258.8 | 0.55x | >=4096 | 512 |
+| **m26** | **382** | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | 355 | 269.0 | 0.57x | >=4096 | 512 |
+| m27 | 387 | 494/519 | 519/519 | 0 | {1:478, 2:41} | 7/7 | 44/44 | 44/44 | pegfix | 415 | 216.2 | 0.46x | >=4096 | 512 |
+| m28 | 384 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | over | 366 | 1152.0 | 2.43x | >=4096 | 512 |
+| m29 | 390 | 492/519 | 519/519 | 0 | {1:474, 2:45} | 7/7 | 42/44 | 44/44 | pegfix, slow, stack | 4978 | 1598.9 | 3.37x | 512 | 512 |
+| m30 | 382 | 516/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | slow, stack, shape | 5164 | 2088.0 | 4.40x | <512 | <512 |
+| m31 | 388 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | slow, stack, latent | 5303 | 2681.6 | 5.65x | <512 | <512 |
+| m32 | 378 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | batt | 441 | 243.3 | 0.51x | >=4096 | 512 |
+| m33 | 389 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | slow | 458 | 856.2 | 1.80x | >=4096 | 512 |
+| m34 | 381 | 516/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | slow, shape | 651 | 1718.9 | 3.62x | >=4096 | 512 |
+| m35 | 381 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | batt | 447 | 238.0 | 0.50x | >=4096 | 512 |
+| m36 | 390 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | noop | 426 | 251.9 | 0.53x | >=4096 | 512 |
+| m37 | 385 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | — | 350 | 255.5 | 0.54x | >=4096 | 512 |
+| m38 | 407 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | LOC | 280 | 252.2 | 0.53x | >=4096 | 512 |
+| m39 | 396 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | — | 283 | 255.5 | 0.54x | >=4096 | 512 |
+| **m40** | 429 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | LOC | 309 | 259.6 | 0.55x | >=4096 | 512 |
+| m26b | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 360 | 267.1 | 0.56x | >=4096 | 1024 |
+
+### Bugs shared by EVERY row, so not repeated per engine
+
+| tag | defect |
+|---|---|
+| **PEG** | Repairs toward the **CFG** reading of the grammar, not the PEG one: a possessive `*` and a committed `/` are treated as if any stop or alternative were available. 4 of 5 conformance cases wrong, identically, in every engine back to `dot` (§5b). The `cost` column cannot see it — its grammars are prefix-disjoint, so the two readings coincide there. |
+| **RR** | Right-recursive grammars overflow the native stack (the `RRmax` column). Inherited from the pure parser, which shows the same asymmetry; recovery worsens the threshold ~4x because its descent adds frames per position (§8a). Fix is an explicit worklist; not built. |
+| **d13** | `del@13` and `swap@13` are never recovered to the original shape. That is exactly the 517/519 ceiling. |
+| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). The only tuning parameter left in the m-line. |
+
+### Per-engine bug tags
+
+| tag | defect |
+|---|---|
+| **LR** | Non-minimal repairs on left-recursive grammars — the memo cached its own in-progress placeholder as a final answer, so the left-recursive alternative contributed nothing. Cost 2–3 where truth is 1; from n>=512, no repair at all. Visible as `cost` 32–38/44. Fixed by A5 in m23. |
+| **null** | Reconstruction diverges on nullable left recursion (§8). Visible as `tree` 42/44 while `cost` is 44/44 — the cost is right and the witness cannot be built. Fixed by the Ref re-entry guard in m24. |
+| **empty** | `RangeError` on empty input; the leading-span loop ran to the budget without bounding by input length (§8). |
+| **shape** | Loses shape points against the 517/519 line — see the `shape` column. |
+| **slow** | Far off the pace on `battms` and/or `latms`; a recorded negative, not a candidate. |
+| **batt** | 20–35% slower on the battery (all K=1) because a complete CFG level 0 replaces m26's O(1) oracle call; buys latency and large-K time back (§5h). |
+| **stack** | Stack ceiling collapses — `LRmax`/`RRmax`. m30/m31 fail below 512 in **both** recursion directions. |
+| **latent** | A wrong-cost defect behind a flag: m31 with `debugShortcut(true)` reports cost 4 where truth is 1 (§5f). Committed with the shortcut off, which is why its row scores 44/44 and is 15x slower than m26. |
+| **pegfix** | Attempts the PEG fix and pays for it: the guard consults the **original** input while PEG semantics quantify over the **repaired** string (§5e). m27 494/519 {1:478, 2:41}; m29 492/519 {1:474, 2:45}, cost 42/44. |
+| **over** | Doubling deepening overshoots when K is not a power of two — `latms` 1152 against m26's 269 (§5c). |
+| **noop** | Does not do what it was built for: m36's budget-0 PEG guard leaves conformance unchanged, because the illegal parse costs zero edits and resurfaces at round 1 (§5i). |
+| **LOC** | Not a defect — a line-count regression against m26's 382. |
+| **dup** | Not an engine: m26 registered a second time, last, to measure the warming-heap bias. |
+
+**Unproven, and not in the table because it is not a measured bug:** the
+left-recursion fixed point in every A5 engine (m23 onward) re-runs until no Delta
+improves, and that iteration count has no tight polynomial bound in this
+derivation — only the measurement that it behaves like a small constant (§5a).
+
+### Three things this table says that no single row does
+
+1. **`dot` is not LR-broken.** It scores 44/44 on truth, like m23 onward and unlike
+   every sd/m engine before m23. Its defects are speed (12.4x v6) and two shape
+   points. A tag asserting otherwise was written from the §8 narrative and removed
+   when the measurement contradicted it — the §8 claim "every engine up to and
+   including m22" covers the sd/m line, not the shipped `dot`.
+2. **The `dot` row also has the best stack ceiling in the table** (RRmax >=4096,
+   where the whole m-line is 512–2048). Depth and speed trade against each other
+   here, and no engine yet wins both.
+3. **`RRmax` depends on process state, not only on the engine.** `m26` and `m26b`
+   are the SAME ENGINE at two registry positions, and the last one measures
+   `RRmax` 1024 against the first one's 512 — **reproducibly, in both runs of this
+   table**. So this is a position effect like the ~12% timing bias, not run-to-run
+   noise, and a depth number is only comparable between engines measured at the
+   same position. Correctness columns (shape/cover/hist/valid/cost/tree) were
+   identical across both runs and are order-independent.

@@ -1,7 +1,14 @@
-// ONE harness for the full trade-off table: every engine from m15 to m26 plus the
-// v6 baseline and the shipped `dot`, measured on every metric in a single process
-// so no engine gets a systematically colder heap and no number is recalled from a
-// previous session's notes.
+// ONE harness for the full trade-off table: EVERY engine ever built -- sd3/sd5/v6,
+// the shipped `dot`, and m12 through m40 -- measured on every metric in a single
+// process so no number is recalled from a previous session's notes.
+//
+// CAVEAT, and it is why the isolated numbers exist: a single process warms as it
+// goes, so an engine registered LATE looks faster than the same engine registered
+// FIRST (measured: 377 vs 314 battms for m26). This table is for the correctness
+// and shape columns, which are order-independent. For a timing A/B, run one engine
+// per process by passing its name.
+//
+// Adding an engine: register it here AND add its row to LESSONS_LEARNED.md 5j.
 //
 // Five metric groups, each of which can independently disqualify an engine:
 //   battery  -- shape / cover / cost histogram / crashes on the 519 mutants
@@ -15,7 +22,12 @@ import 'package:squirrel_parser/src/parser/combinators.dart';
 import 'package:squirrel_parser/src/parser/match_result.dart';
 import 'package:squirrel_parser/src/recovery/dot_recovery.dart';
 import 'package:squirrel_parser/src/recovery/skip_recovery.dart' show SkipResult;
+import 'sd3.dart' as g3;
+import 'sd5.dart' as g5;
 import 'sd6.dart' as g6;
+import 'm12.dart' as g12;
+import 'm33.dart' as g33;
+import 'm34.dart' as g34;
 import 'm15.dart' as g15;
 import 'm16.dart' as g16;
 import 'm17.dart' as g17;
@@ -100,59 +112,151 @@ bool covers(MatchResult root, int len) {
 
 /// One engine, behind the uniform surface every variant happens to share.
 class Eng {
-  Eng(this.name, this.loc, this.make);
+  Eng(this.name, this.loc, this.make, {this.bugs = '-'});
   final String name;
   final int loc;
+
+  /// Known defects SPECIFIC to this engine, as comma-separated tags expanded in
+  /// the legend below. Four defects are shared by EVERY engine in the table and
+  /// are deliberately not repeated per row -- see `sharedBugs`.
+  final String bugs;
+
   /// Builds a fresh engine over `rules`/`top`, returning (recover, cost, costOnly).
   final (SkipResult Function(String), int Function(), int Function(String))
       Function(Map<String, Clause>, String) make;
 }
 
+/// Defects every engine in this table has, from `dot` onward. Listing them in the
+/// per-engine column would fill it with the same four tags on every row.
+const sharedBugs = <String>[
+  'PEG   repairs toward the CFG reading of the grammar, not the PEG one:  a '
+      'possessive `*` and a committed `/` are both treated as if any\n'
+      '      alternative/stop were available. 4 of 5 conformance cases wrong, '
+      'identically, in every engine back to `dot` (LESSONS 5b). The\n'
+      '      `cost` column cannot see it -- its grammars are prefix-disjoint, '
+      'so the CFG and PEG readings coincide there.',
+  'RR    right-recursive grammars overflow the native stack (the RRmax column). '
+      'Inherited from the pure parser, which shows the same\n'
+      '      asymmetry; recovery worsens the threshold ~4x because its descent '
+      'adds frames per position. Fix is an explicit worklist.',
+  'd13   `del@13` and `swap@13` of the battery document are never recovered to '
+      'the original shape, which is the 517/519 ceiling.',
+  'K40   `maxCost` is a hard search ceiling (default 40). A repair costing more '
+      'is not found at all: cost -1, and the whole input is\n'
+      '      reported as one error span. It is the only tuning parameter left '
+      'in the m-line.',
+];
+
+/// Tags used in the per-engine `bugs` column. Every tag here is either visible
+/// in a column of the table below or cites the measurement that found it.
+const bugLegend = <String, String>{
+  'LR': 'NON-MINIMAL REPAIRS ON LEFT-RECURSIVE GRAMMARS. The memo cached its own '
+      'in-progress placeholder as a final answer, so the\n'
+      '        left-recursive alternative contributed nothing: cost 2-3 where the '
+      'truth is 1, and from n>=512 no repair at all (-1).\n'
+      '        Visible in the `cost` column -- 32-38/44 against 44/44. Fixed by '
+      'A5 in m23.',
+  'null': 'RECONSTRUCTION DIVERGES ON NULLABLE LEFT RECURSION. `E <- E N` with N '
+      'nullable re-derives E over the same extent at zero\n'
+      '        extra Delta, so the Delta-exact descent takes that cycle forever '
+      '(StackOverflowError). Visible in `tree` (42/44 while\n'
+      '        `cost` is 44/44 -- the cost is right and the witness cannot be '
+      'built). Fixed by the Ref re-entry guard in m24.',
+  'empty': 'RangeError on empty input: the leading-span loop ran to the budget '
+      'without bounding by input length. Found only because a\n'
+      '        degenerate-input gate was written separately from the mutation '
+      'battery, which can never produce the empty string.',
+  'shape': 'loses shape points against the 517/519 line -- see the `shape` '
+      'column. Not a crash; a worse tree on inputs the better\n'
+      '        engines get right.',
+  'slow': 'far off the pace on `battms` and/or `latms`; kept as a recorded '
+      'negative, not as a candidate.',
+  'batt': '20-35% slower on the battery than m26 (which is all K=1), because a '
+      'complete CFG level 0 replaces m26\'s O(1) oracle call.\n'
+      '        Buys latency and large-K time back; the trade is real in both '
+      'directions.',
+  'stack': 'stack ceiling collapses -- see `LRmax`/`RRmax`. m30/m31 fail below '
+      '512 on BOTH recursion directions.',
+  'latent': 'A WRONG-COST DEFECT SITS BEHIND A FLAG. m31 splits reach-cost from '
+      'complete-cost; with `debugShortcut(true)` it reports\n'
+      '        cost 4 on JSON repairs whose truth is 1, because the split removes '
+      'the recomputation that was silently repairing m26\'s\n'
+      '        greedy level 0. Committed with the shortcut OFF, which is why the '
+      'row scores 44/44 and is 15x slower than m26.',
+  'pegfix': 'ATTEMPTS THE PEG FIX AND PAYS FOR IT. The guard consults the '
+      'ORIGINAL input, but PEG semantics quantify over the REPAIRED\n'
+      '        string, so it rejects legitimate repairs: m27 494/519 with hist '
+      '{1:478, 2:41}, m29 492/519 with {1:474, 2:45} and cost\n'
+      '        42/44. Not fixable by a better local predicate (LESSONS 5e).',
+  'over': 'the doubling deepening schedule overshoots whenever K is not a power '
+      'of two, running budget 2K instead of K and paying ~5x\n'
+      '        for it -- the `latms` column, 1071 against m26\'s 249.',
+  'noop': 'DOES NOT DO WHAT IT WAS BUILT FOR. m36 guards PEG semantics at budget '
+      '0 only; round 0 rejects the illegal parse but it costs\n'
+      '        ZERO edits and resurfaces at round 1 where the guard is off, so '
+      'conformance is unchanged (LESSONS 5i).',
+  'LOC': 'not a defect: a regression on the LOC column against m26\'s 382.',
+  'dup': 'not an engine: m26 registered a SECOND time, at the end, to measure '
+      'how much the warming heap flatters a late row.',
+};
+
 final engines = <Eng>[
   Eng('dot', 797, (r, t) {
     final e = DotRecovery(rules: r, topRuleName: t);
     return (e.recover, () => e.lastTotalCost, (s) => (e.recover(s), e.lastTotalCost).$2);
-  }),
+  }, bugs: 'slow,shape'),
+  Eng('sd3', 499, (r, t) {
+    final e = g3.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }, bugs: 'LR,empty'),
+  Eng('sd5', 513, (r, t) {
+    final e = g5.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }, bugs: 'LR,empty'),
   Eng('v6', 526, (r, t) {
     final e = g6.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR'),
+  Eng('m12', 396, (r, t) {
+    final e = g12.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }, bugs: 'LR,shape'),
   Eng('m15', 406, (r, t) {
     final e = g15.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR'),
   Eng('m16', 352, (r, t) {
     final e = g16.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR'),
   Eng('m17', 357, (r, t) {
     final e = g17.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR'),
   Eng('m18', 373, (r, t) {
     final e = g18.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR'),
   Eng('m19', 362, (r, t) {
     final e = g19.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR'),
   Eng('m20', 350, (r, t) {
     final e = g20.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR,slow'),
   Eng('m21', 361, (r, t) {
     final e = g21.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR,slow'),
   Eng('m22', 337, (r, t) {
     final e = g22.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LR'),
   Eng('m23', 371, (r, t) {
     final e = g23.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'null'),
   Eng('m24', 393, (r, t) {
     final e = g24.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
@@ -168,35 +272,50 @@ final engines = <Eng>[
   Eng('m27', 387, (r, t) {
     final e = g27.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'pegfix'),
   Eng('m28', 384, (r, t) {
     final e = g28.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'over'),
   Eng('m29', 390, (r, t) {
     final e = g29.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'pegfix,slow,stack'),
 
   Eng('m30', 382, (r, t) {
     final e = g30.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'slow,stack,shape'),
+
+  Eng('m31', 388, (r, t) {
+    final e = g31.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }, bugs: 'slow,stack,latent'),
 
   Eng('m32', 378, (r, t) {
     final e = g32.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'batt'),
+
+  Eng('m33', 389, (r, t) {
+    final e = g33.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }, bugs: 'slow'),
+
+  Eng('m34', 381, (r, t) {
+    final e = g34.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }, bugs: 'slow,shape'),
 
   Eng('m35', 381, (r, t) {
     final e = g35.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'batt'),
 
   Eng('m36', 390, (r, t) {
     final e = g36.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'noop'),
 
   Eng('m37', 385, (r, t) {
     final e = g37.SuperDot3(rules: r, topRuleName: t);
@@ -206,7 +325,7 @@ final engines = <Eng>[
   Eng('m38', 407, (r, t) {
     final e = g38.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LOC'),
 
   Eng('m39', 396, (r, t) {
     final e = g39.SuperDot3(rules: r, topRuleName: t);
@@ -216,12 +335,12 @@ final engines = <Eng>[
   Eng('m40', 429, (r, t) {
     final e = g40.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LOC'),
 
   Eng('m26b', 382, (r, t) {
     final e = g26.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'dup'),
 ];
 
 // ---------------------------------------------------------------- ground truth
@@ -475,6 +594,7 @@ void main(List<String> args) {
       '$clean/${validDocs.length}',
       '$tOk/$tTot',
       '$rOk/$tTot',
+      e.bugs,
       '${sw.elapsedMilliseconds}',
       total.toStringAsFixed(1),
       '', // /v6, filled once v6's total is known
@@ -489,11 +609,11 @@ void main(List<String> args) {
   final v6 = lat['v6']?.fold(0.0, (a, b) => a + max(b, 0));
   for (var i = 0; i < engines.length; i++) {
     final t = lat[engines[i].name]!.fold(0.0, (a, b) => a + max(b, 0));
-    rows[i][11] = v6 == null ? '-' : '${(t / v6).toStringAsFixed(2)}x';
+    rows[i][12] = v6 == null ? '-' : '${(t / v6).toStringAsFixed(2)}x';
   }
 
   const head = ['engine', 'LOC', 'shape', 'cover', 'crsh', 'cost hist', 'valid',
-    'cost', 'tree', 'battms', 'latms', '/v6', 'LRmax', 'RRmax'];
+    'cost', 'tree', 'bugs', 'battms', 'latms', '/v6', 'LRmax', 'RRmax'];
   final w = [
     for (var c = 0; c < head.length; c++)
       [head[c].length, for (final r in rows) r[c].length].reduce(max)
@@ -510,4 +630,24 @@ void main(List<String> args) {
       'sum of 12 latency\ncases, min-of-5, interleaved.  LRmax/RRmax: largest '
       '1-error input length that\ncompletes without StackOverflowError '
       '(">=4096" means it never overflowed).');
+
+  // The bugs column, expanded. Tags name defects specific to one engine; the
+  // shared list names the four every engine in the table has, which would
+  // otherwise repeat on every row.
+  final used = <String>{for (final e in engines) ...e.bugs.split(',')}
+    ..remove('-');
+  if (used.isNotEmpty) {
+    print('\nbugs -- per-engine:');
+    for (final tag in bugLegend.keys.where(used.contains)) {
+      print('  ${tag.padRight(5)} ${bugLegend[tag]}');
+    }
+  }
+  print('\nbugs -- shared by EVERY engine below, so not repeated per row:');
+  for (final b in sharedBugs) {
+    print('  $b');
+  }
+  print('\nUNPROVEN, not a measured bug: the left-recursion fixed point in every\n'
+      'A5 engine (m23 onward) re-runs until no Delta improves, and that iteration\n'
+      'count has no tight polynomial bound in the derivation -- only the '
+      'measurement\nthat it behaves like a small constant.');
 }
