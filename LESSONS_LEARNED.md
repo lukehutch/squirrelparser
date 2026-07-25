@@ -657,3 +657,42 @@ derivations of the same repaired string. That is precisely the axis along which
 Earley-style parsing costs O(n^3) for ambiguous grammars and O(n^2) for
 unambiguous ones. So the correctness bug and the complexity target have a single
 root cause, and the same fix is the candidate for both.
+
+## 5c. The deepening schedule is not the problem (m28, refuted)
+
+The damage exponent is 2.4-2.6 while a single search round looked like it should
+cost only about K^1.4, so the obvious suspect was iterative deepening: budgets
+0, 1, ... K are all searched to learn an answer only the last one produces, which
+looks like a whole factor of K of repeated work. m28 replaces unit deepening with
+DOUBLING (0, 1, 2, 4, 8, ...), which cannot change the answer -- A3 makes the
+budget a filter on Delta, so the minimum over {cost <= b} is the same integer for
+every b at or above the true optimum.
+
+The answer was indeed identical: shape 517/519, cover 519/519, cost histogram
+{1:503, 2:16}, valid 7/7, truth 44/44, tree 44/44, all equal to m26.
+
+The complexity was identical too, and that is the finding:
+
+| engine | exp in n, c=1 | c=2 | c=4 | c=8 | exp in K, n=253 | n=498 |
+|---|---|---|---|---|---|---|
+| m26 | 1.03 | 1.32 | 1.34 | 1.84 | 2.40 | 2.52 |
+| m28 | 1.20 | 1.27 | 1.36 | 1.85 | 2.39 | 2.54 |
+
+At cost 8 the doubling schedule searches five budgets where unit deepening
+searches nine, and the two take the same time. So the rounds below K contribute
+almost nothing:
+
+    sum over b <= K of T(b)  ~=  T(K)
+
+The cost is dominated by the final round ALONE. Iterative deepening was never
+costing a factor of K, the arithmetic that predicted it was wrong, and the whole
+K^2.4 lives INSIDE a single search round.
+
+m28 is strictly worse in practice despite matching here, because the damage ladder
+uses K in {1,2,4,8,16} -- all powers of two, where doubling never overshoots. On
+the latency suite, whose costs are not powers of two, m28 runs budget 2K instead
+of K and pays 2^2.4 ~= 5.3x for it: 1148 ms against m26's 242 ms. Doubling saves
+nothing and adds overshoot.
+
+DO NOT revisit the deepening schedule. The remaining levers are both intra-round:
+the head-times-tail product in `_chain`, and the O(K) width of the end-maps.

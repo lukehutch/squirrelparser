@@ -19,6 +19,7 @@ import 'dart:math';
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'm26.dart' as g26;
 import 'm27.dart' as g27;
+import 'm28.dart' as g28;
 
 const String jsonGrammar = '''
 JSON <- WS Value WS;
@@ -113,6 +114,7 @@ void main() {
   final engines = <(String, int Function(String) Function())>[
     ('m26', () => g26.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
     ('m27', () => g27.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
+    ('m28', () => g28.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
   ];
 
   // ---------------------------------------------------------------- (a) n, K fixed

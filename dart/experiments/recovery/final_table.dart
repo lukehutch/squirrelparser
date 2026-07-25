@@ -29,6 +29,7 @@ import 'm24.dart' as g24;
 import 'm25.dart' as g25;
 import 'm26.dart' as g26;
 import 'm27.dart' as g27;
+import 'm28.dart' as g28;
 
 const String jsonGrammar = '''
 JSON <- WS Value WS;
@@ -156,6 +157,10 @@ final engines = <Eng>[
   }),
   Eng('m27', 387, (r, t) {
     final e = g27.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+  Eng('m28', 384, (r, t) {
+    final e = g28.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 ];
