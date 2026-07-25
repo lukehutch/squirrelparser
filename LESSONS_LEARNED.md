@@ -429,8 +429,49 @@ tree for each**:
 correctness case above is at most 8 characters. On a left-leaning spine with one
 spurious operator, m26 costs 2.0 / 2.7 / 3.5 / 7.4 ms at n = 32 / 64 / 128 / 256,
 and agrees with the equivalent right-recursive grammar on cost at every size. Left
-recursion costs a **stable 2.6-3.1x multiplier** over the right-recursive form --
-the price of cycle expansion, not a blowup.
+recursion costs a 2.6-3.1x multiplier over the right-recursive form at these sizes.
+
+**That "stable multiplier" reading was then falsified by going 10x further out**
+(`lr_scale2.dart`, `lr_depth.dart`, `lr_depth2.dart`). Three corrections, one of
+which is a hard limit:
+
+1. **The multiplier grows.** Direct left recursion is 4.2-4.8x, not 2.6-3.1x, once
+   n reaches 512-1024. Slowly growing, not flat.
+2. **A cycle spanning more rules is CHEAPER, not dearer.** The suspect claim was
+   that a 3-rule cycle (`E <- A; A <- B '+' F; B <- E`) would expand more per
+   position than a 1-rule self-loop. It expands *less*: 1.65-1.91x versus direct
+   left recursion's 4.2-4.8x. The fixed point iterates per *position*, not per rule
+   in the cycle, so extra rules add a constant factor to one expansion rather than
+   multiplying the number of them.
+3. **Costs still agree with the equivalent right-recursive grammar at every size
+   both complete**, out to n=4096 -- 16x further than the original check. A5's
+   minimality claim holds.
+
+**The hard limit: recursion depth, and right recursion is the binding constraint.**
+Every engine -- m16, m22, m26 alike -- dies with `StackOverflowError` on a
+*right*-recursive grammar at n=2048, while surviving left recursion to n≈4096.
+This is the opposite of the intuition, and it is inherited from the core, not
+introduced by recovery: the pure parser shows the same asymmetry (clean
+right-recursive input overflows at n=8191; clean left-recursive input survives
+n=16383). Left recursion is expanded *iteratively* by the memo fixed point, so it
+costs memo entries; right recursion nests one native frame per character, so it
+costs stack. Recovery inherits the asymmetry and worsens the threshold ~4x, because
+its descent adds frames per position. **This is pre-existing and shared, NOT caused
+by A5** -- but it is a real ceiling and belongs in the paper, not in a footnote.
+The fix, if wanted, is an explicit worklist in place of native recursion; it would
+cost lines and is not built.
+
+**Latency is quadratic in n for a fixed single error**: 13 / 32 / 129 / 565 /
+2467 ms at n = 256 / 512 / 1024 / 2048 / 4096, i.e. ~4.3x per doubling. Clean input
+stays flat (0.2-1.5 ms at every size) because cost-0 subtrees are O(1). So the cost
+tracks *damage x document length*, not damage alone as §5 claims for the n=2114
+one-typo case -- that case is cheap because the damage is local, and this one is
+expensive because a left-leaning spine makes every position reachable.
+
+**A5's absence is worse at scale than §8 reports.** m16 and m22 do not merely return
+a non-minimal cost on left-recursive grammars; from n≥512 they return **-1, no repair
+found within maxCost=40**. The pre-A5 defect is total failure at scale, not mild
+suboptimality.
 
 **Lesson: differential testing between your own variants proves agreement, not
 correctness.** Build one oracle that shares no code with any of them, however
