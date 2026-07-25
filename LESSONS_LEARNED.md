@@ -309,6 +309,55 @@ key. m16 was not a cheaper m15; it was the first version whose value function
 factored. Both were then superseded wholesale, because neither had A4 (the recursion
 is the dot) or A5 (left recursion is the parser's, already solved) — see §3.
 
+## 5a. Complexity
+
+**Regular parsing is unaffected, by construction rather than by measurement.**
+`dart/lib/src/parser/` is byte-identical across every engine (`git status` on
+`dart/lib/` shows only untracked *recovery* files), and no engine subclasses,
+reimplements, or reaches into the parser: m26 touches it through exactly
+`Parser(rules:...)`, `.parse()`, and `Clause.match(parser, pos)`. Nothing can change
+the parser's asymptotics without changing the parser. Recovery is only *invoked*
+after `parse()` reports a syntax error, so a document in L(G) never enters it.
+
+The stronger operational claim is also true and is visible at `m26.dart:310-313`:
+when `b == 0 && dot == 0` the answer is exactly the pure parser's, so a clean
+subtree costs **one memoised oracle call**. On valid input recovery is one pure
+parse plus O(1).
+
+**Recovery's own worst case.** Let `n` be the input length, `|G|` the number of
+dotted items in the grammar (`sum over clauses of arity+1`), and `K` the cost of
+the repair finally returned.
+
+- The memo is keyed by `(item, pos)`, so it holds `O(|G| * n)` entries
+  (`m26.dart:301`).
+- Each entry's value is a map from end position to minimum Delta, so `O(n)` wide.
+- `_chain` computes an entry by pairing every head end with every tail end --
+  `for h in _ends(sub,...) { for t in _ends(c, to, h.key, ...) }` -- which is
+  `O(n^2)` per entry.
+
+So one budget round is **O(|G| * n^3)**, and iterative deepening over `k = 0..K`
+gives **O(K * |G| * n^3)**.
+
+**The span loop was worth a factor of K, not a factor of n.** m15/m16/m17 enumerate
+discarded spans with `for (var j = 0; j <= b && ...)` -- bounded by the *budget*,
+not by the input, because each skipped character costs one edit. So the j-loop adds
+`O(K)`, giving `O(K^2 * |G| * n^3)`, and A1's unit skip edge removes that factor.
+Guessing "an extra factor of n" would have been wrong; the bound is `j <= b`.
+Note also that m17 replaced the loop only in the *forward* pass -- its `_descend`
+(`m17.dart:321`) still enumerates spans -- whereas m26 has no span enumeration at
+all.
+
+**The honest gap: the left-recursion fixed point has no tight polynomial bound in
+this derivation.** `_Entry.ends` re-runs `_compute` while `_improves` holds, and
+`_improves` returns true either when an end is *new* or when a Delta merely *gets
+smaller*. New-ends-only would bound iterations at `O(n)`. Delta decreases are
+bounded only by the Delta range, `O(n * K * M)`, which is far too loose to be worth
+quoting. Measurement says the real behaviour is a small constant: the left- versus
+right-recursive ratio for the same language grew only from ~2.6x to ~4.8x across
+n = 256..4096 (§5), which is inconsistent with `n` iterations. **Closing this is the
+main open theoretical question for the paper** -- either prove that a Delta-only
+improvement cannot occur at a re-entered item, or bound the number that can.
+
 ## 6. Refuted — do not re-litigate
 
 Each of these was built and measured, not reasoned away:
