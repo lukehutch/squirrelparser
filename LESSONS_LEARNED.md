@@ -607,3 +607,53 @@ special-case, not just the inputs.
 4. Port the pure core + the chosen recovery module to Java, Python, TypeScript.
 5. `del@13` / `swap@13` remain unrecovered by every engine — the only known
    accuracy ceiling on this battery.
+
+## 5b. The objective was wrong: every engine repairs toward the CFG, not the PEG
+
+`experiments/recovery/peg_conformance.dart`. A1 defines the objective as the
+minimum edit distance to the nearest member of L(G). For a PEG, L(G) is defined
+by DETERMINISTIC parsing: `*` is greedy and possessive, and `/` commits to the
+first alternative that succeeds. A string that a CFG reading of the grammar would
+derive is frequently not in the PEG language at all.
+
+Measured, with brute-force distance-to-L(G) as truth (membership decided by the
+pure parser, so the truth column cannot be wrong about PEG semantics):
+
+| case | grammar | input | truth | dot | v6 | m15 | m16 | m22 | m26 |
+|---|---|---|---|---|---|---|---|---|---|
+| possessive star | `S <- 'a'* "ab";` | `aab` | >3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| possessive star+ | `S <- 'a'* "ab";` | `aaaab` | >3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| committed choice | `S <- ('a' / "ab") 'b';` | `abb` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| committed nested | `S <- A 'c'; A <- 'a' / "ab";` | `abc` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| greedy optional | `S <- 'a'? "ab";` | `aab` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+4/5 wrong, identically, in every engine back to the `dot` baseline. This is not a
+regression introduced anywhere in the m-line; it is inherited. `bf_check` never
+caught it because none of its five grammars exercise possessiveness -- JSON-like
+grammars are prefix-disjoint at every choice point, so the CFG and PEG readings
+coincide.
+
+Two places produce it:
+
+  * `_chain` offers a free stop at every iteration boundary (`if (_done(c, dot))
+    out[pos] = 0`). Under PEG semantics a repetition may stop only where its body
+    FAILS, so stopping short of the greedy point should cost at least one edit.
+  * `First` unions all alternatives. Under PEG semantics alternative i is
+    available only if alternatives 1..i-1 all fail on the REPAIRED string.
+
+The same flaw is visible in lookahead: `FollowedBy`/`NotFollowedBy` are evaluated
+by asking the oracle about the ORIGINAL input, but the repair changes what the
+lookahead would see.
+
+### Why this is also the complexity story
+
+The free stop is what makes the end-maps O(n) wide at cost 0, and the width of the
+end-map is the entire source of the cubic: the memo holds O(|G|*n) entries, each a
+map of width W, and `_chain` pairs head ends against tail ends for W^2 work per
+entry, giving O(|G|*n*W^2). W = O(n) gives the measured ~n^3.3.
+
+Ignoring determinism makes the effective grammar AMBIGUOUS -- many distinct
+derivations of the same repaired string. That is precisely the axis along which
+Earley-style parsing costs O(n^3) for ambiguous grammars and O(n^2) for
+unambiguous ones. So the correctness bug and the complexity target have a single
+root cause, and the same fix is the candidate for both.
