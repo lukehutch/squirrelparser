@@ -33,6 +33,7 @@ import 'm23.dart' as g23;
 import 'm24.dart' as g24;
 import 'm25.dart' as g25;
 import 'm26.dart' as g26;
+import 'm27.dart' as g27;
 
 const String jsonGrammar = '''
 JSON <- WS Value WS;
@@ -92,6 +93,7 @@ final engines = <(String, Run Function(Map<String, Clause>, String))>[
   ('m24', (r, t) => g24.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m25', (r, t) => g25.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m26', (r, t) => g26.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m27', (r, t) => g27.SuperDot3(rules: r, topRuleName: t).recoverCost),
 ];
 
 /// Best-of-3 milliseconds, or null if it could not complete at this size.
