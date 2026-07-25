@@ -801,3 +801,64 @@ so the shortcut becomes sound, the recomputation becomes unnecessary, and the co
 drops to the Theta(|G|*n*K) that m30 already demonstrated is reachable. This is the
 next engine to build, and it is a DELETION: no budget parameter, no `_filter`, no
 `_Entry.budget`.
+
+
+## 5g. The budget is NOT the lever (m33, m34 refuted)
+
+m32 made level 0 complete, which removes the unsoundness of 5f and makes coarsening
+the budget legal. Passing a LARGER budget down is always sound -- the caller filters
+every combination against its own `total < limit` -- so the budget an entry is asked
+with need only be an upper bound. That predicted a clean win: round the budget up and
+an entry is recomputed O(log K) or O(1) times instead of O(K).
+
+Both were built and both are much WORSE. JSON, n=253, best-of-4 ms:
+
+     K    m26     m33 (powers of 2)   m34 (0 or full)
+     1    4.2       3.6                  3.5
+     2    6.5       8.2                 90.2
+     4   35.4     177.0                404.0
+     8  213.1    1608.3               2143.1
+    16 1703.5   11359.2               8975.1
+
+The exact budget is not bookkeeping overhead -- it is the DOMINANT PRUNING MECHANISM,
+and the K^0.47 recomputation it costs buys a far larger reduction in per-entry
+exploration. This also retro-explains m30 (14x) and m31: all three failures are the
+same mistake, which was treating budget-keyed recomputation as waste.
+
+CONCLUSION, and it closes a line of attack that consumed m28, m30, m31, m33 and m34:
+THE BUDGET IS NOT THE LEVER. Do not attack the deepening schedule, the budget
+arithmetic, or the memo key again. The remaining lever is per-entry work -- the
+head-times-tail product in `_chain` and the O(K) width of the end-maps.
+
+## 5h. m32 / m35: a complete level 0
+
+m32 deletes m26's `b == 0` oracle fast path and instead guards SUB and FAB with
+`b >= 1`, so level 0 is the ordinary computation with the edit moves switched off:
+complete at ANY dot, memoised in the same entries, carrying the same LR fixpoint.
+Net change is a deletion plus two guards. m35 adds one field: the budget-0 value is
+budget-free, so it is cached for the whole run instead of being overwritten by the
+first larger-budget request and recomputed every round.
+
+Measured against m26 (final_table, same run):
+
+  metric        m26     m32     m35
+  shape         517     517     517
+  cover         519     519     519
+  cost hist   {1:503,2:16} identical on all three
+  valid         7/7     7/7     7/7
+  cost        44/44   44/44   44/44
+  tree        44/44   44/44   44/44
+  battms        349     421     420
+  latms       248.6   218.8   212.6
+  LRmax      >=4096  >=4096  >=4096
+  RRmax         512     512     512
+
+So: every correctness metric ties, latency is 14% better, large-n/high-K time is
+10-17% better (scale2d: at n=4027, K=8, m32 31746 ms vs m26 36519; K=4, m35 1232 vs
+1490), and battery throughput is 20% WORSE because the complete level-0 traversal
+replaces an O(1) oracle call and the battery is all K=1.
+
+m35 does NOT beat m26 on all metrics. It buys robustness -- m26's greedy level 0 is
+incomplete, and it is only correct in practice because recomputation happens to cover
+it -- and it pays 20% on the cheapest workload for that. The n- and K-exponents are
+unchanged (exponent in n at K=8: m26 1.86, m32 1.88, m35 not completed).

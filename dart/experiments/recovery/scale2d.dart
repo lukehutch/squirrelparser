@@ -19,6 +19,8 @@ import 'dart:math';
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'm26.dart' as g26;
 import 'm29.dart' as g29;
+import 'm32.dart' as g32;
+import 'm35.dart' as g35;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -114,9 +116,8 @@ void main() {
   final rules = MetaGrammar.parseGrammar(jsonGrammar);
   final engines = <(String, int Function(String) Function())>[
     ('m26', () => g26.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
-    ('m27', () => g27.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
-    ('m28', () => g28.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
-    ('m29', () => g29.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
+    ('m32', () => g32.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
+    ('m35', () => g35.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
   ];
 
   // ---------------------------------------------------------------- (a) n, K fixed
