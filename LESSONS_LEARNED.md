@@ -19,6 +19,12 @@ measured, not estimated; anything inferred is labelled as such.
   in the same commit.** The table is the project's only complete record of what
   each variant costs and what is wrong with it; a variant measured but never
   tabulated gets re-invented later.
+- **APPEND to §5j; do not regenerate it.** The old engines are not changing, so
+  re-running all 32 rows costs ~12 minutes and rewrites settled numbers with the
+  day's drift. Run the new engine *plus `m26` as a reference*
+  (`final_table.dart m41,m26`) and append both rows; the reference row is what
+  makes the new one comparable to what is already there, because absolute
+  milliseconds are not portable across occasions (§5j, m39 vs m40).
 - Run Dart from `dart/`:
   `dart --packages=<repo>/dart/.dart_tool/package_config.json <file>.dart`.
   `dart analyze` is useless on scratch experiment files (package URIs
@@ -965,7 +971,7 @@ and are listed once below rather than repeated 32 times.
 | m36 | 390 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | noop | 426 | 251.9 | 0.53x | >=4096 | 512 |
 | m37 | 385 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | — | 350 | 255.5 | 0.54x | >=4096 | 512 |
 | m38 | 407 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | LOC | 280 | 252.2 | 0.53x | >=4096 | 512 |
-| m39 | 396 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | — | 283 | 255.5 | 0.54x | >=4096 | 512 |
+| m39 | 396 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | LOC | 283 | 255.5 | 0.54x | >=4096 | 512 |
 | **m40** | 429 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | LOC | 309 | 259.6 | 0.55x | >=4096 | 512 |
 | m26b | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 360 | 267.1 | 0.56x | >=4096 | 1024 |
 
@@ -1000,6 +1006,48 @@ and are listed once below rather than repeated 32 times.
 left-recursion fixed point in every A5 engine (m23 onward) re-runs until no Delta
 improves, and that iteration count has no tight polynomial bound in this
 derivation — only the measurement that it behaves like a small constant (§5a).
+
+### m40 over m39 does not survive a paired measurement
+
+m39 is m40 without the one cached field (`_Entry.zero`, the budget-0 walk held for
+the whole run). m40 was picked over it on the strength of "the cache is worth
+~10%" -- and that comparison was **between measurement occasions**, m39's numbers
+taken on one and m40's on another. The full table above already contradicts it:
+m39 is registered EARLIER than m40, so on a colder heap, and still reports 283
+battms against 309.
+
+Paired, one engine per process, three runs each, same session:
+
+| | battms | latms | LOC |
+|---|---|---|---|
+| m39 | 302 / 304 / 312 | 258.8 / 249.8 / 234.1 | 396 |
+| m40 | 336 / 337 / 316 | 250.4 / 240.6 / 229.8 | 429 |
+
+So m39 wins the battery by ~8% with nearly non-overlapping ranges, m40 wins
+latency by ~3% with ranges that overlap heavily, and m39 wins LOC -- though only
+partly on merit: m40's 429 includes the comment-and-rename pass and m39's 396 does
+not, which is worth roughly +30 lines.
+
+The obvious defence of the cache is that the battery is K=1, where it can only
+cost a field, and that it must earn its keep when iterative deepening runs many
+rounds. That was tested and it does not (`_k39.dart`, n=498, min-of-5, isolated,
+two runs each):
+
+| engine | K=1 | K=2 | K=4 | K=8 |
+|---|---|---|---|---|
+| m26 | 8.6 / 8.2 | 16.2 / 18.0 | 86.4 / 80.7 | 560.9 / 499.8 |
+| m39 | 6.4 / 8.0 | 12.1 / 14.0 | 77.9 / 73.1 | 539.3 / 494.3 |
+| m40 | 6.8 / 6.8 | 12.7 / 15.4 | 76.2 / 74.6 | 492.1 / 495.1 |
+
+m39 and m40 are inside each other's spread at every K; both beat m26 everywhere.
+**The cache is not measurable on any workload tried.** Verdict: m39 is the better
+engine of the two on present evidence, and the `-` in m39's bugs column was itself
+an error -- 396 is a LOC regression against m26's 382 exactly as m40's 429 is, and
+the tag was missing. Corrected above.
+
+**Lesson, and it is the same one as the position bias:** a comparison assembled
+from two occasions is not a comparison. Both engines must be measured in the same
+session, one per process, before a winner is declared.
 
 ### Three things this table says that no single row does
 

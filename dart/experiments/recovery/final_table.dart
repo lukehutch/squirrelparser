@@ -8,7 +8,12 @@
 // and shape columns, which are order-independent. For a timing A/B, run one engine
 // per process by passing its name.
 //
-// Adding an engine: register it here AND add its row to LESSONS_LEARNED.md 5j.
+// ADDING AN ENGINE: register it here, then run THIS engine plus m26 as a
+// reference (`final_table.dart m41,m26`) and APPEND those two rows to
+// LESSONS_LEARNED.md 5j. Do not regenerate the whole table -- the old engines are
+// not changing, so re-measuring them only burns ~12 minutes and rewrites their
+// timings with the drift of the day. The reference row is what makes a newly
+// appended row comparable to the ones already there.
 //
 // Five metric groups, each of which can independently disqualify an engine:
 //   battery  -- shape / cover / cost histogram / crashes on the 519 mutants
@@ -330,7 +335,7 @@ final engines = <Eng>[
   Eng('m39', 396, (r, t) {
     final e = g39.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
+  }, bugs: 'LOC'),
 
   Eng('m40', 429, (r, t) {
     final e = g40.SuperDot3(rules: r, topRuleName: t);
