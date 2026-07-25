@@ -381,6 +381,13 @@ tree for each**:
 | nullable left recursion | 6 | 6/6 | 6/6 | **6/6** |
 | tiny JSON | 10 | 10/10 | 10/10 | **10/10** |
 
+`lr_scale.dart` then checks that the fixed point stays cheap at scale, since every
+correctness case above is at most 8 characters. On a left-leaning spine with one
+spurious operator, m26 costs 2.0 / 2.7 / 3.5 / 7.4 ms at n = 32 / 64 / 128 / 256,
+and agrees with the equivalent right-recursive grammar on cost at every size. Left
+recursion costs a **stable 2.6-3.1x multiplier** over the right-recursive form --
+the price of cycle expansion, not a blowup.
+
 **Lesson: differential testing between your own variants proves agreement, not
 correctness.** Build one oracle that shares no code with any of them, however
 slow — and choose its test grammars to vary the *structural feature* your engines
