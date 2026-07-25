@@ -347,6 +347,43 @@ Note also that m17 replaced the loop only in the *forward* pass -- its `_descend
 (`m17.dart:321`) still enumerates spans -- whereas m26 has no span enumeration at
 all.
 
+**Measured exponents** (`complexity.dart`, log-log slope over doubling JSON
+documents, n = 253..4027; Theta(n) damage ladder n = 79..498 with every 64th
+character corrupted):
+
+| engine | clean^p | 1err^p | nerr^p | nerr@498 ms |
+|---|---|---|---|---|
+| m26 | 0.97 | 0.34 | 3.42 | 325 |
+| m25 | 0.93 | 0.46 | 3.49 | 318 |
+| m22 | 1.04 | 0.52 | 3.30 | 284 |
+| m19 / m18 | 0.98 / 0.89 | 0.47 / 0.45 | 3.29 / 3.33 | 297 / 305 |
+| m16 / m15 | 1.07 / 0.98 | 0.87 / 0.78 | 3.62 / 3.57 | 456 / 435 |
+| m21 / m20 | 0.96 / 0.93 | 0.41 / 0.28 | 2.91 / 2.90 | 329 / 387 |
+| v6 | 0.86 | 0.15 | 3.58 | 332 |
+| dot | 0.75 | 0.24 | 3.90 | **62860** |
+
+Three readings, one of which corrects §5:
+
+- **Clean input is linear.** Every engine sits at ~1.0, which is what a packrat
+  core should give. The `clean/pure` ratio came out at 0.48-0.72x -- *below* 1.0,
+  which is impossible on the merits and is an artifact of measurement order: the
+  pure reference runs first, JIT-cold, so its milliseconds are inflated. The
+  defensible claim is "no asymptotic penalty on valid input," which the `b == 0`
+  fast path establishes at the source level anyway; the ratio column should not be
+  quoted as evidence recovery beats parsing.
+- **THE EXPONENT IS SET BY THE GRAMMAR, NOT BY THE DAMAGE.** A single typo on JSON
+  gives an exponent of 0.15-0.87, i.e. essentially free -- but the same single typo
+  on the left-recursive arithmetic spine measured ~2.1 (§5). So the earlier claim
+  "recovery cost tracks the amount of damage, not the document size" is right for a
+  grammar whose structure localises damage and WRONG for a left-leaning spine, where
+  every position is reachable from every other. Both statements need the grammar
+  shape attached to be meaningful.
+- **Theta(n) damage measures ~n^3.3, under the analytic n^4.** With K growing
+  proportional to n, `O(K * |G| * n^3)` predicts n^4; measured 2.9-3.9. The bound is
+  not tight but it is not violated. Note m20/m21 have the *best* exponents here
+  (2.90, 2.91) while being the slowest in absolute terms -- an exponent and a
+  constant are different things, and rejecting them was still correct.
+
 **The honest gap: the left-recursion fixed point has no tight polynomial bound in
 this derivation.** `_Entry.ends` re-runs `_compute` while `_improves` holds, and
 `_improves` returns true either when an end is *new* or when a Delta merely *gets

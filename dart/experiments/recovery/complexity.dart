@@ -62,10 +62,11 @@ String doc(int k) {
 String oneErr(String d) =>
     '${d.substring(0, d.length ~/ 2)}Q${d.substring(d.length ~/ 2 + 1)}';
 
-/// Every 16th character replaced: damage is Theta(n).
+/// Every 64th character replaced: damage is Theta(n), but sparse enough that the
+/// largest rung is still reachable -- K ~ n/64 rather than n/16.
 String manyErr(String d) {
   final b = d.split('');
-  for (var i = 8; i < b.length; i += 16) {
+  for (var i = 32; i < b.length; i += 64) {
     b[i] = 'Q';
   }
   return b.join();
@@ -144,7 +145,7 @@ void main() {
     errIn.add(oneErr(d));
   }
   // Theta(n) damage is far more expensive, so it gets a shorter ladder.
-  for (final k in [2, 4, 8, 16, 32]) {
+  for (final k in [2, 4, 8, 16]) {
     final d = doc(k);
     manyNs.add(d.length);
     manyIn.add(manyErr(d));
@@ -202,5 +203,8 @@ void main() {
   print('\nclean^p: empirical exponent on valid input -- must equal the pure '
       "parser's.\nclean/pure: constant factor recovery adds on the common path.  "
       '1err^p: exponent\nwith O(1) damage.  nerr^p: exponent with Theta(n) damage '
-      '(every 16th char).');
+      '(every 64th char).\n'
+      'CAVEAT on clean/pure: the pure reference runs FIRST, JIT-cold, so its ms are\n'
+      'inflated and the ratio is biased low. Ratios below 1.0 are an ordering\n'
+      'artifact, not evidence that recovery beats parsing.');
 }
