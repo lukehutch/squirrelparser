@@ -974,6 +974,15 @@ and are listed once below rather than repeated 32 times.
 | m39 | 396 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | LOC | 283 | 255.5 | 0.54x | >=4096 | 512 |
 | **m40** | 429 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | LOC | 309 | 259.6 | 0.55x | >=4096 | 512 |
 | m26b | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 360 | 267.1 | 0.56x | >=4096 | 1024 |
+| m26c | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 378 | 255.0 | — | >=4096 | 512 |
+| **m41** | **379** | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | **243** | **153.9** | — | >=4096 | 1024 |
+
+The last two rows are a later, separate run (`final_table.dart m41,m26`, appended
+per the maintenance rule rather than regenerating 32 settled rows). `m26c` is the
+m26 reference measured in that same process, so m41 is comparable to `m26c` and
+not to the older rows; `/v6` is blank because v6 was not in the run. m41 was
+registered second, so its timings there carry the warming-heap bias — the isolated
+paired measurement below is the one to quote.
 
 ### Bugs shared by EVERY row, so not repeated per engine
 
@@ -1066,3 +1075,112 @@ session, one per process, before a winner is declared.
    noise, and a depth number is only comparable between engines measured at the
    same position. Correctness columns (shape/cover/hist/valid/cost/tree) were
    identical across both runs and are order-independent.
+
+## 5k. m41: recovery is the parser over a wider value, plus three insertions
+
+**m41 is the first engine that beats m26 on every metric.** LOC 379 against 382,
+and it is faster on both timing columns by a wide margin. Every correctness column
+ties, and PEG conformance is identical to m26 on all five cases (`_peg41.dart`:
+0 differences), so the shared **PEG** flaw is neither fixed nor worsened.
+
+Isolated, one engine per process, three runs each, interleaved, same session:
+
+| engine | LOC | battms | latms |
+|---|---|---|---|
+| **m41** | **379** | **276 / 275 / 270** | **146.7 / 146.5 / 151.1** |
+| m26 | 382 | 391 / 365 / 368 | 255.3 / 252.7 / 253.7 |
+| m39 | 396 | 343 / 302 / 309 | 260.3 / 247.7 / 247.3 |
+
+Ranges do not overlap on either column. m41 is ~1.35x faster than m26 on the
+battery and **~1.7x faster on latency**, against the whole m-line's 240–270ms
+plateau that no engine from m17 to m40 moved.
+
+### The framing: THREE INSERTIONS into the pure parser
+
+Every earlier engine was described as a recovery algorithm that borrows from the
+parser. m41 is described the other way round, and the description is the reason it
+is smaller:
+
+- **I1 THE VALUE.** A match becomes "the cheapest repair to each end position"; a
+  mismatch becomes the empty set. The parser's fixed-point test — *the match did
+  not get longer* — becomes *no end is new and no price is lower*. **Every other
+  line of `MemoEntry` is copied verbatim**, so left recursion is solved for
+  recovery by the observation that solved it for parsing, and no cycle reasoning
+  appears anywhere else in the engine.
+- **I2 A TERMINAL MAY LIE.** One that does not match may consume a character
+  anyway (SUB) or consume nothing (FAB). Price 1 each.
+- **I3 A SEQUENCE MAY DISCARD.** Before any element, one character may be consumed
+  by no terminal (SKIP, price 1) and the same element retried. Only a sequence has
+  a "between", so this is the only combinator carrying any recovery logic.
+
+### Currying is what makes I3 free — the dot was a symptom, not a mechanism
+
+I3 needs a memo entry per element boundary; the parser memoizes whole clauses.
+Every engine from `dot` to m40 bought that with an explicit dot: `_memoBase`
+blocks, `_nextDot`, `_hasElement`, `_canFinish`, `_elementAt`, `_alternatives`,
+and per-clause dot arithmetic. **Curry the sequence into binary `Cons(head, tail)`
+cells and every element boundary already IS a clause**, so the memo key goes back
+to the parser's own `(clause, position)` and all of that machinery is deleted.
+
+Three further unifications fall out, each deleting a concept rather than lines:
+
+1. **A REPETITION IS A CONS WHOSE TAIL IS ITSELF** (`identical(node.tail, node)`).
+   That single identity replaces `requireOne` (one Cons in front of the loop),
+   "may this item stop here", "does an element still follow", and the parser's
+   zero-width repetition cut.
+2. **There is no node kind for a rule reference.** In the parser a `Ref` is
+   distinguished by being the only clause that consults the memo; here every node
+   consults it, so a Ref is left being an alternation among one. Three node kinds
+   remain: terminal, cons, alternation.
+3. **Every node denotes a clause** — the cons cell at element *i* denotes the
+   sequence's suffix from *i*, which is a clause in its own right. So `orig` is
+   total, and A4's budget-0 walk is ONE oracle call for any node, not a hand-rolled
+   chain walk.
+
+Acceptance is also asked of the oracle now: `h(c)` matches each terminal against a
+one-character input and accepts iff it consumes it, so the engine no longer
+re-implements what a `CharSet`, `Char`, `Str` or `AnyChar` means (`_accepts`,
+deleted). That is both shorter and strictly more correct — the old ternary chain
+crashed on a zero-length `Str` and answered `true` for any terminal kind it did
+not enumerate.
+
+### `_withinBudget` was dead weight, and it was expensive
+
+Filtering a memoized map down to a smaller budget on every reuse is unnecessary:
+every consumer already rejects over-budget values (`_chain` guards `total < limit`
+and gets `{}` from a negative budget; the alternation union now applies the same
+limit; reconstruction compares Δ exactly). Deleting it changes no answer and is a
+large part of the latency win — the m-line had been re-filtering and re-allocating
+maps on every memo hit since m23.
+
+### The zero-width cut is an optimization, not a rule (measured)
+
+Deleting `if (loops && head.key == pos) continue;` from the forward pass changes
+**no reported cost, tree or span** — 517/519, 519/519, 0 crashes, {1:503, 2:16},
+7/7, 44/44, 44/44, all identical. A zero-width iteration re-enters the identical
+state, which is exactly left recursion, and I1's fixed point absorbs it: the
+re-composed candidate is never cheaper, so no Δ improves and the iteration
+converges. **The parser's own zero-width cut and this one are therefore the same
+observation as the left-recursion cycle check, not a separate rule.** It is kept
+only because latency doubles without it (300ms against 148ms). Reconstruction, by
+contrast, genuinely needs it: a zero-width iteration there does not decrease Δ or
+advance the position, so a Δ-exact descent would recurse forever.
+
+### Refuted: an exactness bit cannot make the budget a memo-free dimension
+
+The left-recursion trick communicates an arbitrary distance up the recursion tree
+in O(1) by setting a bit on an ancestral memo entry. The obvious analogue for
+recovery is a **budget-exactness bit**: mark an entry exact iff nothing below it
+was discarded for exceeding the budget, propagated by a monotone global counter
+exactly as `memoVersion` propagates — an exact entry could then be reused at every
+budget instead of only at budgets it was computed at or above. Its stronger form
+stores the minimum dropped cost `d`, making the entry valid at every budget `< d`.
+
+**Both degenerate to nothing, by construction.** FAB is available at price 1 at
+every position, so candidates exist at *every* cost: at budget `b`, a head costing
+1 composed with a tail costing `b` always produces a dropped candidate at cost
+`b+1`, giving `d = b+1` and validity only up to `b` — which is what the entry
+already records. **No entry is ever budget-exact.** This also explains m30, which
+computed a complete level 0 to avoid exactly this recomputation and measured 14x
+slower. The budget stays a filter on Δ (A3), not a memo key, and iterative
+deepening keeps re-descending. Do not re-litigate.

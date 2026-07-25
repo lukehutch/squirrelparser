@@ -55,6 +55,7 @@ import 'm37.dart' as g37;
 import 'm38.dart' as g38;
 import 'm39.dart' as g39;
 import 'm40.dart' as g40;
+import 'm41.dart' as g41;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -341,6 +342,11 @@ final engines = <Eng>[
     final e = g40.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LOC'),
+
+  Eng('m41', 379, (r, t) {
+    final e = g41.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
 
   Eng('m26b', 382, (r, t) {
     final e = g26.SuperDot3(rules: r, topRuleName: t);
