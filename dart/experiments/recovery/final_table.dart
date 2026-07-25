@@ -30,6 +30,7 @@ import 'm25.dart' as g25;
 import 'm26.dart' as g26;
 import 'm29.dart' as g29;
 import 'm30.dart' as g30;
+import 'm31.dart' as g31;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -172,6 +173,11 @@ final engines = <Eng>[
 
   Eng('m30', 382, (r, t) {
     final e = g30.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m31', 0, (r, t) {
+    final e = g31.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 ];

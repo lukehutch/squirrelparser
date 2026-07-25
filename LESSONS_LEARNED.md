@@ -762,3 +762,42 @@ The cause is the same as m27's and is NOT fixable by a better predicate: `_mayFa
 consults the ORIGINAL input, but PEG semantics quantify over the REPAIRED string. A
 correct guard must ask whether the body fails on s', which depends on edits the
 continuation has not chosen yet. DO NOT retry this as a local predicate.
+
+
+## 5f. m26's A3 violation is load-bearing (m31)
+
+m26 stores two different quantities in the single integer `b`:
+
+  * the cost to REACH an item -- top-down, left-to-right, path-dependent. This is
+    what bounds the descent and keeps the search local to the damage.
+  * the cost to COMPLETE an item -- bottom-up. This is the end-map, and A3 is
+    exactly the claim that it must not be keyed on any budget.
+
+m31 split them: reach counts UP and is passed only to the fast path, while every
+entry is computed at the round budget and therefore exactly once. It is WRONG --
+JSON repairs come back at cost 4 where the truth is 1. Toggling only the shortcut
+(`_shortcut`, left in the file for exactly this purpose) restores agreement with
+m26 on every case tried, which localises the fault to the shortcut alone.
+
+The cause: m26's `b == 0 && dot == 0` fast path returns `c.match(_parser, pos)`, the
+SINGLE GREEDY end. But the budget-free cost-0 value of a Repetition has an end at
+EVERY iteration boundary, and that of a First has one per alternative. m26 memoises
+that impoverished answer under budget 0, and then recomputes the entry when it is
+later asked at a larger budget -- and THE RECOMPUTATION IS WHAT RESTORES THE MISSING
+COST-0 ENDS.
+
+So the A3 violation is not an accident to be deleted. It is the mechanism that masks
+an incomplete base case. That explains both failures at once:
+
+  * m30 deleted the recomputation and paid 14x and the stack.
+  * m26 keeps the recomputation and pays K^0.47 in the computation count.
+
+Both are symptoms of ONE unsound base case, not two independent problems.
+
+THE FIX THIS IDENTIFIES: make level 0 a real, memoised, budget-free evaluation --
+`_ends0(c, dot, pos)`, the same `_compute` with every edit move disabled -- instead of
+a single oracle call. It is then complete at ANY dot (m26's is valid only at dot 0),
+so the shortcut becomes sound, the recomputation becomes unnecessary, and the count
+drops to the Theta(|G|*n*K) that m30 already demonstrated is reachable. This is the
+next engine to build, and it is a DELETION: no budget parameter, no `_filter`, no
+`_Entry.budget`.
