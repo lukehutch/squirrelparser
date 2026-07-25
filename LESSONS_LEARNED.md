@@ -696,3 +696,69 @@ nothing and adds overshoot.
 
 DO NOT revisit the deepening schedule. The remaining levers are both intra-round:
 the head-times-tail product in `_chain`, and the O(K) width of the end-maps.
+
+
+## 5d. The budget is two mechanisms wearing one name (m29, m30)
+
+A3 says the budget is "a FILTER on Delta, NOT a memo key". m26 violates this: `_chain`
+recurses with `b - _cost(h.value)` and `b - 1`, and `_Entry.ends` recomputes whenever
+the stored budget differs from the requested one, so one (item, pos) is recomputed once
+per distinct budget it is asked with.
+
+`where_is_k.dart` measured the violation rather than assuming it. m26's `_compute` count
+grows 2.87x / 3.26x / 2.63x / 2.41x per doubling of K -- steps ~ K^1.47 -- while time
+grows K^2.4, leaving ~K^0.93 in work per computation (map width). BOTH mechanisms are
+real and they split the exponent roughly evenly.
+
+m30 = m26 with the budget held constant down the recursion, and nothing else. Result:
+
+  * Computation count becomes EXACTLY Theta(|G| * n * K). "x prev" is 2.02-2.04 at every
+    rung and at both document sizes, and steps/K is flat (~82k at n=253, ~157k at n=498,
+    ratio 1.9 ~ n). This is the banded-Levenshtein bound, and it is a real win: the
+    K-exponent in the computation count drops 1.47 -> 1.00.
+  * Answers are unchanged: hist {1:503, 2:16}, truth 44/44, tree 44/44, valid 7/7,
+    shape 516/519 vs 517. So constant-budget is semantically equivalent, as A3 implies.
+  * And it is 14x slower on the battery (4891 ms vs 345), 8.5x on latency, and its stack
+    ceiling collapses from >=4096 to <512.
+
+The reason is the finding, and it is worth more than the engine: THE BUDGET IS DOING TWO
+UNRELATED JOBS.
+
+  (1) It filters Delta. This is the job A3 names, and the job that must not key the memo.
+  (2) It BOUNDS THE DESCENT. `_compute`'s `b == 0 && dot == 0` fast path answers straight
+      from the oracle with no recursion at all, so a budget that decreases as cost
+      accumulates is what collapses the search back into a single pure parse once the
+      budget runs out. That is what localizes recovery to the damage neighbourhood
+      (5726 computations at K=1 where |G|*n is ~79000) and what terminates the descent.
+
+Removing the budget arithmetic fixes job (1) and destroys job (2). The two must be
+separated, not merged and not deleted.
+
+The design this points at: `_ends(c, dot, pos, 0)` IS the pure parser. So the budget is
+not a bound at all -- it is the DEGREE of a lift, level 0 being the parser and level k
+being "the parser plus one edit, over level k-1". An entry then stores a value indexed by
+degree and ACCUMULATES: degree 0 stays O(1) via the oracle (job 2 preserved), and no
+degree is ever recomputed when a higher one is requested (job 1 fixed). Iterative
+deepening stops being an outer loop and becomes the structure itself.
+
+## 5e. m29: the PEG fix, and what it costs
+
+PEG commits in three places that look like three features:
+
+    e1 / e2   is  e1 / (!e1 e2)        ordered choice
+    e?        is  e  / (!e)            greedy option
+    e*        stops exactly where !e   possessive repetition
+
+All three say the same thing -- the LATER option is reachable only where the EARLIER one
+fails -- so all three are negative lookahead and need ONE predicate, not three rules.
+m29's `_mayFall` is that predicate, and `First`, `Optional` and `Repetition` become one
+loop with the empty branch of `?` reached by falling off its end.
+
+It fixes 3 of the 5 conformance cases (committed choice, committed nested, greedy
+optional; the two star cases have an EMPTY PEG language, so no finite answer is correct).
+It costs what m27 cost: shape 492/519, hist {1:474, 2:45}, truth 42/44.
+
+The cause is the same as m27's and is NOT fixable by a better predicate: `_mayFall`
+consults the ORIGINAL input, but PEG semantics quantify over the REPAIRED string. A
+correct guard must ask whether the body fails on s', which depends on edits the
+continuation has not chosen yet. DO NOT retry this as a local predicate.

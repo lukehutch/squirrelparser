@@ -18,6 +18,7 @@
 import 'dart:math';
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'm26.dart' as g26;
+import 'm29.dart' as g29;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -115,6 +116,7 @@ void main() {
     ('m26', () => g26.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
     ('m27', () => g27.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
     ('m28', () => g28.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
+    ('m29', () => g29.SuperDot3(rules: rules, topRuleName: 'JSON').recoverCost),
   ];
 
   // ---------------------------------------------------------------- (a) n, K fixed
