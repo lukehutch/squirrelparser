@@ -976,6 +976,8 @@ and are listed once below rather than repeated 32 times.
 | m26b | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 360 | 267.1 | 0.56x | >=4096 | 1024 |
 | m26c | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 378 | 255.0 | — | >=4096 | 512 |
 | **m41** | **379** | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | **243** | **153.9** | — | >=4096 | 1024 |
+| **m42** | 381 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | 280 | 174.5 | — | >=4096 | 1024 |
+| m26d | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 379 | 255.3 | — | >=4096 | 512 |
 
 The last two rows are a later, separate run (`final_table.dart m41,m26`, appended
 per the maintenance rule rather than regenerating 32 settled rows). `m26c` is the
@@ -983,6 +985,14 @@ m26 reference measured in that same process, so m41 is comparable to `m26c` and
 not to the older rows; `/v6` is blank because v6 was not in the run. m41 was
 registered second, so its timings there carry the warming-heap bias — the isolated
 paired measurement below is the one to quote.
+
+`m42` and `m26d` are a third, later occasion, one engine per process, three runs
+each; the number quoted is the median (m42 battms 270/305/280, latms
+174.5/173.2/176.0; m26d battms 383/379/377, latms 255.3/253.3/259.2). `m26d` is
+the same engine as `m26`/`m26b`/`m26c` again, so it is both the reference for m42
+and a fourth confirmation that RRmax moves with registry position and nothing
+else. m41 measured on that same occasion: battms 297/282/276, latms
+142.1/144.6/152.3 — see §5l for the comparison that matters.
 
 ### Bugs shared by EVERY row, so not repeated per engine
 
@@ -1184,3 +1194,145 @@ already records. **No entry is ever budget-exact.** This also explains m30, whic
 computed a complete level 0 to avoid exactly this recomputation and measured 14x
 slower. The budget stays a filter on Δ (A3), not a memo key, and iterative
 deepening keeps re-descending. Do not re-litigate.
+
+## 5l. m42: there is no third edit
+
+m41 was stated as **three insertions** into the pure parser: I1 the value, I2 a
+terminal may lie (SUB/FAB), I3 a sequence may discard (SKIP). m42 deletes I3.
+**Deletion is not a primitive and needs no rule of its own** — it is I2's SUB,
+applied to `Nothing`:
+
+> To substitute a terminal is to consume the character in front of it and emit
+> what the terminal accepts instead. What `Nothing` accepts is the empty string.
+> So *its* substitution consumes a character and emits nothing — which is
+> deletion, exactly, at the same price of one.
+
+Repeat that move — a cons whose tail is itself, which is all a repetition is —
+and a run of characters has been discarded, one unit each. That two-node object
+is `_junk`, and `_compute` gains **no case** for it.
+
+The tell that this is the right decomposition: **m41 already contained the
+exclusion that forbids it.** m41 built terminals with
+`_term(clause, clause is Terminal && clause is! Nothing)` — every terminal may
+lie *except* `Nothing` — and then hand-wrote I3 to supply what that clause had
+just been forbidden to do. m42 deletes the exclusion and the insertion together.
+
+A first attempt used `CharSet([])`, the empty character class, on the argument
+that a class accepting nothing can only ever consume a character it does not
+accept. It measured identically and it is **wrong on the semantics**: SUB emits
+some character the terminal accepts, and the empty class accepts none, so there
+is nothing for it to emit and the repaired string is not defined. `Nothing`
+accepts exactly one thing, the empty string, which is what a discarded character
+must leave behind. Prefer the derivation that survives being read.
+
+### SUB stopped being conditional, and that is what made it work
+
+m41 (and every engine before it) guarded SUB with `if (m.isMismatch && ...)`: only
+a terminal that fails may substitute. That guard is a **dominance argument in
+disguise**, and it is only valid for terminals that match exactly one character —
+if the terminal already consumes `input[pos]` for free, SUB reaching the same end
+at price 1 is pointless. `Nothing` matches with length 0, so its SUB reaches a
+*different* end and the guard silently deleted it.
+
+The fix is to state the dominance where dominance already lives — the min:
+
+```dart
+if (pos < _inputLen) {
+  _keepBest(out, pos + 1, _costUnit + 2 * _skipRegret(pos, pos + 1));
+}
+```
+
+**One fewer condition, and correct for terminals of any width.** No case asks
+whether the terminal matches; if it does, and it took that character, it is
+already in the map at a lower price and the min keeps that one.
+
+### A4 corrected: a gap attaches in front of a READER, not in front of a terminal
+
+m41's A4 was "only a sequence has a *between*". m42's first draft over-corrected
+to "the canonical point is the terminal that follows the gap", with the argument
+that everything between the gap and that terminal consumes nothing, so nothing is
+lost by pushing the gap all the way down. **That argument is false, and the
+counterexample is the syntactic predicate.** A predicate consumes nothing, but
+what it decides depends on *where it is asked*; pushing a gap past it silently
+loses every repair the predicate blocks. Measured, on `_pred42.dart` (4 predicate
+grammars, 19 inputs, brute-force truth): the draft was **wrong on 11 of 19**,
+returning −1 (unrecoverable) where m41 returned 1.
+
+The rule that survives:
+
+> **A gap attaches in front of whatever READS the input next** — a terminal that
+> consumes a character, or a predicate that only looks at one. `Nothing` is the
+> one leaf whose value does not depend on position, so it is the one leaf a gap
+> can never attach to.
+
+Only *consuming* terminals may lie, though: a predicate consumes nothing, so
+substituting or fabricating one would edit the derivation rather than the string,
+and only the string is being repaired. So the wrapper is built for both, and the
+editable flag is set for one. After the fix, m42 is wrong on **3 of 19**, which is
+exactly m41's 3 of 19 — see the new **PRED** tag below.
+
+### What the collapse buys
+
+1. **One fewer edit primitive**, and the one that remains is derived rather than
+   inserted. `_chain` is now `Seq.match` verbatim over I1's value — *no combinator
+   in the engine contains any recovery logic at all.*
+2. **One fewer ambiguity.** m41 attached a gap at every enclosing sequence whose
+   current element began there, so one repair had as many derivations as the
+   grammar had nesting. In m42 a gap has exactly one attachment point.
+3. **One fewer heuristic.** m41 merged consecutive unit SKIPs into one reported
+   span. A discarded run is ONE node here — the self loop is one node — so it
+   arrives as one leaf already, and the merge pass is deleted.
+4. **One shared memo column for the whole grammar.** There is exactly one `_junk`,
+   so every terminal in the grammar shares its column; m41 re-derived the same
+   skip at every sequence cell.
+
+Reconstruction needed one new idea to keep the tree flat: `_child` returns a
+*list* — a sub-derivation's contribution to the row it sits in — because two
+things are not levels of the tree. A discarded run is one leaf and not a parent
+of the terminal after it, and the wrapper that carries it is an artifact of I2,
+not a clause. A clean parse therefore still reconstructs to exactly the pure
+parser's tree (measured: `shapeDiff=0`, `spanDiff=0` against m41 on 156 mutants).
+
+### The price: making the gap a clause costs 30% more states
+
+This is the honest cost, and it is a constant factor, not an order.
+
+| | K=1 | K=2 | K=4 | K=8 |
+|---|---|---|---|---|
+| m26 | 8.2 | 15.4 | 78.8 | 531.2 |
+| m41 | 9.7 / 9.3 | 7.5 / 7.7 | 54.4 / 53.8 | 304.0 / 313.3 |
+| m42 | 5.3 / 6.6 | 11.5 / 12.5 | 67.6 / 64.2 | 400.3 / 393.8 |
+
+(`_k42.dart`, n=498 JSON, min-of-5, one engine per process, two runs each.)
+
+`lastSteps` — the number of `_compute` calls — localizes it exactly
+(`_steps42.dart`):
+
+| K | m41 | m42 | ratio |
+|---|---|---|---|
+| 1 | 5945 | 7802 | 1.31 |
+| 2 | 20922 | 27431 | 1.31 |
+| 4 | 78242 | 101916 | 1.30 |
+| 8 | 222678 | 289734 | 1.30 |
+
+**The ratio is 1.30 at every K: m42 does not do more work per state, it has more
+states.** The reason is structural and unavoidable in this design — a gap that is
+a clause needs a node, so every terminal clause gains one wrapper cell, and
+terminals are about half the nodes in a curried grammar. The alternative that
+would recover it is to fold the gap into `_Term._compute` as a fixed point over
+positions (`E(t,pos) = base ∪ skip1 ⊗ E(t,pos+1)`), which costs no node at all —
+and which is a hand-written third insertion again. **That trade was refused: the
+whole point of m42 is that no combinator contains recovery logic.**
+
+Against the champion it replaces, m42 wins every column (m26d: 382 LOC, 379
+battms, 255.3 latms, RRmax 512 — m42: 381, 280, 174.5, RRmax 1024). Against m41
+it is a wash on the battery (280 vs 282), 1.2x slower on latency, 1.5x *faster* at
+K=1 on the K-sweep, and +2 LOC. **m41 remains the faster engine at K≥2 and m42 the
+simpler one.** Do not report m42 as a speed win; report it as the design where
+deletion stopped being an axiom.
+
+### New shared bug tag: PRED
+
+| tag | defect |
+|---|---|
+| **PRED** | Syntactic predicates are evaluated by the ORACLE, on the ORIGINAL input, never on the repaired string. A repair that changes what a predicate reads is therefore invisible, and the engine reports a cost that is too high (3 of 19 cases in `_pred42.dart`: `x` against `S <- !'x' 'b'`, truth 1, reported 2; `ax` against `S <- 'a' !'x' 'b'`, truth 1, reported 2; `ifq` against a keyword-boundary grammar, truth 1, reported 3). **Shared by m41 and m42 identically** — it is not an m42 regression, and it is the same root cause as **PEG**: negation in a repair semiring is ill-defined, because FAB makes every clause matchable somewhere. |
