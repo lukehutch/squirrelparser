@@ -982,6 +982,8 @@ and are listed once below rather than repeated 32 times.
 | m42e | 381 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 287 | 181.6 | — | >=4096 | 1024 |
 | **m44** | 428 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 303 | 181.0 | — | >=4096 | 1024 |
 | m43f | 385 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 306 | 182.9 | — | >=4096 | 1024 |
+| **m45** | 497 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 290 | 179.4 | — | >=4096 | 1024 |
+| m44g | 428 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 291 | 182.1 | — | >=4096 | 1024 |
 
 The last two rows are a later, separate run (`final_table.dart m41,m26`, appended
 per the maintenance rule rather than regenerating 32 settled rows). `m26c` is the
@@ -1021,14 +1023,26 @@ engine. The `LOC` tag is real and is the whole price: 385 → 428 for the derive
 ceiling. What that buys — the deletion of the last tuning parameter in the
 m-line, and completeness — is §5n.
 
-### Bugs shared by EVERY row, so not repeated per engine (K40 excepts m44)
+`m45` and `m44g` are a sixth occasion, one engine per process, three runs each,
+medians quoted (m45 battms 270/290/296, latms 177.8/179.4/195.1; m44g battms
+295/291/291, latms 179.0/194.0/182.1). Read together: **I4 costs nothing where
+there is no lookahead to fuse**, which is the whole of JSON — 290 against 291 ms
+on the battery and 179.4 against 182.1 ms of latency, both inside the spread, and
+`_steps45.dart` reports the state counts BIT-IDENTICAL to m44's (7802 / 27431 /
+101916 / 289734 at K=1/2/4/8). That is the strongest form of "free": the rewrite
+is a no-op on a grammar it does not apply to, so the two engines do the same work
+step for step. The `LOC` tag is again the whole price: 428 → 497. What that buys
+— predicates that are priced by the language rather than by the spelling, and
+12 repairs that m44 got wrong — is §5p.
+
+### Bugs shared by EVERY row, so not repeated per engine (K40 excepts m44, m45)
 
 | tag | defect |
 |---|---|
 | **PEG** | Repairs toward the **CFG** reading of the grammar, not the PEG one: a possessive `*` and a committed `/` are treated as if any stop or alternative were available. 4 of 5 conformance cases wrong, identically, in every engine back to `dot` (§5b). The `cost` column cannot see it — its grammars are prefix-disjoint, so the two readings coincide there. |
 | **RR** | Right-recursive grammars overflow the native stack (the `RRmax` column). Inherited from the pure parser, which shows the same asymmetry; recovery worsens the threshold ~4x because its descent adds frames per position (§8a). Fix is an explicit worklist; not built. |
 | **d13** | `del@13` and `swap@13` are never recovered to the original shape. That is exactly the 517/519 ceiling. |
-| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). It was the last tuning parameter in the m-line, and **m44 is the first and only row without it** — there the ceiling is DERIVED as `n + fabricate(goal)`, a repair that always exists, so the search cannot stop short of a real minimum (§5n). Every other row still has the knob and still gives up above 40. |
+| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). It was the last tuning parameter in the m-line, and **m44 and m45 are the only rows without it** — there the ceiling is DERIVED as `n + fabricate(goal)`, a repair that always exists, so the search cannot stop short of a real minimum (§5n). Every other row still has the knob and still gives up above 40. |
 
 ### Per-engine bug tags
 
@@ -1362,7 +1376,7 @@ deletion stopped being an axiom.
 
 | tag | defect |
 |---|---|
-| **PRED** | Syntactic predicates are evaluated by the ORACLE, on the ORIGINAL input, never on the repaired string. A repair that changes what a predicate reads is therefore invisible. **This tag understated the damage for three engines; see §5o for the brute-force measurement that corrected it.** It is NOT confined to "reports a cost that is too high" (3 of 19 in `_pred42.dart`): against ground truth it also **loses repairs entirely** (`-1` on a repairable input) and **under-reports with a repair that cannot parse**. Same root cause as **PEG**: negation in a repair semiring is ill-defined, because FAB makes every clause matchable somewhere. **Shared by m41 through m44 identically** — not an m42 regression. |
+| **PRED** | Syntactic predicates are evaluated by the ORACLE, on the ORIGINAL input, never on the repaired string. A repair that changes what a predicate reads is therefore invisible. **This tag understated the damage for three engines; see §5o for the brute-force measurement that corrected it.** It is NOT confined to "reports a cost that is too high" (3 of 19 in `_pred42.dart`): against ground truth it also **loses repairs entirely** (`-1` on a repairable input) and **under-reports with a repair that cannot parse**. Same root cause as **PEG**: negation in a repair semiring is ill-defined, because FAB makes every clause matchable somewhere. **Shared by m41 through m44 identically** — not an m42 regression. **m45 is the first row where it is partly fixed**: a lookahead at ONE character in front of a terminal is rewritten into the class the two compose, which is exact, and against ground truth m45 scores 42/45 where m44 scores 30/45 (§5p). What remains under this tag there is the lookahead whose reader is behind a rule reference, one wider than a character, or one last in its sequence. |
 
 ## 5m. m43: the oracle is authoritative as far as the edit-free window reaches
 
@@ -1555,13 +1569,23 @@ The first version of this priced a predicate at 0 — "assume it passes" — and
 lost repairs m43 still found. `_pceil44.dart`, case 1:
 
 ```
-S <- &'x' 'x' / 'y' 'y' 'y' 'y';      input ""      truth 4
+S <- &'x' 'x' / 'y' 'y' 'y' 'y';      input ""      predicate-free ceiling 4
 ```
 
 The cheap branch is blocked by a predicate that cannot pass at any position, so
-the real trivial repair is the 4-fabrication branch; the ceiling was priced at 1
-from the branch that does not exist; the search stopped at 1 and reported `-1`.
-**That is K40 again, re-introduced by the thing that was deleting it.**
+the trivial repair m44 may build a ceiling from is the 4-fabrication branch; the
+ceiling was priced at 1 from the branch that does not exist; the search stopped
+at 1 and reported `-1`. **That is K40 again, re-introduced by the thing that was
+deleting it.**
+
+**Correction to an earlier version of this line, which called 4 the "truth":
+the true edit distance here is 1** — `"x"` is in the language, one fabrication
+away — and m44 answers 4, because the only derivation that reaches `"x"` crosses
+a predicate and m44 cannot price one. 4 is the cheapest repair whose derivation
+contains NO predicate, which is the only kind of repair a ceiling may be built
+from, and that distinction is the whole content of the three tiers below. m45
+answers 1: §5p fuses `&'x' 'x'` into the class `[x]`, and a class is not a
+predicate, so tier 1 prices it at 1 and the search finds it.
 
 The correction is a fact about position, and it is the sharpest statement of what
 a predicate is in this whole design:
@@ -1770,3 +1794,189 @@ input", pointing at the NEXT rule, which reads like a bug in the rule after the
 real one. Multi-character literals need double quotes: `A <- 'x' / "yy";`.
 Confirmed directly against `MetaGrammar.parseGrammar`; both `_bfpred44.dart`
 grammars had to be rewritten.
+
+## 5p. m45: a reader owns the characters it decides, and a lookahead decides none
+
+§5o ends by naming the tractable core of PRED and leaving it unbuilt. m45 is that
+build, and it is one insertion, I4, stated as a fact about ownership:
+
+> Every character of the repaired string is decided by exactly one leaf — the
+> reader that consumes it. I2 lets that leaf lie about which character it is, and
+> I3 says where the input still stands unedited. **A lookahead consumes nothing,
+> so it decides nothing**, and the character it asks about belongs to somebody
+> else. Asking the oracle asks about `s`; the derivation is about `s'`.
+
+That is not an approximation of the right question, it is a different question,
+which is why §5o measured it failing in both directions at once. The repair is
+not to answer it better but to give the constraint to its owner:
+
+```
+&C T   is the class   C & T          !C T   is the class   T \ C
+```
+
+exactly, for the pure parser as much as for recovery, whenever C looks at one
+character and T consumes exactly that one. Both clauses are evaluated at the same
+position and only T advances it, so the pair matches at `p` iff `s'[p]` is in the
+class — there is no third behaviour to preserve.
+
+### It is a grammar rewrite, which is why it is free
+
+The fusion happens in `_cons`, in CLAUSE space, before any node is built: one
+line at the top of the function, and a sequence with no fusable pair comes out
+unchanged. It produces a real `CharSet`, not a new node kind, not a field, not a
+`_compute` case. That representation is the whole trick — everything downstream
+keeps working with no knowledge that a predicate was ever there:
+
+| consumer | why it needs no change |
+|---|---|
+| `_collect` | still sees a Terminal leaf, so error spans and diagnostics are unchanged |
+| `_terminals` / `_width` | measure the fused class correctly, because it IS a class |
+| `_build` | labels the witness node with a clause that exists in the grammar |
+| `_goalFromNothing` | prices it as editable at 1, like any other class |
+| `_compute` | has no case for it, and needs none |
+
+It joins the two normalisations the builder already did — a multi-character `Str`
+becomes a cons chain of one-character `Str`s, a `requireOne` repetition becomes
+one cons in front of a self-loop — and it is the same kind of act: **say the same
+language in the vocabulary the engine is already complete for.**
+
+### The empty class is the empty language, not a cheap edit
+
+`&'x' 'y'` fuses to `CharSet([])`, and this is where the rewrite would have gone
+wrong if the leaf rule had stayed `clause is Terminal`. A lie is about WHICH
+character is present; a class with no members has nothing to be wrong about. Two
+lines carry it:
+
+* `_node` marks a leaf editable only if it accepts at least one character, so an
+  empty class cannot be substituted or fabricated, and the branch is dead rather
+  than cheap.
+* `_goalFromNothing`'s tier 2 ("trust the predicates") now trusts the
+  PREDICATES — `trustPredicates && orig is! Terminal` — so an empty class stays
+  impossible in both tiers, tier 3 fires, and an empty language is answered `-1`
+  from the grammar with no search at all.
+
+The gate shows both directions of that mattering: on `S <- &'x' 'y';`, where
+L(S) is empty, **m44 reports 1** — a repair, in a language with no strings —
+and m45 reports `-1`.
+
+### A name is not a language, and neither is an ordered choice
+
+The lookahead side is measured through both, because refusing to would leave I4
+pricing the spelling in exactly the forms real grammars use — including this
+project's own metagrammar, which writes the body of a string literal as
+`!('"' / '\\') .` where `[^"\\]` would do. An ordered choice among one-character
+readers is their union (order cannot matter when every branch consumes one
+character and only membership is asked); a `Ref` is resolved with a `seen` guard,
+since a rule that refers to itself is not a class.
+
+**The reader side is deliberately NOT read that generously: it must be a
+Terminal.** The rewrite puts a leaf where a leaf was; fusing across `A` in
+`!'x' A` would delete A's node from every witness tree, and the tree is the
+deliverable. A lookahead has no node to lose — it consumes nothing and appears in
+no tree — so the asymmetry is not an omission, it is the reason the rewrite is
+invisible everywhere else.
+
+### Measured against brute force: 30/45 → 42/45
+
+`_bfpred45.dart`, nine grammars, 45 inputs, truth by BFS over single-character
+SKIP/FAB/SUB with the pure parser deciding membership. **Zero regressions.**
+
+| grammar | input | truth | m44 | m45 | |
+|---|---|---|---|---|---|
+| `S <- &'x' 'x' &'y' 'y';` | `zz` | 2 | **-1** | 2 | LOST → fixed |
+| | `z` | 2 | **-1** | 2 | LOST → fixed |
+| | `` (empty) | 2 | **-1** | 2 | LOST → fixed |
+| | `xz` | 1 | **-1** | 1 | LOST → fixed |
+| | `zy` | 1 | **-1** | 1 | LOST → fixed |
+| `S <- !'x' 'b';` | `x` | 1 | 2 | 1 | too high → fixed |
+| `S <- 'a' !'x' 'b';` | `ax` | 1 | 2 | 1 | too high → fixed |
+| `S <- &'x' 'y';` (L empty) | `x` | none | **1** | -1 | UNDER-REPORT → fixed |
+| | `xy` | none | **1** | -1 | UNDER-REPORT → fixed |
+| `S <- (&'x' 'y') / 'a' 'a';` | `x` | 2 | **1** | 2 | UNDER-REPORT → fixed |
+| `S <- &'x' &[a-y] 'x';` | `z` | 1 | **-1** | 1 | LOST → fixed |
+| | `` (empty) | 1 | **-1** | 1 | LOST → fixed |
+| `S <- !'x' A;  A <- 'x' / "yy";` | `q` | 2 | 1 | **1** | residual |
+| | `` (empty) | 2 | 1 | **1** | residual |
+| | `xy` | 1 | 2 | **2** | residual |
+
+**All three residuals are one grammar, and it is the family §5o predicted:** the
+lookahead's reader is behind a rule reference. The prediction was made before the
+gate was written and the gate confirms it exactly — no other family survives.
+
+A convention the gate needed, and it is a real distinction rather than
+bookkeeping: brute force stops at 3 edits, so "no repair within reach" is agreed
+with by `-1` AND by any cost above the horizon — neither contradicts it. A cost
+WITHIN reach where brute force found none is an under-report, and is counted
+wrong. Without that rule the gate mis-flagged four correct m45 answers.
+
+### Spelling invariance is the tell
+
+The same language written two ways must cost the same. Three pairs, each with a
+FIXED COUNT of characters between the brackets — which is what makes the two
+spellings separable at all, since where the content is a repetition a discard and
+a substitution both cost 1 and the difference cancels:
+
+| pair | input | truth | m44 class | m44 predicate | m45 both |
+|---|---|---|---|---|---|
+| `C <- [^)]` vs `C <- !')' .` | `()x` | 2 | 2 | **3** | 2 |
+| `C <- [^)]` vs `R <- ')'; C <- !R .` | `()x` | 2 | 2 | **3** | 2 |
+| `C <- [^)#]` vs `C <- !(')' / '#') .` | `(#)` | 2 | 2 | **3** | 2 |
+| | `()x` | 2 | 2 | **3** | 2 |
+
+m44 prices the SPELLING; m45 prices the language, and agrees with brute force on
+every row of all three pairs. The second and third pairs are the direct gate for
+looking through a name and through a choice — the two paths that exist only
+because the metagrammar itself writes lookaheads that way.
+
+### What it costs: nothing, except lines
+
+| gate | m44 | m45 |
+|---|---|---|
+| battery (median of 3, one engine per process) | 291 ms | 290 ms |
+| latency | 182.1 ms | 179.4 ms |
+| `_steps45` `_compute` states, K=1/2/4/8 | 7802 / 27431 / 101916 / 289734 | **identical** |
+| `_k45` K-sweep on JSON | 5.9 / 12.0 / 68.2 / 402.1 ms | 5.5 / 12.2 / 66.0 / 393.3 ms |
+| `_smoke45` 156 mutants | costDiff 0, shapeDiff 0, spanDiff 0, coverBad 0 | |
+| `_bf45` / `_peg45` / `_ceil45` | 44/44 / 2 differ from m26 / all correct | unchanged |
+| `_pred45` wrong | 3/19 | **1/19** |
+| every quality column of §5j | identical | identical |
+| LOC | 428 | **497** |
+
+The state counts being bit-identical is the strongest available form of "free":
+JSON contains no lookahead, so the rewrite is a no-op there and the two engines
+do the same work step for step. **+69 lines is the entire price**, and it is one
+self-contained block: an interval complement, an interval intersection, a
+one-character-class reader, and the right-to-left sweep that collapses a run of
+lookaheads (`&C &D T`) one pair at a time.
+
+### The alternatives, scored
+
+| candidate | result | score | why |
+|---|---|---|---|
+| **fuse the pair into a class in the builder (I4, built)** | 42/45, +69 LOC, 0 runtime cost | **9** | Exact where it applies, invisible where it does not, no new node kind or memo dimension. Loses a point only for not reaching the Ref/multi-char/trailing families. |
+| carry a pending constraint DOWN the descent as a memo dimension | not built | 5 | Would reach `!'x' A`, and it is a per-candidate EMISSION bit, not I1's value — a wider memo, so O(\|G\|·n·K) is no longer obvious. The right next experiment if the residual family ever matters. |
+| static specialisation: a copy of the rule per constraint | ~85 LOC sketched, abandoned | 3 | Reaches the same family, multiplies the grammar by the number of distinct constraints, and needs a carriability walk to know where to stop. Large, and the blow-up is grammar-dependent. |
+| first-character-class carried UP through the value | not built | 2 | The value stops being a small lattice; every memo cell grows a class. Blows up the domain to fix a leaf. |
+| oracle-probe emptiness test (ask the parser at class endpoints) | rejected on inspection | 2 | Forces the fused node's `orig` to be a `Seq`, which loses `_collect`'s diagnostics, `_width`'s measurement, and `_node`'s leaf handling. The `CharSet` representation is precisely what makes the rewrite free. |
+| CEGAR: search, check the repair, re-search on failure | not built | 2 | Unbounded iterations, and the check needs the repaired string — the thing the value abstracts away. |
+| make the predicate editable (pay to satisfy it) | refuted in §5o | 1 | Double-charges the same character: 4 where the truth is 2. |
+| assume every predicate passes / fails | refuted in §5o | 0 | Invents repairs that do not parse / makes half of all real grammars unrepairable. |
+
+### The boundary, stated so it is not re-litigated
+
+I4 stops where the window does, and the three families it does not reach all have
+the same shape: **the constraint spans characters that no single reader decides.**
+
+* **Reader behind a rule reference** (`!'x' A`) — crossing a rule boundary needs
+  the constraint carried down the descent, or the rule specialised.
+* **Lookahead wider than one character** (`!"*/"`, the comment idiom) — each
+  character of the window is decided by a different reader.
+* **Lookahead last in its sequence** (`Kw <- "if" !Alpha`, the keyword idiom) —
+  the constraint escapes into the PARENT's continuation, which the curried value
+  does not carry.
+
+Fusing any of them needs a channel from a reader BACK to the leaf in front of it
+— an emission bit rather than a consumption — and that is a wider value than
+I1's, not a rewrite. The last two are the common real-world idioms, so **I4 is a
+correctness fix for a real family and not a general solution to PRED**, and the
+tag stays on the row for that reason.

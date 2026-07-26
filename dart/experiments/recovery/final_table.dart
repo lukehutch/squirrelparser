@@ -59,6 +59,7 @@ import 'm41.dart' as g41;
 import 'm42.dart' as g42;
 import 'm43.dart' as g43;
 import 'm44.dart' as g44;
+import 'm45.dart' as g45;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -362,6 +363,19 @@ final engines = <Eng>[
   }),
 
   Eng('m44', 428, (r, t) {
+    final e = g44.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m45', 497, (r, t) {
+    final e = g45.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m44 re-measured beside m45 in the same session: the letter continues the
+  // global sequence `b, c, d, e, f` used for reference re-measurements, and it is
+  // the only m44 timing comparable to m45's.
+  Eng('m44g', 428, (r, t) {
     final e = g44.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
