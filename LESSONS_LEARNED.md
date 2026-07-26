@@ -980,6 +980,8 @@ and are listed once below rather than repeated 32 times.
 | m26d | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 379 | 255.3 | — | >=4096 | 512 |
 | **m43** | 385 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | 293 | 178.5 | — | >=4096 | 1024 |
 | m42e | 381 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 287 | 181.6 | — | >=4096 | 1024 |
+| **m44** | 428 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 303 | 181.0 | — | >=4096 | 1024 |
+| m43f | 385 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 306 | 182.9 | — | >=4096 | 1024 |
 
 The last two rows are a later, separate run (`final_table.dart m41,m26`, appended
 per the maintenance rule rather than regenerating 32 settled rows). `m26c` is the
@@ -1008,14 +1010,25 @@ state counts (7802 / 27431 / 101916 / 289734 at K=1/2/4/8, ratio 1.00), and the
 K-sweep is flat (m43 4.8 / 12.4 / 66.2 / 389.5 ms against m42 5.4 / 11.6 / 63.9 /
 386.1). What it buys is in §5m.
 
-### Bugs shared by EVERY row, so not repeated per engine
+`m44` and `m43f` are a fifth occasion, one engine per process, three runs each,
+medians quoted (m44 battms 303/309/286, latms 182.6/181.0/172.0; m43f battms
+306/283/306, latms 182.9/194.8/181.8). `m43f` is m43 re-measured in that session
+— the letter continues the global sequence `b, c, d, e` used for reference
+re-measurements, and it is the ONLY m43 number comparable to m44. Read together:
+**m44 costs nothing on this battery either.** Every quality column is identical
+and the two timings differ by 1%, which is inside the run-to-run spread of each
+engine. The `LOC` tag is real and is the whole price: 385 → 428 for the derived
+ceiling. What that buys — the deletion of the last tuning parameter in the
+m-line, and completeness — is §5n.
+
+### Bugs shared by EVERY row, so not repeated per engine (K40 excepts m44)
 
 | tag | defect |
 |---|---|
 | **PEG** | Repairs toward the **CFG** reading of the grammar, not the PEG one: a possessive `*` and a committed `/` are treated as if any stop or alternative were available. 4 of 5 conformance cases wrong, identically, in every engine back to `dot` (§5b). The `cost` column cannot see it — its grammars are prefix-disjoint, so the two readings coincide there. |
 | **RR** | Right-recursive grammars overflow the native stack (the `RRmax` column). Inherited from the pure parser, which shows the same asymmetry; recovery worsens the threshold ~4x because its descent adds frames per position (§8a). Fix is an explicit worklist; not built. |
 | **d13** | `del@13` and `swap@13` are never recovered to the original shape. That is exactly the 517/519 ceiling. |
-| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). The only tuning parameter left in the m-line. |
+| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). It was the last tuning parameter in the m-line, and **m44 is the first and only row without it** — there the ceiling is DERIVED as `n + fabricate(goal)`, a repair that always exists, so the search cannot stop short of a real minimum (§5n). Every other row still has the knob and still gives up above 40. |
 
 ### Per-engine bug tags
 
@@ -1490,3 +1503,169 @@ is not luck: JSON's alternations are prefix-disjoint, so the veto removes nothin
 there and only costs the oracle call, which is a memo hit.
 
 +4 LOC (381 → 385), all four of them in one case of `_compute`.
+
+## 5n. m44: the ceiling is derived, not chosen
+
+`maxCost = 40` was the last tuning parameter in the m-line, and it was never a
+trade-off — it was the K40 defect in §5j, on every row: **a repair costing more
+than 40 is not reported at all.** The caller gets `-1` and the whole input as one
+error span, which is indistinguishable from "this input cannot be repaired". A
+long broken document and a long missing literal both hit it, and neither is
+exotic (`_ceil44.dart`).
+
+The fix is not a bigger number. It is noticing that the number was always
+derivable:
+
+> **The trivial repair always exists.** Fabricate the goal consuming nothing, and
+> discard the entire input as junk — `[0, p)` in front of the fabrication and
+> `[p, n)` behind it. By A1 the junk costs `n`, one unit per character, wherever
+> it is split. So no minimum-cost repair can exceed `n + F`, where `F` is the
+> cheapest fabrication of the goal from nothing, and **deepening past `n + F` can
+> only fail.**
+
+That is a ceiling in the same sense `_costUnit` is a bound: forced, not set. The
+parameter is gone, and with it K40 — m44 is the first row in §5j that always
+reports the true minimum.
+
+### F is a least fixed point, one rule per node kind
+
+`F` is a property of the grammar alone, so it is computed once per engine
+(`late final _goalFromNothing`) and never per input:
+
+| node | price from nothing | why |
+|---|---|---|
+| consuming terminal | 1 | it is not there; fabricate it — I2's FAB |
+| `Nothing` | 0 | the empty match is already there |
+| cons cell | head + tail | a sequence pays for all of its elements |
+| cons cell whose tail is ITSELF | 0 | that is a repetition: stop at zero iterations |
+| alternation | min over branches | take the cheapest branch |
+
+Relax until nothing improves, over the nodes reachable from the goal. The rules
+are their own seeds — a terminal's price depends on nothing — so no separate
+initialisation pass exists, which is what makes it the same shape as every other
+fixed point in the file.
+
+`F` can be exponential in `|G|` (`S <- A A; A <- B B; B <- C C; C <- 'x'` prices
+8 from 4 rules), which is why the ceiling is computed and not bounded by a node
+count, and why deepening-by-doubling is not a substitute (below).
+
+### The predicate is the one leaf that may not be counted
+
+The first version of this priced a predicate at 0 — "assume it passes" — and that
+lost repairs m43 still found. `_pceil44.dart`, case 1:
+
+```
+S <- &'x' 'x' / 'y' 'y' 'y' 'y';      input ""      truth 4
+```
+
+The cheap branch is blocked by a predicate that cannot pass at any position, so
+the real trivial repair is the 4-fabrication branch; the ceiling was priced at 1
+from the branch that does not exist; the search stopped at 1 and reported `-1`.
+**That is K40 again, re-introduced by the thing that was deleting it.**
+
+The correction is a fact about position, and it is the sharpest statement of what
+a predicate is in this whole design:
+
+> The derivation being priced **has no position of its own** — junk absorbs the
+> input on either side of it at the same total either way. A predicate **does**
+> have one: it is the one leaf whose answer depends on where it is asked, and no
+> edit can change that answer, because I2 lets a leaf lie about the STRING and a
+> predicate consumes none of it. So the only derivation guaranteed to exist
+> wherever it is placed is one that contains **no predicate at all**.
+
+Three tiers, in order, each falling through only when the one above is
+impossible:
+
+1. **Price predicates as impossible.** What survives is a derivation that holds
+   at every position; its cost is a true ceiling.
+2. **Trust them.** Reached only when EVERY derivation of the goal needs a
+   predicate. This is the PRED envelope (§5l) and the only assumption in the
+   file — the ceiling may now be too low, which can cost a repair, but the
+   alternative is an infinite ceiling and no answer at all.
+3. **Neither works ⇒ the goal has no finite derivation.** The grammar's language
+   is empty (`S <- S 'a'` and its kind), so no input is repairable at any price,
+   and the caller is told `-1` **without a search**.
+
+Tier 3 is a small bonus that fell out for free: an empty language used to be
+found by exhausting the budget, and is now answered from the grammar.
+
+### Why the I3 veto can never block the trivial repair
+
+m43's veto drops a cost-0 candidate that ends past `committed`. The ceiling is
+only a ceiling if the repair it prices is one the search can actually reach, so
+the veto must never touch it. It cannot, and the argument is structural rather
+than measured:
+
+* If a node has a cost-0 fabrication at `p`, every leaf in it is a predicate, a
+  `Nothing`, or a zero-iteration repetition — none of which consume input. So the
+  pure parser also matches that node at `p` (possibly longer), hence
+  `committed >= pos`, and the empty candidate `end == pos` is kept.
+* Junk is a `_Cons` self-loop, not an `_Alt`, so the veto — which lives in the
+  alternation — never sees it; and its candidates cost >= 1, which the veto does
+  not consider at all.
+
+### Measured
+
+| gate | m43 | m44 |
+|---|---|---|
+| ground truth (`_bf44.dart`, 5 grammars, 44 inputs) | 44/44 | 44/44 |
+| PEG conformance (`_peg44.dart`) | 2/5 | 2/5 |
+| predicates (`_pred44.dart`, 19 inputs) | 3 wrong | 3 wrong (identical) |
+| JSON mutants (`_smoke44.dart`, 156) | — | costDiff 0, shapeDiff 0, spanDiff 0, coverBad 0; shapeOk 144 both |
+| ceiling (`_ceil44.dart`, truths 60 / 46 / 30) | -1 / -1 / 30 | **60 / 46 / 30** |
+| predicate ceiling (`_pceil44.dart`, 6 cases) | 4 4 0 -1 1 -1 | identical |
+| battery / latency (§5j) | 306 / 182.9 | 303 / 181.0 |
+| `_compute` states at K=1/2/4/8 | 7802 / 27431 / 101916 / 289734 | identical |
+
+**Nothing on a normal workload moves.** The ceiling is a grammar computation in a
+`late final`; on inputs whose repair is affordable, it is never the binding limit
+and the search is the same search.
+
+### What completeness costs where it bites (`_env44.dart`)
+
+| grammar | n | m43 | ms | m44 | ms |
+|---|---|---|---|---|---|
+| `S <- 'x';` on junk (cost = n) | 30 | 30 | 18 | 30 | 11 |
+| | 60 | **-1** | 8 | **60** | 21 |
+| | 120 | **-1** | 4 | **120** | 72 |
+| | 240 | **-1** | 3 | **240** | 541 |
+| | 480 | **-1** | 3 | **480** | 4410 |
+| | 640 | **-1** | 3 | **640** | 11326 |
+| JSON on a run of quotes | 16 | 6 | 7 | 6 | 9 |
+| | 48 | 17 | 115 | 17 | 118 |
+| | 100 | 34 | 1463 | 34 | 1426 |
+| | 150 | **-1** | 2553 | **51** | 6085 |
+| | 200 | **-1** | 2551 | **68** | 17258 |
+
+Two honest readings:
+
+* Below the old ceiling the engines are the same engine, to within noise.
+* Above it, m43 does not answer *quickly* — it burns 2.5 s on JSON at n=150 and
+  then says `-1`. Completeness costs ~2.4x there, not infinity.
+
+The growth is ~8x per doubling of n once the repair cost grows with n
+(541 -> 4410 from n=240 to 480), i.e. **cubic**, and that is the predicted shape,
+not a surprise: iterative deepening runs rounds 1..K and a round is O(|G|.n.k),
+so the sum is O(|G|.n.K^2), which is n^3 when K grows like n. The re-expansion
+factor is inherent to deepening from scratch; carrying a memo across rounds is
+not available, because an entry computed under a smaller budget is not valid at a
+larger one (A3: the budget is a filter, not a key). **Open lever, not a bug.**
+
+### The price, stated plainly
+
++43 LOC (385 -> 428): the reachable-node walk, the two-tier fixed point, and its
+derivation. That earns the `LOC` tag in §5j — m44 is the second-largest engine in
+the line — and it is the whole cost. What it buys is the deletion of the last
+tuning parameter and the deletion of the last shared bug that produces a WRONG
+ANSWER on ordinary input.
+
+### Refuted on the way
+
+| alternative | why it lost |
+|---|---|
+| keep `maxCost`, raise the default | The knob is the defect; a bigger number moves the input that breaks it, and zero tuning parameters is a hard requirement. |
+| deepen by doubling until a repair is found | Never terminates on an unrepairable input, and the "is it repairable at all" test is the same fixed point anyway. It also overshoots the true minimum by up to 2x, which at ~K^3 is ~8x the work on exactly the hard inputs that motivated this. |
+| stop when a round drops nothing for exceeding the budget (IDA*) | FAB makes candidates exist at EVERY cost, so something is always dropped and the test never fires. Same reason §5k refuted the exactness bit. |
+| price predicates as passing, no fallback tier | Loses repairs, measured: `_pceil44.dart` case 1, `-1` where the truth is 4. |
+| price predicates as impossible, no fallback tier | Ceiling becomes infinite whenever every derivation needs a predicate, so the search never terminates on unrepairable input. |
+| exact per-position `F(p)`, minimised over p | Tighter, but O(n.|G|) per input rather than once per grammar, needs the same predicate fallback anyway, and would put work in the path of the sub-millisecond one-typo case for no gain — the ceiling is not the binding limit there. |
