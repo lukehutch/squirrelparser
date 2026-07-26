@@ -978,6 +978,8 @@ and are listed once below rather than repeated 32 times.
 | **m41** | **379** | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | **243** | **153.9** | — | >=4096 | 1024 |
 | **m42** | 381 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | 280 | 174.5 | — | >=4096 | 1024 |
 | m26d | 382 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 379 | 255.3 | — | >=4096 | 512 |
+| **m43** | 385 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | 293 | 178.5 | — | >=4096 | 1024 |
+| m42e | 381 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 287 | 181.6 | — | >=4096 | 1024 |
 
 The last two rows are a later, separate run (`final_table.dart m41,m26`, appended
 per the maintenance rule rather than regenerating 32 settled rows). `m26c` is the
@@ -993,6 +995,18 @@ the same engine as `m26`/`m26b`/`m26c` again, so it is both the reference for m4
 and a fourth confirmation that RRmax moves with registry position and nothing
 else. m41 measured on that same occasion: battms 297/282/276, latms
 142.1/144.6/152.3 — see §5l for the comparison that matters.
+
+`m43` and `m42e` are a fourth occasion, again one engine per process, three runs
+each, medians quoted (m43 battms 293/298/273, latms 182.5/177.9/178.5; m42e
+battms 292/274/287, latms 181.6/177.7/184.8). `m42e` is m42 re-measured in that
+same session and is the ONLY m42 number comparable to m43 — the machine was
+~4% slower that day than when the m42 row above was taken, which is exactly why
+the rule is one engine per process AND a same-session reference row. Read
+together: **m43 costs nothing.** Its extra oracle call per alternation is a memo
+hit, and the candidates it removes pay for it; `_steps43.dart` reports identical
+state counts (7802 / 27431 / 101916 / 289734 at K=1/2/4/8, ratio 1.00), and the
+K-sweep is flat (m43 4.8 / 12.4 / 66.2 / 389.5 ms against m42 5.4 / 11.6 / 63.9 /
+386.1). What it buys is in §5m.
 
 ### Bugs shared by EVERY row, so not repeated per engine
 
@@ -1336,3 +1350,143 @@ deletion stopped being an axiom.
 | tag | defect |
 |---|---|
 | **PRED** | Syntactic predicates are evaluated by the ORACLE, on the ORIGINAL input, never on the repaired string. A repair that changes what a predicate reads is therefore invisible, and the engine reports a cost that is too high (3 of 19 cases in `_pred42.dart`: `x` against `S <- !'x' 'b'`, truth 1, reported 2; `ax` against `S <- 'a' !'x' 'b'`, truth 1, reported 2; `ifq` against a keyword-boundary grammar, truth 1, reported 3). **Shared by m41 and m42 identically** — it is not an m42 regression, and it is the same root cause as **PEG**: negation in a repair semiring is ill-defined, because FAB makes every clause matchable somewhere. |
+
+## 5m. m43: the oracle is authoritative as far as the edit-free window reaches
+
+m42's `_Alt` was described in its own header as `First.match` over I1's value.
+That was **false**, and the falsehood was a plain union:
+
+```dart
+for (final alternative in alts) {
+  for (final e in _ends(alternative, pos, budget).entries) {
+    if (e.value < limit) _keepBest(out, e.key, e.value);   // m42: the CFG's union
+  }
+}
+```
+
+A union is a CFG's choice, not a PEG's. PEG takes the FIRST alternative that
+matches, and every engine from m12 to m42 threw that away — §5b records it as the
+line's central flaw ("every engine repairs toward the CFG, not the PEG"), and
+§5e records the one attempt to fix it locally (m29) costing 2 shape points and 2
+ground-truth points for nothing.
+
+**I3 fixes it in four lines, for free, and the principle generalises far past the
+one site:**
+
+> A sub-derivation that spends no edits over `[pos, end)` is a claim that the
+> repaired string s' EQUALS the input there. Over that window the oracle — the
+> pure parser, on the original input — is not an approximation of PEG on s': it
+> **is** PEG on s'. So wherever PEG makes a decision the window already
+> determines, the oracle's answer is the only legal one.
+
+```dart
+final oracle = _parser.match(node.orig, pos);
+final committed = oracle.isMismatch ? -1 : pos + oracle.len;
+...
+if (e.value < _costUnit && e.key > committed) continue;    // m43
+```
+
+### This is the budget-0 rule, applied to a part instead of the whole
+
+`_compute` already contained the same idea at full scale (§5i):
+
+```dart
+if (budget == 0) { final m = node.orig.match(_parser, pos); ... }   // window = everything
+```
+
+At budget 0 the window is the entire input and the oracle decides *everything*.
+At budget k the window is whatever each candidate paid nothing for, and the
+oracle decides exactly that much. **One rule, interpolating between the two ends
+that were already in the file.** m42 wrote one end and not the other.
+
+### The complete enumeration: where PEG decides, and what I3 does there
+
+This list is the reason to believe I3 is finished rather than a first instalment.
+
+| PEG decision | I3's verdict | why |
+|---|---|---|
+| **ordered choice** (`First`) | **vetoed** | the decision is made by the first alternative that MATCHES, and a match is CONSUMPTION: if it ends inside the window it still holds in s'. |
+| **optional** (`a?`) | **vetoed, same code** | `_node` builds it as an `_Alt` of `[a, eps]`, so it needs no separate rule. |
+| **repetition stop** (`a*`) | **must not be vetoed** | the decision is made by the first item that FAILS, and a failure consumes nothing — it is witnessed AT the far edge of the window, where s' is unconstrained. |
+| **predicate** (`&a`, `!a`) | this is the **PRED** flaw, exactly | a predicate is evaluated by the oracle as if the window were infinite. I3 does not fix it, but it explains it: the missing check is "does the window cover what the predicate read". |
+| **left-recursive growth** | already the oracle's | A5/I1; and see the bug below, which is the growth loop being skipped. |
+| **whole input consumed** | the goal node | no decision left. |
+
+### Why the repetition may not be vetoed — the counterexample
+
+`S <- 'a'* 'b' 'a'` on `"aa"`. Truth 1: the repair is `"aba"`. That repair needs
+the star to STOP at position 1, where the input still offers `'a'` and the oracle
+would have continued to 2. Vetoing "stop where the item still matches" would
+delete the only minimum-cost repair. **A choice is witnessed by consumption
+inside the window; a stop is witnessed by a failure at its edge.**
+
+There is a second, independent reason, and it is the more important one for a
+recovery engine: a sound repetition veto would push the engine toward reporting
+*unrepairable* for grammars like `S <- 'a'* "ab"`, whose PEG language is EMPTY
+(conformance cases 1 and 2, truth `>3`). Reporting "no repair exists" is
+PEG-correct and useless. Repairing toward the CFG reading there is the better
+answer, and §5b's flaw is, in that one respect, a feature. **I3 takes the PEG
+side of the trade only where it costs nothing.**
+
+### The bug found on the way: `Clause.match` is not `Parser.match`
+
+The first build of the veto REGRESSED ground truth (43/44): `E <- E '+' T / T`
+on `"1+2++3"`, truth 1, reported 2. Measured, not guessed (`_probe43.dart`):
+
+| at pos 0 of `"1+2++3"` | result |
+|---|---|
+| `ref.match(parser, 0)` | len 3 |
+| `body.match(parser, 0)` (raw combinator) | **len 1** |
+| `parser.match(body, 0)` (memoized entry) | len 3 |
+
+`Clause.match` is the raw combinator. **The loop that expands a left-recursive
+cycle lives in `MemoEntry.match`, and is only reached through `Parser.match`** —
+which is exactly why `Ref.match` delegates to it (`combinators.dart:168`). Asked
+at a rule BODY, the raw call returns the left-recursive SEED, so `committed` came
+back as 1, and the veto killed the legitimate cost-0 sub-derivation `E(0,3)`.
+
+Every other oracle call in the engine is asked at a `Ref`, a terminal, or a
+sequence of them, where the raw call already routes through the memo — which is
+why this never bit before, and why the m42 hole hypothesised from this discovery
+**does not exist**: `_compute`'s budget-0 fast path can only reach a rule body
+through a Ref node, and the Ref's own fast path returns first. That was checked
+(`_probe43.dart` part 2: `S <- 'z' E` with the budget spent before `E`, m26/m41/m42
+all report truth). Fixed by asking the memo: `_parser.match(node.orig, pos)`,
+keyed by the body clause, which is the very entry the parser itself uses for that
+rule — so it costs a memo hit and nothing else.
+
+**Lesson, general:** in this codebase `x.match(parser, pos)` and
+`parser.match(x, pos)` are different functions. The first is a combinator; the
+second is the algorithm.
+
+### The one unproved step
+
+A match may CONSULT input it does not consume — a lookahead, or a longer
+alternative that failed inside it. If the oracle's alternative read past the
+vetoed candidate's own end, s' could break it there and the candidate was legal
+after all. Bounding this needs a per-match high-water mark of consulted
+positions; `Parser` does not record one (`syntaxErrorPosition()` is a global scan
+over mismatches, not a per-match extent), and recovery may not add one. So the
+veto is **exact for any alternation whose alternatives read no further than they
+consume, and conservative in the safe direction otherwise: it can only make a
+reported cost too HIGH, never too low** — and a vetoed cost-0 candidate is always
+replaced by a cost-≥1 one, so it can never make a repairable input unrepairable.
+`_bf43.dart` checks it against brute-force PEG truth: 44/44.
+
+### Measured
+
+| gate | m42 | m43 |
+|---|---|---|
+| PEG conformance (`_peg43.dart`) | 0 / 5 | **2 / 5** — `committed choice` and `committed nested` now report the true cost 1 |
+| ground truth (`_bf43.dart`, 5 grammars, 44 inputs) | 44/44 | 44/44 |
+| predicates (`_pred43.dart`, 19 inputs) | 3 wrong | 3 wrong (unchanged, all PRED) |
+| JSON mutants (`_smoke43.dart`, 156) | — | costDiff 0, shapeDiff 0, spanDiff 0, coverBad 0 |
+| battery / latency (§5j) | 287 / 181.6 | 293 / 178.5 |
+| `_compute` states at K=1/2/4/8 | 7802 / 27431 / 101916 / 289734 | identical |
+
+**Two conformance cases go from wrong to right for the first time in the whole
+m-line, and every other number is unchanged.** The state counts being identical
+is not luck: JSON's alternations are prefix-disjoint, so the veto removes nothing
+there and only costs the oracle call, which is a memo hit.
+
++4 LOC (381 → 385), all four of them in one case of `_compute`.
