@@ -1362,7 +1362,7 @@ deletion stopped being an axiom.
 
 | tag | defect |
 |---|---|
-| **PRED** | Syntactic predicates are evaluated by the ORACLE, on the ORIGINAL input, never on the repaired string. A repair that changes what a predicate reads is therefore invisible, and the engine reports a cost that is too high (3 of 19 cases in `_pred42.dart`: `x` against `S <- !'x' 'b'`, truth 1, reported 2; `ax` against `S <- 'a' !'x' 'b'`, truth 1, reported 2; `ifq` against a keyword-boundary grammar, truth 1, reported 3). **Shared by m41 and m42 identically** — it is not an m42 regression, and it is the same root cause as **PEG**: negation in a repair semiring is ill-defined, because FAB makes every clause matchable somewhere. |
+| **PRED** | Syntactic predicates are evaluated by the ORACLE, on the ORIGINAL input, never on the repaired string. A repair that changes what a predicate reads is therefore invisible. **This tag understated the damage for three engines; see §5o for the brute-force measurement that corrected it.** It is NOT confined to "reports a cost that is too high" (3 of 19 in `_pred42.dart`): against ground truth it also **loses repairs entirely** (`-1` on a repairable input) and **under-reports with a repair that cannot parse**. Same root cause as **PEG**: negation in a repair semiring is ill-defined, because FAB makes every clause matchable somewhere. **Shared by m41 through m44 identically** — not an m42 regression. |
 
 ## 5m. m43: the oracle is authoritative as far as the edit-free window reaches
 
@@ -1669,3 +1669,104 @@ ANSWER on ordinary input.
 | price predicates as passing, no fallback tier | Loses repairs, measured: `_pceil44.dart` case 1, `-1` where the truth is 4. |
 | price predicates as impossible, no fallback tier | Ceiling becomes infinite whenever every derivation needs a predicate, so the search never terminates on unrepairable input. |
 | exact per-position `F(p)`, minimised over p | Tighter, but O(n.|G|) per input rather than once per grammar, needs the same predicate fallback anyway, and would put work in the path of the sub-millisecond one-typo case for no gain — the ceiling is not the binding limit there. |
+
+## 5o. PRED measured against ground truth: the tag was wrong in both directions
+
+The **PRED** tag has said the same thing since m41: predicates are answered by
+the oracle on the original input, so "the engine reports a cost that is too
+high". That claim was never tested. It came from `_pred4x.dart`, which compares
+against truths **I wrote down by hand**, and the brute-force gate that could have
+checked it — `_bf4x.dart`, BFS over single-character edits with the pure parser
+deciding membership — **has no predicate in any of its five grammars.**
+
+`_bfpred44.dart` is that gate pointed at predicate grammars. **18 of 28.**
+
+| grammar | input | truth | m43 | m44 | |
+|---|---|---|---|---|---|
+| `S <- &'x' 'x' &'y' 'y';` | `zz` | 2 | **-1** | **-1** | LOST |
+| | `z` | 2 | **-1** | **-1** | LOST |
+| | `` (empty) | 2 | **-1** | **-1** | LOST |
+| | `xz` | 1 | **-1** | **-1** | LOST |
+| | `zy` | 1 | **-1** | **-1** | LOST |
+| `S <- !'x' A;  A <- 'x' / "yy";` | `q` | 2 | **1** | **1** | UNDER-REPORT |
+| | `` (empty) | 2 | **1** | **1** | UNDER-REPORT |
+| | `xy` | 1 | 2 | 2 | too high |
+| `S <- !'x' 'b';` | `x` | 1 | 2 | 2 | too high |
+| `S <- 'a' !'x' 'b';` | `ax` | 1 | 2 | 2 | too high |
+
+Two failure modes the tag denied:
+
+* **LOST — a repairable input reported unrepairable.** `L(S) = {"xy"}` for the
+  first grammar, so `"zz"` is two substitutions away. The oracle is asked `&'x'`
+  at every position of `"zz"`, where it can never pass, so no budget ever admits
+  the repair and the engine answers `-1`. **This is the same severity class as
+  K40, the defect §5n just deleted** — and it is not a ceiling artifact: m44's
+  derived ceiling for `""` is exactly 2, the true cost, and the search still
+  finds nothing.
+* **UNDER-REPORT — a reported cost lower than any repair that parses.** For
+  `S <- !'x' A; A <- 'x' / "yy"` on `"q"`, the oracle says `!'x'` passes (the
+  input has `q` there), so the engine takes the cheap branch and SUBs `q -> x`
+  for a cost of 1. On the REPAIRED string `"x"` the predicate is false. Brute
+  force enumerates every 1-edit string and none is in `L(S)`; the truth is 2
+  (`"yy"`). **The engine returns a cost for a repair that does not exist.**
+
+### The diagnosis, in one sentence
+
+A predicate is a constraint on a CHARACTER OF THE REPAIRED STRING, and the
+engine answers it from the input, because the character's value is not decided
+where the predicate is asked — it is decided by whichever reader emits it, which
+is somewhere in the CONTINUATION.
+
+That is the same shape as I3 (§5m) and its exact mirror image. I3 says the
+oracle is authoritative as far as the edit-free window reaches, and uses it to
+DROP candidates. A predicate asks about a position the window may not cover, and
+there the oracle's answer is not conservative in either direction: `false` on the
+input where a repair would make it true loses repairs, and `true` on the input
+where a repair makes it false invents them.
+
+### Why the obvious repairs do not work
+
+| candidate | why it fails |
+|---|---|
+| assume every predicate passes | Loses nothing, invents everything: the `&'x' 'x'` grammar would report 1 for `"zz"` via a derivation whose predicate is false. Under-reporting is the worse direction — it hands back a repair that does not parse. |
+| assume every predicate fails | Sound, and useless: any grammar whose derivations all cross a predicate becomes universally unrepairable. |
+| make the predicate editable (pay to satisfy it) | Double-charges. `&'x' 'x'` on `"zz"` would pay 1 for the predicate and 1 for the terminal to change the SAME character — 4 where the truth is 2. |
+| evaluate the predicate on the repaired string | That is the right answer and it needs the repaired string, which is exactly what the value abstracts away. Full generality is an intersection of two PEG derivations over the same positions — a product construction, not O(|G|.n.K). |
+
+### The tractable core: a one-character predicate belongs to the reader after it
+
+`&C T` and `!C T`, where C and T both match a single character, are EXACTLY a
+single terminal accepting `C ∩ T` (or `T \ C`) — for the pure parser as much as
+for recovery, since both clauses read the same position and only T consumes it.
+Fusing the pair makes the constraint part of the decision that determines the
+character, which is exactly where it belongs, and it is exact rather than
+approximate. The prices do not change: SUB's regret is about the character
+DISCARDED (`2 * _skipRegret`), FAB's is the constant `_widestClass`, and neither
+mentions the class emitted — so fusion needs only an EMPTINESS test (`can any
+character satisfy both`), never width arithmetic.
+
+That covers 7 of the 10 failures above. What it does not cover, and why, is the
+honest boundary:
+
+* **The predicate's reader is behind a rule reference** (`!'x' A`). The
+  constraint must cross a rule boundary, which needs either a specialised copy of
+  the rule per constraint or the constraint carried down the descent as a memo
+  dimension. This is the family that contains the UNDER-REPORTS.
+* **The predicate reads more than one character** (`!"*/"`, the comment idiom).
+  Then it constrains a window, each character of which is decided by a different
+  reader.
+* **The predicate is last in its sequence** (`Kw <- "if" !Alpha`, the keyword
+  idiom). The constraint escapes into the parent's continuation, which the curried
+  value does not carry.
+
+The last two are the common real-world idioms, so **single-character fusion is a
+correctness fix for a real family, not a general solution to PRED**, and this
+section is the place that says so rather than a row that claims a clean gate.
+
+### Footnote: the metagrammar takes a single-quoted literal as ONE character
+
+`A <- 'x' / 'yy';` does not parse — it fails with "17 characters of unexpected
+input", pointing at the NEXT rule, which reads like a bug in the rule after the
+real one. Multi-character literals need double quotes: `A <- 'x' / "yy";`.
+Confirmed directly against `MetaGrammar.parseGrammar`; both `_bfpred44.dart`
+grammars had to be rewritten.
