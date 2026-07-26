@@ -60,6 +60,7 @@ import 'm42.dart' as g42;
 import 'm43.dart' as g43;
 import 'm44.dart' as g44;
 import 'm45.dart' as g45;
+import 'm46.dart' as g46;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -377,6 +378,19 @@ final engines = <Eng>[
   // the only m44 timing comparable to m45's.
   Eng('m44g', 428, (r, t) {
     final e = g44.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m46 verifies its own witness on every `recover`, which this table calls once
+  // per mutant -- so `battms` here INCLUDES the extra parse, and `m45h` beside it
+  // is what that costs.
+  Eng('m46', 539, (r, t) {
+    final e = g46.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m45h', 497, (r, t) {
+    final e = g45.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 

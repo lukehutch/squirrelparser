@@ -984,6 +984,8 @@ and are listed once below rather than repeated 32 times.
 | m43f | 385 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 306 | 182.9 | — | >=4096 | 1024 |
 | **m45** | 497 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 290 | 179.4 | — | >=4096 | 1024 |
 | m44g | 428 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 291 | 182.1 | — | >=4096 | 1024 |
+| **m46** | 539 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 321 | 186.7 | — | >=4096 | 1024 |
+| m45h | 497 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 300 | 180.4 | — | >=4096 | 1024 |
 
 The last two rows are a later, separate run (`final_table.dart m41,m26`, appended
 per the maintenance rule rather than regenerating 32 settled rows). `m26c` is the
@@ -1035,14 +1037,27 @@ step for step. The `LOC` tag is again the whole price: 428 → 497. What that bu
 — predicates that are priced by the language rather than by the spelling, and
 12 repairs that m44 got wrong — is §5p.
 
-### Bugs shared by EVERY row, so not repeated per engine (K40 excepts m44, m45)
+`m46` and `m45h` are a seventh occasion, one engine per process, three runs each,
+medians quoted (m46 battms 321/302/341, latms 186.7/191.2/179.1; m45h battms
+300/290/304, latms 180.4/177.3/188.1). `m45h` is m45 re-measured in that session
+and is the ONLY m45 number comparable to m46. Read together: **checking the
+witness costs 7% of the battery and 3.5% of latency** — 321 against 300 ms over
+519 recoveries, i.e. **~0.04 ms per repair**, which is one pure parse of a
+48-character document. Every quality column is identical, because verification
+changes no answer; it only reports whether the answer was a repair. The `LOC` tag
+is again the whole other half of the price: 497 → 539. Note that this table calls
+`recover` once per mutant, so the 7% is the *always-on* figure; an engine that
+verified only when a caller asked would pay 0. What the check buys — the first
+gate that can catch a repair that does not repair — is §5q.
+
+### Bugs shared by EVERY row, so not repeated per engine (K40 excepts m44, m45, m46)
 
 | tag | defect |
 |---|---|
 | **PEG** | Repairs toward the **CFG** reading of the grammar, not the PEG one: a possessive `*` and a committed `/` are treated as if any stop or alternative were available. 4 of 5 conformance cases wrong, identically, in every engine back to `dot` (§5b). The `cost` column cannot see it — its grammars are prefix-disjoint, so the two readings coincide there. |
 | **RR** | Right-recursive grammars overflow the native stack (the `RRmax` column). Inherited from the pure parser, which shows the same asymmetry; recovery worsens the threshold ~4x because its descent adds frames per position (§8a). Fix is an explicit worklist; not built. |
 | **d13** | `del@13` and `swap@13` are never recovered to the original shape. That is exactly the 517/519 ceiling. |
-| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). It was the last tuning parameter in the m-line, and **m44 and m45 are the only rows without it** — there the ceiling is DERIVED as `n + fabricate(goal)`, a repair that always exists, so the search cannot stop short of a real minimum (§5n). Every other row still has the knob and still gives up above 40. |
+| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). It was the last tuning parameter in the m-line, and **m44, m45 and m46 are the only rows without it** — there the ceiling is DERIVED as `n + fabricate(goal)`, a repair that always exists, so the search cannot stop short of a real minimum (§5n). Every other row still has the knob and still gives up above 40. |
 
 ### Per-engine bug tags
 
@@ -1980,3 +1995,138 @@ Fusing any of them needs a channel from a reader BACK to the leaf in front of it
 I1's, not a rewrite. The last two are the common real-world idioms, so **I4 is a
 correctness fix for a real family and not a general solution to PRED**, and the
 tag stays on the row for that reason.
+
+## 5q. m46: the witness is a proof, so check it
+
+Every gate in this file up to §5p compares a NUMBER to another number — the
+engine's cost against brute force's, or against another engine's. That can only
+be run where brute force can run, which is a handful of toy grammars at three
+edits, and it says nothing at all about the tree. §5p's residual was found by a
+cost oracle and was reported as three wrong costs. It is worse than that, and the
+thing that says so is not a better oracle:
+
+> **A repair is a claim with a proof attached.** The witness tree says which
+> characters were kept, which were discarded, and what a lying leaf put in their
+> place — so it determines a string `s'`, and the claim is exactly `s' ∈ L(G)`.
+> That claim is CHECKABLE, by the thing that decides membership: the parser.
+
+I5 is that check, and it is 42 lines: `_emit` walks the witness once and writes
+`s'`; `_verify` hands `s'` to a fresh `Parser` and asks whether it parses to the
+end; `recover` sets `lastVerified` before returning. One parse, `O(|G|·n)`,
+against a search that is `O(|G|·n·K)` — so the proof costs asymptotically less
+than the thing it proves, which is the only reason it can be always-on.
+
+### What `lastVerified` claims, and what it does not
+
+**It claims the answer is A repair. It does not claim the answer is THE minimum.**
+The two error directions are not symmetric, and the check sees exactly one of them:
+
+| direction | what it means | does re-parse catch it? |
+|---|---|---|
+| **under-report** | reported cost is below any real repair; the witness cannot be made to parse | **yes** — `s'` fails, `lastVerified` is false |
+| **over-report** | a cheaper repair exists that the search missed | **no** — the expensive witness still parses |
+
+That asymmetry is the whole design. Under-reporting is the strictly worse defect
+(§5o: "the engine returns a cost for a repair that does not exist"), it is the one
+a caller cannot detect for itself, and it is the one the check is total on.
+Over-reporting needs a lower bound, which is a second search, not a parse.
+
+**`forced` and `!lastVerified` are different answers and both are needed.**
+`SkipResult.forced` means the engine declined — no repair exists within the
+derived ceiling, so it returns the whole input as one error span for presentation.
+There is no claim to check and `lastVerified` stays false. `!lastVerified` without
+`forced` is the real signal: **the engine made a claim and its own proof refutes
+it.** A caller that wants only sound answers reads both fields; a caller that
+wants a tree regardless ignores them, exactly as before.
+
+### Measured: two implementations of the same claim, and they never differ
+
+`_verify46.dart` runs the check twice — once inside the engine, once from outside
+with an independently written walk that deliberately picks a DIFFERENT member of a
+fused character class (the first printable character, not the first code unit), so
+agreement is not agreement-by-shared-code.
+
+| gate | result |
+|---|---|
+| JSON battery, 519 mutants | **519/519 verified, 0 disagreements** inside vs outside |
+| predicate grammars, 10 grammars / 45 inputs | **36/45 verified, 0 disagreements** |
+| of the 9 unverified | 5 genuinely defective witnesses, 4 `forced` on `S <- &'x' 'y';` where `L(S)` is empty and declining is correct |
+| `_bfpred46` against brute force | 42/45 — identical to m45; verification changes no answer |
+| `_smoke46`, 156 mutants against m43 | costDiff 0, shapeDiff 0, spanDiff 0, coverBad 0 |
+
+**The finding that only re-parse could produce:** all five defective witnesses are
+the §5p residual grammar `S <- !'x' A; A <- 'x' / "yy";`, all five emit `"x"` —
+and the cost gate flags only THREE of them.
+
+| input | truth | m45/m46 cost | witness | cost gate | re-parse |
+|---|---|---|---|---|---|
+| `q` | 2 | 1 | `x` | wrong (under-report) | fails |
+| `` (empty) | 2 | 1 | `x` | wrong (under-report) | fails |
+| `xy` | 1 | 2 | `x` | wrong (too high) | fails |
+| `x` | 2 | **2 — correct** | `x` | **passes** | **fails** |
+| `y` | 1 | **1 — correct** | `x` | **passes** | **fails** |
+
+The last two rows are the point of the whole insertion: **the cost is right and
+the tree is wrong**, and no oracle that compares integers can see it. `L(S)` is
+`{"yy"}` — the `'x'` branch of `A` is dead, because reaching it requires the first
+character to be `x`, which `!'x'` forbids — so a witness that emits `"x"` is
+never a derivation, whatever it costs. Re-parse detects a strict superset of what
+brute force detects, on grammars where brute force can run at all, and it also
+runs on the 519-mutant JSON battery where brute force cannot.
+
+### The residual is not a bug in I4's implementation — it is a limit of rewriting
+
+`_nullseq45.dart` settles this with the pure parser alone, no engine involved. The
+obvious generalisation of I4 is to PUSH a lookahead's constraint down the grammar
+until it reaches a terminal. Take `G0: S <- !'x' A B;  A <- 'a'?;  B <- 'b' / 'x';`
+— `A` is nullable, so WHICH clause reads the constrained character is not decided
+until run time. Both static placements are the wrong language, by membership:
+
+| string | `G0` | `G1: (!'x' 'a')? B` | `G2: (!'x' 'a')? (!'x' B)` | |
+|---|---|---|---|---|
+| `x` | false | **true** | false | G1 ACCEPTS WHAT G0 REJECTS — under-reports |
+| `ax` | **true** | true | **false** | G2 REJECTS WHAT G0 ACCEPTS — loses a repair |
+
+Constrain only the first reader and you admit strings the grammar rejects;
+constrain both and you reject strings it accepts. **No static placement is exact,
+so the emission is a run-time fact**, and a correct fix needs a pending constraint
+carried as a memo dimension plus one bit saying whether anything has been emitted
+yet — an *emission* channel, which is wider than I1's value. m46 on G0 reports 2
+for `"x"` (truth 1) and 3 for `"xx"` (truth 1): conservative, over-reporting, and
+now *marked as unverified* rather than silently believed.
+
+### What it costs
+
+| gate | m45h | m46 |
+|---|---|---|
+| battery (median of 3, one engine per process) | 300 ms | 321 ms (**+7%**, ~0.04 ms per repair) |
+| latency | 180.4 ms | 186.7 ms (+3.5%) |
+| every quality column of §5j | identical | identical |
+| LOC | 497 | **539** (+42) |
+
+The 7% is the always-on figure, because `final_table.dart` calls `recover` once per
+mutant and m46 verifies inside `recover`. It is one pure parse of a 48-character
+document per repair, and it is the *entire* runtime cost: `cost == 0` returns
+`lastVerified = true` without parsing anything, since the input already parsed.
+
+### The alternatives, scored
+
+| candidate | result | score | why |
+|---|---|---|---|
+| **re-parse the emitted witness inside `recover` (I5, built)** | 519/519 JSON, 36/45 predicate, 0 disagreements, +42 LOC, +7% battery | **9** | Total on the direction that matters, uses the parser that already exists, no new state anywhere, and the price is one linear parse against a `K`-round search. Loses a point for being silent on over-reporting. |
+| verify only when the caller asks (`bool verify()` on demand) | not built | 8 | Same code, 0% cost on callers that do not ask — but then the default is the unchecked answer, and the whole finding above came from checking by default. A caller-facing flag is the right SHIPPING form; always-on is the right form while the engine is under development. |
+| pending-constraint memo dimension + emission bit | not built | 6 | The only candidate that FIXES the residual instead of reporting it. Needs a per-candidate "has anything been emitted" bit travelling back up, which I1's value does not carry; memo widens by the set of pending constraints, so `O(\|G\|·n·K)` is no longer obvious. |
+| derivative/product construction (carry each pending lookahead's Brzozowski derivative as state) | not built | 5 | Theoretically complete — `O(\|G\|)` extra states, `O(\|G\|²·n·K)` — and it roughly DOUBLES the engine. Correct, and it contradicts the "simplest, most compact" half of the objective. |
+| CEGAR: search, check, re-search with the failure excluded | not built | 3 | I5 is exactly its first half, so the check is free — but the second half needs "exclude this derivation" as a search constraint, which is a new memo dimension per counterexample and has no iteration bound. |
+| compare against brute force at run time | rejected | 1 | Exponential, and only defined for tiny grammars and tiny K. It is a development gate, not a mechanism. |
+| trust the cost and skip the check | status quo ante | 0 | Measurably wrong: two of the five defective witnesses have CORRECT costs, so trusting the cost is trusting the wrong invariant. |
+
+### The lesson that generalises
+
+**Differential testing between your own variants proves agreement (§8a); an oracle
+that compares one number proves that number.** The witness is a richer object than
+the cost, so it admits a richer check — and the check for a claim of the form
+"`x` is in the language" is always the decision procedure for that language, which
+a parsing project has lying around by definition. Any search that returns a
+CERTIFICATE rather than a score should verify the certificate, because the
+certificate is where the errors the score cannot see are hiding.
