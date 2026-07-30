@@ -4119,3 +4119,42 @@ relaxed half, m65 remains registered as the self-contained tape reference.
 **m67 is the standing engine**: the first single-file engine in the line
 that is true-PEG exact (conformance 5/5, sweep-clean) at the relaxed
 line's speed.
+
+## The twenty-seventh occasion: the certificate retires the lattice (m68)
+
+The directive: every 517/519 engine on one board, every tradeoff priced,
+state of the art extracted. The board (same-process eras): m42 381 LOC /
+174.5 latms (relaxed, pred-inexact, maxCost knob, RR 1024); m44 428
+(+47: parameter-freedom); m49 668 (+240: the obligation lattice = predicate
+exactness); m53 751 (+83: stack, costing latency until m62 recovered it at
+787/199.2); m67 1208 (+421: true PEG). The analysis found that one of those
+purchases is obsolete under the certificate architecture:
+
+**I24: UNDER A CERTIFICATE, THE FAST ENGINE ONLY NEEDS TO BE A FLOOR.**
+The I6/I7 lattice made the RELAXED engine predicate-exact, back when it was
+the final authority. It is not the final authority anymore: an
+under-report can never verify (its witness would realize a cost below its
+own claim), so every predicate mistake fails verification and routes to
+the tape, which is exact. On lookahead-free grammars the union relaxation
+is trivially a floor — and the entire performance corpus (JSON) is
+lookahead-free, so the lattice was inert on every measured input. m68
+deletes the lattice, the fusion pass, and the demands machinery from the
+core; the router condition blunts to "any lookahead routes to the tape."
+
+**Measured, full official protocol:** m68 1117 LOC, 344 battms /
+214.6 latms vs m62u 340 / 222.5 — battery tied with the bare relaxed
+engine, LATENCY FASTER THAN IT — shape 517/519, conformance 5/5, bf
+44/44, bfpred 71/71 (via tape), leak 71/71 (via tape), unsnd 0, sweep
+0/2261, and smoke FULLY bit-identical on all 14 blocks including the
+tape-routed predicate blocks (the DP ranking prices ties at m-line
+rates, so the tape picks the same witnesses). Ceilings 1024/2048
+(verification mandatory, unchanged).
+
+**The remaining priced trades, none taken:** unifying the two witness
+machineries (-150 LOC, costs 3 shape points and smoke identity);
+swapping the frame driver for m49's recursive one (-60 LOC, RRmax
+2048 -> 512); flattening the now-inert obligation threading out of keys
+and signatures (-40 LOC, pure mechanics, no behavior change — the one
+worth doing on a quiet day); the ~200-LOC shared-core dream (needs the
+lib unfreeze). **m68 is the standing engine**: the smallest and fastest
+fully-exact true-PEG configuration the line has produced.

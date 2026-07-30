@@ -88,6 +88,7 @@ import 'm64.dart' as g64;
 import 'm65.dart' as g65;
 import 'm66.dart' as g66;
 import 'm67.dart' as g67;
+import 'm68.dart' as g68;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -400,6 +401,15 @@ const elegNotes = <String, (int, String)>{
       'settle is the minimum, unrepairable means the queue drained, and the '
       'oracle short-circuit survives as a creation-time seed that is sound '
       'because it is redundant. Bit-identical to m53 on all 252 smoke inputs'),
+  'm68': (10, 'I24: UNDER A CERTIFICATE, THE FAST ENGINE ONLY NEEDS TO BE A '
+      'FLOOR. m67 with the I6/I7 obligation lattice deleted from the relaxed '
+      'core: an under-report can never verify (its witness would realize a '
+      'cost below its own claim), so every predicate mistake fails '
+      'verification and routes to the tape, which is exact; on '
+      'lookahead-free grammars the union relaxation is trivially a floor, '
+      'and the whole performance corpus is lookahead-free, so the lattice '
+      'was inert on every measured input. Any lookahead routes to the tape. '
+      '1117 LOC; all gates held including cost+shape smoke identity'),
   'm67': (10, 'I23: THE ROUTER WAS A SEAM, NOT A DESIGN. m66\'s semantics '
       'hoisted into one class over one substrate: ONE relaxed core serves '
       'the fast path, the envelope floor and the fabrication floor; ONE '
@@ -515,6 +525,7 @@ const elegNotes = <String, (int, String)>{
   'm62r': (10, 'm62'),
   'm62s': (10, 'm62'),
   'm62t': (10, 'm62'),
+  'm62u': (10, 'm62'),
 };
 
 final engines = <Eng>[
@@ -886,6 +897,17 @@ final engines = <Eng>[
 
   // m62 again, so m67 has a reference row measured in the SAME process pair.
   Eng('m62t', 787, (r, t) {
+    final e = g62.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m68', 1117, (r, t) {
+    final e = g68.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m62 again, so m68 has a reference row measured in the SAME process pair.
+  Eng('m62u', 787, (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
