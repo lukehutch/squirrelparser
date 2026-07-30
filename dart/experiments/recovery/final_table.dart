@@ -31,6 +31,8 @@
 // building m45..m49 are now IN the table, with the disqualifying direction
 // (`unsnd`, an under-report) given a column of its own.
 import 'dart:math';
+import 'dart:async';
+import 'dart:isolate';
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/parser/combinators.dart';
 import 'package:squirrel_parser/src/parser/match_result.dart';
@@ -1178,13 +1180,34 @@ String verdictOf(int? want, int got, int maxK) {
 }
 
 // ------------------------------------------------------------------------ main
-void main(List<String> args) {
-  // Comma-separated engine names keep an iteration under a minute; with no
-  // argument every engine runs, which is the table that gets reported.
-  if (args.isNotEmpty) {
-    final keep = args.first.split(',').toSet();
-    engines.retainWhere((e) => keep.contains(e.name));
-  }
+
+// --------------------------------------------------------- capped measurement
+// Every engine is measured in its OWN isolate, under a hard 30-second cap. Two
+// reasons, and the second is the one that made it necessary:
+//
+//   1. A divergent engine used to hang the whole table, and a Dart timer cannot
+//      interrupt a synchronous loop -- only killing an isolate can. An engine
+//      that overruns is killed and reported as `TO`, and the run continues.
+//   2. It removes the warming bias this file's header warns about (377 vs 314
+//      battms for the same engine registered late vs first): every engine now
+//      starts from a cold isolate instead of inheriting its predecessors' JIT.
+//
+// The cost is that latency is no longer interleaved across engines. Under the
+// standing protocol -- one engine per process, medians of three, read only
+// against a reference measured in the SAME run -- that changes nothing, because
+// the reference is measured in its own isolate in the same run.
+typedef Setup = (
+  Map<String, Clause>, // rules
+  List<String>, // battery
+  String, // origShape
+  List<String>, // validDocs
+  List<String>, // latCases
+  Map<String, Clause>, // depthLR
+  Map<String, Clause>, // depthRR
+  String Function(Eng, Map<String, Clause>, List<int>), // depthLimit
+);
+
+Setup buildSetup() {
   final rules = MetaGrammar.parseGrammar(jsonGrammar);
   const base = '{"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}';
   bool parses(String s) =>
@@ -1266,36 +1289,45 @@ void main(List<String> args) {
     }
     return '>=$last';
   }
+  return (rules, battery, origShape, validDocs, latCases, depthLR, depthRR,
+      depthLimit);
+}
 
-  // ---- run everything, one engine at a time for battery/valid/truth/depth,
-  //      but latency interleaved per case across all engines.
-  print('battery=${battery.length}  valid=${validDocs.length}  '
-      'latency cases=${latCases.length}');
+/// One engine's entire measurement. Returns `['OK', row, latencies]`, which is
+/// distinguishable from the `[error, stack]` an isolate sends when it dies.
+List<Object> measureOne(String name) {
+  final (rules, battery, origShape, validDocs, latCases, depthLR, depthRR,
+      depthLimit) = buildSetup();
+  final engine = engines.firstWhere((e) => e.name == name);
 
-  final lat = <String, List<double>>{for (final e in engines) e.name: []};
-  final built = <String, (SkipResult Function(String), int Function(), int Function(String))>{
-    for (final e in engines) e.name: e.make(rules, 'JSON')
-  };
+  final latList = <double>[];
+  final (_, _, latCost) = engine.make(rules, 'JSON');
+  // One untimed pass first. Each engine now gets a COLD isolate, so without this
+  // the timed loop measures JIT compilation: m69 read 243.0 cold against 213.1
+  // warm, purely from being the only thing its isolate had ever run.
   for (final m in latCases) {
-    for (final e in engines) {
-      final (_, _, cost) = built[e.name]!;
-      var t = double.infinity;
-      for (var i = 0; i < 5; i++) {
-        final sw = Stopwatch()..start();
-        try {
-          cost(m);
-        } catch (_) {
-          t = -1;
-          break;
-        }
-        t = min(t, sw.elapsedMicroseconds / 1000);
-      }
-      lat[e.name]!.add(t);
-    }
+    try {
+      latCost(m);
+    } catch (_) {}
   }
+  for (final m in latCases) {
+    var t = double.infinity;
+    for (var i = 0; i < 5; i++) {
+      final sw = Stopwatch()..start();
+      try {
+        latCost(m);
+      } catch (_) {
+        t = -1;
+        break;
+      }
+      t = min(t, sw.elapsedMicroseconds / 1000);
+    }
+    latList.add(t);
+  }
+  final lat = <String, List<double>>{name: latList};
 
   final rows = <List<String>>[];
-  for (final e in engines) {
+  for (final e in [engine]) {
     // battery
     final (rec, cost, _) = e.make(rules, 'JSON');
     var shape = 0, cov = 0, crash = 0;
@@ -1402,6 +1434,57 @@ void main(List<String> args) {
     ]);
     print('  ...${e.name} done');
   }
+  return <Object>['OK', rows.first, latList];
+}
+
+void measureIso(List<Object> msg) {
+  (msg[0] as SendPort).send(measureOne(msg[1] as String));
+}
+
+/// Nothing here should take 30 seconds. Anything that does is killed.
+Future<List<Object>?> runCapped(String name, Duration cap) async {
+  final rp = ReceivePort();
+  final iso = await Isolate.spawn(measureIso, <Object>[rp.sendPort, name],
+      onError: rp.sendPort, onExit: rp.sendPort);
+  try {
+    final v = await rp.first.timeout(cap);
+    if (v is List && v.isNotEmpty && v.first == 'OK') return v.cast<Object>();
+    return null; // died: onExit sends null, onError sends [error, stack]
+  } on TimeoutException {
+    return null;
+  } finally {
+    iso.kill(priority: Isolate.immediate);
+    rp.close();
+  }
+}
+
+Future<void> main(List<String> args) async {
+  // Comma-separated engine names keep an iteration under a minute; with no
+  // argument every engine runs, which is the table that gets reported.
+  if (args.isNotEmpty) {
+    final keep = args.first.split(',').toSet();
+    engines.retainWhere((e) => keep.contains(e.name));
+  }
+  final (_, battery, _, validDocs, latCases, _, _, _) = buildSetup();
+  print('battery=${battery.length}  valid=${validDocs.length}  '
+      'latency cases=${latCases.length}');
+
+  const cap = Duration(seconds: 30);
+  final lat = <String, List<double>>{};
+  final rows = <List<String>>[];
+  final timedOut = <String>{};
+  for (final e in engines) {
+    final out = await runCapped(e.name, cap);
+    if (out == null) {
+      timedOut.add(e.name);
+      lat[e.name] = List<double>.filled(latCases.length, -1);
+      rows.add([e.name, '${e.loc}', for (var c = 2; c < 18; c++) c == 15 ? '' : 'TO']);
+      print('  ...${e.name} KILLED after ${cap.inSeconds}s');
+    } else {
+      rows.add((out[1] as List).cast<String>());
+      lat[e.name] = (out[2] as List).cast<double>();
+    }
+  }
 
   // The /v6 column is a ratio to the baseline, so it only exists when the
   // baseline was one of the engines run.
@@ -1410,6 +1493,9 @@ void main(List<String> args) {
   for (var i = 0; i < engines.length; i++) {
     final t = lat[engines[i].name]!.fold(0.0, (a, b) => a + max(b, 0));
     rows[i][v6Col] = v6 == null ? '-' : '${(t / v6).toStringAsFixed(2)}x';
+  }
+  for (var i = 0; i < engines.length; i++) {
+    if (timedOut.contains(engines[i].name)) rows[i][v6Col] = 'TO';
   }
 
   const head = ['engine', 'LOC', 'shape', 'cover', 'crsh', 'cost hist', 'valid',
