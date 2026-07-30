@@ -1026,6 +1026,19 @@ style. See the nineteenth occasion.)
 
 | **m62** | 787 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | 343 | **199.2** | — | >=4096 | **>=4096** |
 | m60q | 780 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 329 | 215.2 | — | >=4096 | **>=4096** |
+| **m63** | **344** | 467/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **conf 5/5, slow** | 27447 | n/m | — | n/m | n/m |
+| m64 | 915 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | inc | 316 | 214.2 | — | >=4096 | >=4096 |
+| m62r | 787 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 361 | 213.9 | — | >=4096 | **>=4096** |
+
+(m63's quality columns are `_score63.dart`; its battms is the `_batt63.dart`
+same-process pair beside m62 at 316 — 87x, the price of true-PEG exactness by
+candidate-space search. Its latms and ceilings are not measurable under the
+protocol: latency case 8 is a cost-10 Dijkstra and the nested-`E` bisect is
+time-bound (m59 precedent). `conf 5/5` retires the PEG tag for m63 ALONE —
+the first engine back to `dot` exact on all five conformance cases; its -1
+means "no repair within the derived cap n + CFG-fabrication floor". m64/m62r
+are one `final_table.dart m64,m62r` process; m64's batch path is m62's code,
+so its row is a second m62 measurement plus the incremental machinery's LOC.)
 
 (m62/m60q are MEDIANS OF THREE `final_table.dart m62,m60q` pair processes:
 m62 battms 329/346/343, latms 198.2/222.7/199.2; m60q battms 327/329/339,
@@ -3822,3 +3835,84 @@ decisions.
 Artifacts: `_frontier62.dart`, `_fool62.dart`, `_m62p.dart` (scratch,
 untracked); scratchpad `my_axioms_round3.md` (clean-room answers),
 `codex_result3.txt` (verbatim reply); arXiv sweep s_eb86c9cf.
+
+## The twenty-second occasion: both breakthrough candidates built — one lands, one measures honest zero
+
+The directive: build the tape AND the incremental engine, and update the paper.
+
+**m64 (I19: THE SUFFIX IS THE INVARIANT; THE EDIT ONLY MOVES THE ORIGIN) —
+exact, and economically empty.** m62 plus an incremental entry point: a
+cell's value is a pure function of (node, obligation, budget, input[pos..]),
+so a single edit keeps every cell to its right verbatim at a shifted address
+(values re-packed, ends moved); d(s,L) is 1-Lipschitz under single edits, so
+the ladder restarts at prev-1 — never more than three rungs, VERIFIED (max 3
+over 300 steps). Correctness: a 300-step random single-edit walk plus 100
+break/fix cycles against fresh m62 batch runs — ZERO cost differences, ZERO
+witness-shape differences (30 checked). Economics, measured three ways:
+1.11x (random walk, fair shared reference), 0.96x (IDE break/fix cycle),
+0.98x (same cycle at n=4071). THE MECHANISM: the budget-zero oracle walk
+already collapses clean regions to memo hits, so batch m62 was secretly
+incremental in the only dimension that pays; suffix keying preserves the
+CHEAP cells (clean right suffix) and drops the EXPENSIVE ones (the cells at
+the edit, where the error is); an append — the common typing action — keeps
+nothing at all. Codex's round-three prediction ("adds machinery, not a
+reduction; O(affected) at best") is CONFIRMED by measurement; my Lipschitz
+window and cell-carry mechanics are confirmed exact. The real incremental
+frontier is bidirectional/balanced decomposition (meet-in-the-middle or
+Rytter-style balanced product trees) — recorded as future work, not built.
+
+**m63 (I20: MEMBERSHIP, DEADNESS, AND THE USEFUL ALPHABET ARE ONE PROBED
+PARSE) — the tape, landed, at 344 LOC.** The suspended-residual VM of the
+Codex spec turned out to be unnecessary: the emitted text y IS the state,
+and the frozen parser re-derives everything about it on demand, memoized by
+y. Wrap every terminal in a probe recording when it consults the open end of
+y (pos + need > |y|); one probed parse of y then yields: MEMBERSHIP (a clean
+full parse of exactly y is authoritative), DEADNESS (a parse that failed
+without touching the frontier consulted only bound positions, hence fails
+identically on every extension — append-only extension is what makes the
+lemma sound), and the ATOMS (the touching terminals' next-needed characters,
+canonical lowest representative; SUB with a class containing s[i] is
+dominated by MATCH and skipped). Dijkstra over (input cursor i, y) with
+MATCH(0)/SUB(1)/FAB(1)/SKIP(1) edges and (cost, regret) priorities is then
+exact under TRUE PEG semantics — ordered choice, possessive repetition, and
+lookahead all decided by the frozen parser on the actual repaired text.
+Derived bounds from the m62 relaxation: its -1 is exact (CFG-empty implies
+PEG-empty); its empty-input answer is the CFG fabrication floor, giving the
+termination cap n + fab; and — A TRAP THE CONFORMANCE GATE CAUGHT — its 0 is
+NOT a membership certificate (a rung-0 CFG-union parse also returns 0, which
+is precisely the possessive-star failure mode); membership must be checked
+by a direct pure parse. -1 from m63 means "no repair within the cap": for
+PEG-empty-but-CFG-nonempty grammars (the possessive-star cases) that is the
+honest terminating answer; a true repair dearer than the cap is the one
+documented approximation at the -1 boundary.
+
+**m63's record:** bf 44/44 (true-PEG truth), bfpred 71/71 overall, leak
+71/71, valid 7/7, cover 519/519, cost-exact hist {1:503, 2:16}, unsnd 0,
+**conformance 5/5 — the first engine in the line, back to `dot`**: the
+possessive-star cases answer "none" while every other engine reports the
+CFG's 0. Shape 467/519 (52 misses: the witness is the repaired-string parse
+projected through the edit alignment, boundary-attributed to the preceding
+span — different tie conventions than the m-line's shortest-head order).
+Battery 27447 ms vs m62's 316 in the same process: 87x, the price of
+candidate-space search, squarely the "research engine" Codex forecast
+(its central battery prediction 1.5-3.5x was optimistic; the state space
+pays for having no residual quotient — structurally equal y's from
+different edit paths merge, semantically equal ones do not). 344 LOC —
+under HALF of m62 — because three of the four heavy sections dissolved:
+no builder/normal form (the probe transform is 15 lines), no obligation
+lattice (lookaheads are decided by the parser on the tape — I6/I7's whole
+apparatus is subsumed), no goalFromNothing (the cap is one m62 call on the
+empty string). What remains: probe + classify (90), Dijkstra (110), regret
+analogue (25), witness projection (80), bounds/api (40).
+
+**The quadrilemma's corners are now all measured** (twenty-first occasion's
+closure, completed): materialize = m62 (787 LOC, 316-361 battms),
+specialize = the fact grammar (priced, unbuilt), suspend/recompute = m63
+(344 LOC, 87x, exactness-class upgrade), incremental-provenance = m64
+(economically empty at gate scales). The line's standing engines: m62 for
+production batch, m63 for true-PEG semantics and as the reference oracle
+the gates never had.
+
+Artifacts: `m63.dart`, `m64.dart` (registered, with `_bf63/_bfpred63/
+_leak63/_score63/_conf63/_batt63/_inc64` and `_ceil50b` extended);
+final_table rows m63/m64/m62r appended per the maintenance rule.

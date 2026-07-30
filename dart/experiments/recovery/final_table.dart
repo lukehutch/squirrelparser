@@ -83,6 +83,8 @@ import 'm59.dart' as g59;
 import 'm60.dart' as g60;
 import 'm61.dart' as g61;
 import 'm62.dart' as g62;
+import 'm63.dart' as g63;
+import 'm64.dart' as g64;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -395,6 +397,27 @@ const elegNotes = <String, (int, String)>{
       'settle is the minimum, unrepairable means the queue drained, and the '
       'oracle short-circuit survives as a creation-time seed that is sound '
       'because it is redundant. Bit-identical to m53 on all 252 smoke inputs'),
+  'm63': (10, 'I20: MEMBERSHIP, DEADNESS, AND THE USEFUL ALPHABET ARE ONE '
+      'PROBED PARSE. True-PEG-exact repair as Dijkstra over (input cursor, '
+      'emitted text): every terminal is wrapped in a probe that records when '
+      'it consults the open end, so one frozen-parser parse of the emitted '
+      'prefix answers membership (authoritative), deadness (a failure that '
+      'never touched the frontier fails on every extension), and the atoms '
+      '(which next characters could matter). Ordered choice and possessive '
+      'repetition mean what PEG says: the FIRST engine in the line to score '
+      '5/5 on the conformance cases, back to dot. 345 LOC. The price is '
+      'exponential worst-case search (NP-hardness licenses it); the ladder '
+      'protocol is unviable at latency case 8, and -1 means "none within '
+      'the derived cap n + CFG-fabrication floor"'),
+  'm64': (8, 'I19: THE SUFFIX IS THE INVARIANT; THE EDIT ONLY MOVES THE '
+      'ORIGIN. m62 plus an incremental entry point: cells right of a single '
+      'edit survive verbatim at a shifted address (value = f(node, '
+      'obligation, budget, suffix)), and d(s,L) is 1-Lipschitz so the ladder '
+      'restarts within +-1 of the previous answer -- never more than three '
+      'rungs, verified over 500 comparisons with zero cost or shape '
+      'differences. Honest verdict: economically empty at measured scales '
+      '(0.96-1.11x) because the budget-zero walk already collapses clean '
+      'regions and the expensive cells sit exactly at the edit'),
   'm62': (10, 'I18: THE ENTRY IS A FACT; THE PASS IS A FRAME. m60 with the '
       'continuation lifted out of the memo entry onto one explicit DFS stack: '
       'of the ten entry fields, six described the pass in flight and move to '
@@ -455,6 +478,7 @@ const elegNotes = <String, (int, String)>{
   'm53o': (10, 'm53'),
   'm60p': (9, 'm60'),
   'm60q': (9, 'm60'),
+  'm62r': (10, 'm62'),
 };
 
 final engines = <Eng>[
@@ -784,6 +808,22 @@ final engines = <Eng>[
   // m60 again, so m62 has a reference row measured in the SAME process pair.
   Eng('m60q', 780, (r, t) {
     final e = g60.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m63', 344, (r, t) {
+    final e = g63.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m64', 915, (r, t) {
+    final e = g64.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m62 again, so m64 has a reference row measured in the SAME process pair.
+  Eng('m62r', 787, (r, t) {
+    final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 ];
