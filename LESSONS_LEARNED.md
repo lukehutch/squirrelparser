@@ -3691,3 +3691,134 @@ directive — "fewer memo table additions" — is answered with six fewer.
 
 Harnesses: `_smoke62/_bf62/_bfpred62/_leak62/_score62/_ceil62`, `_lat53` and
 `_ceil50b` extended; registered `m62` + `m60q` (medians noted inline in 5j).
+
+## The twenty-first occasion: the axiomatization, run twice — my pass vs Codex round three
+
+The user's directive raised the bar: not a smaller transcription but a
+fundamental breakthrough, obtained by axiomatizing what recovery IS and
+rebuilding from purer abstractions — run by me AND by Codex (gpt-5.6-sol,
+max effort) independently, then compared. My answers were written to a file
+BEFORE reading Codex's reply (clean-room; scratchpad `my_axioms_round3.md`);
+Codex ran no experiments (its own disclosure); I ran two.
+
+**The axiomatization (convergent, both passes):** repair = weighted
+recognition of s under the product G (x) E (E the edit transducer), over the
+tropical-lexicographic semiring on (cost, regret) — Aho–Peterson 1972's
+covering grammar is this product compiled, Lyon 1974 its online form, and
+Considine 2025 (arXiv 2507.11873, "Syntax Repair as Language Intersection",
+found in my arXiv sweep, missed by Codex) its modern CFG statement. The
+m-line dictionary: obligations = E-states (one-symbol output constraints);
+the ladder = iterative deepening of the tropical fixpoint; the budget-0 walk
+= the product's Boolean slice; I3 = the PEG-commitment correction; gfn = the
+termination certificate d(empty -> L); regret = MAP decoding under a
+two-level noise model. What is OURS against that literature: the PEG
+envelope + NP boundary, obligations-as-E-states, the verified witness, and
+(unclaimed anywhere in the sweep) exact-minimal INCREMENTAL repair.
+
+**Task 1, the main event — Codex corrected my theorem, my experiments ground
+its.** I proposed: any exact repairer restricted to Boolean oracle queries
+plus o(frontier) state per cell must fail. FALSE AS STATED — Codex's
+counterexample is the exponential enumerator: enumerate edit scripts by
+(cost, regret, canonical tie), re-parse each candidate with the frozen
+parser; first accept is exact, EVEN UNDER TRUE PEG SEMANTICS, with O(1)
+recovery state — it violates only time. (It also needs an upper bound to
+terminate on unrepairable inputs.) So the trilemma is a QUADRILEMMA —
+materialize the frontier / specialize by context (fact grammar) / suspend
+the continuation (tape, coroutine) / RECOMPUTE — and the true theorem is a
+time-space statement: **any evaluator that summarizes a clause before seeing
+its continuation, and must answer every continuation query without
+re-entering or re-reading it, carries Omega(frontier) bits** — a one-way
+communication / INDEX bound. Codex's adversary: branches Pp <- x^(2p-1) a
+[/ b] encode a subset S; continuation Kt <- x^(2m-2t) !. reads bit t
+(distance <= 1 iff t in S); Boolean transcripts on the original input are
+S-independent; 2^m summaries forced; scope honestly limited to
+opaque/compositional summaries (a whole-program algorithm may re-read the
+grammar or input — that is the recompute corner again). My independent
+construction, MEASURED on m62 (`_fool62.dart`): tails 'y'^j read off head
+frontier entries exactly (7/7 agreement between full-input costs and
+head-prefix frontier values), and 16 adversary corruption patterns yield 12
+distinct frontier vectors — the fooling set realized on the real engine.
+Frontier sizes (`_frontier62.dart`): battery max 39, mean 1.65 per cell
+(why the line is fast — real inputs barely pay for the generality);
+adversarial many-ends grammar max 21/42/62 at n=22/42/62 — Theta(n) at one
+cell. VERDICT: the floor is now a THEOREM for every compositional engine —
+the only "dramatically smaller" implementations are exponentially slow
+(the enumerator corner, ~150-300 LOC, true-PEG, useful as a gate oracle,
+never a production engine). Belongs in the paper beside NP-hardness:
+hardness bounds time in the lookahead dimension; this bounds state in the
+frontier dimension.
+
+**Task 2 (axiom audit) — convergent table, three Codex additions, one of
+mine survives its critique.** Codex grounded (b) with m48 as the measured
+conservative point (656 LOC, 63/69 pred) and priced (a) at 45-70 LOC /
+(e) at 40-85. On (f) incrementality it found the real obstacles my sketch
+missed: RETRACTION (m62's values only improve; an edit can delete the best
+derivation, so fine-grained reuse needs support counts / provenance), the
+frozen parser cannot be an incremental oracle (each Parser owns a private
+memo over a final input — parser.dart:12), and a worst-case Omega(n) output
+example (a^n x -> a^n y flips a depth-n tree), so the honest bound is
+O(affected * log), never O(edit * log). My conservative variant survives:
+invalidate damaged cells WHOLE and recompute (no retraction machinery),
+suffix addressing (key cells by distance-from-END: cells right of an edit
+keep their keys — checked arithmetic), and the Lipschitz lemma
+|d(s,L) - d(s',L)| <= d(s,s') seeds the ladder at k-1. Honest per-keystroke
+cost: O(fresh pure parse + damaged-region relaxation).
+
+**Task 3 (literature) — union stronger than either.** Codex added two
+constructions: (i) REGULAR-DERIVATIVE OBLIGATIONS — replace the one-char
+class omega by interned Brzozowski residuals of regular lookaheads;
+emission differentiates, conjunction intersects, nullability discharges —
+extends I6/I7 exactness from single-character to all REGULAR lookaheads
+(finite residuals for a fixed automaton), parameter-free, leaving only
+recursive predicates approximated; (ii) GLR* as deletion-only
+frontier-in-the-GSS. I added: Considine 2025 (above), Dubroy-Warth 2017
+incremental packrat (the invalidation mechanism), tree-sitter as the
+system-level neighbor (incremental + error-tolerant, cost-tuned, NOT
+exact-minimal — the m63 slot is open). Both: Valiant-tropical no real win
+(frontier = matrix row; APSP-hard), semiring/ADP relocate the interpreter
+rather than delete it, Knuth = m57 already measured, provenance semirings =
+the incremental foundation.
+
+**Task 4 (tape) — both say BUILD; Codex re-scoped it honestly.** LOC revised
+UP: 495-715 full contract (380-470 for a prototype without exact tertiary
+ties), battery prediction 1.5-3.5x m62, latency 300-750ms, search ceiling
+>=4096 if the VM descent is explicit, full ~1800-2200 (verification-bound).
+Its VM spec is buildable: compile the Clause DAG to a suspended VM
+(TERM/CALL/RETURN/FIRST/STAR/AND/NOT/END); immutable hash-consed residuals;
+atoms(q) = character classes inducing the same next residual; Dijkstra over
+(cursor, residual) with MATCH/SUB/FAB/SKIP; Clean(i,q) macro replaces the
+walk and MUST use the suspended VM, not the raw parser. Traps beyond my
+three: persistent-state isolation (COW residuals; structural equality after
+hash), Need-vs-failure under decisions and LR (suspension is not mismatch),
+and — its best catch — the PRODUCTIVITY CERTIFICATE: goalFromNothing is
+CFG-shaped and cannot be assumed exact for true-PEG termination.
+DISAGREEMENT ON ORDER, surfaced rather than smoothed: Codex builds the tape
+next and demotes incrementality to a separate provenance project; I ranked
+incremental first for IDE utility. Post-comparison position: the tape is
+now the better-specified and more de-risked build, and it is the only
+EXACTNESS-CLASS upgrade (kills the PEG tag's 4/5); incremental-conservative
+is the utility play. The user picks; the tape is the recommendation if the
+criterion is "fundamental breakthrough".
+
+**Task 5 — Codex's genuinely new object: the weighted continuation
+quotient.** A grammar-relative Myhill-Nerode: states (cursor, obligation)
+equivalent iff every reachable defunctionalized continuation assigns them
+the same (cost, regret, canonical-witness) signature; memoize over quotient
+IDs. The mathematically minimal state an exact engine could retain.
+Its own adversarial assessment is honest: the task-1 adversary keeps all m
+classes, input-dependent regret usually separates states, and naive
+signature computation costs more than the frontier — so: try structural
+hash-consing in the tape first, treat the semantic quotient as an
+empirical question. CLOSURE (two-model consensus): under the unchanged
+axioms the answer space is complete — materialize / specialize / suspend /
+recompute / quotient-compress; m59/m61/m62 measure the efficient corner,
+the enumerator is the tiny-but-exponential corner, the tape is the
+semantic upgrade, provenance/DDG the incremental corner. No credible
+150-350 LOC batch engine at m62 performance under the freeze. The
+remaining breakthrough is the tape's change of semantic object: from
+frontiers of successful subparses to shortest paths through residual PEG
+decisions.
+
+Artifacts: `_frontier62.dart`, `_fool62.dart`, `_m62p.dart` (scratch,
+untracked); scratchpad `my_axioms_round3.md` (clean-room answers),
+`codex_result3.txt` (verbatim reply); arXiv sweep s_eb86c9cf.
