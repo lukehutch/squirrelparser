@@ -757,6 +757,39 @@ Three scoping remarks make the theorem useful rather than merely discouraging. F
 One might hope to sidestep the theorem with a tabulating parser. The pika parser~\cite{hutchison2020}, for instance, parses bottom-up and right to left in linear time for a fixed grammar, and its memo table ends up holding every match of every clause at every position of the input, from which a repair can be assembled by stitching matches across damaged regions. The hope fails on exactly the hard instances, and seeing why is instructive. Any table built over the \emph{given} input, whether top-down or bottom-up, contains facts about the characters that are present; the reduction places the entire difficulty in characters that are \emph{absent} --- the invented window $w$ --- constrained jointly by the conjunction of lookaheads. A per-clause cheapest-completion computation prices each lookahead independently and yields $m$, a lower bound; deciding whether the joint constraints admit that bound \emph{is} the satisfiability question, and no polynomial-size table over the one-character input can carry the answer. Tabulation changes where parsing effort is spent; it does not change what repair must decide.
 
 %----------------------------------------------------------------------
+\subsection{A frontier lower bound for compositional repair}
+\label{sec:frontier}
+%----------------------------------------------------------------------
+
+Theorem~\ref{thm:hardness} bounds repair in the lookahead dimension: joint constraints on invented characters make the \emph{time} of exact repair super-polynomial in the grammar. A second, independent obstruction lives in what we call the frontier dimension, and it bounds \emph{state}: it explains why every efficient repairer --- the one in this paper included --- carries set-valued intermediate results, and why no dramatically smaller memoized implementation can exist.
+
+For a clause $C$ and input position $i$, call the \emph{frontier} of $C$ at $i$ the set of pairs $(e, \omega)$ --- an end position and a pending single-character obligation --- reachable by some repair of the text $C$ consumes, each carrying its minimal cost. A \emph{compositional} evaluator is one that visits $C$ at $i$ once, retains a summary, and afterwards answers every continuation's question --- what completing the parse from each endpoint costs --- from the summary alone, without re-entering $C$, re-reading its definition, or posing membership queries about strings other than the input. A memo table entry is precisely such a summary.
+
+\begin{theorem}[Frontier lower bound]
+\label{thm:frontier}
+For every $m$ there are grammars of size $O(m^2)$ and inputs of length $2m$ on which any exact compositional repairer's summary of one clause at one position requires $\Omega(m)$ bits --- as many bits as the frontier holds entries.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+A one-way communication argument in the style of \textsc{Index}. For $S \subseteq \{1, \ldots, m\}$ define
+\begin{align*}
+P_p &\leftarrow \cd{x}^{2p-1}\,\cd{a} \quad (p \in S), \qquad\qquad P_p \leftarrow \cd{x}^{2p-1}\,\cd{a}\,\cd{b} \quad (p \notin S),\\
+C_S &\leftarrow P_1 \,/\, P_2 \,/\, \cdots \,/\, P_m,
+\end{align*}
+and take the input $s = \cd{x}^{2m}$. Substituting \cd{a} at position $2p-1$ repairs $P_p$ at cost one, ending at the even cursor $2p$, precisely when $p \in S$; insertion-based repairs end at odd cursors, so the even cost-one frontier of $C_S$ at position $0$ spells out $S$. On the \emph{given} input every branch fails at position $2p-1$ before its trailing \cd{b} is ever consulted, so the parse behavior a compositional evaluator observes is identical for all $2^m$ subsets. Now the continuation $K_t \leftarrow \cd{x}^{2m-2t}\,\mathop{!}\cd{.}$ makes $d(s,\, L(C_S\, K_t)) \le 1$ hold exactly when $t \in S$: the cost-one member $\cd{x}^{2t-1}\cd{a}\,\cd{x}^{2m-2t}$ exists only for $t \in S$, and every other member differs from $s$ in length or in two characters. Two subsets $S \ne S'$ force different answers for some continuation $K_t$ with $t$ in their symmetric difference, so all $2^m$ subsets need distinct summaries: $\Omega(m)$ bits.
+\end{proof}
+
+The theorem is deliberately scoped to summaries, and its escape hatches are instructive, because each is a known architecture. An algorithm may \emph{recompute} instead of summarize --- enumerate candidate strings in cost order and re-parse each with the unmodified parser; that is exact even under full PEG semantics with constant repair state, at exponential time. It may \emph{specialize}: index repair facts by their continuation, multiplying rule identities rather than enriching values. Or it may \emph{suspend}: retain the parser's continuation itself and resume it as invented characters are bound. Materialized frontiers, specialized facts, suspended continuations, or recomputation --- the information the theorem counts must live in one of these places, and the choice is an engineering trade, not an escape. In practice the generality is nearly free: over the exhaustive single-character mutation battery of \S\ref{sec:evaluation}, the mean frontier holds $1.65$ entries per memoized cell (maximum $39$), while the two-symbol adversarial family above realizes frontiers that grow linearly in the input at a single cell.
+
+The classical error-correcting parsers of Aho and Peterson~\cite{aho1972} and Lyon~\cite{lyon1974} compute minimum-distance CFG repair by weighted parsing of a covering grammar --- repair as recognition under a grammar--transducer product --- and the same object has recently been restated for CFGs as language intersection with an edit-distance automaton~\cite{considine2025}. The PEG setting adds the two dimensions bounded in this section: lookahead makes joint constraints on invented text intractable (Theorem~\ref{thm:hardness}), and the frontier is the irreducible currency of any efficient evaluation (Theorem~\ref{thm:frontier}).
+% TODO(verify before asserting): without a derived cost ceiling, exact
+% minimization would decide PEG language emptiness (d(s, L) is finite iff L is
+% nonempty). If emptiness is undecidable for PEGs/TDPL (check Ford 2004 and
+% Aho--Ullman, The Theory of Parsing), then unbounded exact minimization is
+% undecidable, and the derived ceiling is the price of termination itself,
+% not an optimization.
+
+%----------------------------------------------------------------------
 \section{Evaluation of error recovery}
 \label{sec:evaluation}
 %----------------------------------------------------------------------
