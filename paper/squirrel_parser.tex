@@ -724,6 +724,39 @@ For inputs with multiple errors, committed mode yields a weaker, but well-define
 Recovery-time complexity separates cleanly by case. A valid input pays nothing (Section~\ref{sec:problem}). A single error costs one failed parse plus one parse per candidate explored until the repair is dequeued, each parse linear by Theorem~\ref{thm:reduction}; the evidence-guided ordering exists to make the number of explored candidates small. The engineered worst case, exhausting the targeted tiers (size bounded by a radius- and evidence-capped constant times $|\Sigma|$, plus the consulted region beyond the frontier, which lookaheads bound) and sweeping the long-range tiers over an unbounded window, parses $O(n \cdot |\Sigma|)$ candidates of length $O(n)$: quadratic in $n$ with a modest constant, and the window parameter trades this ceiling against long-range repair reach. An input with $k$ separated errors runs $k$ committed rounds, linear in $k$.
 
 %----------------------------------------------------------------------
+\subsection{Hardness of exact minimum-distance repair}
+\label{sec:hardness}
+%----------------------------------------------------------------------
+
+Theorem~\ref{thm:minimality} guarantees that the search \emph{returns} a minimum-distance repair; it makes no promise about how long the search runs. That silence is not an artifact of this particular search. Exact minimum-distance repair is intractable for PEGs in general, and the obstruction is syntactic lookahead: a conjunction of lookaheads constrains characters that a repair must \emph{invent}, and choosing inventions that satisfy all of them simultaneously encodes satisfiability.
+
+Define the decision problem \textsc{Min-PEG-Repair}: given a PEG $G$, a string $s$, and an integer $d$, decide whether $d(s, L(G)) \le d$.
+
+\begin{theorem}[Hardness of exact repair]
+\label{thm:hardness}
+\textsc{Min-PEG-Repair} is NP-complete, and remains NP-hard for the fixed input $s = \cd{@}$, with the grammar and $d$ alone encoding the instance.
+\end{theorem}
+
+\begin{proof}
+Membership in NP: a witness is $s' \in L(G)$ at distance at most $d$; its length is at most $|s| + d$, and PEG membership is decidable in polynomial time by packrat parsing.
+
+Hardness, by reduction from 3-SAT. Let $\varphi$ have variables $x_1, \ldots, x_m$ and clauses $C_1, \ldots, C_r$. Writing $\cd{.}^{k}$ for a sequence of $k$ occurrences of the any-character terminal (PEG has no counting operator; the expansion is linear in $k$), construct:
+\begin{align*}
+\mathit{Top} &\leftarrow \cd{@} \; (\mathit{Sat} \; / \; \mathit{Fb})\\
+\mathit{Sat} &\leftarrow \mathop{\&}\mathit{K}_1 \; \mathop{\&}\mathit{K}_2 \cdots \mathop{\&}\mathit{K}_r \;\; \mathit{Bit}^{\,m} \; \mathop{!}\cd{.}
+\qquad \mathit{Bit} \leftarrow \cd{0} / \cd{1}\\
+\mathit{K}_j &\leftarrow L_{j,1} \; / \; L_{j,2} \; / \; L_{j,3}
+\qquad\quad L_{j,k} \leftarrow \cd{.}^{\,i-1}\,\cd{1} \;\;\text{for literal } x_i,\;\; \cd{.}^{\,i-1}\,\cd{0} \;\;\text{for } \lnot x_i\\
+\mathit{Fb} &\leftarrow \cd{\#}^{\,m+1} \; \mathop{!}\cd{.}
+\end{align*}
+The grammar has size $O(rm)$. On the repaired string $\cd{@}\,w$, each lookahead $\mathop{\&}\mathit{K}_j$ inspects the window $w$ and succeeds precisely when clause $C_j$ is satisfied by the assignment that $w$ spells; $\mathit{Bit}^{\,m}\,\mathop{!}\cd{.}$ forces $w$ to be exactly $m$ bits. So $L(\mathit{Top}) = \{\cd{@}w : w \in \{0,1\}^m \text{ satisfies } \varphi\} \cup \{\cd{@}\cd{\#}^{m+1}\}$. Every member begins with \cd{@} and has length at least $m + 1$, so from the input $s = \cd{@}$ the minimum distance is exactly $m$ (insert a satisfying assignment) when $\varphi$ is satisfiable, and exactly $m + 1$ (insert the fallback) otherwise. Taking $d = m$ decides $\varphi$.
+\end{proof}
+
+Three scoping remarks make the theorem useful rather than merely discouraging. First, the hardness is in \emph{combined} complexity: the grammar carries the formula. For a fixed grammar, the joint state of all pending lookahead decisions ranges over a set whose size depends on $G$ alone, so repair is polynomial in $n$ and $d$ with a grammar-dependent constant; the theorem says only that this constant cannot be uniformly polynomial in $|G|$ unless $\mathrm{P} = \mathrm{NP}$. Second, the reduction needs lookaheads of unbounded \emph{width} ($L_{j,k}$ inspects position $i$ of the invented window). If every lookahead in $G$ inspects a single character, each pending constraint is a character class, the joint state is the closure of those classes under intersection --- a lattice derived from the grammar, finite and typically tiny --- and exact repair is polynomial in combined complexity. The tractability boundary thus falls exactly at lookahead width, which is where an implementation should place its exactness boundary as well: single-character lookahead constraints are carried exactly, and wider lookaheads are handled soundly but approximately, with the returned repair verified by a re-parse so that an approximation can never be reported as exact. Third, the objective itself is untouched: the theorem bounds the cost of \emph{finding} the minimum, not the coherence of defining it.
+
+One might hope to sidestep the theorem with a tabulating parser. The pika parser~\cite{hutchison2020}, for instance, parses bottom-up and right to left in linear time for a fixed grammar, and its memo table ends up holding every match of every clause at every position of the input, from which a repair can be assembled by stitching matches across damaged regions. The hope fails on exactly the hard instances, and seeing why is instructive. Any table built over the \emph{given} input, whether top-down or bottom-up, contains facts about the characters that are present; the reduction places the entire difficulty in characters that are \emph{absent} --- the invented window $w$ --- constrained jointly by the conjunction of lookaheads. A per-clause cheapest-completion computation prices each lookahead independently and yields $m$, a lower bound; deciding whether the joint constraints admit that bound \emph{is} the satisfiability question, and no polynomial-size table over the one-character input can carry the answer. Tabulation changes where parsing effort is spent; it does not change what repair must decide.
+
+%----------------------------------------------------------------------
 \section{Evaluation of error recovery}
 \label{sec:evaluation}
 %----------------------------------------------------------------------
