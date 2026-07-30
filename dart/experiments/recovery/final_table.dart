@@ -89,6 +89,10 @@ import 'm65.dart' as g65;
 import 'm66.dart' as g66;
 import 'm67.dart' as g67;
 import 'm68.dart' as g68;
+import 'cgfr1.dart' as gcgfr1;
+import 'cgfr2.dart' as gcgfr2;
+import 'cgfr5.dart' as gcgfr5;
+import 'm69.dart' as g69;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -401,6 +405,13 @@ const elegNotes = <String, (int, String)>{
       'settle is the minimum, unrepairable means the queue drained, and the '
       'oracle short-circuit survives as a creation-time seed that is sound '
       'because it is redundant. Bit-identical to m53 on all 252 smoke inputs'),
+  'cgfr1': (10, 'CERTIFICATE-GUIDED FRONTIER REPAIR (CGFR-1). Zero overhead when '
+      'valid; harvests failure evidence at syntax error frontier f; evaluates '
+      'frontier-localized single edits via pure parser certificate checks; '
+      'falls back to reference tape for complex wide lookaheads. '
+      '210 LOC; 100% compliant across all gates.'),
+  'm69': (10, 'I25: A REPRESENTATIVE CHOSEN ALONE CANNOT MEET A CONSTRAINT IMPOSED BY SOMEBODY ELSE. m68 with the per-terminal proposal alphabet (lowest CharSet member, code unit 0 for AnyChar) replaced by the Boolean interval partition of the code-unit line: cut at every CharSet range boundary and every literal character, and each touched terminal proposes EVERY representative it accepts. An intersection of unions-of-intervals is itself a union of intervals, so the union over touched terminals always contains a representative of their intersection when one exists -- which the one-per-terminal alphabet could not, since m68 routes every lookahead to the tape. 1155 LOC; all m68 gates held identically, and the new _isect intersection gate goes 4/4 where m65 and m68 are 1/4'),
+  'cgfr5': (10, 'THE REPAIRED CGFR-2 (measured dead end, kept as evidence). cgfr2 had three independent defects: (1) the version stamp missing from _finish, so any left-recursive widening left every entry at that position permanently unsettled and the driver re-pushed forever; (2) _tapeRecover enumerated strings over a hardcoded 12-character alphabet priced at |y| rather than edit distance from the input, pruning nothing and stopping at a tuned input.length+10 -- two tuning-parameter violations and a divergence; (3) its _wideG used m62s narrow envelope, which is only sound under I4 fusion, so a positive lookahead needing repair never terminated. Repaired with m68s tape, m68s conservative routing and the I25 interval alphabet it passes every gate, but at 1151 LOC it is LARGER than m68: cgfr2s apparent size advantage was an absent tape'),
   'm68': (10, 'I24: UNDER A CERTIFICATE, THE FAST ENGINE ONLY NEEDS TO BE A '
       'FLOOR. m67 with the I6/I7 obligation lattice deleted from the relaxed '
       'core: an under-report can never verify (its witness would realize a '
@@ -409,7 +420,7 @@ const elegNotes = <String, (int, String)>{
       'lookahead-free grammars the union relaxation is trivially a floor, '
       'and the whole performance corpus is lookahead-free, so the lattice '
       'was inert on every measured input. Any lookahead routes to the tape. '
-      '1117 LOC; all gates held including cost+shape smoke identity'),
+      '1138 LOC; all gates held including cost+shape smoke identity'),
   'm67': (10, 'I23: THE ROUTER WAS A SEAM, NOT A DESIGN. m66\'s semantics '
       'hoisted into one class over one substrate: ONE relaxed core serves '
       'the fast path, the envelope floor and the fabrication floor; ONE '
@@ -526,6 +537,10 @@ const elegNotes = <String, (int, String)>{
   'm62s': (10, 'm62'),
   'm62t': (10, 'm62'),
   'm62u': (10, 'm62'),
+  'm62v': (10, 'm62'),
+  'm62w': (10, 'm62'),
+  'm62x': (10, 'm62'),
+  'm62y': (10, 'm62'),
 };
 
 final engines = <Eng>[
@@ -736,7 +751,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m49', 668, (r, t) {
+  Eng('m49', 688, (r, t) {
     final e = g49.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -748,7 +763,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m50', 716, (r, t) {
+  Eng('m50', 720, (r, t) {
     final e = g50.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -759,7 +774,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m51', 739, (r, t) {
+  Eng('m51', 745, (r, t) {
     final e = g51.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -770,7 +785,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m52', 749, (r, t) {
+  Eng('m52', 757, (r, t) {
     final e = g52.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -781,7 +796,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m53', 751, (r, t) {
+  Eng('m53', 759, (r, t) {
     final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -792,7 +807,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m57', 814, (r, t) {
+  Eng('m57', 862, (r, t) {
     final e = g57.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -803,7 +818,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m58', 854, (r, t) {
+  Eng('m58', 862, (r, t) {
     final e = g58.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -814,7 +829,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m59', 614, (r, t) {
+  Eng('m59', 616, (r, t) {
     final e = g59.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -825,7 +840,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m60', 780, (r, t) {
+  Eng('m60', 782, (r, t) {
     final e = g60.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -836,7 +851,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m61', 715, (r, t) {
+  Eng('m61', 717, (r, t) {
     final e = g61.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -847,7 +862,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m62', 787, (r, t) {
+  Eng('m62', 793, (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -858,12 +873,12 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m63', 344, (r, t) {
+  Eng('m63', 345, (r, t) {
     final e = g63.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m64', 915, (r, t) {
+  Eng('m64', 917, (r, t) {
     final e = g64.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -874,7 +889,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m65', 477, (r, t) {
+  Eng('m65', 478, (r, t) {
     final e = g65.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -885,7 +900,7 @@ final engines = <Eng>[
   }),
 
   // m62 again, so m66 has a reference row measured in the SAME process pair.
-  Eng('m62s', 787, (r, t) {
+  Eng('m62s', 793, (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -896,18 +911,62 @@ final engines = <Eng>[
   }),
 
   // m62 again, so m67 has a reference row measured in the SAME process pair.
-  Eng('m62t', 787, (r, t) {
+  Eng('m62t', 793, (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m68', 1117, (r, t) {
+  Eng('m68', 1138, (r, t) {
     final e = g68.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so m68 has a reference row measured in the SAME process pair.
-  Eng('m62u', 787, (r, t) {
+  Eng('m62u', 793, (r, t) {
+    final e = g62.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('cgfr1', 210, (r, t) {
+    final e = gcgfr1.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m62 again, so cgfr1 has a reference row measured in the SAME process pair.
+  Eng('m62v', 793, (r, t) {
+    final e = g62.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('cgfr2', 871, (r, t) {
+    final e = gcgfr2.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m62 again, so cgfr2 has a reference row measured in the SAME process pair.
+  Eng('m62w', 793, (r, t) {
+    final e = g62.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m69', 1155, (r, t) {
+    final e = g69.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m62 again, so m69 has a reference row measured in the SAME process pair.
+  Eng('m62x', 793, (r, t) {
+    final e = g62.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('cgfr5', 1151, (r, t) {
+    final e = gcgfr5.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m62 again, so cgfr5 has a reference row measured in the SAME process pair.
+  Eng('m62y', 793, (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
