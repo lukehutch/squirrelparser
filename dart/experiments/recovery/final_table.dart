@@ -85,6 +85,7 @@ import 'm61.dart' as g61;
 import 'm62.dart' as g62;
 import 'm63.dart' as g63;
 import 'm64.dart' as g64;
+import 'm65.dart' as g65;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -397,6 +398,18 @@ const elegNotes = <String, (int, String)>{
       'settle is the minimum, unrepairable means the queue drained, and the '
       'oracle short-circuit survives as a creation-time seed that is sound '
       'because it is redundant. Bit-identical to m53 on all 252 smoke inputs'),
+  'm65': (10, 'I21: THE LAYER IS THE ANSWER; THE TIE IS A RANKING, NOT A '
+      'SCHEDULE. m63 paced: 0/1 Dijkstra settles in strict cost layers '
+      'whatever the tie order, so the search carries cost only, the whole '
+      'minimal layer is drained, and the m-line exact regret (actual '
+      'consuming-terminal widths from the candidate parse + a lexicographic '
+      '(edits, regret) alignment DP) ranks candidates AFTER the search -- '
+      'path-independent, and the DP traceback is the witness. Classify on '
+      'pop; clean-tail shortcut (the budget-zero walk on the tape); '
+      'within-layer closer-to-done-first order so accepts surface at the '
+      'head of their layer and the drain suppresses stepwise expansion. '
+      '87x -> 21x battery, shape 467 -> 514 (m62: 517, of which 2 are d13), '
+      'every exactness gate unchanged, conformance 5/5'),
   'm63': (10, 'I20: MEMBERSHIP, DEADNESS, AND THE USEFUL ALPHABET ARE ONE '
       'PROBED PARSE. True-PEG-exact repair as Dijkstra over (input cursor, '
       'emitted text): every terminal is wrapped in a probe that records when '
@@ -824,6 +837,11 @@ final engines = <Eng>[
   // m62 again, so m64 has a reference row measured in the SAME process pair.
   Eng('m62r', 787, (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m65', 425, (r, t) {
+    final e = g65.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 ];

@@ -1030,6 +1030,8 @@ style. See the nineteenth occasion.)
 | m64 | 915 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | inc | 316 | 214.2 | — | >=4096 | >=4096 |
 | m62r | 787 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 361 | 213.9 | — | >=4096 | **>=4096** |
 
+| **m65** | **425** | **514/519** | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **conf 5/5, slow** | **7194** | n/m | — | n/m | n/m |
+
 (m63's quality columns are `_score63.dart`; its battms is the `_batt63.dart`
 same-process pair beside m62 at 316 — 87x, the price of true-PEG exactness by
 candidate-space search. Its latms and ceilings are not measurable under the
@@ -3916,3 +3918,54 @@ the gates never had.
 Artifacts: `m63.dart`, `m64.dart` (registered, with `_bf63/_bfpred63/
 _leak63/_score63/_conf63/_batt63/_inc64` and `_ceil50b` extended);
 final_table rows m63/m64/m62r appended per the maintenance rule.
+
+## The twenty-third occasion: the tape, paced — 87x to 21x, shape 467 to 514
+
+The user's challenge, on target twice: 87x battery is terrible (does A* help?),
+and shape 467/519 is a robustness regression the previous report undersold.
+Conceded on both; m65 answers both without touching exactness.
+
+**Why A* itself does not apply.** An admissible heuristic must lower-bound
+the TRUE-PEG remaining cost from a tape state (i, y). The available floors
+are CFG-side and cannot be evaluated per-state without mapping y back into
+grammar coordinates — the very representation the tape exists to avoid — so
+h degenerates to 0 and A* collapses to Dijkstra. The workable levers are
+Dijkstra-compatible pacing rules, each answer-neutral (I21: THE LAYER IS THE
+ANSWER; THE TIE IS A RANKING, NOT A SCHEDULE — with MATCH free and edits
+unit-cost the search is 0/1 Dijkstra, settling in strict cost layers
+whatever the tie order):
+
+1. Classify on POP, not push: the stranded frontier (the entire next layer
+   when the answer lands) is never parsed at all. 27447 -> ~13s.
+2. The clean-tail shortcut: after every edit, ONE probed parse tests the
+   whole remaining input as a free completion — the budget-zero walk
+   transplanted to the tape. Kills the quadratic post-edit match chains.
+3. Within-layer order by closeness-to-done (n - i): shortcut candidates pop
+   at the HEAD of their layer, so the accept is detected before the layer
+   expands, and the drain then suppresses stepwise expansion entirely
+   (within a layer, stepwise MATCH edges can only re-derive clean-tail
+   accepts the shortcuts already pushed; edit children belong to layers
+   that will never pop). ~13s -> 7.2s.
+4. Path-independent exact ties: the whole minimal layer is drained, every
+   accept collected, and candidates are ranked AFTER the search by the
+   m-line's real prices — cleanRegret from the candidate's own parse
+   (actual consuming terminals, not a per-char floor) plus a lexicographic
+   (edits, regret) alignment DP at m-line edit rates. The DP traceback is
+   also the witness script, removing search-path artifacts from the tree.
+   Shape 467 -> 499 (in-search h-regret) -> 514 with the DP (m62 sits at
+   517, two of which are the d13-inherent pair). The residual 3 are tie
+   residue between equal-(cost, regret-model) candidates.
+
+**Measured (same-process pair beside m62):** battery 7194 vs 337 — 21x,
+from m63's 87x; every exactness gate unchanged and perfect (bf 44/44,
+bfpred 71/71, leak 71/71, conformance 5/5, hist {1:503, 2:16}, cover
+519/519, valid 7/7, unsnd 0); 425 LOC. Latency case 8 (cost 10) remains
+protocol-infeasible: the suppression helps only the final layer; layers
+1..9 still expand. The remaining structural lever for the tape's speed is
+the residual QUOTIENT — merging textually distinct but semantically equal
+emitted prefixes — which is exactly Codex's continuation-quotient object;
+hash-consing of touched-state fingerprints is the cheap first probe.
+
+The line now reads: m62 the production batch engine; m65 the true-PEG
+reference engine (m63 its unpaced baseline, kept for the record); m64 the
+measured null of suffix-carry incrementality.
