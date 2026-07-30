@@ -4273,8 +4273,10 @@ occasion's claims. Every statement below is measured, not inferred.
 `entry.version = _versionAtPos[entry.pos]`, which m62 and m68 both carry.
 Without it, once any left-recursive widening bumps a position's version,
 every entry at that position fails `_settled` forever and parents re-push
-their children endlessly. That is the reported hang. cgfr4 = cgfr2 + that
-one line, and `_bfcg4` goes 44/44.
+their children endlessly. cgfr4 = cgfr2 + that one line, and `_bfcg4` goes
+44/44. All three defects produce a hang, so which one the reported symptom
+came from is not determinable from the report alone; this is the only one
+of the three that also breaks the brute-force gate.
 
 **Defect 2 — `_tapeRecover` is not an algorithm.** It enumerates strings
 over a hardcoded twelve-character alphabet `['a','0','x','{','[','"',' ',
