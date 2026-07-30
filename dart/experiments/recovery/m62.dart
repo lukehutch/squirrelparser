@@ -884,6 +884,13 @@ class SuperDot3 {
     _path.clear();
     lastVerified = false;
     if (cost == 0) {
+      // A relaxed 0 on an input the pure parse rejects (the conformance
+      // cases) has no clean tree to return; report it unverified instead of
+      // dereferencing the absent parse.
+      if (_clean == null) {
+        final error = SyntaxError(pos: 0, len: _inputLen);
+        return SkipResult(error, [error], const [], 1, true);
+      }
       lastVerified = true;
       return SkipResult(_clean!, const [], const [], 0, false);
     }

@@ -1031,6 +1031,16 @@ style. See the nineteenth occasion.)
 | m62r | 787 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 361 | 213.9 | — | >=4096 | **>=4096** |
 
 | **m65** | **425** | **514/519** | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **conf 5/5, slow** | **7194** | n/m | — | n/m | n/m |
+| **m66** | **53** | **517/519** | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **conf 5/5** | **367** | **223.8** | — | 1024 | 2048 |
+| m62s | 787 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 325 | 207.9 | — | >=4096 | >=4096 |
+
+(m66/m62s are one `final_table.dart m66,m62s` process. m66 = the verified
+router (occasion 24): m62's answer verbatim wherever its witness verifies,
+the m65 tape exactly where the relaxation lied. Its LR/RRmax sit at the
+FULL-pipeline ceiling because a cost query must build and verify the
+witness — that is the certificate; m62s's >=4096 is its search-only path.
+m66 is bit-identical to m53/m62 on all 252 smoke inputs and is the first
+true-PEG-exact engine to complete the latency protocol.)
 
 (m63's quality columns are `_score63.dart`; its battms is the `_batt63.dart`
 same-process pair beside m62 at 316 — 87x, the price of true-PEG exactness by
@@ -3969,3 +3979,50 @@ hash-consing of touched-state fingerprints is the cheap first probe.
 The line now reads: m62 the production batch engine; m65 the true-PEG
 reference engine (m63 its unpaced baseline, kept for the record); m64 the
 measured null of suffix-carry incrementality.
+
+## The twenty-fourth occasion: the router — true-PEG exactness at relaxed speed
+
+The user's verdict on m65: still not a good tradeoff — review every
+available improvement again (Codex running the same review in parallel).
+The review found that the tradeoff dissolves entirely, and the instrument
+was in hand the whole time.
+
+**I22: A VERIFIED WITNESS IS A CERTIFICATE OF EQUALITY.** The CFG-union
+reading accepts a superset of the true PEG language, so the relaxed cost
+c62 is a floor on the true cost for EVERY input. When the relaxed witness
+string survives I5 verification — the clean pure parse of the repaired
+text that m62 already performs — the squeeze closes: trueCost <=
+d(s, witness) = c62 <= trueCost. Equality, and the witness in hand is a
+legitimate minimum-cost true repair. The relaxation's one failure mode
+(repairing toward a parse the committed grammar would never take) is
+precisely the case its own verification detects. So the router is total:
+m62's result VERBATIM when verified; the tape (m65) exactly where the
+relaxation lied. 53 LOC over the two imports.
+
+**Measured, full official protocol (the first tape-family engine that can
+run it), same-process pair:** m66 367 battms / 223.8 latms vs m62s
+325 / 207.9 — within 13%/8% of the standing engine — with shape 517/519
+(the line's best; the two misses are the d13-inherent pair), cover
+519/519, hist exact, bf 44/44, bfpred 71/71, leak 71/71, unsnd 0,
+**conformance 5/5**, and BIT-IDENTICAL smoke against m53/m62 on all 252
+inputs. LRmax/RRmax 1024/2048: the cost query must build and verify the
+witness (that IS the certificate), so m66 carries m62's full-pipeline
+stack ceiling, not its search-only one.
+
+**A pre-existing flaw fixed on the way:** m62.recover() had a latent
+null-dereference on relaxed-0 inputs whose pure parse fails (exactly the
+possessive-star conformance shape) — a path no gate had ever exercised.
+Guarded to return an unverified whole-span result; m62's smoke re-run
+bit-identical (14/14 blocks), rows unaffected.
+
+**Where this leaves the tradeoff:** m62 remains the fastest relaxed
+engine; m65 remains the self-contained true-PEG reference (425 LOC, 21x,
+no dependence on the relaxation); m66 is the engine to USE — true-PEG
+exactness, relaxed speed and shape, and the fallback price is paid only
+on inputs where the relaxation actually lies, which the certificate
+detects at zero marginal cost. The PEG tag is retired at production
+speed. What the router does NOT fix: the residual tie discrepancy class
+(m62's relaxed-regret choice among equal-cost verified candidates vs a
+hypothetical true-regret order — bounded by the same 3-case residue m65
+measured) and m65's own 21x, whose next lever remains the residual
+quotient.

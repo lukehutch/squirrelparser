@@ -86,6 +86,7 @@ import 'm62.dart' as g62;
 import 'm63.dart' as g63;
 import 'm64.dart' as g64;
 import 'm65.dart' as g65;
+import 'm66.dart' as g66;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -398,6 +399,16 @@ const elegNotes = <String, (int, String)>{
       'settle is the minimum, unrepairable means the queue drained, and the '
       'oracle short-circuit survives as a creation-time seed that is sound '
       'because it is redundant. Bit-identical to m53 on all 252 smoke inputs'),
+  'm66': (10, 'I22: A VERIFIED WITNESS IS A CERTIFICATE OF EQUALITY. The '
+      'CFG-union reading is a superset language, so the relaxed cost is a '
+      'floor; when the relaxed witness survives I5 verification the true '
+      'cost is squeezed to equality and the witness in hand is a legitimate '
+      'minimum-cost true repair. m62 answers verbatim wherever it can prove '
+      'itself; the tape (m65) answers exactly where the relaxation lied -- '
+      'the conformance cases. 53 LOC of router over the two engines: '
+      'true-PEG exactness (conformance 5/5) at relaxed speed and shape '
+      '(517/519, bit-identical smoke), the first tape-family engine to run '
+      'the full latency protocol'),
   'm65': (10, 'I21: THE LAYER IS THE ANSWER; THE TIE IS A RANKING, NOT A '
       'SCHEDULE. m63 paced: 0/1 Dijkstra settles in strict cost layers '
       'whatever the tie order, so the search carries cost only, the whole '
@@ -492,6 +503,7 @@ const elegNotes = <String, (int, String)>{
   'm60p': (9, 'm60'),
   'm60q': (9, 'm60'),
   'm62r': (10, 'm62'),
+  'm62s': (10, 'm62'),
 };
 
 final engines = <Eng>[
@@ -842,6 +854,17 @@ final engines = <Eng>[
 
   Eng('m65', 425, (r, t) {
     final e = g65.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  Eng('m66', 53, (r, t) {
+    final e = g66.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
+  // m62 again, so m66 has a reference row measured in the SAME process pair.
+  Eng('m62s', 787, (r, t) {
+    final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 ];
