@@ -4084,3 +4084,38 @@ single-character envelope only), and the horizon (-1 within
 n + floor + massG: forced by undecidability). An engine that conflates
 their scopes is wrong precisely where the PRED tag always said the
 relaxation lies.
+
+## The twenty-sixth occasion: the seams removed — one engine (m67)
+
+The user's directive: routing between two black boxes is not an algorithm;
+hoist both into one and simplify algebraically. m67 (I23: THE ROUTER WAS A
+SEAM, NOT A DESIGN) is the m62 core and the m65 tape in ONE class over ONE
+substrate, with the duplicates dissolved rather than delegated:
+
+- ONE relaxed core serves the fast path, the envelope floor, and the
+  fabrication floor (m66's system carried TWO m62 instances — its own and
+  the tape's — plus three pure parses of the same input; m67 has one of
+  each).
+- ONE `_oneCharClass`/`_looks` analysis is simultaneously I4's fusion test
+  and the envelope boundary: a wide lookahead IS, definitionally, a clause
+  `_looks` cannot read. The 40-line duplicate detector is deleted; the
+  boundary and the optimization are the same object.
+- ONE width/regret table (`_h` extracted from the regret-prefix builder)
+  prices the relaxed lattice, the tape's edit weights, the alignment DP,
+  and the post-search ranking. The fabrication mass reads the builder's
+  own lowered terminal list.
+- ONE set of result fields (lastCost/lastVerified/lastSteps) written
+  directly by whichever search answers; the driver is eleven lines.
+
+Measured, full official protocol, same-process pair: m67 1208 LOC,
+**338 battms / 222.8 latms vs m62t 365 / 220.4** — battery FASTER than the
+standing engine in this pairing, latency tied — shape 517/519, conformance
+5/5, bf 44/44, bfpred 71/71, leak 71/71, unsnd 0, smoke bit-identical
+14/14 blocks, sweep 0/2261, LR/RRmax 1024/2048 (verification mandatory:
+the certificate requires the witness). 1208 LOC standalone replaces the
+1325-LOC three-file composition; m62 remains inside it verbatim as the
+relaxed half, m65 remains registered as the self-contained tape reference.
+
+**m67 is the standing engine**: the first single-file engine in the line
+that is true-PEG exact (conformance 5/5, sweep-clean) at the relaxed
+line's speed.
