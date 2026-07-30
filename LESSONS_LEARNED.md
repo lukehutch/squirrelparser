@@ -986,6 +986,53 @@ and are listed once below rather than repeated 32 times.
 | m44g | 428 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 291 | 182.1 | — | >=4096 | 1024 |
 | **m46** | 539 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 321 | 186.7 | — | >=4096 | 1024 |
 | m45h | 497 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 300 | 180.4 | — | >=4096 | 1024 |
+| m47 | 629 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **leak, LOC** | 324 | 186.2 | — | >=4096 | **512** |
+| **m48** | 656 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 350 | 180.0 | — | >=4096 | **512** |
+| **m49** | 668 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 320 | 189.0 | — | >=4096 | **512** |
+| m46i | 539 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 319 | 176.5 | — | >=4096 | 1024 |
+| **m50** | 716 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC, batt, lat** | 681 | 774.5 | — | >=4096 | **>=4096** |
+| m49j | 668 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 342 | 193.5 | — | >=4096 | **512** |
+| **m51** | 739 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC, batt, lat** | 432 | 413.5 | — | >=4096 | **>=4096** |
+| m50k | 716 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 655 | 746.9 | — | >=4096 | **>=4096** |
+| **m52** | 749 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 374 | 361.8 | — | >=4096 | **>=4096** |
+| m51k | 739 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 407 | 410.1 | — | >=4096 | **>=4096** |
+| **m53** | 751 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 372 | 313.1 | — | >=4096 | **>=4096** |
+| m52k | 749 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 374 | 361.8 | — | >=4096 | **>=4096** |
+| **m57** | 814 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC, batt** | 1173 | 332.1 | — | >=4096 | **>=4096** |
+| m53l | 751 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 415 | 327.1 | — | >=4096 | **>=4096** |
+| **m58** | 854 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC, batt, lat** | 1082 | 632.6 | — | >=4096 | **>=4096** |
+| m53m | 751 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 406 | 338.1 | — | >=4096 | **>=4096** |
+| **m59** | **614** | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **slow** | 6172 | >6e5 | — | n/m | >=1024* |
+| m53n | 751 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 387 | — | — | n/m | n/m |
+
+(m59's timing and depth cells are non-standard by necessity: `battms` is the
+`_batt59.dart` same-process pair (m53n beside it), `latms` is `>6e5` because
+latency case 8 exceeds ~10 minutes per call and the min-of-5 protocol was
+aborted at 58 CPU-minutes, and `RRmax >=1024*` is a direct no-overflow probe
+(21s / 286s at k=512/1024 — time-bound, not stack-bound), not the ladder.
+Quality columns are from `_score59.dart`, which imports `final_table`'s own
+scoring functions. See the sixteenth occasion.)
+
+| **m60** | 780 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 358 | 203.9 | — | >=4096 | **>=4096** |
+| m53o | 751 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 427 | 296.4 | — | >=4096 | **>=4096** |
+| **m61** | 715 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **LOC** | 391 | 274.6 | — | >=4096 | **1024** |
+| m60p | 780 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 310 | 202.5 | — | >=4096 | **>=4096** |
+
+(m61/m60p are one later `final_table.dart m61,m60p` process, appended per the
+maintenance rule. m61's reference is m60 — the standing engine — not m53. The
+nested-`E` bisected ceilings for m61, measured with `_ceil50b.dart`, are cost
+k=649,649,649 and full k=590,590,590: the native stack returns with the direct
+style. See the nineteenth occasion.)
+
+| **m62** | 787 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | **—** | 343 | **199.2** | — | >=4096 | **>=4096** |
+| m60q | 780 | 517/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | dup | 329 | 215.2 | — | >=4096 | **>=4096** |
+
+(m62/m60q are MEDIANS OF THREE `final_table.dart m62,m60q` pair processes:
+m62 battms 329/346/343, latms 198.2/222.7/199.2; m60q battms 327/329/339,
+latms 213.4/229.6/215.2. m62's latency beat m60's in all three runs; battery
+is a near-tie with m60 ~3% ahead. Bisected nested-`E` ceilings for m62:
+cost k=2160,2160,2160 / full k=1161,1161,1161 — m60's exactly. See the
+twentieth occasion.)
 
 The last two rows are a later, separate run (`final_table.dart m41,m26`, appended
 per the maintenance rule rather than regenerating 32 settled rows). `m26c` is the
@@ -1050,14 +1097,784 @@ is again the whole other half of the price: 497 → 539. Note that this table ca
 verified only when a caller asked would pay 0. What the check buys — the first
 gate that can catch a repair that does not repair — is §5q.
 
-### Bugs shared by EVERY row, so not repeated per engine (K40 excepts m44, m45, m46)
+`m47`, `m48`, `m49` and `m46i` are an eighth occasion, one engine per process,
+**three rounds interleaved in engine order** so no row sits at a systematically
+warmer heap than another. Medians quoted; every run is below.
+
+| engine | battms (3 runs) | median | latms (3 runs) | median | RRmax |
+|---|---|---|---|---|---|
+| m46i | 320 / 319 / 313 | **319** | 175.5 / 182.5 / 176.5 | **176.5** | **1024** |
+| m47 | 319 / 324 / 324 | **324** | 186.2 / 175.8 / 187.2 | **186.2** | **512** |
+| m48 | 355 / 350 / 328 | **350** | 176.6 / 180.0 / 187.6 | **180.0** | **512** |
+| m49 | 320 / 319 / 352 | **320** | 175.2 / 189.0 / 200.5 | **189.0** | **512** |
+
+Read together, and stated the way the numbers actually support:
+
+**On time, these four engines are not separable on this battery.** m49's own
+spread is 320–352 (a 10% swing between its own rounds) and m46i's is 313–320, so
+the 320-vs-319 median gap is noise, not a result; m48's 350 median sits inside
+m49's range and above its own third round. An earlier, non-interleaved set of
+runs in the same session read m49 at 349 against m46 at 314 and I took that for
+an ~11% regression — **the interleaved occasion refutes it**, and the reason it
+was wrong is exactly what §5j's rule exists for: unpaired rounds measure the
+machine, not the engine. Latency is the same story (176.5 / 186.2 / 180.0 /
+189.0 with per-engine spreads of 7–25 ms). JSON has no lookahead anywhere, so
+nothing I6 or I7 added can *do* anything on this battery — the honest claim is
+the null one: **carrying a constraint costs nothing measurable where there is no
+constraint to carry.** `_smoke49.dart` makes that exact, comparing m49 to m46 on
+156 JSON mutants: 0 cost diffs, 0 shape diffs, 0 span diffs, and `stepDiff = 0`
+— *bit-identical `_compute` counts*, the same "free" that §5j records for m45
+over m44.
+
+**CORRECTED, 2026-07-26 — read the bisected numbers below before this paragraph.
+The regression is real in DIRECTION but 6x overstated in MAGNITUDE: bisected, the
+threshold is m46 524, m47 483, m49 537 — i.e. 8.4% at m47, and m49 is ABOVE m46,
+so by the bisected measure there is no surviving regression at all.** The
+`RRmax` column reports powers of two, so a threshold sitting 8% below a rung
+reads as a halving. Everything below about the direction stands; the "halves"
+claim does not, and the metric itself is the defect (`_ceil50b.dart` bisects; the
+column still ladders). The paragraph as written:
+
+**The one column that does move is `RRmax`, and it is a real regression: 1024 →
+512, entering at m47 and holding through m49.** Confirmed across nine
+single-engine processes (m46 ×3 at 1024, m47 ×6 at 512, m48 ×3, m49 ×3), so it
+is *not* the registry-position artifact that `m26b`/`m26c`/`m26d` were registered
+to expose — every one of these rows was the only engine in its process. Measured
+fact: the largest right-recursive one-error input that completes without
+`StackOverflowError` halves at I6. Inferred mechanism, not confirmed: the memo
+dimension `c` means a position can be entered under several distinct pending
+constraints, so the descent no longer terminates at the first memo hit per
+position and the native recursion runs deeper per character. The `RR` tag's fix
+(an explicit worklist, §8a) would remove the whole column, and it is still not
+built.
+
+The `LOC` tag is the rest of the price and it is the largest in the m-line:
+539 → **629** (m47, I6) → **656** (m48, the enforcement fix) → **668** (m49, I7).
+That is +129 lines over m46 and +286 over m26's 382. What it buys — repairs that
+are exact where every previous engine was safe-but-high, and the closure of the
+§5p/§5q residual that §5q could only *report* — is §5r. `m47` is in the table for
+the record and **must not be used**: see the `leak` tag.
+
+`m50` and `m49j` are a **ninth** occasion, one engine per process, three runs each,
+medians quoted (m50 battms 642/681/689, latms 753.9/779.8/774.5; m49j battms
+346/336/342, latms 189.8/194.0/193.5). `m49j` is m49 re-measured in that session
+and is the ONLY m49 number comparable to m50. A tenth, all-engines-in-one-process
+run of the whole table taken the same day agrees: m50 653 / 704.1, m49j 278 /
+172.5, m49 300 / 181.8.
+
+Read together, and this is the one occasion in the m-line where the trade is
+**large in both directions**:
+
+* **`RRmax` goes 512 → `>=4096`, and the `RR` tag — a bug shared by every engine
+  in this table back to `dot` — is gone.** Bisected on the same grammar
+  (`_ceil50b.dart`, 3 repeats, stable to the unit within a process): the SEARCH's
+  ceiling is **k=2160 against m49's 541, a 4.0x gain**, which lands it at the PURE
+  PARSER's own measured ceiling of k≈2100. The search therefore no longer
+  contributes to the ceiling at all; the oracle does, and nothing in the recovery
+  file can lift that. End-to-end `recover` is k=1281 (m49: 541) and is now bound by
+  the witness descent `_build`, a recursion over the OUTPUT TREE, which is O(n)
+  deep for a right-recursive grammar however the search is evaluated. m49's `cost`
+  and `full` ceilings are both 541, which is the proof that the search dominated
+  there and no longer does.
+* **Every quality column is unchanged, and that is checked exactly, not inferred.**
+  `_smoke50.dart` compares m50 to m49 on 252 inputs — 196 JSON mutants
+  (delete/substitute/insert/transpose at all 49 positions), 8 grammars with
+  lookahead so I7's obligation channel is live, and 5 recursive grammars (LR, RR,
+  `S <- S 'a'`, `S <- 'a'* 'b' 'a'`, `A <- A 'x' / 'y'`) — on cost, canonical tree
+  shape, recovery spans, chars skipped, and `lastVerified`. **All four diff
+  counters are 0 in all 14 blocks.** I8 changes the ORDER a fixed point is reached
+  in and a fixed point does not depend on that order, so this is the result the
+  design predicts; it is recorded because the smoke gate is what makes it a fact.
+* **It costs 2.10x the relaxations, and the cause is structural.** 2.43 per cell
+  against the descent's measured 1.13 — about 3 for a cons, 2 for an alternation,
+  1 for a terminal. The DAG argument (every dependency edge points at a position
+  ≥ its source) is tight for *reading* but not for *discovery*: a cons cell cannot
+  know WHICH tail cell it needs until its head has an answer, so a tail at a
+  further position is created after its own stratum has gone by, and the cons is
+  woken to read it. Measured flat in the budget — `_k50.dart` sweeps 64-character
+  inserts and deletes at k=1..64 and the ratio is 1.92x at every k — so **this is
+  not the deepening fold; deepening is free, as designed.**
+* **And it costs 2.0x `battms` and 4.0x `latms`, which is MORE than 2.10x, so the
+  per-relaxation constant roughly doubled too.** That is the worklist's own
+  bookkeeping: a `_cells` map lookup per `_read` where the descent passed a value
+  back on the stack, plus a queue insert per wake. Steps are not time in either
+  direction — m49's step carried four native frames and m50's carries none.
+
+Two scheduling variants were measured and **both rejected**, recorded so they are
+not re-litigated:
+
+| variant | relax/cell | latms | verdict |
+|---|---|---|---|
+| position buckets, arrival order inside a position | 2.63 | — | rejected; a parent relaxed before its child pays one relaxation per child |
+| `(pos, node.id)` max-heap (**kept**) | 2.43 | 774.5 | `_node` numbers children higher, so both orders point the same way and pack into one integer |
+| defer a cell that read a higher-ranked unsettled cell | 2.41 | — | rejected: 1% of relaxations for ~25 lines, and it needs its own liveness argument — **a dependency re-relaxed at a raised budget may settle on the value it already had, and a cell that does not improve tells nobody, so the deferred reader is never woken.** Requeueing explicitly fixes that and gives back the 1% |
+| `SplayTreeSet` keyed by the same rank, replacing the heap | 2.43 | 889.0 | rejected: −24 LOC and bit-identical, but 17% slower. A set cannot hold a cell twice, so it needs no `queued` bit — and discovering the duplicate costs a walk down the tree where a bit costs nothing, and waking an already-queued cell is the common case |
+
+One micro-measurement in the same family: `_Cell.readers` as a `List` rather than a
+`Set` is 650 ms against 713 on the battery with identical step counts, because
+`_dirty` is already idempotent, so deduplicating the reverse edges buys nothing.
+
+The `LOC` tag is 668 → **716**, +48, and the design note's prediction of 560–590
+was wrong — the worklist's machinery (`_Cell`, the heap, `_dirty`/`_pop`/`_read`/
+`_run`/`_relax`) costs 109 code lines where m49's four LR fields and their loop
+cost 77. **I8 does not make the file smaller. It makes one mechanism out of
+three, and it removes a bug.** The reverse claim in the m50 design note — that I4
+would go too, for −69 LOC — was also wrong: I4 is 19 CODE lines (the 69 counted
+its comment block), and at 19 lines against +7.3% `_compute` calls it stays.
+
+### The twelfth occasion: m51, where the fixed point test IS the write
+
+`m51` and `m50k` are a **twelfth** occasion, one engine per process, three runs
+each, medians quoted (m51 battms 428/432/441, latms 409.9/413.5/418.0; m50k
+battms 649/655/661, latms 741.2/746.9/752.1). `m50k` is m50 re-measured in that
+session and is the ONLY m50 number comparable to m51; `m49j` above was
+re-measured on the same occasion at 334 / 189.8 and is comparable to both.
+
+m51 = m50's recurrence with the VALUE REPRESENTATION changed and nothing else.
+Two insertions:
+
+**I9. A CELL IS RELAXED MANY TIMES, SO THE VALUE MUST BE WRITTEN INTO AND NOT
+BUILT — AND THEN THE FIXED POINT TEST IS THE WRITE.** m50 built a fresh
+`Map<int,int>` per relaxation and compared it to the stored one. Two numbers
+already in this file meet and condemn that: the mean end-map width is **1.63
+(JSON), 1.66 (LR), 6.04 (RR)**, and a cell is relaxed **2.43** times. *A hash
+table of 1.63 entries is a hash table that will never be searched, allocated 2.43
+times per cell in order to be compared once.* m51 keeps the value as a flat
+`List<int>` of `(key, delta)` pairs and relaxes **into** it. The comparison then
+disappears: `_keepBest` already knows whether it lowered anything, so the improved
+bit is a by-product of writing, not a second pass. **I1's fixed point test does
+not need to be computed, only remembered.** One representation serves the whole
+file — the `_goalFromNothing` ceiling table uses the same pairs and the same
+`_keepBest`, and there is no `Map<int,int>` left in the engine.
+
+Soundness of relaxing in place: every Δ ever recorded prices a derivation that
+really exists, budgets only rise (`_read` raises; nothing lowers), and the
+recurrence is monotone — so this is chaotic iteration over a monotone operator on
+a finite lattice and reaches the same least fixed point from any partial start.
+m50 was not *safer* for rebuilding; it was recomputing answers it already held.
+
+**I10. THE REVERSE EDGE IS CONSUMED BY THE WAKE.** After `_relax` wakes a cell's
+readers it clears the list, because the invariant is that a cell is EITHER queued
+OR listed by every cell it last read — and clearing preserves that, since clearing
+is what queueing does. **This is a SPACE win only: 244855 edge slots → 133069, a
+1.84x reduction, at 86849 relaxations either way and no measurable wall clock.**
+I predicted it would fix latency and *that prediction is refuted*, though **the
+reason I gave for the refutation was itself wrong and is corrected here**: I wrote
+that no latency case in `final_table` exceeds cost 2, so there are never many
+deepening rounds. That conflated the latency cases with the BATTERY's `{1:503,
+2:16}` histogram. Measured per case (`_lat53.dart`), the 12 latency cases cost 2, 2,
+1, 1, 2, **4**, 2, 2, **10**, 1, 1, 0 — and the cost-10 case is **90% of the whole
+`latms` column** (308.6 ms of m53's 341.1 ms, 11 deepening rounds). So the rounds
+were there and the prediction still failed; what is refuted is the mechanism, not
+the count. A `Set<_Cell>` gets further (54742 edges) and costs 14% — rejected, same
+reason as m50's list-vs-set micro-measurement.
+
+**Why no case exceeds cost 2, measured — and it is not A1 (`_a1cost.dart`).** I
+first wrote that a contiguous junk run of any length is ONE skip by A1's unit edge.
+That is wrong: A1 charges a run of j characters **j** unit steps (`m51.dart:614`),
+and the measurement is that the minimum-cost repair *does not use a long skip*.
+Inserting j junk characters between two JSON members costs **1, 2, 3, 3, 3, 3 for
+j = 1, 2, 3, 4, 8, 16** — it saturates. The witness says why: at j≥3 the repair is
+two one-character skips (`[47+1, 57+1]` at j=8) plus one missing `','`, and the run
+itself is never skipped. It is **ABSORBED** — `String <- '"' Character* '"'` with
+`Character <- [^"\\]` accepts `@` freely, so re-bracketing which `"` opens the
+string swallows an arbitrary run for a constant 3 events.
+
+**That generalises past JSON and past this engine, and it is the honest form of "cost
+tracks damage, not document size" (§5a).** Cost tracks *the cheapest re-bracketing*.
+A grammar containing an **absorber** — a repetition over a near-universal character
+class, which every string, comment and raw-text rule is — bounds the cost of ANY
+contiguous damage by a grammar constant, independent of how much damage there is.
+So K is small for real grammars for a structural reason, not a fortunate one; and
+the corollary is that the battery cannot exercise the K axis no matter how much
+damage it inflicts contiguously. Scattering is what raises K, because each site
+outside an absorber needs its own repair: `_kscale51.dart` reaches cost 5, and there
+m51/m49 steps go 1.69x → 1.93x over cost 1→5 — the gap grows slowly with cost, not
+with n. (A scattered `@` that lands *inside* a JSON string is legal and free, which
+is why cost is not monotone in the number of sites scattered.)
+
+The result, one engine per process:
+
+| | m49j | m50k | m51 |
+|---|---|---|---|
+| battms | **334** | 655 | 432 |
+| latms | **189.8** | 746.9 | 413.5 |
+| relaxations / cell | 1.13 (descent) | 2.43 | **1.97** |
+| LOC | 668 | 716 | 739 |
+| bisected `cost` ceiling (k) | 541 | 2160 | 2160 |
+| bisected `full` ceiling (k) | 541 | 1281 | 1281 |
+
+**0.66x m50's battery, 0.55x its latency, 0.83x its relaxations, bit-identical on
+all 252 `_smoke51.dart` inputs, same bisected ceilings, +23 LOC.** The latency win
+is larger than the step win, which is the point: the saved work was per-relaxation
+constant (an allocation and a comparison), not relaxations.
+
+**The residual 1.74x relaxation gap to the descent is a floor, not a defect.**
+1.97 ≈ the structural 2 for a stack-free worklist — *once to discover the tail,
+once to combine it* — because a cons cannot know WHICH tail cell it needs until
+its head answers. Reaching 1.13 requires recursing on the position-advancing edge,
+which is exactly what reintroduces the native stack and the `RR` bug. Rejected:
+a depth threshold (a tuning parameter, forbidden), recursing only on same-position
+edges (does not touch the costly tail edge), splitting the cons into two cells, and
+a bottom-up agenda (refuted at 14x, §5j ninth occasion).
+
+Three refutations were **re-run against the new core recurrence**, per §6's rule
+that a refutation is only valid against the engine it was measured on:
+
+| variant | measured | verdict |
+|---|---|---|
+| LIFO stack instead of the position heap | 2.58 relax/cell (1.32x) | **refuted** — position order is not incidental |
+| `Set<_Cell> readers` | 14% slower, 54742 edges | refutation **stands** (`_dirty` is idempotent) |
+| delete I4 (`&C T` ≡ `C∩T` fusion) | 1.21–1.64x steps on PRED grammars, **and 4 witness shapes change** | **keep I4** — and the shape change is new information: I4 is not purely an optimisation |
+
+One process note worth keeping. **`late int` fields cost real time in an inner
+loop:** `late int _posShift, _span` measured 452 ms battery against 432 with plain
+`int _posShift = 0` — a `late` field carries an initialisation guard on every read,
+and these are read in the innermost loop.
+
+### The thirteenth occasion: m52 and m53, where the dependency stops being an address
+
+**I11: A DEPENDENCY IS AN EDGE OF THE GRAMMAR, NOT AN ADDRESS TO BE LOOKED UP.**
+
+I9 removed the per-relaxation *allocation*. What it left untouched was the
+per-relaxation **lookup**. Every read in m51 goes `_cell(node, pos, c)` — build a
+key, hash it, probe `_cells` — and the worklist reads a cell ~2 times for every
+cell in the memo, so this is the hottest line in the engine. But a cell's reads are
+determined by the *grammar*, not by the search: an `_Alt` at `(node, pos, c)` always
+reads its i-th branch at the same `(alts[i], pos, c)`, and a `_Cons` always reads
+its tail at `(node.tail, headEnd, budget', owed')` where `headEnd` and `owed` come
+out of the head's value at index i. **THE EDGES DO NOT MOVE**, because `_keepBest`
+appends and lowers *in place*: the key stored at index i of a value never changes
+once written, only its Δ falls. So the address computed on the first relaxation is
+the address on every later one, and it can be *stored on the edge*.
+
+The invariant was **measured before it was built** (`_depprobe.dart`): across
+JSON/LR/RR/PRED, 58–71% of reads ask for an address the cell has already resolved
+(88226/2026/535/149 reads, of which 62397/1257/348/86 hit a stable slot), and
+**zero** reads resolved to a *different* cell than the slot already held. So m52
+gives `_Cell` a `List<_Cell?> deps` indexed by *slot* — slot 0 is an alternation's
+first branch or a sequence's head, slot `1 + i/2` is the tail under the head's
+i-th answer — and `_read` takes the slot as an argument. This is m25's **entry
+object** lesson, which this line has already learned once: *resolve an address once
+and keep the object, never the key.* The four outside entry points pass slot `-1`
+and `from == null`, and take the old hashed path, which is correct because they are
+the only reads not implied by a grammar edge.
+
+**m52 vs m51: 374/361.8 against 407/410.1 — 0.94x battery, 0.87x latency, +10 LOC**,
+bit-identical on all 252 smoke inputs (14/14 blocks, all four diff counters 0),
+**identical step count (86849)**, identical quality row and identical ceilings. The
+step count being *exactly* equal is the point: I11 changes no decision, only the
+cost of asking.
+
+**I11's second half: THE REVERSE EDGE IS THE FORWARD EDGE'S TRANSPOSE.** Once the
+forward edge is an object slot, the reverse edge (`cell.readers`, which the wake
+walks) is not separate information — it is the same edge read backwards. So m53
+declares it **where the forward edge is declared**, once, on the relaxation that
+first fills the slot, and never again. This **DELETES I10** rather than improving
+it. I10's invariant was "a cell is either queued or listed by every cell that last
+read it", maintained by hand with a `cell.readers.clear()` at the end of each wake;
+the transpose invariant is "a forward edge is permanent, therefore the reverse edge
+it implies is permanent", which is strictly stronger and needs no clearing at all.
+The `clear()` line is gone and nothing replaces it.
+
+**m53 vs m52: 372/313.1 against 374/361.8 — battery a wash, 0.87x latency, and
+edge slots 133069 → 54742.** That second figure is the sharpest result of the
+occasion: **54742 is exactly what the rejected `Set<_Cell> readers` variant reached
+at a 14% run-time cost** (§5j twelfth occasion), and here it comes out for nothing,
+because *the transpose is already deduplicated* — one slot per grammar edge, so a
+duplicate reverse edge is not something to filter, it is something that can no
+longer be constructed. Bit-identical and step-identical to m52; same quality row,
+same ceilings. Cumulatively **m53 vs m51: 0.91x battery, 0.76x latency, +12 LOC**,
+and against m49j (327/185.8, same occasion) 1.14x battery and 1.68x latency, down
+from m51's 2.21x, with the `RR` bug fixed and a 4x higher search ceiling.
+
+**I11 does not lower 1.97 relaxations per cell, and was not expected to** — the
+floor argument of the twelfth occasion is about *how many times* a cell must be
+relaxed, and I11 is about *what one relaxation costs*. Both engines sit at 1.97.
+
+Two candidates were killed on this occasion and are recorded so they are not
+re-litigated:
+
+| candidate | verdict |
+|---|---|
+| **m54: cache the oracle verdict (`committed`) on the cell** behind a `-2` "not asked yet" sentinel — I11 generalised from "an address" to "anything a cell asks that cannot change" | **refuted by measurement.** 382/298.6 against m53k's 378/308.3 over three paired rounds, with m53k's latency itself spread 306–347: a ~3% latency edge inside the noise, battery a wash, for +4 LOC and a field. The reason it cannot win is that the pure parser **already memoises** `match(clause, pos)`, so caching swaps a hash lookup for a field load; unlike I11 there was no repeated *work* underneath, only a repeated *question with a cached answer*. Bit-identical to m53, so nothing is lost by dropping it. |
+| **collapse `_goalFromNothing` into a read of the goal cell at `pos = _inputLen`** — it is a ~60-line second copy of the same recurrence, and the file admits it (`m51.dart:1033`) | **refuted by reasoning, not built.** Unsound: predicates asked at pos n get real answers, but by A4/m45 a lookahead gets no junk prefix, so a *leading* predicate is asked at pos 0 and the derived ceiling can fall **below** the true minimum cost — the `S <- !'x' A` failure the code's own comment names. A ceiling that is too low silently truncates the search, which is the one error class this design cannot tolerate. |
+
+### The fourteenth occasion: two refutations that between them corner the ladder
+
+This occasion produced no engine. It produced a profile, and then two refutations
+that are worth more than the engine would have been, because together they prove
+the deepening ladder cannot be improved *as a ladder*.
+
+**The profile (`_lat53.dart`), and it reframes the whole `latms` column.** Per case,
+m53 against m49j in the same processes:
+
+| | m49 | m53 | ratio |
+|---|---|---|---|
+| steps, 12 cases | 174358 | 355792 | 2.04x |
+| µs, 12 cases | 182884 | 341097 | 1.87x |
+| **µs per step** | **1.049** | **0.959** | **0.91x** |
+
+So **a worklist relaxation is now CHEAPER than a descent step**, and the entire
+residual latency gap is the step COUNT — the 1.97-against-1.13 relaxations per cell
+that the twelfth occasion argued is a floor. After I9 and I11 there is nothing left
+to win in the per-step constant; the axis is exhausted. And the count itself is
+concentrated: **case 8 alone (a 64-character shuffle, cost 10, eleven rounds) is 90%
+of the column**, 308.6 ms of 341.1. On the 519-document battery, where damage costs
+1 or 2, m53 is within 14% of the descent. The `latms` column is not a latency
+measurement, it is a K-axis measurement wearing a latency costume.
+
+Round by round on that case, the ladder looked like pure waste — 256919 relaxations
+of which the final round, the only one that answered, was 44229, and the memo grew
+only 951 → 18479 cells. **83% of the work looked redundant. Both ways of collecting
+it fail, and they fail in opposite directions.**
+
+**I12, REFUTED: a cell never cut by the budget is complete at every budget, so the
+ladder must not re-ask it (`_m55.dart`).** Budget prunes at exactly four sites — the
+`budget == 0` oracle short circuit, a read refused for `budget < 0`, and the two
+`delta >= limit` tests — so "was anything dropped for want of budget, here or below"
+is one bit every relaxation already has, and it is published state, so I9's fixed
+point test covers it verbatim. It is bit-identical to m53 on all 252 smoke inputs.
+**It saves nothing: JSON steps 424823 → 424818, and six of fourteen blocks are
+1.02–1.05x WORSE** from the flag-flip wakes. The reason is the finding: cut site 0
+marks nearly every cell, because `_chain` hands the tail `budget − cost(head)` and
+so almost every cell is eventually asked at budget 0. **The ladder's rounds are
+genuinely productive — the values really do grow every round — so the 83% is not
+redundancy and no incremental patch can skip it.** (Finding cut site 0 cost the
+gate: without it every cell was pronounced complete at k=0, the ladder never ran,
+and all 166 damaged inputs came back −1. A settling criterion that misses one cut
+site does not degrade, it silently returns "unrepairable".)
+
+**I13, REFUTED, AND MORE SHARPLY: the budget is a bound, not a target, so the ladder
+doubles (`_m56.dart`).** The exactness argument is sound and is worth keeping: a
+cell's value at budget k is the minimum over every repair costing at most k, so the
+goal's best entry is the exact answer at EVERY k that reaches it, not only the
+smallest — a Delta-tied rival costs the same and so was admissible at the same k.
+Bit-identical AND step-identical on the smoke set, where every case costs ≤ 2 and
+`0,1,2` is the same ladder either way. **On case 8 it is a catastrophe: 256919 →
+600791 steps, 308 ms → 1847 ms, 6x WORSE.** The single round at k=16 costs ~534000
+relaxations against k=10's 44229. **W(k) grows STEEPLY in k once the budget exceeds
+the true cost**, because a loose budget admits a flood of over-priced entries — my
+linear extrapolation from rounds 1–10 was wrong by an order of magnitude. So
+`Σ_{k≤Δ*} W(k) ≈ 5.8·W(Δ*)` is close to optimal for a budget-filtered search, and
+`k++` is not a naive choice: **the tightest round is not marginally cheaper than a
+loose one, it is exponentially cheaper.** (One consolation prize is real and
+recorded: on case 5, cost 4, doubling skips round 3 and lands exactly on 4, for
+35409 → 33901 steps. It wins only when it does not overshoot, and the overshoot
+dominates.)
+
+**What the two refutations corner.** You cannot skip rounds (I12: the values grow).
+You cannot take bigger rounds (I13: overshooting is exponential). The only move left
+is to make the step *infinitesimal* — to stop stratifying on position with the
+budget as an outer loop, and stratify on **Delta itself**, popping work in order of
+increasing cost so that every entry is computed once, at its own Delta, and the
+bound tightens continuously instead of in integer steps. That is Knuth's lightest
+derivation over the hypergraph (Dijkstra generalised to a monotone superior
+recurrence: Delta is additive and non-negative, `min` at an alternation is superior,
+so the precondition holds), and it would DELETE the ladder and the budget parameter
+together. It also revises I8: **position is not the stratification variable, Delta
+is, and position was only ever a proxy for it** — with the caveat that a zero-Delta
+left-recursive cycle advances neither, so the true key is the pair `(Delta, pos)`
+with fixpoint iteration inside each class, exactly as now. NOT BUILT: it is a
+redesign of the search order rather than an insertion, the heap key grows from a
+position rank to a pair, and the `budget == 0` oracle short circuit — which answers
+a whole node with one memo hit and is worth 2x on its own — has no obvious analogue
+once the budget is gone. It is the next engine, not a patch to this one.
+
+### The fifteenth occasion: the Delta schedule is built, and it corners itself
+
+The fourteenth occasion ended with one candidate on the board: stratify on Delta
+itself (Knuth's lightest derivation), deleting the ladder and the budget, with two
+open problems — no analogue of the `budget == 0` oracle short circuit, and nothing
+obvious doing the budget's second job (§5d: bounding the descent). This occasion
+built it, twice, found the answers to both open problems, and then measured the
+whole program against the thing it was supposed to beat. Every number below is
+from this session, one engine per process for the isolated runs, `m53l`/`m53m`
+reference rows in the same process as the rows they anchor.
+
+**m57 — I14: DELTA IS THE SCHEDULE.** A fact is `(cell, key, Delta)`; its priority
+is `g + Delta`, where `g` — the one field that remains of the budget — is the
+total Delta already settled when the cell was first demanded. Demands are issued
+only by settled facts and settled facts arrive in watermark order, so the first
+demand is the cheapest and `g` is final: min-cost context, stamped once, never
+raised. The two open problems close cleanly:
+
+* **The oracle short circuit survives as a creation-time SEED**: one memoized
+  parser call answering a whole clean subtree, exactly the singleton the
+  `budget == 0` walk produced. It is sound BECAUSE IT IS REDUNDANT — on a
+  subtree with no unfused lookahead (`_noLook`, one static bit), the oracle's
+  match is PEG's own derivation, one of the facts the structural rules would
+  find anyway — so it is a shortcut, never a new answer. A subtree containing a
+  lookahead is not seeded: its facts must carry `owed` debts a whole-clause
+  match cannot see (`Kw <- "if" !Alpha` discharged against the input is the
+  under-report the leak gate exists for).
+* **The budget's second job becomes the pop order itself**: a created cell does
+  not expand — its first relaxation is queued at priority `g`, so a frontier
+  cell contributes its seed and nothing else, which is the leaf `budget == 0`
+  used to make.
+
+The ladder, the budget field, all four budget cut sites, and the ceiling AS A
+SEARCH BOUND are deleted. Termination needs no ceiling: the fact space is finite
+and every push is a strict improvement, so an unrepairable input drains the
+queue. (`_goalFromNothing` survives with its other two jobs — pricing A3's cost
+unit and answering an EMPTY LANGUAGE in O(|G|) with no search.) The first
+satisfying goal fact to settle is the minimum, by Knuth's invariant: Delta is
+additive and non-negative, so no push can undercut the watermark that caused it.
+
+**Three scheduler bugs, each found by a gate, each a lesson in what the ladder
+had been doing silently:**
+
+1. **A per-cell "delivered" watermark silences same-priority facts.** A cell that
+   relaxed to an empty value advanced its delivered mark; a fact arriving one pop
+   later at exactly that priority failed the `> delivered` test and was never
+   announced — `Kw <- "if" !Alpha` on "i" returned −1 with the repair sitting
+   unread in the table. Chaotic iteration inside a priority class means facts
+   legitimately arrive AFTER the class began; a watermark per cell is the wrong
+   granularity for announcements.
+2. **Announce-by-value-scan ping-pongs forever in a zero-weight cycle.** Waking
+   readers whenever any fact sits at the popped priority lets two cells of a
+   left-recursive cycle re-wake each other unboundedly (both hold facts at the
+   class priority). Fixed by TYPING the queue entries: an ANNOUNCE entry is one
+   strict improvement of one fact and wakes readers when popped; a RELAX entry
+   only recomputes and announces nothing — a woken cell that fails to improve
+   pushes nothing, and that silence is what drains a cycle. Improvements are
+   finite, so pops are.
+3. **Accepting at the first satisfying settlement races the Delta-tied rival.**
+   The witness descent prefers ties the way a fully settled table breaks them,
+   and a tied derivation can still be mid-flight in the same priority class when
+   the goal fact pops. Fix: FINISH THE CLASS before answering. (First seen as 8
+   witness-shape diffs on the smoke gate, all verified repairs at the same cost.)
+
+**And one catastrophe that is the whole finding in miniature.** The first draft
+delivered a settling fact by re-relaxing every reader in full. A hub cell whose
+value holds W facts is then rescanned once per arriving fact: O(W²) per cell.
+Latency case 8 (64-char shuffle, cost 10) ran 688,767 relaxations in 10.3
+SECONDS — 33x m53 — and a `final_table` run sat at 99% CPU for 3.5 hours without
+finishing the 519-mutant battery, stuck on the `"`-insertion mutants, whose
+re-bracketing makes the absorber cells' values wide. It terminates (finite
+improvements), but the constant is hours. The fix is textbook semi-naive
+evaluation: the reverse edge carries its SLOT, and a settling fact is combined
+against exactly the edge it arrives on — O(1) per alternation edge, O(opposite
+width) per sequence edge, one full relaxation per cell ever, at expansion. Case
+8 fell to 253ms (0.23µs per event, against m53's 0.96µs per relaxation — the
+per-event constant is now the cheapest in the line).
+
+**m57's row: every quality column perfect, and the price in one place.**
+517/519, 519/519, 0 crashes, {1:503, 2:16}, 7/7, 44/44, 44/44, **69/69 pred, 0
+unsnd**, `_bf57` 44/44, `_leak57` 71/71 with block D 14/14, the ceiling gate
+correct on all six cases (60/46/30 without any ceiling, empty language −1 with
+no search), bit-identical to m53 on all 252 smoke inputs, LRmax AND RRmax
+>=4096. It is the first engine in the table with no ladder, no budget, no
+tuning ceiling, and a perfect quality row. The price: **battms 1173 vs m53l's
+415 in the same process (2.8x), latms 332.1 vs 327.1 (parity)** — the K-axis win
+(case 8: 253 vs 294) cancels against small-K losses (case 10, n=530 one typo:
+31.9ms vs 4.5ms), because fact-grain scheduling pays a heap entry, an
+announcement, and an edge-fanout of combines for every fact, on every clean
+cell of a document the ladder would have walked twice.
+
+**m58 — I15: THE CLASS IS THE ROUND, RUN ONCE.** Exactness only needs cost
+classes ordered (A3: cost rides above regret); within a class the order is
+free, and m53's batched chaotic relaxation has the smaller constant. One heap
+key, `(costClass << rankBits) | (rankMask − rank)`: Dijkstra across strata,
+furthest-position-first inside them. The goal is read only at a stratum
+boundary, where every Delta-tied rival has settled too, so tie-breaks reproduce
+by construction. Two rediscoveries, both of them things the budget had been
+doing under its own name:
+
+* **The production cut.** Without `total < limit`, nothing stops a junk chain
+  from manufacturing the whole O(n²) skip triangle that no pop will ever
+  consume: measured 78,234,046 combinations on case 8 (3.65s) against 249,693
+  relaxations. What remains of the budget's filter is one line: a combination
+  priced beyond the current stratum is DEFERRED, and the cell re-dirties itself
+  at the nearest deferred stratum, so production resumes exactly when the price
+  becomes payable and stops at the answer the way popping does. Case 8: 587ms.
+* **The walk-only leaf, and where it stops.** m53's `budget == 0` cell is a
+  one-call leaf; the stratified analogue is "a seeded cell first demanded at
+  class c may serve stratum c with its seed alone and expand at c+1" — sound by
+  §5i's own edit-free-continuation argument. MEASURED: it collapses the small-K
+  cone to m53's (case 10: 23.6ms → 6.5ms; cases 0–4 at or below m53) and
+  changes NO reported cost — but the routes it suppresses are exactly the
+  Delta-tied witnesses a fully settled table prefers, and 9 of 252 smoke
+  WITNESS SHAPES diverge. Shape parity is this line's proof standard, so the
+  defer is recorded, not shipped. (With it, case 8 regressed 587→1407ms —
+  measured, mechanism not established; without it, m58 is bit-identical to m53
+  on all 252 inputs and passes `_bf58` 44/44 and `_leak58` 71/71.)
+
+**The verdict table, same session, `_lat53` per-case (µs, min-of-5):**
+
+| | m49 | m53 | m57 | m58 |
+|---|---|---|---|---|
+| case 8 (cost 10, the K axis) | **161141** | 294495 | 252929 | 586738 |
+| case 10 (n=530, one typo) | 3039 | **4524** | 31891 | 23572 |
+| latms, 12 cases | **189.8** | 327.3 | 343.9 | 671.7 |
+| battms / latms (official rows vs same-process m53) | ~306 | — | 1173 / 332.1 vs 415 / 327.1 | 1082 / 632.6 vs 406 / 338.1 |
+| relaxations per cell (JSON) | 1.13 | 1.97 | — | **1.27** |
+
+**What the occasion proves, and it is the mirror of the fourteenth.** I12/I13
+cornered the ladder: its rounds cannot be skipped and cannot be widened. I14/I15
+corner the schedule from the other side: **the budget was never one mechanism —
+it was three amortizations sharing one integer.** (a) Its arithmetic was a
+production cut; (b) its zero was a walk-only leaf; (c) its round was a batch
+grain for wakes. Delete the integer and each economy must be rebuilt by hand:
+m57 rebuilt (b) as the seed and paid for the missing (a) and (c) with a
+3.5-hour battery; m58 rebuilt (a) as the deferred cut and (c) as strata, and
+its version of (b) is exact on every cost and breaks witness-tie parity. With
+all three rebuilt, the Delta engines reproduce the ladder's cone — while paying
+heap and event constants the single integer comparison never charged. **The
+deepening ladder's 5.8x redundancy (I13) is not waste; it is rent, and it buys
+all three economies in one comparison per candidate.** m49 keeps the latency
+crown it has held since the eighth occasion; m53 keeps the structural one
+(stack safety); m57 now holds the conceptual one: the existence proof that
+recovery runs with NO ladder, NO budget, and NO ceiling, at a 2.8x battery
+premium, exact on every gate this project has.
+
+The circle this closes is worth one sentence: `dot`, the very first engine, was
+already a best-first agenda over (cost, regret) — Dijkstra without the parser
+inside it — at 12.9x the baseline. m57 is that same schedule with everything
+the budget era learned (the oracle seed, demand-driven cells, the obligation
+channel, the in-place value): 2.8x. The remaining 2.8x is the un-amortized
+grain of the schedule itself, and I12/I13/I14/I15 together say you do not get
+to delete it and keep the ladder's constants too.
+
+### The sixteenth occasion: m59 — the minimal manifestation, and the floor it measures
+
+The fifteenth occasion ended with three engines standing and a directive still
+open: the purest possible realization, by collapsing everything the record has
+demoted to an optimization. m59 is that collapse, written from the principles
+down rather than edited out of a predecessor, and it holds every hard
+requirement of the line: sound and exact under lookahead, minimal repairs with
+the derived tie-break, a rebuilt and verified witness, stack-safe both
+directions, zero parameters. **614 lines against m53's 751 (0.82x), m57's 814
+(0.75x), m49's 668 (0.92x)** — and bit-identical to m53 on all 252 smoke inputs
+on its first run, 44/44 brute force, 71/71 leak, all six ceiling-gate cases.
+
+**I15, in its minimal form: THE BUCKET QUEUE IS THE DEEPENING LADDER WITH EVERY
+ROUND RUN ONCE.** `_buckets[k]` is a plain list; bucket k is drained to its
+fixed point (chaotic, LIFO, the memo entry as the message channel exactly as
+m51 left it), the goal is read at the boundary, then k+1. That one structure
+replaces, simultaneously: the deepening loop (a bucket never re-runs), the
+budget argument and all four cut sites (a combination priced past the current
+bucket defers itself to where it becomes payable — six lines), the priority
+heap and its rank packing (cost classes are all that exactness needs ordered;
+inside a class, order is free), and the ceiling with its `_goalFromNothing`
+fixed point and predicate tiers (~55 lines): keys are finite and prices only
+fall, so every bucket empties, and **an unrepairable input simply runs out of
+buckets**. Delta itself is unpacked: the pair `(cost, regret)`, compared
+lexicographically — A3 stated instead of encoded — which deletes `_costUnit`,
+`_costShift`, `maxCost`, and the overflow reasoning that sized them.
+
+**Checked before building, because it looked like a fourth deletion:** a
+quiet-ROUND saturation stop ("no value improved at budget k, so stop") is
+UNSOUND — `S <- A A; A <- "xxxxx";` on the empty input is quiet at rounds 6–9
+(both fabrication halves finished at round 5) and answers 10 at round 10. The
+bucket drain does not have this bug *by shape*: it has no quiet rounds, only
+empty buckets, and an empty bucket between two full ones is just skipped.
+Recorded so nobody builds the quiet-round stop into a ladder engine again.
+
+**What was deliberately dropped, and its measured price** (each one answer-
+neutral by an earlier occasion's gate): the creation-time oracle seed and its
+`noLook` pass (the `budget == 0` short circuit, worth ~2x), the I11 edge slots
+(~1.1x), the position-rank order (~1.3x steps), the empty-language grammar
+analysis (instant −1 becomes a 41-step drain), demand gating by context (the
+big one: JSON smoke steps are 10.8x m53's, cells 2.4x, because every
+CFG-reachable cell relaxes). m59 is the SLOWEST sound engine since the
+combinator era on throughput, and that is the honest shape of the trade — see
+its row. What was deliberately KEPT although optional: I4's fusion (19 lines),
+so witness trees and work stay spelling-invariant and the smoke gate stays
+bit-identical.
+
+**The floor, per section, each answering a named requirement:** builder and
+normal form ~85 (the language itself), class algebra ~45 (shared by I4, I6/I7,
+the witness narrowing, and `_spelling`), obligation lattice ~45 (soundness —
+`unsnd` disqualifies), regret ~40 (A2; deleting it costs 32 shape points, §6),
+values and keys ~40 (I1/I9), buckets and relaxation ~45 (termination + stack
+safety), the recurrence ~70 (the three node kinds), reconstruction ~95 (the
+tree IS the deliverable, and the shortest-head tie-break is output-affecting),
+verification ~35 (I5, the proof), entry points and pricing ~90. Nothing in
+that list is machinery a future insertion is expected to delete: every earlier
+deletion candidate (heap, budget, ceiling, seed, slots, packing) is already
+gone. **A quarter-length engine (~190 lines) is not reachable while soundness,
+the regret objective, the witness, and the proof are all requirements; ~600 is
+where this feature set bottoms out in this formulation, and m59 is the
+measured witness to that floor.**
+
+**The price, measured after the row was first drafted, and it is the sharpest
+statement of the fifteenth occasion's finding.** m59's §5j quality columns were
+scored with `final_table`'s own imported functions (`_score59.dart`: 517/519,
+519/519, 0, {1:503, 2:16}, 7/7, 69/69, 0) — the perfect row. Its timing could
+NOT be scored by the standard protocol: the official run sat at 58 CPU-minutes
+without completing latency case 8 (cost 10 — each call exceeds ~10 minutes;
+min-of-5 made the column unmeasurable) and was killed; the row records `>6e5`.
+The battery pair, measured alone (`_batt59.dart`, same process, m59 first):
+**6172 ms against m53's 387 — 16x.** The stack ceilings could not be laddered or bisected (both harnesses time out
+under m59's ungated demand); a direct probe (`_rr59.dart`) confirms **no
+overflow at k=512 and k=1024 on the right-recursive 1-error input (cost 1,
+correct)** — in 21 and 286 SECONDS respectively, so m59 is stack-safe by
+construction and TIME-bound long before it could be stack-bound; k=2048 did
+not complete inside a 9-minute window. So
+the sixteenth occasion prices the fifteenth's three amortizations exactly:
+delete the walk-leaf, the width gating, and the rank order all at once and the
+same perfect answers cost 16x on throughput and two orders on the deep-K axis.
+Compactness was bought with the clock, one for one.
+
+### The seventeenth occasion: the external review (Codex), checked claim by claim
+
+At the user's direction the full problem — constraints, discoveries, refuted
+list, open questions — was briefed to Codex (session
+019fb1c5-b512-73e1-9bec-d757cc58dc7a; full output in the session scratchpad),
+which read this file and the engines before answering. Nothing below was
+accepted on its say-so; each item is marked with what checking it consisted of.
+Nothing from this occasion has been BUILT or MEASURED.
+
+**1. Exact minimal repair for arbitrary PEGs is NP-hard (VERIFIED by hand —
+the construction is correct, and it re-scopes the complexity claim for the
+paper).** Reduce 3-SAT: for a formula with m variables and r clauses,
+
+    Top      <- '@' (Sat / Fallback);
+    Sat      <- &C1 &C2 ... &Cr Bit^m !.;      Bit <- '0' / '1';
+    Cj       <- Lit(j,1) / Lit(j,2) / Lit(j,3);
+    Lit(+xi) <- .^(i-1) '1';   Lit(-xi) <- .^(i-1) '0';
+    Fallback <- '#'^(m+1) !.;
+
+on input `"@"`. Every accepted string starts with '@', so the repair keeps it
+and fabricates the rest: an m-bit satisfying assignment (distance m) iff the
+formula is satisfiable, else the fallback (distance m+1). The grammar is
+polynomial (r*3 lookaheads of width <= m), so an exact engine running in
+O(|G| n K) on ARBITRARY PEGs would decide 3-SAT in polynomial time. **The
+one-character obligation envelope (I6/I7's finite lattice L) is therefore not
+an implementation compromise — it is where the tractability boundary actually
+lies.** The paper's O(|G| n K) claim must be stated for that envelope (or for
+any fixed grammar whose decision states close finitely), with wider lookaheads
+sound-but-approximate, exactly as m49+ already behave. This turns §5r's "where
+it stops" from an apology into a theorem-shaped boundary.
+
+**2. Why the PEG tag cannot be fixed in the current value domain (CHECKED
+against the record — consistent with §5b/§5e/m29/m36's measured failures).**
+Ordered choice needs "the earlier branch FAILS on the repaired suffix" and a
+possessive stop needs "the body fails there"; those are failure facts about
+s', and `V(N,i,c) : (end,owed) -> Delta` carries only success endpoints. No
+schedule change can supply them; only a value carrying suspended DECISION
+state can.
+
+**3. The suspended-decision alignment tape (design, unbuilt — the strongest
+candidate this project has ever had on paper for TRUE PEG exactness).** Run an
+exact incremental PEG parser over a lazily-extended repaired string whose open
+end SUSPENDS the parse; a suspended state q partitions the alphabet into
+transition atoms; recovery is Dijkstra over vertices (input cursor i, state q)
+with one SKIP/MATCH/SUB/FAB edge set per atom, priced by A1/A2. **The LR trick
+re-applied to a new fact, exactly the shape the project was hunting: a
+descendant that reaches the open tape cell marks its memo entry
+`waitingForTape` and yields; binding the cell flips one bit and resumes the
+ancestral frame that owns the unresolved PEG decision** — ordered choice
+commits only after real failure, stops only after real body failure,
+predicates read the same future tape, left recursion widens as today. A
+memoized `Clean(i,q)` suffix probe replaces the budget-0 walk. Witness = the
+settled path itself (predecessor per settled vertex — escapes the record's
+parent-pointer refutation because writes are once-per-settled-vertex on a
+simple graph, not per memo update; and reparse-of-s' escapes the §6 refutation
+because the path IS the alignment the old attempt lacked). Weak points flagged
+in review: the shortest-head tie-break becomes a canonical trace in the
+priority (hand-wavy, likely expensive); state count Q_K is exponential for
+arbitrary PEGs (consistent with item 1 — bounded exactly on the one-char
+envelope); empty-language termination needs an emptiness analysis back.
+Codex's own honest LOC estimate: 330–445 standalone, 150–265 recovery-specific
+if the suspended machine becomes the SHARED parser core.
+
+**4. The memo-resident coroutine (design, unbuilt — the low-risk experiment,
+and the elegant completion of an idea this session discarded).** Keep m49's
+value, recurrence, ladder, budget, ceiling, and budget-0 walk — all three
+measured amortizations — but delete BOTH native recursion and m53's
+reader-graph/heap: each memo entry carries `phase, headIndex, tailIndex,
+parent, running, ready, foundCycle`, i.e. **the continuation lives in the memo
+entry, so the coroutine IS the memo**. A request to an unsettled child parks
+the parent (one pointer suffices — exactly one chain runs) and yields; the
+child settling sets `parent.ready` — the descendant-to-ancestor memo message
+again; a request reaching a RUNNING entry is by construction an ancestor,
+hence a cycle: `foundCycle`, provisional value, widen — `inRecPath` /
+`foundLeftRec` generalized verbatim from cycles to all waits. Resuming at the
+saved cursor over I9's append-only values is what dodges m57's measured
+O(width^2) rescan catastrophe. Expected (NOT measured): bit-identical answers,
+~1.13-ish relaxations per cell with m53's stack safety, ~500–590 LOC. Checked
+against the record: the order-independence claim matches m50–m53's experience;
+the cursor-resume interacts correctly with in-place Delta lowering only via
+the ancestral re-widen — the detail most likely to bite in a build.
+
+**5. Corrections this review made to this session's own conclusions (ACCEPTED
+after checking).** (a) A plain "parser over a generic semiring" is
+insufficient — generic `plus` at choice reproduces the CFG-union bug; the
+minimal correct functor needs TWO domains, Decision (post/advance/finish/meet
+— suspended commitment state) and Value, with ordered choice compiled to
+guarded disjoint operations over Decision. (b) The 150–350-line target is
+confirmed not credible in the current formulation by an independent section
+count of m59 (its split matches §sixteenth's within noise); the minimal
+relaxation that unlocks ~150–250 recovery-specific lines is sharing the
+suspended-parser core with ordinary parsing — i.e. the freeze on `dart/lib` is
+now the binding constraint on compactness. (c) A verified-k-best enumerator
+over a relaxed superset (lazy sorted streams, verify candidates in order,
+first verified = true minimum) is exponential as an engine but is the right
+FULL-PEG ground-truth oracle — strictly stronger than `bf_check`'s
+depth-3 BFS — and worth building as gate tooling.
+
+### The eighteenth occasion: m60 — the coroutine measured, and the trade dissolved
+
+The seventeenth occasion's low-risk design was built the same day, and it did
+what the review predicted. **m60 (I16: THE CONTINUATION IS A MEMO FIELD)**
+keeps m49's recurrence, ladder, budget, budget-zero walk and derived ceiling —
+all three of the budget's amortizations — and deletes only the native
+recursion: an entry that needs an unsettled child parks (stores itself as the
+child's one `parent`, since exactly one chain of computation exists) and the
+iterative driver runs the child; on settlement control returns and **the
+parent needs no resume record — its step re-derives the awaited child from its
+own cursor, finds it settled, consumes it, and advances.** A request that
+reaches a RUNNING entry can only be reaching an ancestor of the single chain —
+which is what `inRecPath` detected — so it marks `foundCycle`, takes the
+provisional value, and the owner's completed pass widens with a version bump
+until nothing improves: `MemoEntry.match`'s loop with the frame replaced by a
+cursor reset. `running`/`parent`/`foundCycle` are `inRecPath`/`foundLeftRec`
+generalized from cycles to ALL waits — the same O(1) descendant-to-ancestor
+message through the memo, now carrying "your operand is ready" as well as "you
+are a cycle". Resuming at a cursor over I9's append-only values is what
+m57's fact-grain wakes lacked; a pass that must see lowered prices re-runs
+whole, which is the widening loop's job.
+
+**Measured, official protocol (m53o same process):**
+
+| | m60 | m53o | m49 (same-session `_lat53`/pair context) |
+|---|---|---|---|
+| battms | **358** | 427 | ~311–340 |
+| latms | **203.9** | 296.4 | 189.8 |
+| latency case 8 (cost 10) | **176.8ms** | ~294 | 161.1 |
+| bisected `cost` ceiling | **k=2160** (the pure parser's own; 3/3 stable) | 2160 | 541 |
+| bisected `full` ceiling | **k=1161** | ~1281 | 541 |
+| LOC | 780 | 751 | 668 |
+
+Every quality column perfect (`_score60`: 517/519, 519/519, 0, {1:503, 2:16},
+7/7, 69/69, 0 — the harness's own scoring functions), bit-identical to m53 on
+all 252 smoke inputs ON THE FIRST RUN, `_bf60` 44/44, `_leak60` 71/71, the
+ceiling gate 6/6 (and 23ms vs m53's 31ms on the 60-edit case). Demand is the
+descent's again: 1557 cells on the smoke battery where the worklist touched
+~4400 — the budget-decay cone restored.
+
+**What this settles.** The m49-vs-m53 trade — latency against stack safety,
+open since the ninth occasion — is dissolved: m60 is within ~8% of m49 on
+latency and ~1.15x on the battery while holding m50–m53's stack ceilings
+exactly (the search is oracle-bound at k≈2160; the residual `full` bound is
+the witness descent's O(n) walk over the output tree, as it has been since
+m50). m53's own reference rows have never beaten 415/327 in this protocol;
+m60 beats both columns while carrying the identical perfect quality row. The
+external review's prediction (relaxations nearer the descent's grain than the
+worklist's) is consistent with the measured step counts. m60 is the standing
+engine of the line as of this occasion; m49 keeps a ~8% latency edge for
+callers who accept a k≈540 stack ceiling, and nothing else keeps anything.
+
+### Bugs shared by EVERY row, so not repeated per engine (K40 excepts m44 onward)
 
 | tag | defect |
 |---|---|
 | **PEG** | Repairs toward the **CFG** reading of the grammar, not the PEG one: a possessive `*` and a committed `/` are treated as if any stop or alternative were available. 4 of 5 conformance cases wrong, identically, in every engine back to `dot` (§5b). The `cost` column cannot see it — its grammars are prefix-disjoint, so the two readings coincide there. |
-| **RR** | Right-recursive grammars overflow the native stack (the `RRmax` column). Inherited from the pure parser, which shows the same asymmetry; recovery worsens the threshold ~4x because its descent adds frames per position (§8a). Fix is an explicit worklist; not built. |
+| **RR** | Right-recursive grammars overflow the native stack (the `RRmax` column). Inherited from the pure parser, which shows the same asymmetry; recovery worsens the threshold ~4x because its descent adds frames per position (§8a). Fix is an explicit worklist. **BUILT, m50 — the tag excepts m50, m51, m52, m53 (and their `k` reference rows), the only rows in the table besides `dot` at `>=4096`.** The residual ceiling there is the pure parser's own (k≈2100), which no recovery restructuring can lift, plus the witness descent's O(n)-deep walk over the output tree. |
 | **d13** | `del@13` and `swap@13` are never recovered to the original shape. That is exactly the 517/519 ceiling. |
-| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). It was the last tuning parameter in the m-line, and **m44, m45 and m46 are the only rows without it** — there the ceiling is DERIVED as `n + fabricate(goal)`, a repair that always exists, so the search cannot stop short of a real minimum (§5n). Every other row still has the knob and still gives up above 40. |
+| **K40** | `maxCost` is a hard search ceiling (default 40): a costlier repair is not found at all (cost -1, whole input as one error span). It was the last tuning parameter in the m-line, and **every row from m44 on is without it** (m44, m45, m46, m47, m48, m49, and the `m45h`/`m46i` reference re-measurements) — there the ceiling is DERIVED as `n + fabricate(goal)`, a repair that always exists, so the search cannot stop short of a real minimum (§5n). Every row BEFORE m44 still has the knob and still gives up above 40. |
 
 ### Per-engine bug tags
 
@@ -1074,6 +1891,7 @@ gate that can catch a repair that does not repair — is §5q.
 | **pegfix** | Attempts the PEG fix and pays for it: the guard consults the **original** input while PEG semantics quantify over the **repaired** string (§5e). m27 494/519 {1:478, 2:41}; m29 492/519 {1:474, 2:45}, cost 42/44. |
 | **over** | Doubling deepening overshoots when K is not a power of two — `latms` 1152 against m26's 269 (§5c). |
 | **noop** | Does not do what it was built for: m36's budget-0 PEG guard leaves conformance unchanged, because the illegal parse costs zero edits and resurfaces at round 1 (§5i). |
+| **leak** | **UNSOUND — m47 must not be used.** It discharges a pending lookahead at the END of a cons chain, so a chain all of whose elements emit nothing satisfies a *non-empty* constraint vacuously, and the engine names repairs that do not exist: `_leak49.dart` block A, cost 0 where brute force says 1. Every column of its row is clean only because JSON has no lookahead to get wrong. Fixed twice over — m48 enforces at the terminator (sound but blind), m49 hands the obligation out through the value (sound and exact) — §5r. |
 | **LOC** | Not a defect — a line-count regression against m26's 382. |
 | **dup** | Not an engine: m26 registered a second time, last, to measure the warming-heap bias. |
 
@@ -1081,6 +1899,172 @@ gate that can catch a repair that does not repair — is §5q.
 left-recursion fixed point in every A5 engine (m23 onward) re-runs until no Delta
 improves, and that iteration count has no tight polynomial bound in this
 derivation — only the measurement that it behaves like a small constant (§5a).
+
+### Every column, defined — and the three that are not what they look like
+
+Definitions below are the harness's own (`final_table.dart:1120-1145` for the legend,
+`993-1032` for the scoring loop, `880-905` for the battery), not a reconstruction
+from memory. Written down here because the table is now 58 rows wide and a column
+misread is a design decision made on a number that does not mean what it says.
+
+- **`engine`** — the row's identifier. Bold rows are engines; a row tagged `dup` is
+  **not an engine**, it is an earlier engine re-registered *last* in the same process
+  so the pair can be compared without the warming bias (below).
+- **`LOC`** — non-blank, non-comment lines of the engine file. The convention
+  subtracts instrumentation-only getters (6 lines for m51, 8 for m52/m53), so the
+  number is the algorithm, not the probe harness around it.
+- **The battery group (`shape`, `cover`, `crsh`, `cost hist`)** — one corpus, built
+  at `final_table.dart:880-905`: take the base document
+  `{"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}`, apply every single-character
+  deletion, every adjacent swap, and insertion/substitution of each of
+  `Q z } " , 5` at every position, then keep only the mutants that **fail to
+  parse** — 519 of them.
+  - **`shape`** — the witness tree has the same shape as the *unmutated base
+    document's* tree. The strictest quality bar in the table: it asks whether the
+    engine reconstructed what the author meant, not merely something legal.
+  - **`cover`** — the witness spans the whole input, leaving no region unclaimed.
+  - **`crsh`** — mutants on which the engine threw. Any nonzero value is a hard
+    defect.
+  - **`cost hist`** — histogram of reported repair cost. `{1:503, 2:16}` is 503
+    mutants repaired at cost 1 and 16 at cost 2. A single-character mutation
+    *should* cost 1, so mass at 2 is over-charging, and the histogram is where a
+    minimality regression shows up before `cost` catches it.
+- **`valid`** — 7 well-formed documents, which must come back cost 0 with no error
+  spans and no missing nodes. "Does recovery stay out of the way when nothing is
+  wrong."
+- **`cost` and `tree`** — 44 cases across 5 grammars, scored against a brute-force
+  minimum edit distance by BFS to depth 3 (`trueDistance`, `684-693`). Two separate
+  claims, deliberately not merged: `cost` is only that the **price** is minimal;
+  `tree` is that the witness can actually be **rebuilt and covers the input**. The
+  scoring loop names why — "m23 passes the first and diverges on the second."
+- **`pred`** — exact agreement with brute force on the **lookahead** corner cases.
+  The denominator counts only the cases brute force settled outright; the four
+  empty-language cases are excluded here and score only in `unsnd`. It exists
+  because JSON has no lookahead, so the whole battery is blind to a class of defect.
+- **`unsnd`** — how many cases the engine priced **below** the true minimum: repairs
+  it claims exist that **do not exist**. The one number in the table that
+  disqualifies outright, and the reason `pred`/`unsnd` were added at all — m47 was
+  unsound and *every other column of its row was clean*.
+- **`eleg`** — 0–10, and the legend flags it in capitals: a **judgment, not a
+  measurement**, the only such column. It scores mechanism count,
+  derived-vs-chosen constants, adopted-from-the-parser vs invented machinery,
+  compactness, and "can it be stated in one true sentence".
+- **`bugs`** — defect tags. The shared ones (`PEG`, `RR`, `d13`, `K40`) are inherited
+  flaws, not per-engine choices; `LOC` in this column is explicitly **not** a defect,
+  only a line-count regression against m26's 382; `dup` marks a reference row.
+- **`battms` / `latms` / `/v6`** — wall clock. `battms` is the 519-mutant battery;
+  `latms` the sum over 12 latency cases, min-of-5, interleaved; `/v6` normalises
+  latency against v6.
+- **`LRmax` / `RRmax`** — the largest 1-error input length that completes without
+  `StackOverflowError`, left- and right-recursive. `>=4096` means it never overflowed
+  at the tested ceiling.
+
+**The three columns that are not what they look like.**
+
+1. **`eleg` is a judgment**, by its own legend. It is not data and must not be
+   averaged with the columns that are.
+2. **`latms` is a K-axis metric wearing a latency costume.** Measured on the
+   fourteenth occasion (`_lat53.dart`): the 12 cases cost
+   `2,2,1,1,2,4,2,2,10,1,1,0`, and **case 8 alone — the 64-char shuffle, cost 10,
+   11 deepening rounds — is 308.6 ms of m53's 341.1 ms, 90% of the column.** So
+   `latms` mostly measures behaviour at *large repair cost*, not on a *large
+   document*. On the battery, where damage costs 1–2, m53 is within 14% of the
+   descent engines. Any argument of the form "engine X is 1.7x slower" that leans on
+   `latms` is an argument about the ladder, not about the per-step constant.
+3. **`RRmax` overstates and moves.** It is itself a ladder artifact (~6x
+   overstated) and depends on registry position, not only on the engine — see the
+   `m26`/`m26b` result three sections down. Open item: bisect, do not ladder.
+
+**And the reading rule that governs every timing in the table:** a single process
+warms as it runs, so **timings are only comparable within an adjacent
+engine/`dup` pair.** Measured directly: the *same* m26 scored 377 and 314 `battms`
+depending on where it sat in the registry. A cross-era timing comparison is not
+valid unless a `dup` row bridges it.
+
+### The trade-off, era by era: what each generation bought and what it paid
+
+- **`dot` (797 LOC, 12.39x v6).** The reference: exact (44/44 truth), and the only
+  pre-m50 row at `>=4096` on `RRmax`. It pays in size and an order of magnitude of
+  latency. Everything after it is an attempt to keep `dot`'s answers at a fraction
+  of `dot`'s price.
+- **The combinator generation (sd3 / sd5 / v6).** Fast, and the origin of the speed
+  baseline. They pay in exactness: `cost` only 32–38/44, carrying `LR` — the memo
+  cached its own in-progress placeholder as a final answer, so the left-recursive
+  alternative contributed nothing (cost 2–3 where truth is 1; above n=512, no repair
+  at all) — plus `empty`. **Traded latency for correctness, and lost the
+  correctness.**
+- **The simplification arc, m12 → m26 (and m41).** The table's high-water mark on
+  compactness: **m26 at 382 LOC, m41 at 379**, with clean `bugs`. A5 fixed `LR` at
+  m23; the Ref re-entry guard fixed `null` at m24. This era is still the winner on
+  the `LOC` axis and is what everything since is measured against.
+- **The dead ends, m27 → m40 — in the table precisely because they are negatives.**
+  m27/m29 (`pegfix`) attempted the PEG fix and paid: 494/519 `{1:478, 2:41}` and
+  492/519 `{1:474, 2:45}` with `cost` 42/44 — **battery quality traded for a
+  conformance fix that did not work**, because the guard consults the *original*
+  input while PEG semantics quantify over the *repaired* string. m36 (`noop`) does
+  not do what it was built for at all. m30/m31 (`stack`) collapse below 512 in
+  **both** recursion directions, and m31 also carries `latent`: with
+  `debugShortcut(true)` it reports cost 4 where truth is 1, so its clean 44/44 row
+  is clean only because the shortcut ships off — and it is 15x slower than m26 for
+  it. The `over` tag records doubling-deepening overshoot, `latms` 1152 against
+  m26's 269. **Note that one: it is the same shape as the I13 refutation on the
+  fourteenth occasion, found twice by two different routes.**
+- **The exactness-under-lookahead arc, m42 → m49.** Where the last tuning parameter
+  went (`K40`: from m44 the ceiling is derived as `n + fabricate(goal)`, a repair
+  that always exists, so the search cannot stop short of a real minimum), and where
+  `pred`/`unsnd` were added *because m47 was unsound while every other column stayed
+  clean*. The price was size: LOC 385 → 668. m49 ends the arc sound and exact — the
+  obligation travels across inside the value's key `(end, owed)` — at 327 `battms` /
+  185.8 `latms`. **~280 lines for exactness on a class of grammar the battery cannot
+  see.** Since `unsnd` disqualifies outright, this is the one place in the table
+  where paying that much LOC is unambiguously correct.
+- **The worklist arc, m50 → m53.** The problem is `RR`: descent overflows the native
+  stack on right recursion, and recovery worsens the pure parser's own threshold ~4x.
+  An explicit worklist fixes it *structurally*. m50 bought `RRmax` **512 →
+  `>=4096`** — m50–m53 are, with `dot`, the only rows at that ceiling — at roughly
+  **2.1x m49's battery and 3.9x its latency**. Everything after is repayment with
+  every quality column held constant (517/519, 519/519, 0, `{1:503, 2:16}`, 7/7,
+  44/44, 44/44, 69/69, 0 unsound): **I9** → m51 (739 LOC, 407/410.1); **I11** → m52
+  (374/361.8 vs m51k's 407/410.1, **step-identical at 86849** — same decisions,
+  cheaper per decision); **I11's transpose half** → m53 (372/313.1 vs m52k's
+  374/361.8, edge slots 133069 → 54742, and it **deletes I10**). Cumulative: m53 is
+  **0.91x / 0.76x vs m51 for +12 LOC**, and **1.14x battery / 1.68x latency vs
+  m49** — down from 2.21x — with `RR` fixed and a 4x stack ceiling.
+
+**Where the trade-off now binds.** The per-step axis is *measured exhausted*: m49
+runs at 1.049 µs/step, m53 at **0.959 µs/step** — a worklist relaxation is now
+*cheaper* than a descent step. The entire residual gap is step **count** (1.97
+relaxations per cell against the descent's 1.13), and the fourteenth occasion
+refuted both ways of attacking it: I12 (cannot skip rounds — the values grow) and
+I13 (cannot take bigger rounds — overshooting is exponential). What is left is
+making the step infinitesimal, i.e. stratifying on Delta. See that section; it is
+not re-argued here.
+
+**The debt, stated plainly.** Every row from m44 onward carries the `LOC` tag, and it
+is honest: **nothing since m41 has made the file smaller.** m53 is 751 lines against
+m41's 379 — a 2x size regression, bought with exactness under lookahead (m42–m49,
+non-negotiable, since `unsnd` disqualifies) and stack-safety on right recursion
+(m50–m53, structural and unobtainable any other way). Both purchases are defensible
+individually; **neither has yet been collapsed**, so the standing objective — one
+unified elegant algorithm — is not met on the compactness axis. Delta-stratification
+is the only candidate on the board that removes machinery rather than adding it.
+Also still open across *every* row back to `dot`: `PEG` (4 of 5 conformance cases
+wrong, and `cost` cannot see it because its grammars are prefix-disjoint), `d13`
+(`del@13`/`swap@13` are the entire 517/519 ceiling), and the unproven
+left-recursion fixed-point iteration bound — behaves like a small constant, has no
+proof.
+
+- **The Delta-schedule arc, m57 → m58 (the fifteenth occasion), added after the
+  above was written.** Delta-stratification was built, twice, and it did remove
+  the machinery — the ladder, the budget, and the ceiling-as-bound are gone, with
+  every quality column held perfect and both stack ceilings at `>=4096` — but it
+  did not remove the LINES (814 and 854 against m53's 751) and it did not win the
+  clock (battms 1173 vs 415 paired; latms parity). The occasion's finding
+  replaces the fourteenth's hope: the budget was three amortizations sharing one
+  integer, and a schedule that deletes the integer buys each one back at event
+  granularity. See the fifteenth occasion; the compactness objective now has NO
+  candidate on the board that is expected to shrink the file, which is itself a
+  measured fact about where this design space bottoms out.
 
 ### m40 over m39 does not survive a paired measurement
 
@@ -1141,6 +2125,137 @@ session, one per process, before a winner is declared.
    noise, and a depth number is only comparable between engines measured at the
    same position. Correctness columns (shape/cover/hist/valid/cost/tree) were
    identical across both runs and are order-independent.
+
+### The eleventh occasion: three columns the table was missing (`pred`, `unsnd`, `eleg`)
+
+§5r's complaint about m47 was that its unsoundness was **invisible in every column
+of this table**, because the JSON battery and all five `cost`-column grammars have
+no lookahead anywhere. A defect the table cannot see is a defect the table will
+let through, so the corner cases found while building m45–m49 are now *in* the
+table, and the disqualifying direction has a column of its own.
+
+- **`pred`** — exact agreement with brute force over `predCases`: 15 grammars /
+  73 inputs at K≤2, in eight labelled blocks (A the m47 leak; B a reader behind a
+  name; C a trailing lookahead whose reader is in the *parent*; D the keyword
+  boundary `"if" !Alpha`; E PEG commitment; F spelling invariance `(!'"' .)*` vs
+  `[^"]*`; G an empty language `&'x' 'y'`; H a lookahead wider than one character,
+  where every engine including m49 is approximate and only soundness is required).
+- **`unsnd`** — of those, how many the engine priced **below** the true minimum,
+  i.e. how many repairs it names that **do not exist**. The one column here that
+  disqualifies outright. Over-reporting is safe and lands in a lower `pred`.
+- **`eleg`** — 0–10, **and it is a judgment, not a measurement** — the only such
+  column. It scores five equally-weighted criteria of the code and the concepts
+  (how many mechanisms; derived or chosen; the parser's own idea or invented for
+  recovery; compactness as LOC; can it be stated in one true sentence) and says
+  nothing about the answers, which have five columns already. It is map-backed in
+  `final_table.dart` (`elegNotes`, a `(score, reason)` per engine, reached by a
+  getter) so that a score and its justification cannot drift apart, and the
+  reasons print under the table so a reader can disagree with a specific score
+  instead of with a ranking.
+
+**A process scar first, because it invalidated the first full run.** `pTot` was
+incremented as `if (v != 'unk') pTot++;` — counting *verdicts*. But an
+under-report on an unrepairable input is *decidable* while a correct decline is
+not, so an engine that under-reported more got a **larger denominator**: `dot`
+read 57/73 and m49 69/69 off the same 73 cases. Fixed to `if (want != null)
+pTot++;` — the denominator counts *truth*, is identical (69) on every row, and the
+4 empty-language cases score only in `unsnd`, where naming an impossible repair
+belongs. **A per-row denominator is not a metric, it is a ranking of how wrong
+each row is.** The whole 44-engine table was re-run.
+
+| engine | LOC | shape | cover | cost | tree | **pred** | **unsnd** | **eleg** | battms | latms | RRmax |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| dot | 797 | 515/519 | 519/519 | 44/44 | 44/44 | 57/69 | **8** | 2 | 7609 | 5778.1 | >=4096 |
+| sd3 | 499 | 512/519 | 519/519 | 32/44 | 39/44 | 45/69 | 4 | 3 | 437 | 647.9 | 2048 |
+| sd5 | 513 | 512/519 | 519/519 | 32/44 | 39/44 | 45/69 | 4 | 3 | 474 | 1018.8 | 2048 |
+| v6 | 526 | 512/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 3 | 538 | 480.5 | 2048 |
+| m12 | 396 | 516/519 | 519/519 | 33/44 | 39/44 | 45/69 | 4 | 4 | 518 | 463.8 | 2048 |
+| m15 | 406 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 4 | 546 | 457.0 | 2048 |
+| m16 | 352 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 5 | 401 | 466.2 | 1024 |
+| m17 | 357 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 5 | 415 | 279.4 | 1024 |
+| m18 | 373 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 5 | 417 | 245.4 | 1024 |
+| m19 | 362 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 5 | 426 | 255.2 | 1024 |
+| m20 | 350 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 5 | 1009 | 298.7 | 1024 |
+| m21 | 361 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 5 | 951 | 276.5 | 1024 |
+| m22 | 337 | 517/519 | 519/519 | 38/44 | 44/44 | 55/69 | 5 | 5 | 420 | 246.0 | 1024 |
+| m23 | 371 | 517/519 | 519/519 | 44/44 | 42/44 | 55/69 | 5 | 6 | 535 | 291.9 | 512 |
+| m24 | 393 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 546 | 275.0 | 512 |
+| m25 | 394 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 336 | 251.9 | 512 |
+| m26 | 382 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 7 | 362 | 251.9 | 512 |
+| m27 | 387 | 494/519 | 519/519 | 44/44 | 44/44 | 52/69 | 5 | 4 | 402 | 213.5 | 512 |
+| m28 | 384 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 340 | 1065.1 | 512 |
+| m29 | 390 | 492/519 | 519/519 | 42/44 | 44/44 | 53/69 | 4 | 4 | 5098 | 1482.0 | 512 |
+| m30 | 382 | 516/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 3 | 5354 | 2059.8 | <512 |
+| m31 | 388 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 3 | 5559 | 2576.1 | <512 |
+| m32 | 378 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 435 | 247.0 | 512 |
+| m33 | 389 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 5 | 414 | 839.4 | 512 |
+| m34 | 381 | 516/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 5 | 655 | 1717.3 | 512 |
+| m35 | 381 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 468 | 235.7 | 512 |
+| m36 | 390 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 4 | 384 | 224.0 | 512 |
+| m37 | 385 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 387 | 239.4 | 512 |
+| m38 | 407 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 274 | 241.3 | 512 |
+| m39 | 396 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 286 | 232.1 | 512 |
+| m40 | 429 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 6 | 277 | 229.0 | 512 |
+| **m41** | 379 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | **9** | 271 | **136.5** | 1024 |
+| **m42** | 381 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | **10** | 276 | 175.4 | 1024 |
+| **m43** | 385 | 517/519 | 519/519 | 44/44 | 44/44 | 56/69 | 4 | **10** | 291 | 181.6 | 1024 |
+| m44 | 428 | 517/519 | 519/519 | 44/44 | 44/44 | 56/69 | 4 | 9 | 306 | 178.4 | 1024 |
+| m45 | 497 | 517/519 | 519/519 | 44/44 | 44/44 | 56/69 | 2 | 7 | 290 | 173.6 | 1024 |
+| m44g | 428 | 517/519 | 519/519 | 44/44 | 44/44 | 56/69 | 4 | 9 | 280 | 166.7 | 1024 |
+| m46 | 539 | 517/519 | 519/519 | 44/44 | 44/44 | 56/69 | 2 | 8 | 288 | 168.7 | 1024 |
+| m45h | 497 | 517/519 | 519/519 | 44/44 | 44/44 | 56/69 | 2 | 7 | 261 | 166.8 | 1024 |
+| m26b | 382 | 517/519 | 519/519 | 44/44 | 44/44 | 55/69 | 5 | 7 | 339 | 235.5 | 1024 |
+| m47 | 629 | 517/519 | 519/519 | 44/44 | 44/44 | 65/69 | 2 | 4 | 321 | 178.9 | 512 |
+| m48 | 656 | 517/519 | 519/519 | 44/44 | 44/44 | 63/69 | **0** | 5 | 349 | 178.1 | 512 |
+| **m49** | 668 | 517/519 | 519/519 | 44/44 | 44/44 | **69/69** | **0** | 8 | 352 | 189.4 | 512 |
+
+(`crsh` 0, `valid` 7/7 and `cost hist` `{1:503, 2:16}` on every row except m27
+`{1:478, 2:41}` and m29 `{1:474, 2:45}`; omitted here for width.)
+
+**`m49` is the first and only row that is exact on every settled case (69/69) and
+sound (`unsnd` 0).** m48 is sound and blind; every engine before m45 names between
+4 and 8 repairs that do not exist, and `dot` — the shipped engine, best in the
+table on `RRmax` and perfect on the `cost` column — is the **worst** row here at 8.
+
+### Every under-report, with the insertion that killed it (`_predtab.dart`)
+
+A count is not traceable, so `_predtab.dart` prints the per-case verdict grid
+behind these two columns, importing `predCases`/`predMaxK`/`truth`/`verdictOf`
+from `final_table.dart` so there is no second copy of the battery to drift. Over
+the 71 cases *it* settles (its `tot` counts a case if any engine's verdict is
+decidable, so its denominator is 71, not the table's 69):
+
+| engine | exact | over | **UNDER** |
+|---|---|---|---|
+| m41 | 55 | 11 | **5** |
+| m44 | 56 | 11 | **4** |
+| m45 | 56 | 11 | **2** |
+| m46 | 56 | 11 | **2** |
+| m47 | 65 | 2 | **2** |
+| m48 | 63 | 6 | **0** |
+| **m49** | **69** | **0** | **0** |
+
+Each under-report, and what removed it — **every one is a claim §5k–§5r made in
+prose, now measured**:
+
+- `S <- A 'b'; A <- 'a' / 'a' 'a' 'a' &'b';` on `"aaab"`: **m41 says 0, truth 2.**
+  The free-riding alternative that walks past a PEG commitment. Killed by **I3**
+  (m43). §5m argued the veto was necessary; this is the input that shows it.
+- `S <- &'x' 'y';` on `"x"` and `"xy"`: **m41 and m44 say 1, truth >2.** The
+  grammar's language is **empty**, so no finite repair exists and any number is an
+  under-report. Killed by **I4**'s empty class (m45) — §5p's "the empty class is
+  the empty language, not a cheap edit", measured.
+- `S <- !'x' A; A <- 'x' / "yy";` on `"q"` and `""`: **m41/m44/m45/m46 say 1,
+  truth 2.** A reader behind a name; the constraint has to reach a leaf a rewrite
+  cannot see. Killed by **I6** (m47/m48).
+- `S <- !'x' A D; A <- 'a'? 'c'?; D <- 'd' / 'x';` on `"x"` (and its
+  two-rules-deep variant): **m47 says 0, truth 1.** The leak — a chain that emits
+  nothing discharging a non-empty obligation vacuously. Killed by **I7** (m49),
+  and by m48's strict `_eps` rule at the cost of 6 over-reports.
+
+So the sequence 5 → 4 → 2 → 2 → 2 → 0 is not a smooth curve of polish; it is four
+independent defects with four independent insertions, and **each insertion's value
+is now a row in a table rather than an argument in a paragraph.**
 
 ## 5k. m41: recovery is the parser over a wider value, plus three insertions
 
@@ -2130,3 +3245,449 @@ the cost, so it admits a richer check — and the check for a claim of the form
 a parsing project has lying around by definition. Any search that returns a
 CERTIFICATE rather than a score should verify the certificate, because the
 certificate is where the errors the score cannot see are hiding.
+
+---
+
+## 5r. m47/m48/m49: an obligation is part of the value
+
+§5q ends by *reporting* a flaw: `_nullseq45.dart` shows, with the pure parser and
+no engine involved, that no static placement of a lookahead's constraint is the
+right language, so I4's rewrite cannot be completed and I5 can only mark the
+result unverified. §5q scored the fix — "pending-constraint memo dimension +
+emission bit" — at **6**, with the note "the only candidate that FIXES the
+residual instead of reporting it". This section is that candidate, built three
+times. **The 6 was too low, and the reason it was too low is the whole content of
+this section: the emission bit was imagined as a SECOND channel, and it is not a
+second channel — it is the same one, read backwards.**
+
+### I6: a lookahead is a constraint on the next character EMITTED
+
+Everything in the engine is about `s'`, the repaired string. I2 lets a terminal
+say what stands at a position; I3 says where `s'` still equals the input. A
+predicate does neither — it reads a character it does not consume, so nothing in
+its own derivation decides what is there, and asking the oracle answers about `s`
+instead of `s'` (§5o). I4's answer was to FUSE the predicate into the reader
+beside it where the builder could see who that reader was. Whom it cannot see is
+a run-time fact, so the answer cannot be a better rewrite. It has to be a
+**channel**: the predicate posts its class, and whatever derivation emits the
+next character honours it.
+
+That gives the memo a third dimension, `c` — the class the frame's first emitted
+character must lie in — carried DOWN as an argument:
+
+```
+_ends(node, pos, budget, c)  :  end -> Delta
+```
+
+**The class is the whole of a predicate's meaning**, and one addition to the
+alphabet makes the two predicates one rule:
+
+> **⊣ IS A MEMBER OF THE ALPHABET.** `&C` says the next emitted character is in
+> `C`; `!C` says it is not — *and `!C` also holds where no character follows at
+> all.* `codeUnitAt` never returns −1, so −1 is free to mean "nothing follows":
+> `!C` interns as `complement(C) ∪ {−1}`, `&C` as `C`. A negative lookahead then
+> succeeds at the end of the string and a positive one fails there, **with no
+> line anywhere saying so.**
+
+Discharge has exactly two forms and there is no third: an **emission** (the
+character emitted must lie in the class; the mover then owes nothing) or the
+**end of the string** (`_permitsEnd`, asked once, at the top). A move that emits
+nothing neither discharges nor enforces — it PASSES the obligation on.
+
+### The leak: m47 guessed at the end of a chain, and under-reported
+
+m47 discharged a pending obligation at the terminator of a cons chain. A chain
+all of whose elements emit nothing then satisfied a *non-empty* constraint
+**vacuously**, and the engine named repairs that do not exist — `_leak48.dart`
+block A, cost **0** where brute force says **1**, on input `"x"` under both
+`S <- !'x' A D; A <- 'a'? 'c'?; D <- 'd' / 'x';` and its two-rules-deep variant
+`A <- B C; B <- 'b'?; C <- 'c'?`. This is the worst class of
+defect in the whole project (§5o: "the engine returns a cost for a repair that
+does not exist"), it is the direction I5 exists to catch, and **it is invisible
+in every column of §5j** because JSON has no lookahead. m47 is registered in
+`final_table.dart` with the `leak` tag and must not be used.
+
+m48 fixed it by enforcing at the terminator instead — sound, and *blind*: a
+constraint that reaches the end of a rule body has nowhere left to go, so m48
+falls back on fabricating the whole continuation. On the keyword-boundary idiom
+`Kw <- "if" !Alpha` with its reader at the CALL SITE — the commonest real use of
+a lookahead there is — m48 reports **3** on `"ifa"` where the truth is **1**.
+
+Both engines were guessing, at build time, about a continuation the value could
+not see. **Both guesses are wrong because the question is not the builder's.**
+
+### I7: the constraint travels back out, inside the value
+
+The fix deletes the guess rather than improving it. A constraint enters a frame
+as an argument and **leaves it inside the value**: every end a derivation reaches
+is paired with the class it still OWES.
+
+```
+_ends(node, pos, budget, c)  :  (end, owed) -> Delta
+
+_key(end, owed) = (owed + 1) * (n + 2) + end        // one int, no allocation
+```
+
+**The parser already does this, in the other direction**, which is the argument
+that this is the right shape rather than a clever one:
+
+> `MemoEntry.foundLeftRec` is **one bit from a descendant frame to an ancestor** —
+> "you are a cycle, iterate" — and it is the whole of left recursion (A5, I1).
+> An obligation is **one integer from a frame to its right sibling** — "the next
+> character you emit is one of these" — and it is the whole of lookahead. Neither
+> fact can be computed by one frame alone; both are O(1); neither needs a rule of
+> its own once something carries it.
+>
+> **DOWN THE TREE IS THE ARGUMENT. ACROSS THE TREE IS THE VALUE. UP THE TREE IS
+> THE MEMO.**
+
+That is the generalisation the O(1)-bit idea was reaching for. It is not "a hint
+for lookahead". It is: *any fact a frame cannot compute alone, but a neighbour
+can, belongs in whichever of those three channels connects them* — and a parser
+that memoizes already owns all three.
+
+### What I7 deleted
+
+Stated honestly first, because the line count does not flatter the story: **m48
+656 → m49 668, so I7 is +12 code lines net.** Six mechanisms go away and the
+`(end, owed)` key packing, the threading of `key` through reconstruction, and
+`_permitsEnd`/`_permitsFirst` cost slightly more than all six were worth. What
+I7 buys is not brevity, it is the removal of a *guess*; the deletions are worth
+listing anyway, because each one was a piece of machinery for predicting at build
+time what the value can now simply carry:
+
+| deleted | what it was for |
+|---|---|
+| `_split`, and the two-reading union at its three call sites | `_split(c)` returned `[(c, _free), (_silent, c)]`: m47/m48 tried every cons cell BOTH ways — "the head emits the constrained character" vs "the head is silent and the tail owes it" — in `_chain`, in `_compute` and again in reconstruction, because the value could not say which had happened. The value says now, so a sequence is `head @ c`, then `tail @ owed(head)`: **`Seq.match` with an accumulator**, one call again. |
+| `_silent`, the empty class as a special value | m47/m48 wrote "this derivation emits nothing" as the EMPTY CLASS and made every silent move ask permission of it. Emitting nothing is not a way of *satisfying* an obligation, it is a way of *passing it on*. The empty class stops being special: it is simply an unsatisfiable debt, which is exactly what `&'x' !'x'` ought to be. |
+| `_classes[0]` seeding | index 0 had to *be* the empty class because 0 meant `_silent`. Getting that seeding wrong is a bug that reports repairs which do not exist. There is no index 0 to get wrong now. |
+| `_nullable` / `_nullableRules` / `_emitsNothing` — a least fixed point over the grammar | m48's `_cons` posted a constraint only in front of a rest that HAD to read, which needs nullability. Nothing asks. |
+| `_Cons.post` | the field the static gate wrote its guess into. |
+| `_permitsMatch` | folded into `_permitsFirst`. |
+
+And **a lookahead is a node again**, the plainest one in the engine: consumes
+nothing, emits nothing, costs nothing, exports `meet(c, its class)`, takes no
+oracle call. m48 could only post a class onto a cons cell standing in front of a
+reader, so a lookahead that was a whole rule body, or the last element of one,
+had nowhere to live. **Position does not enter**: what a predicate reads in `s'`
+IS the next character emitted after it, wherever that is emitted from and however
+far away.
+
+### Where I3 and I7 collide, and the guard that settles it (measured both ways)
+
+This is the subtlest line in the engine and it was got wrong twice before it was
+got right. I3 (§5m) vetoes a Δ=0 alternative that ends past where the oracle
+committed. The argument for it is "spends nothing over `[pos, end)`, so `s'`
+EQUALS the input there" — which bounds where the candidate **looked** as well as
+where it wrote. **A candidate that OWES has looked past its own end**, at the one
+place `s'` is not the input. So the veto has to split on what the oracle did:
+
+```dart
+if (e.value < _costUnit &&
+    _endOf(e.key) > committed &&
+    (committed >= 0 || _oweOf(e.key) == _free)) continue;
+```
+
+- **Oracle MISMATCHED (`committed < 0`)** — "no alternative matches" is a fact
+  about the *input*, and it says nothing about a candidate whose satisfaction
+  depends on a character `s'` has not committed to yet. An owing candidate must
+  be spared.
+- **Oracle MATCHED** — the veto stands *whatever* is owed: the alternative the
+  oracle took reads inside `[pos, committed) ⊆ [pos, end)`, where `s'` IS the
+  input, so that alternative still matches `s'` and PEG still commits to it.
+- **Debt-free** — unchanged in both cases, because it is the only thing standing
+  between the search and a non-greedy repetition PEG would never take (§5m).
+
+Both halves are load-bearing, and `_veto49.dart` measures it by ablating each
+half of the third conjunct against brute force over 62 cases (the four `_leak49`
+blocks plus three PEG-commitment grammars):
+
+| variant | the veto condition | exact | what breaks |
+|---|---|---|---|
+| **m49** | `end > committed && (committed >= 0 \|\| owed == free)` | **62/62** | — |
+| `va` | `end > committed` (the pre-I7 reading of I3) | 60/62 | **too high, ×2**: `S <- A 'b'; A <- 'a' &'b' / 'c';` costs **2** on `"a"` and `"ax"` where the truth is **1** — *which is m46's and m48's answer on those exact two rows*. Ablating this half of the conjunct reproduces the predecessor engines' block-D residual, so this one line is what buys it. |
+| `vb` | `end > committed && owed == free` | 61/62 | **UNSOUND**: `S <- A 'b'; A <- 'a' / 'a' 'a' 'a' &'b';` on `"aaab"` reports **0** where the truth is **2**. |
+
+`vb`'s failure is worth reading, because it is the free-riding alternative that
+I3 exists to kill, wearing a debt as a disguise. PEG takes `A`'s first
+alternative `'a'` at 0, so `'b'` is asked at 1, finds `a`, and the parse fails —
+truth 2. The engine's second alternative `'a' 'a' 'a' &'b'` matches `[0,3)`
+owing `{b}` at Δ=0; the parent's `'b'` then discharges the debt at 3, and the
+whole input costs **nothing**. But PEG never reaches that alternative: the oracle
+committed to `'a'` at position 1, inside the candidate's own edit-free window,
+so `s'` cannot rescue it. **A debt excuses a candidate from the veto only when
+the oracle had no verdict to give.**
+
+### Measured
+
+Every gate re-run in one session against the shipped engine, m46 and m48 beside it:
+
+| gate | m46 | m48 | **m49** |
+|---|---|---|---|
+| `_leak49` block A — the leak grammars (soundness) | 18/22 | 22/22 | **22/22** |
+| `_leak49` block B — reader behind a name (what I6 is for) | 10/16 | 16/16 | **16/16** |
+| `_leak49` block C — no reader for the constraint (what I7 is for) | 16/19 | 16/19 | **19/19** |
+| `_leak49` block D — the residual on grammars people write | 11/14 | 11/14 | **14/14** |
+| **`_leak49` overall** | 55/71 | 65/71 | **71/71** |
+| `_bfpred49`, the nine §5p grammars | 42/45 | 45/45 | **45/45** |
+| `_bfpred49`, the nullable-sequence family | 9/14 | 14/14 | **14/14** |
+| `_bfpred49`, four spelling-invariance blocks | — | — | **all agree, and agree with brute force** |
+| `_bf49`, the general brute-force battery | 44/44 | — | **44/44** |
+| `_verify49`, JSON 519 mutants | 519/519 | — | **519/519 verified, 0 disagreements** inside vs outside |
+| `_verify49`, predicate grammars, 49 inputs | 40/49 | — | **45/49 verified, 0 disagreements**; the 4 are `<forced>` on `S <- &'x' 'y';`, an empty language where declining is correct |
+| `_smoke49`, 156 JSON mutants vs m46 | — | — | costDiff 0, shapeDiff 0, spanDiff 0, coverBad 0, **stepDiff 0** |
+
+**There are zero UNDER verdicts anywhere.** That is the column that matters: m47
+had them, and the whole of m48 and m49 is the removal of them without paying
+m48's price in exactness.
+
+Two of these deserve to be read out loud. **On the identical 49 inputs, m46
+verifies 40 and m49 verifies 45** (`_verify_m46.dart` is `_verify49.dart` with
+one import rebound, so the input set is the same object). The five that moved are
+exactly §5q's five defective witnesses — every one of them
+`S <- !'x' A; A <- 'x' / "yy";` emitting `"x"`, the family where "the cost is
+right and the tree is wrong" and no oracle that compares integers could see it.
+They are gone because the obligation reaches `_build` too: a lying leaf is
+narrowed by whatever is owed before it emits. Both engines are left with the same
+4, and those 4 are `<forced>` on an empty language, where declining is the
+correct answer. And
+`_smoke49`'s **stepDiff = 0** is the strongest available form of "free": on a
+grammar with no lookahead, `c` never leaves `_free`, so m49 does not merely
+return m46's answers — it makes **bit-identical `_compute` calls** to reach them.
+
+### I4 is now an optimization, and only that
+
+Under m48, I4's static fusion was load-bearing: it was the only way a lookahead's
+class ever reached the character it constrained. Under I7 the channel carries the
+same class at run time, *and it reaches the witness too*. Measured by commenting
+out the single line `parts = _fuseLookaheads(parts);` and changing nothing else
+(`_m49nofuse.dart`):
+
+| | I4 live | I4 deleted |
+|---|---|---|
+| `_bfpred` nine grammars / nullable family | 45/45, 14/14 | **45/45, 14/14** |
+| four spelling-invariance blocks | all agree | **all agree** |
+| `_leak49` overall | 71/71 | **71/71** |
+| `_compute` calls, `_steps49` total | **383** | **411** (+7.3%) |
+| `(!'"' .)*` on `x` / `"x` / `` (empty) | 41 / 36 / 24 | 49 / 45 / 28 |
+| `[^"]*` on the same — control, already a class | 38 / 34 / 23 | 38 / 34 / 23 |
+| `(&[a-z] !'q' .)*` on `q` | 16 | 23 |
+| `!'x' A`, `Kw <- "if" !Alpha` — not fusable | 20/24, 39/44/44 | identical |
+
+**No answer moves. Only work moves**, and all of it on the spellings I4 fuses.
+So the rewrite survives on a different justification than the one it was built
+with: it brings the predicate spelling to within 8% of the class spelling of the
+same language, where deleting it costs ~30% more work to repair `!'"' .` than
+`[^"]`. **Spelling invariance of the ANSWER became free, so I4 is retained for
+spelling invariance of the WORK.** Nothing depends on it being correct any more —
+which is the safest state a rewrite can be in.
+
+### Where it stops, stated so it is not re-litigated
+
+**A lookahead WIDER than one character**, for the reason it always stopped. The
+derivative of `!"*/"` after one emitted character is `!"/"` — an obligation that
+CHANGES as it is discharged. This channel carries a **set**, not a state machine.
+Those stay on the oracle, stay approximate, and stay *reported* by I5. Making
+them exact means carrying a Brzozowski derivative as the obligation, which is
+§5q's row scored 5: correct, `O(|G|²·n·K)`, and roughly doubles the engine.
+
+What pays for what was gained: the value is keyed by `(end, owed)` instead of
+`end`, so a map that was `n` wide is `n × L`, where **L is the intersection
+lattice of the grammar's one-character lookahead classes** — a property of the
+grammar alone, not of the input, so the bound stays `O(|G|·n·K)` with `|G|`
+absorbing `L`. A grammar without lookahead has `L = 1`, which is why the JSON
+battery does not move by a single tree or a single `_compute` call.
+
+The measured price is in §5j's eighth occasion: **LOC 539 → 629 → 656 → 668**,
+and `RRmax` **1024 → 512**, entering at m47 and holding — the one real regression
+in the line, confirmed across nine single-engine processes.
+
+**CORRECTED, 2026-07-26.** The `RRmax` half of that is a metric artifact of the
+ladder: bisected, m46 is 524 and m47 483 (−8.4%, not −50%) and m49 is 537, i.e.
+*above* m46. There is no surviving I7 regression to explain. m50 then lifts the
+same measure to k=2160 by scheduling, at which point the search is no longer the
+binding constraint at all. See §5j's ninth occasion.
+
+### The alternatives, scored
+
+| candidate | measured result | score | why |
+|---|---|---|---|
+| **obligation in the value, keyed `(end, owed)` (I7, m49)** | 71/71 leak, 45/45 + 14/14 bfpred, 44/44 bf, 519/519 + 45/49 verify, stepDiff 0 vs m46, 62/62 veto | **10** | Exact on every family any gate can reach; deletes more machinery than it adds (`_split`, `_silent`, nullability fixed point, `_Cons.post`, the index-0 seeding); reuses the parser's own three channels; free where there is no lookahead, bit-for-bit. The `RRmax` halving is its only measured cost. |
+| **constraint as a memo dimension carried DOWN (I6, m47/m48)** | m48 65/71 leak, 45/45 bfpred | **7** | Necessary and not sufficient. It is the right dimension, and *half* the channel: a constraint can reach a reader below, never a reader in the caller. On its own it forces a guess at the chain terminator, and both available guesses are wrong (m47 unsound, m48 over-reports). |
+| static fusion, I4 alone (m45/m46) | 42/45 bfpred, 55/71 leak | 6 | Exact where the builder can see the reader, and free. Cannot be completed: `_nullseq45` shows no static placement is the right language. Now demoted to an optimization and *kept* on that basis. |
+| **optimistic discharge at the chain terminator (m47)** | block A: 0 where truth is 1 | **0** | UNSOUND. Names repairs that do not exist — the one defect class this project treats as disqualifying. Recorded, tagged `leak`, kept only so the mistake is not made a third time. |
+| strict `_eps`-only discharge (m48) | block D 11/14 | 5 | Sound, and blind. Trades m47's under-reports for over-reports wherever the reader is at the call site — i.e. on the single commonest real use of a lookahead. |
+| a SECOND memo dimension for "has anything been emitted yet" (§5q's guess) | not built | 4 | This is what §5q predicted the fix would need, and it is the wrong shape: it is a fact about a derivation's PAST, so it belongs in the value, not in a second argument. Two dimensions multiply the memo where one already carries it. |
+| static export sets — precompute, per node, the obligations it can leave with | not built | 4 | Sound, and it is the obligation lattice computed at build time instead of interned on demand. Buys a smaller constant; costs a whole-grammar fixed point of exactly the kind I7 just deleted. |
+| a scalar "ceiling" instead of a class (widest permitted code unit) | not built | 2 | Cheaper key, wrong lattice: `!'q'` is not an interval. It would silently accept characters a negative lookahead forbids — an under-report, which is the disqualifying direction. |
+| first-class-in-key: pack the class *object* rather than an interned index | rejected | 2 | Same semantics, but the memo key stops being an int and the dense `id*(n+2)+pos` addressing goes with it. Interning is what keeps the lattice finite AND the key an integer. |
+| the pure one-conjunct veto, `end > committed` (`va`) | 60/62 | 3 | Safe — it can only report too high — but it gives back exactly the exactness I7 was built for, on the grammars people actually write. |
+| the index-based veto, `end > committed && owed == free` (`vb`) | 61/62, one UNDER | 0 | UNSOUND, and by the exact mechanism I3 exists to prevent: a debt lets a longer alternative free-ride past a commitment the oracle already made. |
+
+### The lesson that generalises
+
+**A fact that one frame cannot compute alone does not need a new mechanism; it
+needs the right one of the three channels a memoizing recursive descent already
+has.** Down is the argument, across is the value, up is the memo. m47 and m48
+each had the right dimension and the wrong channel, and both paid for it in the
+only currency that counts — one by naming repairs that do not exist, the other by
+refusing repairs that do.
+
+The corollary is a rule for reading this file's own history: **when a static
+analysis of a grammar is being written to predict what a derivation will do, the
+prediction is in the wrong place.** `_nullable`, `_Cons.post`, `_silent`, the
+`_classes[0]` seeding and the two-reading union were all machinery for GUESSING
+AT BUILD TIME what the value can simply carry. Every one of them is gone, and the
+engine got *more* exact for their removal.
+
+## The nineteenth occasion: m61 — the parser is the host, and what it measured
+
+The directive: m60 is the baseline; find a realization of its semantics (or
+something more general) in dramatically less code, **with fewer memo table
+additions** — and put Codex (gpt-5.6-sol, max effort) on the same question in
+parallel.
+
+**A refutation first, found on paper before any build.** The purest candidate —
+compile a budget-indexed *repair grammar* (`Repair_b(C)` rules: terminal edits
+as alternatives, Seq budget splits, deletion self-loops) and let the frozen
+parser BE the engine by just parsing with it — fails structurally. The frozen
+combinators are deterministic: one MatchResult per (rule, pos). The m-line's
+cell value is a SET of (end, owed) keys, and the set is not a luxury: with
+`head@i` returning its one first-successful repair, a head that commits to the
+wrong span starves the tail, the rung fails although a repair at that cost
+exists, and the ladder answers high — the bf gate catches it. No static
+alternative ordering fixes this, because the failure is single-valuedness, not
+preference. Position is the only parameter a packrat key carries, and fuel
+cannot be encoded into position (contiguity). **The deterministic memo cannot
+hold the union; the set-valued cell is the irreducible content of the m-line.**
+
+**I17 — A MEMO ENTRY IS A FIXPOINT ENGINE.** What CAN be delegated is
+everything around the set. `MemoEntry.match` (40 lines, frozen) is a
+bottom-seeded Kleene iteration with cycle detection (`inRecPath`), a seed
+(`result = mismatch`), a widening loop (grow while `len` increases), and
+per-position invalidation (`memoVersion`) — m60's `_Entry` machinery, verbatim,
+already in the library. m61 wraps the cell (node, obligation, budget) as a
+`Clause` subclass whose `match()` computes one pass of the recurrence in
+direct recursive style and returns a `Match` subclass carrying the stride-3
+list, with `len` as a growth counter (strictly larger iff the set improved, so
+the host's fixed-point test drives set growth; MISMATCH — the seed — reads as
+the empty set). The budget becomes the KEY's third coordinate, so settling at
+a budget IS the memo hit and the `settledBudget` protocol dissolves; soundness
+of per-position invalidation is I8's argument (reads never move backward, so a
+provisional value is only ever consumed at the position that widens); the
+sticky `foundLeftRec` bit makes re-widening correct across passes. Ten `_Entry`
+fields → zero recovery-side memo machinery. Bit-identical to m53 on all 252
+smoke inputs ON THE FIRST RUN; bf 44/44, bfpred all blocks, leak 71/71,
+score row perfect, ceiling gate 6/6.
+
+**The price, measured (official pair):** m61 715 LOC, battms 391, latms 274.6
+vs m60p 310 / 202.5 in the same process (+26% battery, +36% latency), RRmax
+1024 vs >=4096; bisected nested-`E` ceilings cost k=649 / full k=590 (3/3)
+vs m60's 2160/1161. Two mechanisms, both structural: (1) waits return to the
+native stack — parking was I16's whole content, and the host cannot park;
+(2) the host's generality is paid per read — nested map hops, a fresh list and
+a growth comparison per pass — where m60 pays one flat-int lookup. Note the
+steps count HALVED vs m53 (smoke ratios 0.51–0.63x: per-budget keys reuse
+lower rungs across the ladder perfectly) and the wall-clock still lost: the
+per-step constant of the generic path is ~2.7x. The memo's generality is rent
+paid per read.
+
+**The finding that reframes the directive: the driver was never the mass.**
+m60's driver (entry + step + finish) is ~230 raw lines; hosting it saved ~65
+net, because the guest apparatus (cell class, match subclass, seal/grew) costs
+~150 back. What every engine since m53 carries verbatim is the OTHER ~550:
+builder/normal form (~130), obligation lattice + fusion (~120), goalFromNothing
+tiers (~85), witness build + emit + verify (~150), regret prefix (~50). Three
+independent formulations have now measured the same bottom for the SAME
+contract: m59 614 (no driver, 16x battery), m61 715 (hosted driver, +26/+36%,
+stack ceiling returns), m60 780 (hand driver, fastest and deepest). The ~600
+floor of the sixteenth occasion strengthens from a decomposition argument to a
+three-way measurement. Dramatic shrinkage, if it exists, is not in the driver;
+it is behind one of two named forks, neither takeable under the current rules:
+(a) CHANGE THE OUTPUT CONTRACT — emit the repaired string + edit list and take
+the AST from the I5 verify parse (already paid), deleting the input-aligned
+witness builder (~150; est. ~560 LOC) at the cost of the SkipResult
+input-tree shape every gate compares; (b) UNFREEZE dart/lib and share a
+suspended-execution core with the parser (Codex's seventeenth-occasion
+estimate: ~150–250 LOC recovery).
+
+**Where m61 leaves the line:** m60 remains the standing engine — it dominates
+m61 on battery, latency, and every stack column at +65 LOC. m61 is the
+measured corner "zero recovery-side memo machinery": the proof that the
+parser's own table can host the recurrence bit-identically, the cleanest
+statement of the LR-trick reuse (the user's original hunch, realized
+literally), and the engine whose direct-style `_eval` is the shortest faithful
+transcription of the recurrence in the line. Registered m61 + m60p; harnesses
+`_smoke61/_bf61/_bfpred61/_leak61/_score61/_ceil61/_batt61`, `_lat53` and
+`_ceil50b` extended.
+
+## The twentieth occasion: Codex round two, m62, and the standing engine moves
+
+The same smaller-realization question was put to Codex (gpt-5.6-sol, max
+effort, resumed thread) in parallel with the m61 build. Its reply,
+claim-by-claim, with verification marks:
+
+- **Its refutation of the naive budget-indexed repair grammar: CONFIRMED,
+  independently.** Its `S <- 'a' 'b'` FAB/SUB flip is the same argument as the
+  head@i starvation found here on paper before building (nineteenth occasion):
+  the frozen combinators' determinism cannot hold the set-valued cell, and the
+  correction is continuation-passing, whose specialization is unbounded — the
+  offline shadow of the suspended tape.
+- **Its proof that no static alternative order encodes additive regret:
+  ACCEPTED and worth keeping.** PEG order is lexicographic by first differing
+  decision; regret is a sum. Two call sites with immediate regrets a<b and
+  suffix regrets swapped (M,0)/(0,M) demand opposite orders. Also the input
+  dependence: SUB regret 2h(s[i]) vs FAB W, no static order. This retires the
+  "encode regret by ordering" idea permanently.
+- **Its lookahead analysis: CONFIRMS m61's lattice shape.** Raw-input
+  predicates are disqualified (the two named underreports on `S <- !'x' A`);
+  obligation specialization needs BOTH directions, incoming and outgoing —
+  which the m-line has carried since I6/I7 (incoming as the cell coordinate,
+  outgoing in the value key). Its warning that an ordinary MatchResult cannot
+  RETURN a trailing obligation is exactly why m61's Match subclass carries the
+  whole triple list.
+- **What it missed: m61 itself.** Its strongest zero-field candidate (the
+  max-plus fact grammar: one generated Clause per fixed target (end, cost,
+  win, wout), regret encoded order-reversed in MatchResult.len so MemoEntry
+  does max-plus widening unchanged) assumes the value must be a native
+  length, and pays O(|G| n^2 K L^2) states / O(n^3)-class work for it. A
+  Match SUBCLASS carrying the stride-3 list with len as a growth counter
+  keeps the m60 state count and was already built and measured (m61,
+  715 LOC, +26%/+36%, ceilings 649/590) before its reply landed. Its own
+  forecast for a corrected grammar construction ("several times m60, worse at
+  large K, m49-like stack") brackets m61 correctly from the pessimistic side.
+- **Its trilemma: RECORDED as the floor's second leg.** The set-valued cell's
+  information must live in a richer memo value (m60/m61/m62), duplicated rule
+  identities (fact grammar), or suspended continuation state (the tape).
+  "Under the freeze, no credible 150-350-line implementation satisfying all
+  gates and the performance target." This matches the three-way measured
+  floor of the nineteenth occasion from an information argument.
+
+**m62 — its ranked-first practical candidate, built here and measured: THE
+ENTRY IS A FACT; THE PASS IS A FRAME (I18).** Of m60's ten entry fields, six
+describe the pass in flight (budget, pc, headEntry, foundCycle, improved,
+parent). m62 moves them onto one explicit DFS stack of pooled frames: stack
+adjacency is the parent pointer, `running` derives from membership
+(activeDepth >= 0), and a descendant reaching an active entry sets the
+ancestral FRAME's foundCycle bit by index — the same O(1)
+descendant-to-ancestor message. The durable memo shrinks to
+value/settledBudget/version (+activeDepth); the recurrence, ladder, walk,
+veto, ceiling and witness are m60 verbatim. Bit-identical smoke on the first
+run; every gate perfect; bisected ceilings 2160/1161 = m60's exactly.
+
+**Measured (medians of three pair processes):** m62 787 LOC, battms 343,
+latms 199.2 vs m60q 329 / 215.2 — the latency beat held in all three runs
+(198.2/222.7/199.2 vs 213.4/229.6/215.2), battery a ~3% deficit inside the
+pair scatter, RRmax/LRmax >=4096 both. Smaller entries appear to pay for
+themselves in cache behavior: the first engine of the line to beat m60's
+latency without giving up any column.
+
+**The standing engine of the line is now m62.** m60 remains I16's statement —
+the discovery that the continuation can live with the memo — and m62 is its
+completion: the transient half of the coroutine belongs to the pass, not the
+table. m49's latency crown (~190 same-session context) is now within ~5% at
+full stack safety, 4 durable fields, and zero parameters. The occasion's
+directive — "fewer memo table additions" — is answered with six fewer.
+
+Harnesses: `_smoke62/_bf62/_bfpred62/_leak62/_score62/_ceil62`, `_lat53` and
+`_ceil50b` extended; registered `m62` + `m60q` (medians noted inline in 5j).
