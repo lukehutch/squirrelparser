@@ -852,12 +852,12 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m65', 425, (r, t) {
+  Eng('m65', 477, (r, t) {
     final e = g65.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m66', 53, (r, t) {
+  Eng('m66', 61, (r, t) {
     final e = g66.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),

@@ -4026,3 +4026,61 @@ speed. What the router does NOT fix: the residual tie discrepancy class
 hypothetical true-regret order — bounded by the same 3-case residue m65
 measured) and m65's own 21x, whose next lever remains the residual
 quotient.
+
+## The twenty-fifth occasion: my own sweep broke my own router, and the fixes are structural
+
+Continuing the round-four review (Codex running the same in parallel), a
+2261-case adversarial sweep was built before trusting the router: twelve
+lookahead- and commitment-heavy grammars, all strings to length 5,
+brute-force true-PEG truth (horizon 3) against c62, m65, and m66
+(`_floor66.dart`). It found two real holes — both mine, both now fixed and
+re-verified.
+
+**Hole 1: the floor claim fails outside the envelope.** All 41 floor
+violations concentrate in the one wide-lookahead grammar
+(`S <- &(A 'b') A 'b' 'x'`): m62 evaluates wide predicates against the
+ORIGINAL text (the PRED tag's known content), so it can LOSE repairs —
+c62=5 with a verifying witness while a true cost-3 repair exists. The
+squeeze's certificate direction survives (verified => upper bound); the
+floor direction does not, so "verified => equality" is only sound inside
+the single-character envelope. Worse, m62's -1 is no emptiness proof
+there either, and m65's own -1 shortcut inherited the lie (both engines
+returned -1 on five inputs with true cost <= 3). FIX: the envelope is
+STATICALLY detectable (any lookahead whose subclause lacks a
+single-character class — the same test I4's fusion uses). m65 exposes
+`wide`; the router trusts the relaxation only when !wide, and routes
+everything to the tape otherwise; the tape's own answers on the wide
+grammar were verified exact (c65=3 where c66 said 5).
+
+**Hole 2: the termination cap was computed from the wrong side.** cap =
+n + relaxed-fabrication-floor, but the relaxed floor LOWER-bounds the true
+one (superset language => shorter members), so the cap can sit below
+n + fabTrue — `S <- 'a'? "ab"` on "" has relaxed floor 2 ("ab" is a
+relaxed member) but true floor 3 ("aab": the optional steals the
+literal's first character), and the search gave up one rung short:
+a false -1 that had been latent in m63/m65 since birth, never triggered
+by any gate. FIX: the horizon gains the grammar's fabrication mass
+(the summed emission size of its terminal occurrences, a derived
+constant): horizon = n + (envelope ? relaxed floor : 0) + massG, exposed
+as `lastHorizon`; -1 means "no repair within lastHorizon". The mass term
+covers forced-duplication gaps; the undecidability of full-PEG emptiness
+(twenty-first occasion) forbids an unconditional horizon, so SOME derived
+horizon is forced — this one never binds on any gate, keeps every
+empty-language case terminating, and closes the sweep.
+
+**After both fixes, re-verified end to end:** the sweep is CLEAN
+(routerWrong 0/2261; the 41 floor violations remain as documentation of
+what is no longer trusted); m65: bf 44/44, conf 5/5, bfpred 71/71, leak
+71/71, shape 514, battery 7151 vs 308 (pair scatter of the same ~21-23x);
+m66: bf 44/44, conf 5/5, bfpred 71/71, leak 71/71, shape 517/519, smoke
+bit-identical 14/14, and the official pair re-confirmed at 343/218.4 vs
+m62s 288/220.6 — LATENCY NOW TIED with the standing engine. LOC after
+fixes: m66 61, m65 477.
+
+The lesson for the record: the router's soundness is not one theorem but
+three, with three different scopes — the certificate (verified witness =>
+upper bound: unconditional), the floor (relaxed cost <= true cost:
+single-character envelope only), and the horizon (-1 within
+n + floor + massG: forced by undecidability). An engine that conflates
+their scopes is wrong precisely where the PRED tag always said the
+relaxation lies.

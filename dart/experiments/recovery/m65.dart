@@ -88,6 +88,49 @@ class SuperDot3 {
   late final relaxed.SuperDot3 _base =
       relaxed.SuperDot3(rules: rules, topRuleName: topRuleName);
 
+  /// True when some lookahead's subclause has no single-character class --
+  /// the territory where the relaxed engine's answers (its cost floor, its
+  /// -1, its fabrication floor) are not certificates (the PRED tag). There
+  /// the tape trusts nothing but itself.
+  late final bool wide = () {
+    bool oneChar(Clause c, [Set<String> seen = const {}]) => switch (c) {
+          AnyChar() || Char() || CharSet() => true,
+          Str(:final text) => text.length == 1,
+          First(:final subClauses) => subClauses.every((x) => oneChar(x, seen)),
+          Ref(:final ruleName) => seen.contains(ruleName)
+              ? false
+              : oneChar(
+                  rules[ruleName] ?? rules['~' + ruleName]!, {...seen, ruleName}),
+          _ => false,
+        };
+    var found = false;
+    void walk(Clause c, Set<Clause> seen) {
+      if (found || !seen.add(c)) return;
+      if (c is FollowedBy || c is NotFollowedBy) {
+        final sub = (c as dynamic).subClause as Clause;
+        if (!oneChar(sub)) found = true;
+        walk(sub, seen);
+      } else if (c is Seq) {
+        c.subClauses.forEach((x) => walk(x, seen));
+      } else if (c is First) {
+        c.subClauses.forEach((x) => walk(x, seen));
+      } else if (c is Repetition) {
+        walk(c.subClause, seen);
+      } else if (c is Optional) {
+        walk(c.subClause, seen);
+      } else if (c is Ref) {
+        final t = rules[c.ruleName] ?? rules['~' + c.ruleName];
+        if (t != null) walk(t, seen);
+      }
+    }
+
+    final seen = <Clause>{};
+    for (final r in rules.values) {
+      walk(r, seen);
+    }
+    return found;
+  }();
+
   // ---- the probed grammar (m63 verbatim) ------------------------------------
 
   final List<Terminal> _terminals = [];
@@ -112,6 +155,20 @@ class SuperDot3 {
     if (t is! Nothing) _terminals.add(t);
     return _Probe(this, t);
   }
+
+  /// The grammar's fabrication mass: the summed emission size of its
+  /// terminal occurrences. A derived widening of the search horizon that
+  /// covers forced-duplication gaps between the relaxed and the true
+  /// fabrication floors (an optional or a committed choice can steal the
+  /// first characters of what follows, forcing them to be fabricated twice).
+  late final int _massG = () {
+    _probed; // force terminal collection
+    var m = 0;
+    for (final t in _terminals) {
+      m += t is Str ? t.text.length : 1;
+    }
+    return m;
+  }();
 
   bool _touched = false;
   Set<int> _atomSet = {};
@@ -196,7 +253,7 @@ class SuperDot3 {
 
   late String _input;
   late int _n;
-  int lastCost = -1, lastSteps = -1;
+  int lastCost = -1, lastSteps = -1, lastHorizon = -1;
   bool lastVerified = false;
   int get lastCells => _clsMemo.length;
 
@@ -291,17 +348,31 @@ class SuperDot3 {
       lastVerified = true;
       return 0; // a clean pure parse is true-PEG membership
     }
-    // The relaxed engine's -1 is exact (CFG-empty implies PEG-empty); its 0
-    // is NOT a membership certificate (a rung-0 CFG-union parse also returns
-    // 0 -- the possessive-star cases). The empty-input answer is the CFG
-    // fabrication floor, hence the termination cap.
-    if (_base.recoverCost(input) == -1) {
-      lastCost = -1;
-      lastSteps = 0;
-      return -1;
+    // The horizon. Inside the single-character envelope the relaxed -1 is
+    // exact (CFG-empty implies PEG-empty) and its empty-input answer is a
+    // lower fabrication floor; outside it (the PRED territory -- measured:
+    // wide lookaheads can LOSE repairs) neither is a certificate and only
+    // the grammar's own mass is trusted. The mass term covers the measured
+    // forced-duplication gap between the relaxed and true floors (an
+    // optional stealing the first character of the literal behind it). The
+    // undecidability of full-PEG emptiness forbids an unconditional
+    // horizon; -1 means "no repair within lastHorizon", which every gate's
+    // own truth horizon sits far inside.
+    var fab = 0;
+    if (!wide) {
+      if (_base.recoverCost(input) == -1) {
+        lastCost = -1;
+        lastSteps = 0;
+        return -1;
+      }
+      final f = _base.recoverCost('');
+      if (f > 0) fab = f;
     }
-    final fab = _base.recoverCost('');
-    final cap = _n + (fab < 0 ? 0 : fab);
+    lastHorizon = _n + fab + _massG;
+    return lastCost = _search(lastHorizon);
+  }
+
+  int _search(int cap) {
     _ids.clear();
     _si.clear();
     _sy.clear();

@@ -53,6 +53,17 @@ class SuperDot3 {
       lastVerified = true;
       return SkipResult(pure.root, const [], const [], 0, false);
     }
+    // Outside the single-character envelope the relaxed answers are not
+    // certificates (wide lookaheads can LOSE repairs -- measured), so the
+    // squeeze argument does not apply: the tape answers everything.
+    if (_exact.wide) {
+      lastFellBack = true;
+      final t = _exact.recover(input);
+      lastCost = _exact.lastCost;
+      lastSteps = _exact.lastSteps;
+      lastVerified = _exact.lastVerified;
+      return t;
+    }
     final r = _fast.recover(input);
     if (_fast.lastCost == -1) {
       lastCost = -1; // CFG-empty implies PEG-empty: exact
