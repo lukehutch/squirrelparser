@@ -862,14 +862,19 @@ class SuperDot3 {
   /// A wide lookahead is a clause `_looks` cannot read -- the same test as
   /// I4's fusion, reused as the envelope boundary.
   /// I24: any lookahead at all routes to the tape; the lattice-free core is
-  /// a floor only on lookahead-free grammars.
+  /// a floor only on lookahead-free grammars. The walk is also the
+  /// closed-world check (twenty-eighth occasion): both halves reason about
+  /// the STOCK clause algebra, and an unknown Clause subclass silently
+  /// voids every soundness argument -- an opaque wrapper can hide a wide
+  /// lookahead from this very test -- so unknown types are rejected loudly.
   late final bool _wideG = () {
     var found = false;
     final seen = <Clause>{};
     void walkC(Clause c) {
-      if (found || !seen.add(c)) return;
+      if (!seen.add(c)) return;
       if (c is FollowedBy || c is NotFollowedBy) {
         found = true;
+        walkC((c as HasOneSubClause).subClause);
       } else if (c is HasMultipleSubClauses) {
         c.subClauses.forEach(walkC);
       } else if (c is HasOneSubClause) {
@@ -877,6 +882,10 @@ class SuperDot3 {
       } else if (c is Ref) {
         final t = _rules[c.ruleName];
         if (t != null) walkC(t);
+      } else if (c is! Str && c is! Char && c is! CharSet && c is! AnyChar && c is! Nothing) {
+        throw ArgumentError(
+            'unsupported clause type ${c.runtimeType}: repair soundness is '
+            'proved over the stock clause algebra only');
       }
     }
 
@@ -886,13 +895,36 @@ class SuperDot3 {
 
   /// The grammar's fabrication mass over the lowered terminal list: the
   /// derived widening of the horizon that covers forced-duplication gaps.
+  /// The INLINED fabrication mass of the top rule: reference occurrences
+  /// count every time (a doubling chain of Refs doubles the mass), because
+  /// the forced-duplication gap between the relaxed and true fabrication
+  /// floors multiplies with reference duplication -- the definition-level
+  /// sum was refuted by exactly that construction (twenty-eighth occasion).
+  /// Cycles contribute zero: with undecidable emptiness, -1 remains "no
+  /// repair within lastHorizon", never an unconditional answer.
   late final int _massG = () {
-    _goal; // force the builder
-    var m = 0;
-    for (final t in _terminals) {
-      m += t is Str ? t.text.length : 1;
-    }
-    return m;
+    int mass(Clause c, Set<String> path) => switch (c) {
+          Str(:final text) => text.length,
+          Nothing() => 0,
+          Char() || CharSet() || AnyChar() => 1,
+          Seq(:final subClauses) =>
+            subClauses.fold(0, (a, x) => a + mass(x, path)),
+          First(:final subClauses) =>
+            subClauses.fold(0, (a, x) => math.max(a, mass(x, path))),
+          Repetition(:final subClause) ||
+          Optional(:final subClause) ||
+          FollowedBy(:final subClause) ||
+          NotFollowedBy(:final subClause) =>
+            mass(subClause, path),
+          Ref(:final ruleName) => path.contains(ruleName)
+              ? 0
+              : mass(_rules[ruleName]!, {...path, ruleName}),
+          _ => 1,
+        };
+    return mass(_rules[topRuleName.startsWith('~')
+            ? topRuleName.substring(1)
+            : topRuleName]!,
+        {});
   }();
 
   late final Map<String, Clause> _probed = {

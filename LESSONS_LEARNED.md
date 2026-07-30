@@ -4158,3 +4158,53 @@ and signatures (-40 LOC, pure mechanics, no behavior change — the one
 worth doing on a quiet day); the ~200-LOC shared-core dream (needs the
 lib unfreeze). **m68 is the standing engine**: the smallest and fastest
 fully-exact true-PEG configuration the line has produced.
+
+## The twenty-eighth occasion: Codex round four lands — two holes fixed, one residue named, and the claims re-scoped
+
+Codex's round-four review (delayed by a hung xhigh run; completed at high
+effort with EXECUTED counterexamples) broke three things my 2261-case sweep
+had not:
+
+1. **The envelope detector was unsound over the subclassable Clause
+   interface.** An opaque delegating Clause wrapping a wide lookahead hides
+   it from the walk while the normalizer treats it as an oracle leaf —
+   executed: the original floor failure reproduced with fallback=false.
+   FIX: the wide-walk is now also a CLOSED-WORLD check — any clause outside
+   the stock algebra throws, loudly. Every soundness theorem in the line is
+   scoped to the stock algebra; extensions now void the warranty explicitly
+   instead of silently.
+
+2. **The definition-level fabrication mass was refuted.** A doubling chain
+   of Refs (S<-A2 A2; A2<-A1 A1; A1<-B B; B<-'a'? "ab") amplifies the
+   optional-stealing gap to 2^d while the mass stays constant — executed:
+   false -1 with horizon 20 against a true gap of 8 more. FIX: the mass is
+   now INLINED (reference occurrences count every time; First takes max;
+   cycles contribute zero, keeping -1 = "none within lastHorizon" — the
+   honest bound undecidability forces). Both Codex constructions are now
+   permanent sweep gates: 2387 checks, 0 wrong.
+
+3. **The tie residue got a concrete face and a measured bound.** In
+   envelope, S<-[a-z]/'a'/'0' on "": the certified witness has exact COST
+   but wrong TRUE regret (the relaxed forest prices the narrow literal;
+   the true parse commits to the wide class first). Codex's audit: a naive
+   regret-equality certificate closes 0/519 battery cases, because the
+   relaxed SUB/FAB weights omit the emitted terminal's width. Its ranked
+   NEXT BUILD: reweight the relaxed edit prices to the true cleanRegret
+   model and squeeze the full (cost, regret) pair, falling to a
+   cost-capped tape layer drain on mismatch (~40-90 LOC on the fused
+   engine; would also retire the 3-case shape residue). Recorded, not yet
+   built. Its KILL: lazy k-best (cannot recover candidates the relaxed
+   semantics excludes; +250-450 LOC).
+
+Scoping correction to occasions 26-27: m67/m68's "true-PEG exact" means
+exact COSTS for inputs repairable within lastHorizon and exact conformance
+on the gates, with the tie-break exact only where the relaxed and true
+regret models coincide -- the [a-z]/'a'/'0' construction is the boundary.
+Codex also profiled the tape (435,210 classifications over the battery;
+quotient-style savings cap ~25%), confirming the router architecture, and
+confirmed the certificate's upper-bound half unconditionally for the stock
+algebra.
+
+After both fixes, re-verified: bf 44/44, conformance 5/5, shape 517/519,
+smoke 14/14 bit-identical, sweep 2387/0, official row 370/217.6 (pair
+scatter of the same tied-latency class). m68 remains the standing engine.
