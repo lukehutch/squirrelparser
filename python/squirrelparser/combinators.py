@@ -118,7 +118,23 @@ class Seq(HasMultipleSubClauses):
         return Match(self, 0, 0, sub_clause_matches=children, is_complete=_all_complete(children))
 
     def _recover(self, parser: Parser, curr: int, i: int) -> tuple[int, int, MatchResult | None] | None:
+        """
+        Attempt to recover from a mismatch.
+
+        Key constraint (C16 - First Element Anchor): When the FIRST element of a
+        sequence fails to match, we should NOT skip input to "find" it elsewhere.
+        The first element is an anchor that defines the start of this construct.
+        If it's missing, this isn't a recoverable error within this sequence -
+        the parent should handle recovery instead.
+        """
         from .terminals import Str
+
+        # C16: Don't skip input to find the first element - it's an anchor
+        if i == 0:
+            # If we're at end of input, allow grammar element deletion
+            if curr >= len(parser.input):
+                return (0, len(self.sub_clauses), None)
+            return None  # First element must match at current position
 
         max_scan = len(parser.input) - curr + 1
         max_grammar = len(self.sub_clauses) - i

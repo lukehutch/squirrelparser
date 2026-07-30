@@ -134,11 +134,29 @@ export class Seq extends HasMultipleSubClauses {
     return new Match(this, 0, 0, { subClauseMatches: children, isComplete: allComplete(children) });
   }
 
+  /**
+   * Attempt to recover from a mismatch.
+   *
+   * Key constraint (C16 - First Element Anchor): When the FIRST element of a
+   * sequence fails to match, we should NOT skip input to "find" it elsewhere.
+   * The first element is an anchor that defines the start of this construct.
+   * If it's missing, this isn't a recoverable error within this sequence -
+   * the parent should handle recovery instead.
+   */
   private recover(
     parser: Parser,
     curr: number,
     i: number
   ): { inputSkip: number; grammarSkip: number; probe: MatchResult | null } | null {
+    // C16: Don't skip input to find the first element - it's an anchor
+    if (i === 0) {
+      // If we're at end of input, allow grammar element deletion
+      if (curr >= parser.input.length) {
+        return { inputSkip: 0, grammarSkip: this.subClauses.length, probe: null };
+      }
+      return null; // First element must match at current position
+    }
+
     const maxScan = parser.input.length - curr + 1;
     const maxGrammar = this.subClauses.length - i;
 
