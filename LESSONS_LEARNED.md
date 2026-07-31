@@ -4659,6 +4659,7 @@ above `elegNotes`.
 | cgfr5 | 1147 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 536 | 199.8 | 0.43x | 1024 | 2048 |
 | m70 | 1331 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 477 | 220.6 | 0.46x | >=4096 | 2048 |
 | m71 | 1028 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 487 | 218.8 | 0.46x | >=4096 | 2048 |
+| m72 | 979 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 415 | 208.3 | 0.45x | >=4096 | 2048 |
 
 `SLOW` is a verdict on the engine, not a limit of the harness: that part of the
 measurement exceeded 120 seconds and was killed, and past two minutes it does not
@@ -5310,3 +5311,317 @@ lookahead the oracle evaluates against raw input; the remaining one is `'a'? "ab
 on empty input. Only a tape re-judging the lookahead against the *repaired* string
 can close them — which is the 542 lines I27 and I28 exist to avoid paying for, and
 that is the trade this occasion makes deliberately rather than by omission.
+
+## The thirty-fifth occasion: m72 — the write knows its own reason, and the order of the offers is the rest of the answer
+
+m71 kept the standing complaint alive in one column. It answers the true PEG
+language in 1028 lines, which is 239 more than m62 — and 217 of those 1028 are
+`_reconstruct`, a function whose entire job is to work out something the search
+had already computed and then discarded.
+
+### I29: the write knows its own reason, and a reason recorded at a strict improvement cannot close a cycle
+
+Every value in the memo is written by exactly one funnel, `_put` → `_keepBest`.
+At the instant of the write, the thing that produced the value is sitting in a
+local variable: the spine's `headKey`, the alternation's branch index, or one of
+three leaf shapes. m71 throws it away, and then `_reconstruct` spends 217 lines
+getting it back — it re-runs `_ends` for every alternative and every head
+candidate, sorts them, checks whether the arithmetic reproduces `(cost, regret)`,
+and backtracks when it does not. **That is a search for something that was in
+hand.**
+
+Keeping it costs one int per memo entry: a fourth slot beside `(key, cost,
+regret)`.
+
+What it buys is not just the deletion of the search but the deletion of the
+**doubt**. m71 carries a `_path` set of cycle tokens because a re-derived
+predecessor chain might loop. Under I29 it cannot, and the proof is short:
+
+> Suppose at the fixed point the back-pointers formed a cycle. Each edge adds a
+> non-negative increment, so summing around the cycle forces every increment to
+> zero and every value on it equal. Take the cell on the cycle written **last**,
+> at time *t*. That write was a strict improvement, so its value strictly dropped
+> at *t*. But some cell on the cycle consumed this one's value *before* *t*,
+> hence a strictly larger one — so that cell's value is strictly greater than the
+> cycle's common value, contradicting equality. ∎
+
+A back-pointer closes a cycle only if the cycle has strictly negative weight, and
+every weight here is ≥ 0. The premise the proof rests on is a single line of
+`_keepBest`, which refuses an equal entry and writes only on a strict improvement
+in `(cost, regret)`.
+
+So `_path`, the candidate sort, both backtrack arms, `_deltaOf` and `_ends` all
+existed only because the reason was thrown away. `_build` can no longer fail to
+find a witness for a cost the search reported: the witness is constructed by the
+same writes that produced the cost. `_verify` stays, because I5 checks the
+witness against the **real** parser — a different question from whether the
+search was self-consistent.
+
+**But it does not delete the reconstruction, and the first draft of this section
+said it did.** Measured per member, `_reconstruct` goes 217 → **135**:
+
+| member | m71 | m72 | |
+|---|---|---|---|
+| `_reconstruct` | 217 | 135 | −82, the search inside it |
+| `_ends` | 12 | 0 | −12 |
+| `_RFrame` | 18 | 11 | −7 |
+| `_keepBest` | 16 | 37 | **+21**, carrying and ordering the reason |
+| `_wholesale` | 0 | 18 | **+18**, the canonical form |
+| `_cellAt` | 0 | 10 | **+10**, the read-only lookup |
+| `_step` | 124 | 128 | +4 |
+| **total** | **1028** | **979** | **−49** |
+
+What I29 removes is the **search inside** the reconstruction, not the
+reconstruction. The descent that walks the recorded reasons and emits the tree is
+irreducible — something still has to build the answer. And roughly half the
+saving is spent again on carrying the reason: +21 in `_keepBest`, +10 for
+`_cellAt`, +18 for `_wholesale`. A 217-line deletion nets 49 lines.
+
+### Cost identity is not evidence of witness identity
+
+The first build of m72 passed the cost gate: `_subset72` reported **0**
+differences against m71 on all 2387 brute-force truths. That looked like success
+and was not. Under I28 the engine asks for a certificate and re-runs tight when
+it does not arrive — so a chase that silently fails is invisible to a cost
+comparison, because the tight pass can land on the same number.
+
+`_wit72` compares what a caller actually receives — the certificate, the error
+spans, the missing obligations and the tree. It read **1283 certificate
+differences**, m71 certifying 2245 against m72's 962. More than half the
+witnesses had been destroyed by a change that the cost gate called identical.
+
+The cause was found by instrumenting rather than theorizing: every failure was
+`row:head-no-reason headKey=-1`, the `_wPure` sentinel. The budget-zero window
+writes `_wPure` into *any* node's cell, a `_Cons` included, and `_child` tail-calls
+`_row` for a junk-headed spine — so `_row` was reachable without passing through
+the leaf dispatch and read the sentinel as a head key.
+
+**A gate that can only see the number cannot certify a change to the witness.**
+
+### The canonical form, and the one place it is wrong
+
+A reason is a *sufficient* explanation, not a canonical one. The budget-zero walk
+settles a whole subtree with one oracle call and records `_wPure`, but a cell
+first reached at a higher budget never meets that shortcut — the walk returns
+before the decomposition, so above zero only the split ever writes. Both describe
+the same span at the same price, and the oracle's is the tree this parser
+actually produces: `"ab"` is one match, not a chain of two.
+
+`_wholesale` prefers the oracle's. It is not a re-derivation — no candidates, no
+backtracking, and when it declines the recorded reason answers, so it cannot
+bring the doubt back. `cost == 0` is what makes it safe: it never *creates* a
+repair, only re-describes a cell the search already priced at zero, which is why
+it does not leak past I27's guards.
+
+It belongs to `_build` and **not** to `_row`. Putting it on the list side dropped
+certificates 2245 → 2197 and produced trees with gaps in them. `_row` walks a
+spine's **suffix** nodes, and a suffix shares its `orig` with the whole sequence,
+so asking the oracle about `orig` at the suffix's position asks about a clause
+that node does not stand for. Reading the *recorded* `_wPure` there is safe for
+exactly the reason re-deriving it is not: **`_wPure` is only ever written where
+`orig` describes the node.**
+
+### The reconstruction was allocating, and relaxing, memo cells
+
+m71's `_ends` calls `_entryAt`, which is `_cells.putIfAbsent`, and then `_run` —
+so its witness descent creates memo cells *and relaxes them*. m71's
+reconstruction is itself a search that extends the fixed point. `_cellAt` is a
+plain lookup that returns null when absent, so m72's is read-only.
+
+Measured over the 519-mutant battery: m62 ends holding 511209 cells, m71 520823,
+and **m72 511209 — m62's count exactly**, on an engine that answers the true PEG
+language where m62 does not. Same on each latency case (18479/2106/7477 against
+m71's 18527/2133/7519).
+
+The first hypothesis for that observation was wrong and worth recording: I read
+it as I28's tight pass firing less often under m72. `_tight72` counts the
+firings directly and reads **0 for both engines** on this corpus. The cells were
+never the second pass; they were the reconstruction.
+
+Timed directly (`_recon72`, a stopwatch around `_build`), m72's reconstruction
+runs in **0.6–0.7 ms** against m71's **2.7–4.4 ms** — a 4–7× cut, which is what
+deleting a search for a known answer should buy. It is also only ~1.5% of either
+engine's runtime, so this is a real effect on a small quantity.
+
+### I30: when the comparison refuses a tie, the enumeration order IS the tie-break rule
+
+The first build of m72 passed every gate above and still lost the table. It
+scored **513/519** on shape where m62, m70 and m71 all score 517.
+
+All four lost mutants are one shape — a junk character between two numbers,
+`[2Q33`, `[2z33`, `[2}33`, `[2"33`. Two repairs cost exactly 1:
+
+| | the repair | the array |
+|---|---|---|
+| pristine `[2,33,true]` | — | `Number Number Boolean` |
+| m71 | substitute the junk with `,` | `Number Number Boolean` ✓ |
+| m72 | substitute the junk with a **digit** | `Number Boolean` ✗ |
+
+Both report cost 1, error span `2+1`, one character skipped, **and regret 20391**.
+The value channel cannot separate them. The whole difference is the tie-break.
+
+And here is the part that matters beyond this bug. I29's `_keepBest` refuses an
+equal entry — that refusal is exactly what buys the acyclicity proof. Its
+consequence is that **whoever is offered first wins**. So under I29 the order in
+which candidates are offered stops being a scheduling detail and becomes the
+engine's semantics, and it has to be chosen on purpose.
+
+PEG already says what to choose: among equally-priced readings, take the one a
+recursive-descent parser reaches first.
+
+- An **alternation**: the earliest branch. m72 already obeyed this for free,
+  because `_mergeAlt` walks branches in source order.
+- A **sequence**: the shortest head. m72 did *not*. Head answers arrive
+  cheapest-first — budget 0 before budget 1 — and the cheapest head is precisely
+  the one that swallowed the repair and re-read its neighbours as something else.
+
+One law, two node types. Fixing the sequence side moved shape **513 → 517/519**
+with no mutant regressing the other way, and dropped the full-result differences
+against m71 from 201 to 106, all still confined to the tree.
+
+**It cannot go in the comparison.** The obvious implementation — accept an equal
+write when the new reason is PEG-earlier — destroys the proof. The proof needs
+"the cell written last strictly dropped"; a tie-write does not drop, and a
+reason's rank is not additive along an edge, so nothing replaces that step. The
+tie-break has to live in the enumeration, leaving the comparison strict.
+
+Three implementations were measured before one was kept: arrival order (the
+defect) at 226.4 ms; scanning for the least unoffered split, correct but 297.8 ms
+at 1.47× m62; ordering inside the hot key lookup, ~245 ms at 1.22× because
+`_endOf` then runs per entry on every `_put`; and ordering only on a **miss**,
+asking the last entry first, at 222.0 ms.
+
+The kept one is nearly free because of the shape of the data: a key is new once
+and rewritten many times, so the hot lookup stays byte-identical and only a *new*
+key looks for a place. Instrumented (`_restart72`): **3,582,406** `_keepBest`
+calls scanning **49,873,423** entries, mean scan 13.92, longest list 90. The
+draft of this section claimed a new split "almost always belongs at the back."
+**That is wrong and the counter says so** — 26% of misses are genuine
+insertions, not appends. What makes it cheap is not that insertions are rare but
+that they are *shallow*: only **186,699** entries are ever shifted, 0.4% of the
+scan work.
+
+Ordering the list does cost one thing appending never could. While a `_Cons` is
+parked on a tail, a new split can land **behind** its cursor, where an appended
+one was always ahead of it — a split silently never offered, which is a cost that
+can come out too high. The guard is to restart the walk whenever the list has
+grown: re-offering is free because `_put` is idempotent, and growth is bounded by
+the number of distinct splits, so it terminates. On this corpus it fires **0
+times in 274,176 resumes** — JSON's grammar has no cycle whose re-relaxation
+would grow a list under a parked frame. It stays, because being unexercised by
+one grammar is not the same as being unnecessary.
+
+### The measurement was the last thing standing, and it was wrong three times
+
+m72's table row read `latms` **225.6** against m71's **213.4**, and closing that
+5.7% consumed more of this occasion than building the engine did. Six hypotheses
+were raised and every one of them was killed by its own measurement:
+
+| hypothesis | test | result |
+|---|---|---|
+| the I30 restart guard re-walks | `_restart72` | 0 restarts in 274,176 resumes |
+| sorting at consumption is cheaper | `_m72sort` | 253.0 vs 240.7 — worse |
+| the `_keepBest` linear scan | `_m72bs`, bisecting | 3.5× less scan work, ~2% gained |
+| the ordered insert's shifting | `_m72app` | 8.6%, 4.2%, 2.3%, −0.4% — noise |
+| the fourth int's memory traffic | `_m72p3`, stride-3 packing | ~2.4% in-process, **0.6% cold** |
+| `_wholesale`'s per-node oracle calls | `_recon72` | rebuild is 4–7× *faster*, not slower |
+
+Meanwhile `_work72` read the step count ratio at **1.0027** and the cell count
+ratio at **0.9944** — the two engines do the same work. So the gap had to be
+per-step cost, and no component would own it.
+
+**The first error was the apparatus.** Every one of those harnesses runs two or
+three engines in one VM, and they share its JIT state and its heap. `_recon72`
+timed the *same* build at 234.1, 257.4 and 270.2 ms in three consecutive reps;
+the m72/m71 search ratio inside one run swung 1.010 → 1.198 → 1.122 on
+deterministic, identical work. Across four `_ab72` runs the ratio read 1.134 /
+1.109 / 1.098 / 1.130 while `_latfair72` read 1.05 — the apparatus disagreed with
+itself by more than the effect it was being asked to resolve.
+
+`_cold72` fixes that: **one engine per process**, engines rotated across rounds
+so drift cannot settle on one of them.
+
+**The second error was the sample size, on the fixed apparatus.** Medians of 7
+read m71 215.2, `_m72app` 220.0, m72 220.3 — from which this section originally
+concluded that I30's ordering was **free** (m72 / `_m72app` = 1.001) and the
+honest figure was 2.4%. A second n=7 sweep put that same ratio at **1.047**. Both
+cannot be right and neither n was large enough to say. At **n=21**:
+
+| | median | | ratio |
+|---|---|---|---|
+| m71 | 219.4 | no reason, no ordering | — |
+| `_m72app` | 227.9 | reason, no ordering | I29 costs **1.039** |
+| m72 | 236.5 | both | I30 costs **1.038** |
+
+So **I30's ordering is not free — it costs 3.8%**, and the total was 7.8%, not
+2.4%. A better instrument read at too small an n reproduces exactly the failure
+it was built to fix: `_cold72` at n=7 published a confident **1.001** for
+something that costs 3.8%. The instrument was right; the sample was not.
+
+**The third error was the expensive one: a real win had been thrown away as
+noise.** Row three of the table above — bisecting `_keepBest` — was dismissed as
+"~2% gained, not the bottleneck," on the strength of the same in-process
+harnesses that were wrong about everything else. But split order is a TOTAL order
+computable from the key alone, `(endOf(key), key)`, so the walk that looks for a
+key can bisect for it and a miss stops exactly where the new key belongs — mean
+list 13.9 entries, longest 90, so ~7 comparisons become ~4.
+
+Folding it in needed a proof, not a benchmark, because under I30 **the
+enumeration order *is* the tie-break rule**: any change to what ends up in the
+list is a change to the LANGUAGE, not to the speed. `_bseq` compares the two
+forms on the whole caller-visible result — certificate, spans, missing set, tree
+shape — over all 519 battery inputs and the 12 latency cases: **531 checked, 0
+cost differences, 0 full-result differences.** `_m72bs` deliberately keeps the
+LINEAR form, and scans the whole list rather than stopping where the key would
+sort, so it does not assume the ordering it exists to check.
+
+Post-bisect, at n=21:
+
+| | median | min | max | q1 | q3 |
+|---|---|---|---|---|---|
+| m71 | 223.2 | 213.3 | 236.9 | 220.6 | 229.9 |
+| m72 | 229.2 | 217.5 | 240.2 | 223.1 | 234.9 |
+
+**m72 / m71 = 1.027, and m72 is above m71 at every one of the 21 ranks.** Ratios
+are drift-immune because both engines are measured in the same sweep, so the
+bisect is worth **5.0%** (1.078 → 1.027) — not the 2% it was dismissed at. It was
+the largest single win available in this engine, and it had already been found
+and discarded.
+
+**The lesson is that noise costs in both directions.** The same broken apparatus
+manufactured six hypotheses that were not there and hid one improvement that was.
+Chasing the phantoms was visible and expensive; discarding the real 5% was
+invisible and nearly permanent. **A measurement too weak to confirm an effect is
+equally too weak to reject one** — and a rejection leaves no artifact to come back
+to, which is why it is the more dangerous of the two. Any future row differing
+from its neighbour by single digits should be re-read with `_cold72` at n ≥ 21
+before the difference is believed, optimised against, **or dismissed**.
+
+**And the table's own column is not exempt.** In the full run that produced m72's
+row below, `latms` read **208.3** for m72 against **228.1** for m71 — the table
+says m72 is 8.7% *faster*, the cold sweep says it is 2.7% slower. The two
+instruments agree closely on m71 (223.2 cold vs 228.1 table) and not at all on
+m72, and 208.3 falls **below the minimum of all 21 cold samples**. It is a lucky
+single draw. The row is recorded because that is what the row is, but no claim
+rests on it.
+
+### Where m72 stands
+
+979 LOC against m71's 1028 and m70's 1331, at identical conformance 5/5 and
+identical shape 517/519. Exactness on the 2387 brute-force truths is
+byte-identical to m71 — 98 wrong, 226 fixed against m62, 0 regressed, 0 cost
+differences — and the witness gate reads 0 certificate differences with 2245
+certified by each.
+
+Against m71 it is **49 lines smaller at a measured 2.7% latency cost**, every
+other column tied. That is the honest trade, and it is a trade, not a
+domination: what the lines buy is a reconstruction that cannot fail because it
+is no longer a search, and an acyclicity argument that replaces a runtime
+cycle-token set with a proof.
+
+Against **m62 it does not dominate and is not dominated**: m62 is 789 LOC and
+faster on both timing columns, but scores conformance 3/5 against m72's 5/5 and
+is wrong on 324 of the 2387 brute-force truths against m72's 98. Smaller and
+faster, or correct — the table still has no engine that is both, and the reason
+is recorded in the size-floor note: with `dart/lib` frozen the engine cannot fork
+or resume a parse, so the relaxed DP must exist in full.
