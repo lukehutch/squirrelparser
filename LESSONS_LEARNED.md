@@ -4658,6 +4658,7 @@ above `elegNotes`.
 | m69 | 1156 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 475 | 230.0 | 0.49x | 1024 | 2048 |
 | cgfr5 | 1147 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 536 | 199.8 | 0.43x | 1024 | 2048 |
 | m70 | 1331 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 477 | 220.6 | 0.46x | >=4096 | 2048 |
+| m71 | 1028 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 487 | 218.8 | 0.46x | >=4096 | 2048 |
 
 `SLOW` is a verdict on the engine, not a limit of the harness: that part of the
 measurement exceeded 120 seconds and was killed, and past two minutes it does not
@@ -5031,3 +5032,281 @@ Codex's four citations into the codebase were all checked and all accurate
 (`m62.dart:617`, `m69.dart:1551`, `:1906`, `:1959`). The last of them is how the
 unconverted `_tremap` came to light at all — the second-opinion pass paid for
 itself on a pointer, not on a design.
+
+## The thirty-fourth occasion: m71 — the claim, the proof, and the column that was measuring half an answer
+
+m70 was rejected on sight, and correctly:
+
+> OK so m70 is almost twice the size of m62, and has higher latency? I asked you
+> to build something better that all the versions that came before.
+
+Both halves were true. m70 is 1331 lines against m62's 789 and reads 220.6 latms
+against 208.1. It bought true-PEG conformance and paid for it in the two columns
+a user actually feels. "Better than all the versions that came before" is not
+satisfied by winning one column.
+
+So the question is not "how do I shrink m70" but **what is conformance actually
+made of, and how much of m70 was paying for it?**
+
+### I27: a greedy construct is a commitment, and so is every branch after the first
+
+Measuring *which* cases m70's tape buys settles the first half. Every 3/5 engine
+in the table fails the conformance gate on exactly the two possessive-star cases
+and nothing else — 542 lines and two depth rungs, for two cases.
+
+Reading m62 says why, and it is not about stars. PEG has three greedy constructs,
+and m62 desugars them into two node types:
+
+| construct | desugars to | passes through |
+|---|---|---|
+| `A / B` | `_Alt` | `_mergeAlt`, where I3's oracle veto lives |
+| `A?` | `_Alt` | `_mergeAlt`, same |
+| `A*` | a `_Cons` self-loop | its zero-cost stop calls `_put` **directly** |
+
+**Conformance was decided by which desugaring a construct happened to land in.**
+The star's stop never meets the veto because it is not an `_Alt`; nothing about
+stars is special, and nothing about the veto was designed to exclude them.
+
+The law that unifies all three is that ordered choice is *possessive*: branch `i`
+is legal exactly where branches `0..i-1` all fail. And `A*` is `X <- A X / eps`,
+which makes the star's stop that law's degenerate case rather than a separate
+rule. The measurement confirms the generalization is the point and not decoration.
+Broken down by grammar, the 226 exactness fixes land like this:
+
+| grammar | fixed | contains a star? |
+|---|---|---|
+| `S <- A 'c'; A <- 'a' / "ab";` | 138 | **no** |
+| `S <- 'a'* "ab";` | 60 | yes |
+| `S <- ('a' / "ab") 'b';` | 22 | **no** |
+| `S <- 'a'? "ab";` | 6 | **no** |
+
+**160 of the 226 fixes are on grammars with no star in them at all.** Had I27
+been implemented as a rule about stars — which is how the failing gate cases
+present it — it would have found 60 of the 226.
+
+`_mergeAlt` can enforce the law at cost 0 by asking the oracle. Above cost 0 the
+input is repaired and the oracle is silent — so the claim has to travel forward as
+an **obligation** on the character that will sit at that position *after* repair.
+For a one-character branch that obligation is the complement of its class, which
+is already exactly what `_looks` builds for `NotFollowedBy`. Nothing new is
+introduced; an existing mechanism is pointed at a second site.
+
+That also settles how I27 relates to I3, which looks at first like duplication:
+**I3 is the oracle stating the law where the input is unrepaired; I27 is the
+obligation stating the same law where the input is repaired.** Neither covers the
+other's domain, so neither can be deleted in favour of the other — I3 still
+reaches multi-character branches, where `_oneCharClass` is null and I27 is silent,
+and I27 reaches every position above cost 0, where the oracle is silent. Two
+statements of one law, over complementary domains.
+
+### The obligation fragments the memo, and the obvious fix is wrong
+
+The obligation is part of the memo key, so narrowing it splits cells that used to
+be shared. Measured: **1.35x cells and 1.58x time** on the worst latency case, and
+the official `latms` went 188.8 → 343.7. I27 alone reproduces m70's complaint.
+
+The reflex is to prove the obligation unnecessary where the follower is disjoint
+from the body and drop it there — about 28 lines of static analysis. **That was
+refuted before a line of it was written**, by neutralizing the star stop and
+re-measuring: the engine got *slower*, 411 vs 281 ms. The obligation **prunes as
+well as fragments**; branches that `_unmeetable` kills outright are branches the
+alt guards would otherwise have to explore. An optimization justified by a cost
+model that only counted the fragmentation would have been strictly negative, and
+the only reason it did not get built is that the variant was measured first.
+
+### I28: a proof is worth more than a tighter search
+
+The guards only ever *delete* repairs. So
+
+> `costOff <= costOn`, **always**, with no appeal to the true cost.
+
+Compose that with I5, *the witness is a proof*. A cheap answer whose witness
+verifies is a repair that genuinely **exists**, at a price the guarded pass could
+not have beaten. There is nothing left for the guards to win. So: run relaxed,
+demand the certificate, and re-run tight exactly when it fails to come.
+
+Note carefully what this does **not** claim. `costOff <= costTrue` is *false* in
+general — a non-fusable lookahead is an oracle call against raw input, and I27
+does not change that. The argument needs only the comparison between the engine's
+own two passes, and it gets that for free from the guards being deletions.
+
+On JSON the tight pass never runs at all:
+
+| | before I28 | after I28 |
+|---|---|---|
+| official `latms` | 343.7 | 208.7 |
+| per-case ratio vs m62 | 1.61 | 1.05 |
+| memo cells (worst case) | — | 18527 vs m62's 18479 |
+
+The cheap half of the certificate is not sufficient on its own, and that was
+measured rather than assumed: the free cost-0 test alone fixes **5** of the 226,
+so the reconstruction does 221 of the work and cannot be skipped.
+
+### I26: forced, and it turns out to buy more than it was called in for
+
+Demanding the certificate puts reconstruction on the *cost* path, and a native
+witness descent is as deep as the input. `LRmax` fell 4096 → 1024 the moment I28
+landed — diagnosed from the real trace (`_build <- _child <- _row <- _certified
+<- recoverCost`), not guessed. m70's answer ports over unchanged: `_build`,
+`_child` and `_row` become one `_RFrame` driver, and `_cleanRegret`, `_collect`
+and `_emit` become explicit walks.
+
+The walks cost about 20% of the battery until `_cleanRegret` gets m62's leaf case
+back as a fast path — `_build` asks it of every node it visits, almost all of
+them leaves, and the walk was allocating two lists to fold nothing. With the leaf
+case restored, the in-process battery ratio against m62 is **1.07 cold, 1.09
+warm, and 1.02 in memo cells** (`_bat71.dart`, which warms the shared library
+with the pure `Parser` first so compilation is not counted as work): the search
+barely grew, and what remains is code size rather than work.
+
+**And the column was measuring half an answer.** `final_table`'s `depthLimit`
+calls `cost(s)`, i.e. `recoverCost`. m62 returns a number there without ever
+reconstructing a witness, so its `>=4096` is a ceiling for half an answer. Ask
+each engine for the whole answer — `recover`, the entry point a caller actually
+uses — and climb the same two ladders:
+
+| entry point | LRmax | RRmax |
+|---|---|---|
+| m62 `recoverCost` | >=4096 | >=4096 |
+| **m62 `recover`** | **1024** | **1024** |
+| m70 `recover` | >=4096 | >=4096 |
+| **m71 `recover`** | **>=4096** | **>=4096** |
+
+So m62's depth advantage over the conformant engines was never real; it was the
+column declining to ask m62 for the thing that would have broken it. I26 is not
+overhead that I28 forced — it is a **4x depth ceiling on the entry point that
+matters**, and m62 never had it. (`_witdepth71.dart`.)
+
+The same asymmetry is in the latency column, where `lat` also times
+`recoverCost`, so it puts m62's search against m71's search-*plus-certificate*.
+Timing the identical corpus through both entry points (`_latfair71.dart`):
+
+| entry point | m62 | m70 | m71 | m71/m62 |
+|---|---|---|---|---|
+| `recoverCost` (the official column) | 218.1 | 213.1 | 236.1 | **1.08** |
+| `recover` (the whole answer) | 212.2 | 205.0 | 218.5 | **1.03** |
+
+Worth stating plainly: this is a narrowing, not a reversal. Asking both engines
+for the same thing moves m71's latency premium from 8% to 3%; it does not put m71
+ahead of m62, and nothing here claims it does.
+
+### What the last 170 lines buy, as a measurement rather than an assertion
+
+I26 is the expensive insight — 36 lines for I27, about 30 for I28, and 170 for
+I26 — so the fork deserves numbers. It has them, because the engine was measured
+in the official table *before* the I26 port as well as after:
+
+| | LOC | battms | latms | LRmax | RRmax |
+|---|---|---|---|---|---|
+| m62, same run | 789 | 371 | 187.4 | >=4096 | >=4096 |
+| m71 without I26 | **858** | 383 | 198.5 | **1024** | **2048** |
+| m71 with I26 | **1028** | ~equal | ~equal | **>=4096** | **>=4096** |
+
+So I27+I28 alone is an **858-line** engine with full conformance at a 3% battery
+and 6% latency premium over m62 — genuinely cheap. The 170 lines are bought
+entirely with depth, and they are worth buying for two reasons: without them the
+official column *regresses* against m62 (1024 against >=4096, which is the shared
+instrument reporting a real loss), and with them `recover` reaches >=4096 where
+m62 reaches 1024. Both readings of the depth question come out the same way, which
+is why this is not a judgement call.
+
+### One row is one sample, and the complaint was stated in the noisy columns
+
+The whole case against m70 was made in `battms` and `latms`, so it is worth
+knowing what a single row of those columns is worth. m70's own `battms` across
+three runs is 511/470/535 — ±7% on nothing but scheduling. Re-running the
+identical cold-isolate protocol on the three engines alone, five times:
+
+| | battms (median of 5) | latms (median of 10) | RRmax |
+|---|---|---|---|
+| m62 | 353 (349–391) | 194.7 | >=4096, 5 of 5 |
+| m70 | 445 (443–497) | 218.3 | 2048, 5 of 5 |
+| **m71** | **424 (390–441)** | **195.3** | **>=4096, 5 of 5** |
+
+So m71's `battms` of 487 and `RRmax` of 2048 in the table row below are both
+**outliers of their own distributions** — the row is kept as the instrument
+reported it, and this is the correction. The comparison that matters does not
+depend on the medians at all, though: in the *single* run that produced the row
+below, all three engines were measured together, and m71 reads **487 battms and
+218.8 latms against m70's 526 and 237.0**. Same run, same isolate group, same
+ordering the medians give — m71 beats m70 on both of the columns the complaint
+was made in, without any appeal to repetition. Read from the medians: m71's latency is
+indistinguishable from m62's and clearly better than m70's, and it beats m70 on
+every column including the depth ladder where the single row shows a tie.
+
+### What it measures
+
+| | m62 | m70 | m71 |
+|---|---|---|---|
+| LOC | 789 | 1331 | **1028** |
+| conformance | 3/5 | 5/5 | **5/5** |
+| `_floor` wrong (of 2387) | 324 | 0 | **98** |
+| `recover` LRmax / RRmax | 1024 / 1024 | >=4096 | **>=4096** |
+| battms / latms (medians) | 353 / 194.7 | 445 / 218.3 | **424 / 195.3** |
+
+The floor row is one run rather than a measurement plus two quotations
+(`_subset71.dart`): checked 2387, **m62 wrong on 324, m70 on 0, m71 on 98 — 226
+fixed, ZERO regressed**.
+
+Against m70: **−303 LOC, and better on battery, latency and RRmax**, at equal
+conformance. Against m62: +239 LOC and a ~1.2x battery premium, buying
+conformance 3/5 → 5/5, 226 exactness fixes with zero regressions, the depth
+ceiling above, and indistinguishable latency.
+
+Every gate m62 passes, m71 passes byte-identically: `_conf71` 5/5, `_bf71` 44/44,
+`_isect71` 4/4, `_leak71` 71/71, `_bfpred71` agreeing, `_score71` shape 517/519 /
+cover 519/519 / crash 0 / valid 7/7 / pred 69/69 / **unsnd 0**, and `_coregate`
+A 2996/2996, B 3252/3252, C no drift.
+
+### The honest limit, measured rather than asserted
+
+`_oneCharClass` is null for a multi-character branch, where the complement is
+*sufficient* for failure but not *necessary*, so those stops stay free — m62's
+behaviour, unchanged. Three things needed measuring rather than assuming.
+
+**First, where the hole actually is.** `_subset71` already carries two
+multi-character star bodies — `('a' 'b')* 'a' !.` and `('a' / 'b' 'a')* "bb"` —
+and **both engines are exact on both**. They cannot exhibit the hole: their
+followers do not begin with the body. The exact multi-character analogue of the
+conformance case is `("ab")* "abc"`, whose language is empty for precisely the
+reason `'a'* "ab"`'s is — the star is possessive, so wherever `"abc"` could match
+the star has already eaten its `"ab"`. There the truth is `-1` on every input,
+and m71 answers 3, 2, 0, 0, 1 — **identical to m62, wrong on all five**, where
+m70 returns −1. That is the hole, with a name. (`_starwide71.dart`.)
+
+**Second, what decides.** `('a')* "ab"` — a one-character body wearing a group —
+is **fixed** by m71. So it is true *width* that decides, not syntactic shape:
+`_oneCharClass` looks through the group. And `("ab")* "cd"`, whose language is
+non-empty, keeps answering finite verified costs in all three engines, so the
+obligation costs nothing where the follower is disjoint from the body.
+
+**Third, what a caller actually receives there** — which is where a claim in the
+first draft of this occasion was wrong, and the measurement corrected it. On
+those five inputs `recover` never reports `clean`; beyond that the two cost
+regimes behave differently, and only one of them is clean:
+
+- **cost 0 uncertified** (`"abc"`, `"ababc"`): `_certified(0)` only asks whether
+  the pure parse succeeded, and never builds a witness, so `_root` stays null and
+  `recover` forces the whole input into one error span. Sound.
+- **cost above 0 uncertified** (`""`, `"c"`, `"abab"`): the tree *is* built, it
+  fails `_verify`, and `recover` hands it back anyway as N missing obligations
+  with `forced=false`. The engine reports a repair that does not actually repair.
+
+`lastVerified` is false and public in both cases, and that is the entire
+difference from m62 — **m62 returns the identical shape, with no way to tell.**
+So this is a pre-existing hole made *detectable*, not one m71 introduced; the
+draft's claim that an uncertified answer always becomes a forced error span was
+true of one regime and not the other. Where I27 *does* apply the gap runs the
+other way at the `recover` level: on `'a'* "ab"` m71 correctly forces the whole
+input as unrepairable, while **m62 offers a 1-to-2 event repair for a language
+with no strings in it**.
+
+**Fourth, the direction of the residual.** The 98 were classified, not assumed:
+**under-priced = 0, over-priced or rejected = 98**. m71 never names a repair that
+does not exist. This also closes off a whole class of fix: no further ladder rung
+can reach them, because climbing only ever repairs *under*-pricing. 97 of the 98
+are the single grammar `S <- &(A 'b') A 'b' 'x'; A <- 'a'*;`, a multi-character
+lookahead the oracle evaluates against raw input; the remaining one is `'a'? "ab"`
+on empty input. Only a tape re-judging the lookahead against the *repaired* string
+can close them — which is the 542 lines I27 and I28 exist to avoid paying for, and
+that is the trade this occasion makes deliberately rather than by omission.
