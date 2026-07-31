@@ -5012,8 +5012,20 @@ itself concrete; the residual quotients the *whole prefix*, by its own Brzozowsk
 derivative under the grammar. So I25 is a coarsening of the right quotient along
 one axis only. Whether the full quotient is computable cheaply enough to be an
 engine is open, and `_qequiv70.dart` is the right first measurement of it: if
-`|{residualAtStarEntry("a"^k)}|` is not 1, the idea is dead before any code is
-written. That experiment is cheap and has not been run.
+`|{residualAtStarEntry("a"^k)}|` is not 1, the idea is dead before an engine is
+written.
+
+It has not been run, and calling it a *cheap* falsifier — as this section first
+did — is wrong on inspection. Computing `residualAtStarEntry` at all requires
+the suspended-decision representation, the per-operator rules for `First`, `A*`,
+`&A` and `!A`, and the hash-consing that makes two residuals comparable: that is
+the proposed engine's core, not a probe of it. The genuinely cheap measurement
+is the one that comes before it, and it runs against m70 as built: **does the
+tape state at the star entry actually grow with `k` on `S <- 'a'* "ab"`?** If it
+is already constant, Codex's own example does not discriminate between the tape
+and the residual, and the case for the quotient has to be made somewhere else
+before 250 lines are spent on it. Neither measurement is in this occasion, and
+the estimate table above stands unchecked because of it.
 
 Codex's four citations into the codebase were all checked and all accurate
 (`m62.dart:617`, `m69.dart:1551`, `:1906`, `:1959`). The last of them is how the
