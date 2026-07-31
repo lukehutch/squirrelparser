@@ -4660,6 +4660,8 @@ above `elegNotes`.
 | m70 | 1331 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 477 | 220.6 | 0.46x | >=4096 | 2048 |
 | m71 | 1028 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 487 | 218.8 | 0.46x | >=4096 | 2048 |
 | m72 | 979 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 415 | 208.3 | 0.45x | >=4096 | 2048 |
+| m73 | 839 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 9 | - | 389 | 202.9 | 0.41x | 1024 | 2048 |
+| m74 | 787 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 372 | 179.2 | 0.36x | >=4096 | >=4096 |
 
 `SLOW` is a verdict on the engine, not a limit of the harness: that part of the
 measurement exceeded 120 seconds and was killed, and past two minutes it does not
@@ -5913,3 +5915,301 @@ stops costing 39 ms because it stops being a parse, and the reconstruction stops
 being 237 lines because the chase replaces the search. **Both halves of the
 target are served by the same change, which is the first time in this file that
 has been true of the size and the speed at once.**
+
+## The thirty-seventh occasion: the repaired string is the witness, and its parse is the tree (m73, m74)
+
+The thirty-sixth occasion closed with a design and one sentence of prediction
+about it: "the certificate stops costing 39 ms because it stops being a parse,
+and the reconstruction stops being 237 lines because the chase replaces the
+search." Half of that came out exactly right and half of it came out backwards,
+and the backwards half is the whole occasion. **m74 keeps the parse and deletes
+the reconstruction.** The chase does replace the search, as predicted — but it
+chases down to an EDIT LIST rather than to a check, and then hands the repaired
+string to the very parser the plan wanted removed. Measured, that is the larger
+half of the cost and the only half that returns a tree.
+
+Two engines are registered here because the first is the control that proves
+what the second deletes.
+
+### m73: m62 verbatim, plus the two insights, and nothing else
+
+The thirty-sixth occasion counted where m72's 190 extra lines over m62 sit and
+concluded that the successor should be built from m62 outwards rather than by
+shaving m71 inwards. m73 is that, taken literally: **m62 with I27's guards and
+I28's relax-then-certify grafted on, and no other change.**
+
+It answers the true PEG language. Byte-identical to m71 on every gate — 0 cost
+differences over 531 inputs, 0 over the 2387 brute-force truths — conformance
+5/5, wrong on 98 of 2387 where m62 is wrong on 324, at **839 lines against
+m72's 979.** So I27 and I28 are affordable, and the price is exact: counted
+section by section by the file's own rule, m73 is m62 plus 21 lines of
+obligation lattice, 18 of driver, 9 of entry point and 2 elsewhere.
+
+**True-PEG conformance costs 50 lines.** That number is worth more than the
+engine it was measured on, because every earlier estimate of it was an estimate
+of something else — m70's 542, m71's 239, m72's 190 — all of which were
+measuring a reconstruction that had been growing alongside it.
+
+What m73 does *not* fix is the two columns m62 leads, and they are one defect
+seen twice.
+
+### One defect, seen twice
+
+m73's certificate is still `_build` → `_emit` → re-parse. That costs it the
+battery, and the reconstruction is a native recursion, so it also costs it the
+depth: **LRmax/RRmax fall to 1024/2048**, because a parse tree is as deep as its
+input on the ladder grammars. That was not inferred. The table run printed the
+trace at both rungs:
+
+```
+[diag] len=2048 SO, distinct: Object.hashCode <- SuperDot3._cleanRegret <- ListBase.fold
+                              <- SuperDot3._build <- SuperDot3._child <- SuperDot3._row
+                              <- SuperDot3._certified <- SuperDot3.recoverCost
+[diag] len=4096 SO, distinct: new <- Char.match <- SuperDot3._build <- SuperDot3._child
+                              <- SuperDot3._row <- SuperDot3._certified <- SuperDot3.recoverCost
+```
+
+`_certified` is on the cost path because I28 put it there, and `_build` recurses,
+so the ceiling is the tree's depth. The same function is the battery cost. One
+function, both columns.
+
+### Pricing the two halves, and a protocol error that had to be undone first
+
+Two controls, both m73 with one line changed: `nv` returns the tree without
+re-parsing it, `nc` skips the certificate entirely. `nv - nc` is `_build`,
+`m73 - nv` is `_emit` plus the whole fresh parse.
+
+The first attempt at this got it wrong, and the error is worth more than the
+number. `nc` was measured in one sweep and `nv` in another, against two
+different m73 baselines, and the halves were obtained by subtracting across
+them — which produced 27.6 ms for `_build` against 7.8 for emit-plus-re-parse,
+a 78/22 split saying the kept half was nearly free. **Never subtract two arms
+that never shared a clock.** Re-run with all three arms in one sweep, n=21,
+one engine per process:
+
+| arm | battery | latency |
+|---|---|---|
+| m73 (full certificate) | 300.7 | 222.0 |
+| `nv` (`_build`, no re-parse) | 281.4 | 221.0 |
+| `nc` (no certificate) | 257.1 | 215.4 |
+
+| half | battery | paired rounds |
+|---|---|---|
+| whole certificate (`m73 - nc`) | **43.6 ms**, 14.5% of m73 | 21/21 |
+| `_build` (`nv - nc`) | **24.3 ms** | 19/21 |
+| `_emit` + fresh parse (`m73 - nv`) | **19.3 ms** | 21/21 |
+
+The real split is **56/44, not 78/22.** The reconstruction is the larger half
+and deleting it is still the right move, but the correction matters: the kept
+half is 19.3 ms, not free, and I31 keeps it deliberately — it is the half that
+hands back a tree.
+
+The thirty-sixth occasion's split of m72's certificate was also single-clock
+(`cert` 319.1, `nverify` 297.4, `nocert` 280.0, n=21) and it reads the other way
+round: `_build` 17.4 against emit-plus-re-parse 21.7. **Two sound measurements
+disagreeing about which half is larger is not a contradiction here, because the
+two `_build`s are different functions** — m72's descends from m71 and carries
+`_wholesale`, m73's is m59's verbatim. What survives both is the statement that
+matters: the certificate is 39-44 ms of the battery, each half is about 20 ms,
+and neither half is free. Any design that claims to delete "the expensive one"
+is claiming a precision the instrument does not have; I31 does not need it,
+because it deletes the half that also costs the depth.
+
+On latency the whole certificate is 6.6 ms (3.0%) and separates from noise only
+weakly (15/21, 13/21, 14/21 paired) — twelve documents, one reconstruction
+amortised over a much longer search, exactly as the thirty-sixth occasion found
+for m72.
+
+### I31: the repaired string is the witness, and its parse is the tree
+
+Abstracted to the axiom, the search answers exactly one question — **what is the
+cheapest edit list that puts this input in the language** — and everything after
+that is arithmetic on positions. Every engine from m59 to m73 misses it, and
+misses it the same way: they carry `_build`/`_child`/`_row`/`_collect`/`_emit`/
+`_verify`, whose job is to build a tree over the INPUT, walk that tree back into
+a string, and hand the string to a fresh parser. That last parser builds a parse
+tree of the repaired string and throws it away — **the exact object the other
+159 lines exist to compute.**
+
+So keep it. Apply the edits to get `y`, hand `y` to the pure parser that has to
+accept it anyway, and re-index the tree it returns back onto the input through
+the same edit list. Reconstruction and verification were never two passes.
+
+The block goes from **159 lines to 88**, and m74's two-line lead over m62 is
+that 71 against the 50 conformance costs and 19 more spent on I29 and I30: the
+fourth int and the ordered insert put +10 on the value and +12 on the state and
+entry points, less the 6 the `_demand` hoist takes back out of the driver.
+
+| section | m62 | m73 | m74 |
+|---|---|---|---|
+| header / preamble | 56 | 57 | 58 |
+| building the normal form | 56 | 56 | 58 |
+| I6/I7: the obligation lattice | 111 | 132 | 132 |
+| the derived ceiling | 92 | 92 | 92 |
+| per-input state | 41 | 42 | 48 |
+| the value | 24 | 24 | 34 |
+| the driver | 172 | 190 | 184 |
+| **reconstruction / I31** | **159** | **159** | **88** |
+| entry points | 78 | 87 | 93 |
+| **total** | **789** | **839** | **787** |
+
+It is the first change in the m-line where size and speed pull the same way, and
+they do so for one reason: the split measurement says the larger half is the
+half being deleted.
+
+### I29 is what makes the chase possible
+
+The witness is read off the table rather than searched for, because I29 already
+recorded, at every write, the reason for it — a fourth int beside
+`(key, cost, regret)`. `_chase` (m74.dart:879-915) pops a `(node, pos, class,
+key)` and dispatches on that reason: a substitution or a fabrication appends an
+edit, a pure or demanded or stopped read is edit-free, and a structural reason
+is the branch index for an `_Alt` or the head key for a `_Cons`. Tail pushed
+first so the head pops first, so the edits come out in ascending position and
+`_repaired` is a single forward splice.
+
+Acyclicity is not checked, it is proved, and the proof is I29's: every edge adds
+a non-negative increment, so a cycle would force every increment to zero and
+every value on it equal — but the cell written LAST on that cycle strictly
+dropped at its write, while some cell on the cycle had already consumed a
+strictly larger value from it. `_keepBest` refusing an equal entry is the whole
+proof.
+
+The chase does carry one consistency check, and it is free: every edit costs
+exactly one, so `_edits.length == cost` or the chase did not walk the derivation
+the goal was priced from.
+
+### Three things that had to be derived, and one that was refuted
+
+**I30 becomes load-bearing.** Values are kept in split order — by end, then key
+— so a `_Cons` offers the SHORTEST head first, which is the reading a
+recursive-descent PEG parser reaches first. m73 could afford arrival order
+because `_build` re-sorted candidates as it rebuilt. The chase has no
+reconstruction to sort in, so **the order the search WROTE is the answer**:
+shape reads 513 instead of 517 without it.
+
+**REFUTED, and it was the largest remaining size candidate.** Regret is not made
+redundant by that order. Deleting the whole regret apparatus — `_skipRegret`,
+`_cleanRegret`, the fabrication width — leaves cost and certification
+bit-identical (costsum 563, 519/519 certified) and drops **shape 517 to 488**.
+They are different tie-breaks over different sets: regret picks among equal-cost
+repairs, enumeration order among equal-`(cost, regret)` derivations. Neither
+subsumes the other, and the 29 shape points are the measure of the difference.
+
+**Position 0 is the one boundary with nothing to its left.** `_xOf` maps a
+position in `y` back to one in `x`; the map is monotone and onto, so a re-indexed
+tree still tiles the input exactly, provided a boundary is assigned to the leaf
+on its LEFT — that is the leaf that has to grow, since the characters a deletion
+removed precede it. Position 0 has no left, so there the deletion is absorbed
+rightwards instead; without that single case the root starts past 0 and stops
+covering its own input. Six bad trees until it was stated.
+
+**I26, one level further out: the re-index is a pass too.** A parse tree is as
+deep as its input on the ladder grammars, so recursing in `_reindex` reproduces
+exactly the ceiling `_build` had. It can go TOP-DOWN, which a rebuild normally
+cannot, and the reason is a fact about the frozen library: `Match` re-derives its
+span from its children only when they are already there
+(`lib/src/parser/match_result.dart:40`) and holds the list it was handed. So a
+node built with an EMPTY list keeps the span this pass computed from `_xOf`, and
+its children are poured into that same list afterwards — one stack, no second
+pass, and the parent's bounds come from the map rather than from the hull of the
+kids.
+
+### 36 of the lines came from simplification, not from golf
+
+Four places, each one a fact about the code rather than a compression of it.
+The three child-request sites in the driver run one protocol — an entry already
+on the chain is a left-recursive cycle, tell that frame and take what it has; an
+unsettled one parks this frame behind it — so they hoist into `_demand` (−7).
+The budget-zero walk's two arms differ only in whether the match read a
+character, so naming that difference as `base` collapses them (−4). `_reindex`
+fills child lists top-down through one stack instead of building bottom-up
+through three (−8). And a clean parse is its own witness AND its own tree, so it
+goes in `_root` like every other answer and `recover` loses its special case
+(−4). The rest is `_has` absorbing `_permitsFirst`/`_permitsEnd`, `_spelling`
+becoming a list-pattern switch, and `_keepBest`'s insert tail.
+
+### Timing, and the entry point has to be named
+
+The two entry points are not the same question, and the table's own columns split
+across them. `make` hands back `(recover, lastCost, recoverCost)`
+(`final_table.dart:613`); the battery loop calls the first
+(`final_table.dart:1406,1414`) and the latency loop calls the third
+(`final_table.dart:1377,1391`). So **`battms` times `recover` and `latms` times
+`recoverCost`**, and that is not a detail — under I28
+`recoverCost` returns a number AND a verified witness; m62's returns the number
+alone and reconstructs later, inside `recover`.
+
+Medians of 22-23 rounds, one engine per process, construct-once:
+
+| corpus | entry | m62 | m73 | m74 | m74/m62 | m74 faster in |
+|---|---|---|---|---|---|---|
+| battery | `recoverCost` | 253.3 | 298.4 | 291.2 | 1.159 | 0/22 |
+| battery | `recover` | 293.2 | 297.8 | **289.2** | 0.985 | 15/22 |
+| latency | `recoverCost` | 211.6 | 215.9 | **194.6** | 0.923 | 21/22 |
+| latency | `recover` | 219.3 | 218.1 | **197.6** | 0.902 | 22/22 |
+
+The one place m62 leads is `recoverCost` on the battery, **and it leads there by
+not having finished the job.** Completing it costs m62 **+39.9 ms** (253.3 →
+293.2); m74's `recover` is **−2.0 ms** against its own `recoverCost`, which is
+noise, because the witness is already built when the number comes back. So the
+battery column compares like with like and the latency column hands m62 the
+favourable entry point — where m74 wins anyway, at 22 of 22 paired rounds.
+
+**An honesty note that must not be lost:** m74 carries three engine-independent
+allocation fixes that have nothing to do with I31 — `_entryAt`'s and `_widthOf`'s
+`putIfAbsent` closures, and `_cleanRegret`'s missing leaf fast path. Applied to
+m62 itself (arm `o62`, n=21) they are worth **0.86 battery and 0.82 latency**.
+They are not I31's and must not be credited to it.
+
+### The whole table, one run
+
+| engine | LOC | shape | cover | battms | latms | /v6 | LRmax | RRmax |
+|---|---|---|---|---|---|---|---|---|
+| v6 | 518 | 512/519 | 519/519 | 547 | 494.2 | 1.00x | ≥4096 | 2048 |
+| m62 | 789 | 517/519 | 519/519 | 385 | 189.4 | 0.38x | ≥4096 | ≥4096 |
+| m71 | 1028 | 517/519 | 519/519 | 417 | 203.8 | 0.41x | ≥4096 | ≥4096 |
+| m72 | 979 | 517/519 | 519/519 | 436 | 200.0 | 0.40x | ≥4096 | ≥4096 |
+| m73 | 839 | 517/519 | 519/519 | 389 | 202.9 | 0.41x | 1024 | 2048 |
+| **m74** | **787** | 517/519 | 519/519 | **372** | **179.2** | **0.36x** | ≥4096 | ≥4096 |
+
+Every engine but v6 reads crsh 0, bmin 519/519, bund 0, valid 7/7, cost 44/44,
+tree 44/44, pred 69/69, unsnd 0; v6 reads 38/44, 55/69 and unsnd 5.
+
+Exactness is m71's exactly: `_subset74` over the 2387 brute-force truths gives
+**0 cost differences from m71**, m74 wrong on 98 against m62's 324, **226 fixed,
+0 regressed.** Per grammar (fixed / regressed / both wrong): 60/0/0 on
+`S <- 'a'* "ab"`, 22/0/0 on `S <- ('a' / "ab") 'b'`, 138/0/0 on
+`S <- A 'c'; A <- 'a' / "ab"`, 6/0/1 on `S <- 'a'? "ab"`, and 0/0/97 on
+`S <- &(A 'b') A 'b' 'x'; A <- 'a'*` — the multi-character lookahead, still only
+reachable by a tape. `_a74` reads 531 inputs, 0 cost differences, 531 certified,
+**0 bad trees**, 515 spans and 48 missing obligations. `_conf74` reads m74 5/5,
+m73 5/5, m72 5/5, m62 3/5.
+
+So **m74 dominates m62 on every registered column**: two lines smaller, faster on
+the battery and on latency at both entry points, equal on every correctness gate,
+≥4096 on both ladders, and 5/5 against 3/5 on conformance with a quarter of m62's
+exactness errors — while producing a certified witness on the cost path that m62
+does not produce at all.
+
+### The honest deviation
+
+`SkipResult`'s docstring (`lib/src/recovery/skip_recovery.dart:91-96`) promises
+that unparseable regions "appear as SyntaxError children, in position order",
+and that each skipped span is "also present in the tree as a SyntaxError".
+**m74's re-indexed tree has none.** A deletion is absorbed by the leaf ending at
+that boundary — which is why `cover` still reads 519/519, the tree tiles the
+input exactly — so a caller walking the tree for `SyntaxError` nodes finds the
+deletions only in `errorSpans`. m62 already reported substituted terminals that
+way; deletions are the part that moved. Not a regression the gates can see, and
+a real difference to a caller who reads the contract rather than the column.
+
+### What is left
+
+The under-400-line target is not reachable from here without one of two
+concessions, and both belong to the user rather than to the engine. Either
+`dart/lib` unfreezes so the carried parser can expose a resumable or forkable
+parse — the re-parse in `_certified` is a whole fresh `Parser` because the frozen
+one offers no `retarget`/`readEnd` — or the shape gate relaxes from ≥514 to about
+467, which is what deleting regret costs. Nothing else of size remains: regret
+was the largest candidate and it is refuted above.
