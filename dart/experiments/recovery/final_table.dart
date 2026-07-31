@@ -1664,7 +1664,19 @@ Future<void> main(List<String> args) async {
   final lrCol = head.indexOf('LRmax');
   final rrCol = head.indexOf('RRmax');
 
-  const cap = Duration(seconds: 30);
+  // Two minutes, and what exceeds it is reported as SLOW rather than TO.
+  //
+  // The first cap was 30s on the premise that "nothing should take that long".
+  // `_gate70.dart` refuted that premise: the LR/RR stack-ceiling ladder climbs
+  // to 4096-character inputs on purpose and is 72-96% of every engine's clock,
+  // so m53 -- whose battery runs in 384ms -- lost its battery, shape, cost, tree
+  // and pred columns to a probe that is SUPPOSED to be expensive. Capping each
+  // PART separately fixed the collateral damage; raising the cap to 120s fixes
+  // the threshold. Past two minutes the distinction between "would have finished
+  // in three minutes" and "would never have finished" does not matter: the
+  // engine is too slow, and SLOW says that as a verdict rather than implying the
+  // measurement merely ran out of room.
+  const cap = Duration(seconds: 120);
   final lat = <String, List<double>>{};
   final rows = <List<String>>[];
   final timedOut = <String>{};
@@ -1680,10 +1692,10 @@ Future<void> main(List<String> args) async {
         : <String>[
             e.name,
             '${e.loc}',
-            for (var c = 2; c < 12; c++) 'TO',
+            for (var c = 2; c < 12; c++) 'SLOW',
             '${e.eleg}',
             e.bugs,
-            'TO',
+            'SLOW',
             '', '', '', '',
           ];
     final ll = latOut == null
@@ -1691,10 +1703,10 @@ Future<void> main(List<String> args) async {
         : (latOut[1] as List).cast<double>();
     lat[e.name] = ll;
     row[latCol] = latOut == null
-        ? 'TO'
+        ? 'SLOW'
         : ll.fold(0.0, (a, b) => a + max(b, 0)).toStringAsFixed(1);
-    row[lrCol] = depthOut == null ? 'TO' : depthOut[1] as String;
-    row[rrCol] = depthOut == null ? 'TO' : depthOut[2] as String;
+    row[lrCol] = depthOut == null ? 'SLOW' : depthOut[1] as String;
+    row[rrCol] = depthOut == null ? 'SLOW' : depthOut[2] as String;
     rows.add(row);
 
     if (latOut == null) timedOut.add(e.name); // the /v6 ratio has no numerator
@@ -1705,7 +1717,7 @@ Future<void> main(List<String> args) async {
     ];
     print(dead.isEmpty
         ? '  ...${e.name} done'
-        : '  ...${e.name} done, ${dead.join("+")} KILLED after '
+        : '  ...${e.name} done, ${dead.join("+")} SLOW past '
             '${cap.inSeconds}s');
   }
 
@@ -1717,7 +1729,7 @@ Future<void> main(List<String> args) async {
     rows[i][v6Col] = v6 == null ? '-' : '${(t / v6).toStringAsFixed(2)}x';
   }
   for (var i = 0; i < engines.length; i++) {
-    if (timedOut.contains(engines[i].name)) rows[i][v6Col] = 'TO';
+    if (timedOut.contains(engines[i].name)) rows[i][v6Col] = 'SLOW';
   }
 
   for (final r in rows) {
@@ -1736,6 +1748,14 @@ Future<void> main(List<String> args) async {
   for (final r in rows) {
     print(fmt(r));
   }
+  print('\nSLOW:  that PART of the measurement exceeded ${cap.inSeconds}s and was '
+      'killed. It is a\n       verdict on the engine, not a limit of the harness: '
+      'past two minutes it does\n       not matter whether it would have finished '
+      'in three. The three parts (main,\n       lat, depth) are capped '
+      'independently, so a row can be SLOW in LRmax/RRmax\n       and fully '
+      'measured everywhere else -- which is the common case, because the\n'
+      '       LR/RR ladder climbs to 4096-character inputs and is 72-96% of every '
+      'engine\'s\n       clock.');
   print('\nshape/cover/bmin/battms: 519-mutant battery.  cost: agreement '
       'with\nbrute-force minimum edit distance over 5 grammars (44 cases).  '
       'tree: the witness\nrebuilds and covers the input on those same 44.  latms: '
