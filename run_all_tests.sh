@@ -57,18 +57,6 @@ extract_test_count() {
             # Dart format: "+694: All tests passed!"
             echo "$output" | grep -oP '\+\K[0-9]+(?=:.*All tests passed)' | tail -1
             ;;
-        "Java")
-            # Maven format: "Tests run: 688, Failures: 0" (summary line)
-            echo "$output" | grep -oP 'Tests run: \K[0-9]+(?=, Failures: 0, Errors: 0, Skipped: 0$)' | tail -1
-            ;;
-        "Python")
-            # Pytest format: "688 passed"
-            echo "$output" | grep -oP '[0-9]+(?= passed)' | tail -1
-            ;;
-        "TypeScript")
-            # Jest format: "Tests:       688 passed"
-            echo "$output" | grep -oP 'Tests:\s+\K[0-9]+(?= passed)' | tail -1
-            ;;
     esac
 }
 
@@ -99,90 +87,6 @@ if [ -d "dart" ]; then
         failures=$((failures+1))
     fi
     test_counts[$lang_idx]=$(extract_test_count "Dart" "$LAST_OUTPUT")
-    test_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
-
-    lang_idx=$((lang_idx+1))
-fi
-
-# Java
-if [ -d "java" ]; then
-    lang_names[$lang_idx]="Java"
-
-    echo ""
-    run_command "lints" "Java" "java" "mvn clean compile -q"
-    if [ $LAST_EXIT_CODE -eq 0 ]; then
-        lint_status[$lang_idx]="✅ Pass"
-    else
-        lint_status[$lang_idx]="❌ Fail"
-        failures=$((failures+1))
-    fi
-    lint_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
-
-    echo ""
-    run_command "tests" "Java" "java" "mvn test"
-    if [ $LAST_EXIT_CODE -eq 0 ]; then
-        test_status[$lang_idx]="✅ Pass"
-    else
-        test_status[$lang_idx]="❌ Fail"
-        failures=$((failures+1))
-    fi
-    test_counts[$lang_idx]=$(extract_test_count "Java" "$LAST_OUTPUT")
-    test_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
-
-    lang_idx=$((lang_idx+1))
-fi
-
-# Python
-if [ -d "python" ]; then
-    lang_names[$lang_idx]="Python"
-
-    echo ""
-    run_command "lints" "Python" "python" "ruff check ."
-    if [ $LAST_EXIT_CODE -eq 0 ]; then
-        lint_status[$lang_idx]="✅ Pass"
-    else
-        lint_status[$lang_idx]="❌ Fail"
-        failures=$((failures+1))
-    fi
-    lint_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
-
-    echo ""
-    run_command "tests" "Python" "python" "python3 -m pytest -q"
-    if [ $LAST_EXIT_CODE -eq 0 ]; then
-        test_status[$lang_idx]="✅ Pass"
-    else
-        test_status[$lang_idx]="❌ Fail"
-        failures=$((failures+1))
-    fi
-    test_counts[$lang_idx]=$(extract_test_count "Python" "$LAST_OUTPUT")
-    test_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
-
-    lang_idx=$((lang_idx+1))
-fi
-
-# TypeScript
-if [ -d "typescript" ]; then
-    lang_names[$lang_idx]="TypeScript"
-
-    echo ""
-    run_command "lints" "TypeScript" "typescript" "npm install --silent > /dev/null 2>&1 && npm run lint"
-    if [ $LAST_EXIT_CODE -eq 0 ]; then
-        lint_status[$lang_idx]="✅ Pass"
-    else
-        lint_status[$lang_idx]="❌ Fail"
-        failures=$((failures+1))
-    fi
-    lint_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
-
-    echo ""
-    run_command "tests" "TypeScript" "typescript" "npm test"
-    if [ $LAST_EXIT_CODE -eq 0 ]; then
-        test_status[$lang_idx]="✅ Pass"
-    else
-        test_status[$lang_idx]="❌ Fail"
-        failures=$((failures+1))
-    fi
-    test_counts[$lang_idx]=$(extract_test_count "TypeScript" "$LAST_OUTPUT")
     test_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
 
     lang_idx=$((lang_idx+1))

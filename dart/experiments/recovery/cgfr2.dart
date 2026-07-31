@@ -17,7 +17,6 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/recovery/skip_recovery.dart'
     show SkipResult, MissingObligation;
 
-// ERROR RECOVERY START
 
 const int _widestClass = 20087;
 
@@ -975,4 +974,3 @@ class _TapeState {
   final int regret;
   _TapeState({required this.input, required this.cost, required this.regret});
 }
-// ERROR RECOVERY END

@@ -6213,3 +6213,177 @@ parse — the re-parse in `_certified` is a whole fresh `Parser` because the fro
 one offers no `retarget`/`readEnd` — or the shape gate relaxes from ≥514 to about
 467, which is what deleting regret costs. Nothing else of size remains: regret
 was the largest candidate and it is refuted above.
+
+## The thirty-eighth occasion: the LOC column was measuring a region nobody re-checked, and the frozen-lib blocker was lifted eleven engines ago
+
+Six things were asked at once. Two of them turned out to be checks of claims
+already made — the parser fold, and what `dart/lib` prevents — and in both cases
+the check contradicted the claim.
+
+### The fold that was not done, and the number it would cost
+
+The instruction was to fold a copy of the parser into **every** engine so that
+each file is standalone, mark the recovery region, and count LOC between the
+markers. Verified by scanning every engine source for a top-level `class Parser`:
+**only `m69` and `m70` carry one.** m62, m71, m72, m73 and m74 — the standing
+engine included, and every engine in the table comparison — reach the parser by
+`import 'package:squirrel_parser/squirrel_parser.dart'`. The fold happened for
+two files out of sixty-five, and for none of the engines being compared.
+
+That matters because of what completing it costs. `_core.dart` is **490 lines**
+by the whole-file rule (484 of body below its imports), and it is a constant: the
+same copy in every engine. Folding it into all sixty-five changes no engine-vs-
+engine comparison at all, and puts the standing under-400 target permanently out
+of reach, because the floor becomes 490 plus whatever recovery costs. **The
+target and the fold cannot both stand.** Recorded here so the trade is not
+rediscovered: the fold buys standalone files, and it buys them at the price of
+the size goal.
+
+### The LOC rule is now the whole file
+
+Markers deleted from **95 files** — every line whose trimmed content was exactly
+`// ERROR RECOVERY START` or `// ERROR RECOVERY END`. `final_table.dart` and
+`_coregate.dart` mention the same text as a string literal inside code and were
+correctly left alone, which is why the strip is 95 and not 97.
+
+`_locOf` now counts every non-blank, non-comment line of the engine's source.
+The rule is worse in one way and better in two. Worse: it charges an engine for
+its own import block. Better: there is no boundary for anyone to misplace, and
+the old boundary had already gone wrong — `_coregate`'s drift check used
+`above.contains(canonical)`, **containment, not equality**, so an engine could
+have put arbitrary code above the START marker and passed.
+
+| engine | old rule | whole file |
+|---|---|---|
+| v6 | 518 | 526 |
+| m62 | 789 | 793 |
+| m71 | 1028 | 1035 |
+| m72 | 979 | 986 |
+| m73 | 839 | 843 |
+| **m74** | **787** | **791** |
+| dot | 790 | 797 |
+| m69 | 1156 | **1640** |
+| m70 | 1331 | **1815** |
+
+Every row moves by its import block, four to eight lines, **except m69 and m70,
+which move by 484**: those two are the only rows whose number now includes a
+parser, and they are the only two rows not comparable to the rest. m74 stays
+below m62 (791 against 793), which is the one ordering the column was carrying.
+Verified across all sixty-five registered engines by `_locprobe.dart`: min 337
+(m22), max 1815 (m70), no engine unresolved.
+
+### D: no engine imports another, and it is now machine-checked
+
+Added to `_coregate.dart` as check D, and it is checked rather than asserted
+because the claim is exactly the kind that rots. Every import an engine declares
+must be `dart:` or `package:squirrel_parser/`. **Result: clean, 65/65.**
+
+The first attempt got the *engine set* wrong and is worth recording as a defect
+class. It defined an engine as any non-underscore `.dart` file in the directory,
+and reported 98 violations — every one of them a **harness**: `bf_check`,
+`complexity`, `five_cmp`, `table_cmp`, `peg_conformance` all import engines
+because that is their entire job. **An engine is a row in the table**, so the
+registry is now read out of `final_table.dart` itself, the same list the LOC
+column measures. A rule about "engines" that guesses which files are engines
+measures something else and says nothing.
+
+### What `dart/lib` prevents: nothing, since m63
+
+The claim on record was that under-400 needs `dart/lib` unfrozen so a parse can
+be forked or resumed. **The restriction was lifted eleven engines ago and the
+capability is unused.** `_core.dart` (tracked) is the standalone copy with the
+three changes that matter — mutable `input` with a resizing `memoVersion`, a
+public `memoTable`, and a per-entry `readEnd` read extent bracketed against
+`Parser.maxRead` — plus `retarget(newInput, editPos)`, which evicts exactly the
+entries an edit at `editPos` can invalidate (`pos >= editPos || readEnd >=
+editPos`). `_coregate.dart` re-run this session: **A 2996/2996 equivalence with
+the frozen library, B 3252/3252 reuse-equals-fresh-parse, C no drift, D clean.**
+
+**No engine calls it.** m69 and m70 physically contain `retarget` (they carry the
+core) and still build a fresh `Parser` per candidate; the only caller anywhere is
+the probe `_incr70.dart`. And the number that would justify wiring it up is
+already retracted above: `_incr70` measured 7–10x for a parent-to-child re-parse,
+but `_order70` replayed the tape's **actual** classification sequence and got
+**1.18x**, against a 1.27x ceiling that no schedule can beat. Reuse is worth
+**1.07x** of reordering. So the honest statement is not "the freeze blocks the
+size target" but **"the unfreeze was never the blocker, and buying it back is
+worth 1.18x, not 7x."**
+
+### Regret, priced in the two repairs it chooses between
+
+`_regretwhy.dart` walks the 519-mutant battery with m74 and `_m74nr.dart` (regret
+deleted) side by side and prints the edit list each returns.
+
+```
+battery  519 inputs, cost differences 0
+shape    m74 517   no-regret 488   differing 33
+  DELETED nr-only 1   TRANSPOSED nr-only 1
+  INSERTED m74-only 15   SUBSTITUTED m74-only 11   TRANSPOSED m74-only 5
+```
+
+31 − 2 = 29 = 517 − 488, and **cost differences are exactly 0**, which is the
+whole mechanism in one number: regret never changes what a repair costs, only
+which of the equally-cheap repairs comes back.
+
+What it prices is **invention**. Consuming an input character without matching it
+costs `2 * _skipRegret` (m74.dart:726), twice the information content of the
+narrowest grammar class admitting that character — **zero** for a character the
+grammar names literally, like `,` or `{`. Fabricating a character costs
+`_widestClass` = 20087 millibits (m74.dart:729), the full code-point alphabet,
+because nothing in the input says what to insert. Among equal-cost repairs the
+engine returns the one that invents least, and 31 times out of 33 that is the
+repair the author would have wanted:
+
+```
+{"a":1,"bc":[2,3,3true],...}   TRANSPOSED "3," -> ",3"
+m74  del "3" @17       -> restores the original
+nr   ins <','> @18     -> a different document
+```
+
+The two it loses are the mirror image — a character genuinely was deleted, so
+inventing one is right and deleting the comma beside it is wrong:
+
+```
+{"a":1,"bc":[,33,true],...}    DELETED "2"
+m74  del "," @13       -> a different document
+nr   ins <[0-9]> @13   -> restores the original
+```
+
+**A cheaper repair that invents nothing is preferred to a cheaper repair that
+invents something, and that is a bet, not a theorem — it wins 31 to 2.**
+
+### Ports and paper
+
+Java, Python and TypeScript deleted: 224 tracked files, plus 92 MB of orphaned
+build output (`target/`, `node_modules/`, `__pycache__`, `.ruff_cache`) that no
+longer had sources. Rollback is `git checkout 6effb0a -- java python typescript`.
+`run_all_tests.sh` lost the three now-dead blocks its `[ -d ]` guards were
+skipping; it runs Dart alone and still passes 308/308.
+
+The paper lost the **mechanism** and kept the **theory**, and the split is worth
+recording because it is not where one would guess. Removed: the uniform-cost
+search structure, the observer grammar rewrite, the ten candidate tiers,
+committed mode, the tie-breaking policy, the panic ladder, and the two theorems
+that were about those mechanisms — global-mode minimality and single-error
+exactness of committed mode. Kept, because each is a fact about repairing PEGs
+rather than about this implementation: Definition[Repair]; the horizon-vs-
+frontier distinction with the `&"xxxxxxxxxxq"` counterexample that shows the
+frontier is an **unsound** bound; Definition[Character equivalence] and
+Lemma[Alphabet sufficiency] with its proof; Lemma[Replay] and the `bca`
+counterexample that shows a beyond-horizon move can be a necessary prefix of a
+minimal repair; the NP-completeness of Min-PEG-Repair; the frontier lower bound.
+
+Global-mode minimality was **recast, not deleted**: as
+Theorem[Existence and computability of minimal repairs] it says a minimal repair
+exists, `d(s, L(G))` is finite, and both are computable for any PEG with
+`L(G) ≠ ∅` — which is the generic content, and it keeps the label `thm:minimality`
+that the hardness section and the conclusion both cite. 956 → 897 lines, 27
+pages, `latexmk` clean, **no undefined references or citations**.
+
+### Baseline, so the next session does not read green as new
+
+`dart test` **308/308**. `dart analyze` over `dart/` **fails**, and it failed
+before this session: 27 errors, all in three untracked scratch files
+(`_restart72.dart` 24, `_dbg72.dart` 2, `scratch.dart` 1), none of them touched
+here. m74's own gates unchanged after the strip: `_conf74` **5/5**, `_a74` 531
+inputs, 0 cost-diffs, 531 certified, 0 bad trees.

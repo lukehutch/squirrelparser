@@ -161,10 +161,8 @@ bool covers(MatchResult root, int len) {
   return ok && pos == len;
 }
 
-/// `dot` is the original recovery, which lives in the frozen library and so
-/// carries no markers; it is counted from the end of its import block, which is
-/// what the markers would have delimited anyway. `v6` is the table's name for
-/// sd6.
+/// `dot` is the original recovery, which lives in the frozen library. `v6` is
+/// the table's name for sd6.
 const _locSource = {
   'v6': 'sd6',
   'dot': '../../lib/src/recovery/dot_recovery',
@@ -179,20 +177,8 @@ int _locOf(String name) => _locCache.putIfAbsent(name, () {
       if (!src.existsSync()) {
         throw StateError('engine $name has no source at ${src.path}');
       }
-      final lines = src.readAsLinesSync();
-      var from = 0, to = lines.length;
-      final start = lines.indexOf('// ERROR RECOVERY START');
-      if (start >= 0) {
-        from = start + 1;
-        final end = lines.indexOf('// ERROR RECOVERY END');
-        if (end > start) to = end;
-      } else {
-        for (var i = 0; i < lines.length; i++) {
-          if (lines[i].startsWith('import ')) from = i + 1;
-        }
-      }
       var n = 0;
-      for (final l in lines.sublist(from, to)) {
+      for (final l in src.readAsLinesSync()) {
         final s = l.trim();
         if (s.isNotEmpty && !s.startsWith('//')) n++;
       }
@@ -204,20 +190,21 @@ class Eng {
   Eng(this.name, this.make, {this.bugs = '-'});
   final String name;
 
-  /// LOC IS MEASURED, NOT DECLARED: the non-blank, non-comment lines between
-  /// `// ERROR RECOVERY START` and `// ERROR RECOVERY END` in the engine's own
-  /// source, read when the row is printed. Two reasons it works this way:
+  /// LOC IS MEASURED, NOT DECLARED: every non-blank, non-comment line of the
+  /// engine's own source file, read when the row is printed. It used to be an
+  /// integer written here by hand, and it had gone stale for EVERY row at once
+  /// -- the one column nobody re-derives.
   ///
-  ///   1. It used to be an integer written here by hand, and it had gone stale
-  ///      for EVERY row at once -- the one column nobody re-derives.
-  ///   2. An engine may now carry its own copy of the parser, so that it is
-  ///      free to change it. That copy is identical wherever it appears and
-  ///      sits OUTSIDE the markers, so it is charged to nobody: what this
-  ///      column compares is the recovery code, and only that.
+  /// THE WHOLE FILE, with no region markers, because the alternative is a
+  /// boundary somebody has to place and nobody re-checks. The one thing this
+  /// count does not charge for is the LIBRARY an engine imports, so a row is
+  /// only comparable to another row that reaches the parser the same way:
+  /// `m69` and `m70` carry their own copy of the parser (`_core.dart`, 484
+  /// lines by this rule) and every other engine imports the frozen library.
   ///
-  /// An engine that reaches its work by importing ANOTHER engine would show a
-  /// small number here for a large program. Those have been folded in, so what
-  /// the file declares is what the engine costs.
+  /// An engine that reached its work by importing ANOTHER engine would show a
+  /// small number here for a large program. No engine does; the check is
+  /// `_coregate.dart`'s D.
   int get loc => _locOf(name);
 
   /// ELEGANCE, 0-10. THIS IS THE ONE COLUMN IN THIS TABLE THAT IS A JUDGMENT AND

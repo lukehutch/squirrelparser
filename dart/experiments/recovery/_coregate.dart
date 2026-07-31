@@ -118,29 +118,77 @@ int memoCount(core.Parser p) {
   return n;
 }
 
+/// Every engine source. AN ENGINE IS A ROW IN THE TABLE -- nothing else in this
+/// directory is one, and guessing from the filename gets it wrong: `bf_check`,
+/// `complexity` and `five_cmp` are harnesses that import engines by design. So
+/// the registry is read from `final_table.dart` itself, which is the same list
+/// the LOC column measures. `dot` resolves into the frozen library and is
+/// skipped: it IS the library.
+List<File> _engineFiles() {
+  final dir = File.fromUri(Platform.script).parent;
+  final table = File('${dir.path}/final_table.dart').readAsStringSync();
+  final stems = {
+    for (final m in RegExp(r'''\bEng\(["']([^"']+)''').allMatches(table))
+      m.group(1)!: m.group(1)!,
+  };
+  for (final m in RegExp(r'''^\s*["']([^"']+)["']\s*:\s*["']([^"']+)''',
+          multiLine: true)
+      .allMatches(table.split('const _locSource = {')[1].split('};')[0])) {
+    stems[m.group(1)!] = m.group(2)!;
+  }
+  return [
+    for (final stem in stems.values)
+      if (!stem.contains('/'))
+        if (File('${dir.path}/$stem.dart').existsSync())
+          File('${dir.path}/$stem.dart')
+        else
+          throw StateError('engine $stem has no source'),
+  ];
+}
+
 /// C: every engine that carries a parser carries THE parser. Returns the names
 /// of the engines whose copy has drifted from `_core.dart`.
+///
+/// An engine with no parser of its own reaches the frozen library, which cannot
+/// drift, so it has nothing to check here -- and D is what says its import list
+/// really is the library and nothing else.
 List<String> driftedCores() {
   final dir = File.fromUri(Platform.script).parent;
   final canonical = File('${dir.path}/_core.dart')
       .readAsStringSync()
       .split('// CORE BEGIN\n')[1]
-      .split('// CORE END\n')[0];
+      .split('// CORE END\n')[0]
+      .trimRight();
 
   final drifted = <String>[];
-  for (final f in dir.listSync().whereType<File>()) {
-    final name = f.path.split('/').last;
-    if (!name.endsWith('.dart') || name.startsWith('_')) continue;
+  for (final f in _engineFiles()) {
     final s = f.readAsStringSync();
-    final start = s.indexOf('// ERROR RECOVERY START');
-    if (start < 0) continue;
-    // Everything above the START marker is the carried parser. An engine with
-    // no parser of its own (it uses the library) has nothing here to check.
-    final above = s.substring(0, start);
-    if (!above.contains('class Parser {')) continue;
-    if (!above.contains(canonical.trimRight())) drifted.add(name);
+    if (!s.contains('class Parser {')) continue;
+    if (!s.contains(canonical)) drifted.add(f.path.split('/').last);
   }
   return drifted;
+}
+
+/// D: NO ENGINE SHARES CODE WITH ANOTHER ENGINE. Every import an engine
+/// declares must be `dart:` or the library `package:squirrel_parser/`. An
+/// engine that imported a second engine would be a large program wearing a
+/// small LOC, and the whole table compares LOC.
+///
+/// Returns one message per offending import.
+List<String> crossEngineImports() {
+  final bad = <String>[];
+  final re = RegExp(r'''^\s*(?:import|export|part)\s+["']([^"']+)''',
+      multiLine: true);
+  for (final f in _engineFiles()) {
+    final name = f.path.split('/').last;
+    for (final m in re.allMatches(f.readAsStringSync())) {
+      final uri = m.group(1)!;
+      if (uri.startsWith('dart:')) continue;
+      if (uri.startsWith('package:squirrel_parser/')) continue;
+      bad.add('$name -> $uri');
+    }
+  }
+  return bad;
 }
 
 void main() {
@@ -207,13 +255,16 @@ void main() {
     print('  FAIL $f');
   }
   final drifted = driftedCores();
+  final shared = crossEngineImports();
   print('A equivalence vs frozen lib : ${aCases - aFail}/$aCases');
   print('B reuse == fresh parse      : ${bCases - bFail}/$bCases');
   print('  retained memo entries     : $retained total, '
       '$retainedNonZero/$bCases cases retained >0');
   print('C engines carrying THE core : '
       '${drifted.isEmpty ? "no drift" : "DRIFTED: $drifted"}');
-  print(aFail == 0 && bFail == 0 && drifted.isEmpty
+  print('D no engine imports another : '
+      '${shared.isEmpty ? "clean" : "SHARED: $shared"}');
+  print(aFail == 0 && bFail == 0 && drifted.isEmpty && shared.isEmpty
       ? 'CORE GATE PASS'
       : 'CORE GATE FAIL');
 }

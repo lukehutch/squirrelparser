@@ -25,7 +25,6 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/recovery/skip_recovery.dart'
     show MissingObligation, SkipResult;
 
-// ERROR RECOVERY START
 
 class SuperDot3 {
   final Map<String, Clause> rules;
@@ -1762,4 +1761,3 @@ class _Relaxed {
     return -1;
   }
 }
-// ERROR RECOVERY END

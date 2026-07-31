@@ -13,12 +13,7 @@ The Squirrel Parser solves both problems in provably optimal ways.
 
 ## Quick Start
 
-Isomorphic implementations are provided for four languages:
-
-- **[Dart](dart/)**
-- **[Python](python/)**
-- **[TypeScript](typescript/)**
-- **[Java](java/)**
+The reference implementation is in **[Dart](dart/)**.
 
 ## The theory
 

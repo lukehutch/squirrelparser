@@ -704,7 +704,6 @@ spr.SkipResult toLibResult(SkipResult r, Map<Clause, sp.Clause> back) => spr.Ski
       r.forced,
     );
 
-// ERROR RECOVERY START
 
 /// log2 of the code-point alphabet, in millibits: what a FAB asserts.
 const _widestClass = 20087;
@@ -2071,4 +2070,3 @@ class _Cls {
   final bool open;
   final List<int> atoms;
 }
-// ERROR RECOVERY END

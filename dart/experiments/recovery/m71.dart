@@ -133,7 +133,6 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/recovery/skip_recovery.dart'
     show SkipResult, MissingObligation;
 
-// ERROR RECOVERY START
 
 /// log2 of the code-point alphabet, in millibits: what a FAB asserts.
 const _widestClass = 20087;
@@ -1448,7 +1447,6 @@ class SuperDot3 {
     return -1;
   }
 }
-// ERROR RECOVERY END
 
 /// Probe hook for `_lat71.dart`: an extension in the same library can read
 /// library-private state, so this costs the engine nothing and sits OUTSIDE

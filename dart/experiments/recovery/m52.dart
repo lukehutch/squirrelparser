@@ -477,7 +477,6 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/recovery/skip_recovery.dart'
     show SkipResult, MissingObligation;
 
-// ERROR RECOVERY START
 
 /// The width of the widest possible character class, in millibits: it is
 /// `round(log2(0x110000) * 1000)`, the log2-width of the whole Unicode code point
@@ -2109,4 +2108,3 @@ class SuperDot3 {
     return -1;
   }
 }
-// ERROR RECOVERY END
