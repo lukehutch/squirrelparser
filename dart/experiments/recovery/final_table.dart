@@ -96,6 +96,7 @@ import 'cgfr1.dart' as gcgfr1;
 import 'cgfr2.dart' as gcgfr2;
 import 'cgfr5.dart' as gcgfr5;
 import 'm69.dart' as g69;
+import 'm70.dart' as g70;
 import 'm27.dart' as g27;
 import 'm28.dart' as g28;
 
@@ -473,6 +474,7 @@ const elegNotes = <String, (int, String)>{
       'in the table, and larger than the m68/m69 it was offered as an '
       'alternative to. The frontier idea is real and the score is for that; '
       'the size advantage was an accounting artifact.'),
+  'm70': (10, 'I26: THE RECONSTRUCTION IS A PASS TOO. The table said conformance costs two depth rungs -- m62/m64 reach >=4096 on both ladders and every engine that answers the true PEG language stops at 1024/2048 -- and read the tape as the price. The stack traces refute that: the ladder grammars are lookahead-free so the tape never runs on them, the parser alone survives len=4096, and every m69 overflow is in the WITNESS DESCENT, measured linear in the input (522 frames at len=512, 1034 at 1024). It is unavoidable under I22, where a verified witness IS the certificate, so the cost path must reconstruct; m62 escapes only by returning the number without a witness. So the gap was the certificate\'s shadow, and it takes I18\'s answer one level out: `_build`/`_child`/`_row` become one `_RFrame` driver, `_cleanRegret`/`_collect`/`_emit` become explicit walks, and a reader that ended in a tail call re-labels its frame instead of pushing one. Bit-identical to m69 on 471 inputs -- costs, trees, spans and obligations alike -- and LRmax goes from 1024 to >=4096, deterministic at 10/10 against m69\'s 0/10. The RRmax cell is NOT a property of the engine: it reads >=4096 whenever the depth isolate runs alone (10/10 in _marginal, and in _depthrepro, _seq70 and _rr70) and 2048 whenever the `main` or `lat` isolate ran before it in the same isolate group (3/3 official runs, reproduced by _warm70), with the overflow always inside a parser and never inside the engine. _twoparsers shows why it is that marginal: the LIBRARY parser tops out at len 4096 cold and 8192 warm, while the CARRIED copy every engine holds tops out at 4096 either way despite byte-identical source, so the RR rung sits exactly at the carried parser\'s ceiling with no margin. Forcing the tape route hits the same wall at 4096, so degrading to the tape would move the overflow, not remove it'),
   'm69': (10, 'I25: A REPRESENTATIVE CHOSEN ALONE CANNOT MEET A CONSTRAINT IMPOSED BY SOMEBODY ELSE. m68 with the per-terminal proposal alphabet (lowest CharSet member, code unit 0 for AnyChar) replaced by the Boolean interval partition of the code-unit line: cut at every CharSet range boundary and every literal character, and each touched terminal proposes EVERY representative it accepts. An intersection of unions-of-intervals is itself a union of intervals, so the union over touched terminals always contains a representative of their intersection when one exists -- which the one-per-terminal alphabet could not, since m68 routes every lookahead to the tape. All m68 gates held identically, and the new _isect intersection gate goes 4/4 where m65 and m68 are 1/4'),
   'cgfr2': (0, 'CGFR-2 AS RECEIVED, BROKEN. Three independent defects, diagnosed in full under `cgfr5`, which is the repair: a missing version stamp in _finish that leaves left-recursive positions permanently unsettled, a tape that enumerates over a hardcoded 12-character alphabet priced by |y| instead of edit distance and stops at a tuned input.length+10, and a narrow envelope that is only sound under I4 fusion. It does not terminate on the battery. Kept registered so the repair has something to be measured against.'),
   'cgfr5': (10, 'THE REPAIRED CGFR-2 (measured dead end, kept as evidence). cgfr2 had three independent defects: (1) the version stamp missing from _finish, so any left-recursive widening left every entry at that position permanently unsettled and the driver re-pushed forever; (2) _tapeRecover enumerated strings over a hardcoded 12-character alphabet priced at |y| rather than edit distance from the input, pruning nothing and stopping at a tuned input.length+10 -- two tuning-parameter violations and a divergence; (3) its _wideG used m62s narrow envelope, which is only sound under I4 fusion, so a positive lookahead needing repair never terminated. Repaired with m68s tape, m68s conservative routing and the I25 interval alphabet it passes every gate, but at 1147 LOC it is LARGER than m68: cgfr2s apparent size advantage was an absent tape'),
@@ -888,6 +890,11 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
+  Eng('m70', (r, t) {
+    final e = g70.SuperDot3(rules: r, topRuleName: t);
+    return (e.recover, () => e.lastCost, e.recoverCost);
+  }),
+
 ];
 
 // ---------------------------------------------------------------- ground truth
@@ -1293,9 +1300,20 @@ Setup buildSetup() {
         final (_, _, cost) = e.make(g, 'E');
         cost(s);
         last = '${s.length}';
-      } on StackOverflowError {
+      } on StackOverflowError catch (_, st) {
+        final fr = st.toString().split('\n');
+        final seen = <String>{};
+        final names = <String>[];
+        for (final x in fr) {
+          final mm = RegExp(r'#\d+\s+(\S+)').firstMatch(x);
+          if (mm != null && seen.add(mm.group(1)!)) names.add(mm.group(1)!);
+        }
+        print('    [diag] len=${s.length} SO, ${fr.length} frames, '
+            'distinct: ${names.take(14).join(" <- ")}');
         return last == 'none' ? '<${s.length}' : last;
-      } catch (_) {
+      } catch (e) {
+        print('    [diag] len=${s.length} THREW ${e.runtimeType}: '
+            '${e.toString().split('\n').first}');
         return last == 'none' ? 'err' : last;
       }
     }

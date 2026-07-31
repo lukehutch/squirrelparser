@@ -4657,6 +4657,7 @@ above `elegNotes`.
 | cgfr2 | 867 | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | 0 | - | SLOW | SLOW | SLOW | SLOW | SLOW |
 | m69 | 1156 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 475 | 230.0 | 0.49x | 1024 | 2048 |
 | cgfr5 | 1147 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 536 | 199.8 | 0.43x | 1024 | 2048 |
+| m70 | 1312 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 493 | 222.1 | 0.46x | >=4096 | 2048 |
 
 `SLOW` is a verdict on the engine, not a limit of the harness: that part of the
 measurement exceeded 120 seconds and was killed, and past two minutes it does not
@@ -4673,3 +4674,251 @@ m60 and m64 to reach that. m41 is the fastest engine in the table at 147.9ms
 (m66, m67, m68, m69, cgfr5) buy true-PEG conformance for roughly 1150–1310 LOC
 and 219–239ms, and pay for it in the depth ladder: 1024/2048 against m62's
 >=4096. **Nothing in the table is both under 800 LOC and true-PEG conformant.**
+
+## The thirty-third occasion: the reconstruction is a pass too (m70), and the RR column measures the carried parser
+
+The brief was to study m50, m51, m52, m53, m57, m60, m62 and m64 — the eight
+rows at `pred` 69/69, `unsnd` 0 and `>=4096` on both ladders — together with
+every engine whose ladder tops out at 2048 and otherwise looks promising (m65,
+m66, m67, m68, m69, cgfr5), find the pattern that unifies them, and build one
+engine that has the strengths without the weaknesses.
+
+### The pattern the line is made of
+
+Read as a sequence, every insight from I8 to I25 does the same thing: **it takes
+something the engine was doing implicitly and gives it an explicit substrate**,
+and the engine improves exactly as far as that thing was the bottleneck.
+
+| insight | what was implicit | what it became |
+|---|---|---|
+| I8 (m50) | the deepening loop, the LR fixed point and the RR native stack — three schedules | one worklist over cells |
+| I9 (m51) | the value, rebuilt per relaxation | a cell written into; the fixed-point test IS the write |
+| I11 (m52/m53) | a dependency, as an address to hash | an edge of the grammar; the reverse edge is its transpose |
+| I14 (m57) | the deepening ladder, the budget, the ceiling | Δ, the total repair price, IS the schedule |
+| I16 (m60) | the continuation, on the native stack | a memo field |
+| I18 (m62) | the pass in flight, inside the memo entry | an explicit frame; the entry keeps only facts |
+| I19 (m64) | the suffix, re-derived after an edit | the invariant; the edit only moves the origin |
+| I20/I21 (m63/m65) | membership, deadness and the useful alphabet | one probed parse; the layer is the answer |
+| I22 (m66) | the relation between the fast answer and the truth | a verified witness: a certificate of equality |
+| I23 (m67) | the router, as a seam between two engines | one class over one substrate |
+| I24 (m68) | the obligation lattice, doing predicate bookkeeping | deleted; under a certificate the fast engine need only be a floor |
+| I25 (m69) | the proposal alphabet, one representative per terminal | the Boolean interval partition of the code-unit line |
+
+Stated that way the pattern also says where the next step is. **I18 was applied
+to the search and not to the reconstruction.** m62 lifted the search's
+continuation onto an explicit frame stack, and the ladder columns show what that
+bought: >=4096 on both. But the witness descent — `_build`, `_child`, `_row` —
+stayed native recursion with depth linear in the input, and so did
+`_cleanRegret`, `_collect` and `_emit`.
+
+That mattered for exactly one family. m62 never reconstructs on the cost path:
+it returns the number without a witness. Under I22 the conformant engines
+cannot, because the number is only trustworthy *because* the witness verified.
+So m66 through m69 pay a linear-depth reconstruction that m62 does not, and the
+table read it as the price of conformance:
+
+> m62/m64 reach >=4096 on both ladders and every engine that answers the true
+> PEG language stops at 1024/2048.
+
+The stack traces say that reading is wrong. The ladder grammars are
+lookahead-free, so the tape never runs on them; the frozen parser survives the
+top rung on its own; and every m69 overflow names the descent —
+
+```
+[diag] len=2048 SO: _cleanRegret.<anonymous> <- ListBase.fold <- _cleanRegret
+                    <- _child <- _build <- _row <- _relaxedRecover
+[diag] len=4096 SO: Sort._doSort <- Sort._dualPivotQuicksort <- _row
+                    <- _build <- _child <- _relaxedRecover
+```
+
+— measured linear in the input: 522 frames at len=512, 1034 at 1024. The gap was
+never the tape. **It was the certificate's own shadow.**
+
+### I26: THE RECONSTRUCTION IS A PASS TOO
+
+m70 is m69 with I18 applied one level out. `_build`, `_child` and `_row` become
+three kinds of one `_RFrame` driven by a single loop; `_cleanRegret` becomes a
+pre-order list folded backwards; `_collect` and `_emit` become explicit walks. A
+reader that ended in a tail call to another — `_child` on a junk-headed spine,
+`_row` on a node that is not a spine — re-labels its own frame instead of pushing
+one, so the frame count tracks the tree and not the call graph.
+
+Nothing about *which* witness is chosen changes: same `alts` order, same
+`..sort` order for head candidates, same backtracking on failure. So the gate is
+identity, not agreement — `_id70.dart` compares m70 against m69 over 471 inputs
+(the clean JSON document, the 519-mutant battery, and ten probe grammars
+covering left recursion, self-looping spines, lookahead and empty languages) on
+cost, then on the canonical tree shape, then on error spans and missing
+obligations. **Identical: 0 cost, 0 tree, 0 span mismatches.**
+
+Every inherited gate holds: `_bf70` 44/44, `_bfpred70` all ok, `_leak70` 71/71,
+`_score70` shape 517/519 cover 519/519 pred 69/69 `unsnd` 0, `_floor70`
+byte-identical to `_floor69` with `routerWrong` 0, `_coregate` PASS, and
+`_conf70` **5/5**.
+
+### The scored matrix
+
+Every row below is 517/519 shape (m65: 514/519), 519/519 cover, 0 crashes,
+519/519 `bmin` with `bund` 0, 7/7 valid, 44/44 cost, 44/44 tree, 69/69 `pred`
+and `unsnd` 0. Those columns cannot separate them, so what separates them is
+conformance, the intersection gate, size, speed and the ladders.
+
+| engine | LOC | conf | isect | battms | latms | /v6 | LRmax | RRmax | score | reasoning |
+|---|---|---|---|---|---|---|---|---|---|---|
+| m70 | 1312 | 5/5 | 4/4 | 493 | 222.1 | 0.46x | >=4096 | 2048* | **9** | the only engine with true-PEG conformance AND >=4096 on the LR ladder. Costs: largest file in the study, second-slowest battery of the healthy engines. `*` >=4096 in a fresh isolate; the official cell measures the carried parser, see below |
+| m62 | 789 | 3/5 | 4/4 | 400 | 208.1 | 0.45x | >=4096 | >=4096 | **8** | the standing engine, and the best size/speed/depth combination anywhere in the table. One disqualifying weakness for this brief: it answers the CFG reading of a possessive `*` and a committed `/`. Its depth advantage is partly structural -- it never re-parses, so it never pays the oracle's recursion |
+| m64 | 913 | 3/5 | 4/4 | 379 | 195.1 | 0.42x | >=4096 | >=4096 | **7** | fastest latency in the study. But I19's incremental entry point is recorded by its own note as "economically empty at measured scales (0.96-1.11x)", so it is +124 LOC over m62 for no measured gain, and it inherits m62's 3/5 |
+| m60 | 778 | 3/5 | 4/4 | 358 | 196.7 | 0.42x | >=4096 | >=4096 | **7** | smallest of the both->=4096 group, faster than m62 and 11 lines smaller. 3/5, and its continuation still lives in the memo entry -- m62 is the same engine said properly, for 11 lines |
+| cgfr5 | 1147 | 5/5 | 4/4 | 536 | 199.8 | 0.43x | 1024 | 2048 | **7** | fastest of the conformant group at 0.43x v6. Slowest battery of any healthy engine, and its own note records it as a measured dead end: once the tape is actually present it is LARGER than the m68 it was offered to undercut |
+| m69 | 1156 | 5/5 | 4/4 | 475 | 230.0 | 0.49x | 1024 | 2048 | **7** | I25, the interval alphabet, which is what makes the tape route answer intersections. Strictly dominated by m70 on the LR ladder for +156 LOC |
+| m68 | 1134 | 5/5 | **1/4** | 391 | 219.1 | 0.47x | 1024 | 2048 | **6** | smallest and fastest-battery of the conformant group, and I24's routing is the right idea. One decisive defect: sending every lookahead to a tape whose alphabet holds one representative per terminal loses every intersection -- a regression against m66/m67, which answer all four by fusion |
+| m67 | 1204 | 5/5 | 4/4 | 408 | 234.9 | 0.50x | 1024 | 2048 | **6** | I23 dissolves the router seam, which every later engine keeps. Still carries the I6/I7 obligation lattice that m68 then showed to be inert on every measured input; larger and slower than m68 |
+| m66 | 1307 | 5/5 | 4/4 | 397 | 238.6 | 0.51x | 1024 | 2048 | **6** | I22, the certificate -- the load-bearing idea for everything after it. As an artifact it is the slowest latency here and second-largest, a three-file composition behind a 53-line router |
+| m53 | 755 | 3/5 | 4/4 | 405 | 335.9 | 0.72x | >=4096 | >=4096 | **6** | completes I11 by deleting I10 rather than improving it. Superseded on speed by m60/m62 (335.9 -> 196.7) for ~25 more lines |
+| m52 | 753 | 3/5 | 4/4 | 416 | 375.8 | 0.81x | >=4096 | >=4096 | **5** | a waypoint: m53 is the same size and 40ms faster |
+| m57 | 858 | 3/5 | 4/4 | 1154 | 308.0 | 0.66x | >=4096 | >=4096 | **5** | the best insight in the group -- I14 DELETES the ladder, the budget and the ceiling rather than tuning them -- attached to the worst battery of any healthy engine, 2.9x m62's |
+| m51 | 741 | 3/5 | 4/4 | 448 | 414.1 | 0.89x | >=4096 | >=4096 | **4** | a waypoint, but I9's in-place write is kept by every later engine |
+| m50 | 716 | 3/5 | 4/4 | 636 | 772.7 | 1.66x | >=4096 | >=4096 | **4** | the smallest engine in the study and the source of I8, which removed the RR ceiling for the whole line. Also the only engine here SLOWER than the v6 baseline it replaces, and 3.7x m62 |
+| m65 | 1251 | 5/5 | **1/4** | 7425 | SLOW | SLOW | 2048 | 2048 | **2** | the origin of the tape and of I21, and not viable as an engine: 514/519 shape, 18.5x m62's battery, latency killed at the 120s cap |
+
+There is no single winner, which is what the brief anticipated: the strengths are
+split across the two families, so they had to be combined rather than chosen
+between. m62 owns size, speed and the ladders; m66-m69 own conformance; m68 owns
+the routing rule; m69 owns the alphabet; and none of them owned the
+reconstruction.
+
+### A correction to the m69 note: I25 repaired a regression, it did not add a capability
+
+The m69 note says the intersection gate "goes 4/4 where m65 and m68 are 1/4",
+which is true as written and reads as though nothing before it could answer an
+intersection. `_isectall.dart` runs the same four cases across all fifteen
+candidates and says otherwise:
+
+| engine | isect |
+|---|---|
+| m50, m51, m52, m53, m57, m60, m62, m64 | 4/4 |
+| m65 | **1/4** |
+| m66, m67 | 4/4 |
+| m68 | **1/4** |
+| m69, cgfr5, m70 | 4/4 |
+
+The defect is confined to the two engines that answer through the tape with a
+one-representative-per-terminal alphabet. `_isectroute.dart` shows which
+mechanism each one uses on `S <- &[a-z] [0-9m-q];` with an empty input:
+
+```
+m66    cost 1   fellBack false      <- answered by I4 fusion, no tape
+m67    cost 1   fellBack false      <- answered by I4 fusion, no tape
+m68    cost -1  fellBack true       <- routed to the tape, alphabet too poor
+m69    cost 1   fellBack true       <- routed to the tape, I25 alphabet
+cgfr5  cost 1   fellBack true
+m70    cost 1   fellBack true
+```
+
+So the honest sequence is: m66 and m67 computed the intersection exactly with
+`&C T == C∩T` and never needed an alphabet; **m68's I24 routing sent every
+lookahead to the tape and lost them**; I25 gave the tape an alphabet good enough
+to get them back. That is a regression and its repair, and it is worth recording
+that way, because "m68 is the smallest conformant engine" is only true if you do
+not count the four cases it answers wrongly.
+
+### A sixth measurement defect: the RR column measures the carried parser, not the engine
+
+The table run printed m70 at `LRmax >=4096, RRmax 2048`, with the overflow
+inside `_verify` — a parser re-parsing the emitted witness. That looked like a
+clean story: the certificate must parse a second string, right recursion costs
+the parser one native frame per position, so a conformant engine cannot reach
+the top RR rung. It was written into the engine header and the `elegNotes` on
+that basis, in the form *"at len=4096 the frozen parser overflows on its own."*
+
+That sentence is false, and the header contradicted itself two paragraphs
+earlier by also saying the parser survives len=4096. Chasing which one was right
+turned up something more useful.
+
+First, the engine's side is deterministic and it is I26's diagnosis confirmed.
+`_marginal.dart` runs the deciding rung ten times, one fresh isolate each, with
+the lower rungs run first exactly as `depthLimit` does:
+
+```
+engine gram  top   reached/10  overflow sites
+m62    RR   4096   10/10        -
+m69    LR   4096    0/10        SO 2048@_cleanRegret x3, SO 2048@_cleanRegret.<anonymous> x7
+m69    RR   4096    0/10        SO 4096@_build x10
+m70    LR   4096   10/10        -
+m70    RR   4096   10/10        -
+```
+
+m69 fails 0/10 on both, always inside the witness descent; m70 takes both 10/10.
+
+Second, the RR cell in the official row is not a coin flip — it is perfectly
+reproducible on *both* sides, and what selects the side is the harness.
+`_warm70.dart` runs one process per condition:
+
+```
+m70  A  the depth isolate alone                    LR >=4096   RR >=4096
+m70  B  parent buildSetup(), then depth            LR >=4096   RR >=4096
+m70  C  buildSetup, main, lat, depth (the table)   LR >=4096   RR   2048
+        the `main` isolate alone, then depth       LR >=4096   RR   2048
+        the `lat` isolate alone, then depth        LR >=4096   RR   2048
+```
+
+Three official `dart final_table.dart m70` runs gave `2048` three times with
+byte-identical traces; A and B give `>=4096`; so do `_marginal` (10/10),
+`_depthrepro`, `_seq70` and `_rr70`. Running *any* other isolate first in the
+same isolate group flips it. Nothing about the engine changes between A and C.
+
+Third — and this is the part worth keeping — **the reason it is that marginal is
+that the engine is not using `lib`'s parser.** Every engine in this line carries
+a *copy* of `lib/src/parser` so it is standalone, held byte-identical by
+`_coregate` claim C. A copy is still a separate class, compiled separately.
+`_twoparsers.dart` runs both on the same RR ladder in one isolate:
+
+```
+library Parser (cold)  tops out at >=4096
+carried Parser (cold)  tops out at >=4096
+library Parser (warm)  tops out at >=8192
+carried Parser (warm)  tops out at >=4096
+```
+
+Identical source, and only the library's copy gains the extra rung once its code
+is optimized. The engine's copy lives in a file whose `Clause` hierarchy has more
+subclasses — `_Probe` and the relaxed clauses — so its `match` call sites see
+more receiver types than the library's ever do. **The RR rung at len=4096 sits
+exactly at the carried parser's ceiling, with no margin at all**: it is the last
+rung that parser can do, and whether a `_verify` a few frames further down clears
+it is decided by a handful of frames.
+
+Every earlier control was therefore measuring the wrong parser. `_rr70` warmed
+and measured `package:squirrel_parser`'s `Parser` while the engine ran its own,
+which is how "the frozen parser survives len=4096" and "the frozen parser
+overflows at len=4096" both ended up in the same header.
+
+Two consequences. The `bugs` column's `RR` note should now read: what is left at
+the top of the RR ladder is not the witness descent — I26 removed that — nor
+`lib`'s parser, but the *carried* parser, at exactly its own limit. And
+degrading to the tape when `_verify` overflows, which would be the sound
+direction, buys nothing: forcing every input to the tape with a lookahead, the
+tape overflows at len=4096 too (7341ms, against 1780ms at 2048), because it
+reaches the same carried parser through classification.
+
+This is the sixth entry in the thirty-second occasion's list of measurements
+that fail by printing a number rather than by stopping. It differs from the
+others in that it neither flattens the table nor mis-sorts it: it reports a real
+threshold, correctly, of something other than the engine under test.
+
+### The trade, stated plainly
+
+m70 is **1312 LOC against m69's 1156 and m62's 789**, and its battery is 493ms
+against m62's 400. Set beside the standing directive to get an engine under 400
+LOC without losing conformance or sub-250ms latency, it moves the wrong way on
+size: I26 replaces mutual recursion with an explicit driver, and an explicit
+driver is always more lines than the recursion it replaces. What it buys is the
+LR ladder — 1024 to >=4096, deterministic, 10/10 — and it buys it without moving
+a single answer: bit-identical to m69 on all 471 identity inputs.
+
+The honest summary is that **m70 is the first engine in the line that is 5/5
+true-PEG conformant and reaches >=4096 on the LR ladder**, that it reaches
+>=4096 on the RR ladder too in every condition where the depth measurement runs
+in a fresh isolate, and that the official row's `2048` is the carried parser's
+ceiling rather than the engine's. It is also the largest engine in the study.
+Nothing here closes the size question.
