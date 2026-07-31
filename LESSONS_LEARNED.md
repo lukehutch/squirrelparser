@@ -4667,6 +4667,16 @@ matter whether it would have finished in three. The three parts (`main`, `lat`,
 `depth`) are capped independently, so a row can be `SLOW` in `LRmax`/`RRmax` and
 fully measured everywhere else.
 
+> **`battms` AND `latms` ARE NOT TRUSTWORTHY FOR RANKING TWO NEIGHBOURING ROWS**
+> (established in occasion 35). All 45 engines are built and timed in ONE VM, so
+> they share its JIT state and its heap. Re-measured one-engine-per-process, the
+> m62/m72 battery gap is **26.4%** where these columns show 3.75%, and the
+> latency gap is **4.3%** where these columns show a dead tie — and across four
+> full runs the table put m72's `latms` *below* m71's, an ordering no
+> single-engine protocol reproduces in either direction. Every other column here
+> is a count or a verdict and is unaffected. For a timing claim use `_cold72`
+> (latency) and `_coldbat` (battery), n ≥ 21, and quote the paired-round count.
+
 **What the table says, read straight.** m62 remains the standing engine on the
 combination that matters: 789 LOC, 517/519 shape, 519/519 bmin with `bund` 0,
 44/44 cost, 44/44 tree, 69/69 pred, `unsnd` 0, 208.1ms (0.45x v6), and `>=4096`
@@ -5575,18 +5585,71 @@ cost differences, 0 full-result differences.** `_m72bs` deliberately keeps the
 LINEAR form, and scans the whole list rather than stopping where the key would
 sort, so it does not assume the ordering it exists to check.
 
-Post-bisect, at n=21:
+Post-bisect, at n=21 on the instrument as it then stood:
 
 | | median | min | max | q1 | q3 |
 |---|---|---|---|---|---|
 | m71 | 223.2 | 213.3 | 236.9 | 220.6 | 229.9 |
 | m72 | 229.2 | 217.5 | 240.2 | 223.1 | 234.9 |
 
-**m72 / m71 = 1.027, and m72 is above m71 at every one of the 21 ranks.** Ratios
-are drift-immune because both engines are measured in the same sweep, so the
-bisect is worth **5.0%** (1.078 → 1.027) — not the 2% it was dismissed at. It was
-the largest single win available in this engine, and it had already been found
-and discarded.
+from which this section concluded **m72 / m71 = 1.027, m72 above m71 at every one
+of the 21 ranks**, and the bisect worth **5.0%** (1.078 → 1.027) rather than the
+2% it had been dismissed at. The direction was right and both numbers were wrong,
+because of a fourth error sitting underneath the other three.
+
+### The fourth error was the protocol, and it invalidates what the first three measured
+
+`_cold72` built a fresh `SuperDot3` inside every timed call. `_rules`, `_eps` and
+the whole normal-form lowering are `late final`, so a fresh engine re-lowers the
+grammar inside the clock and discards whatever the previous input left cached.
+`final_table.dart` does not do that — it builds ONE engine per row and closes
+over it, which is also what a caller does.
+
+The reading that suggests itself, *"the harness was timing grammar lowering"*, is
+wrong, and worth writing down because it is the trap next to the trap. `_ctor72`
+prices both protocols in one process so the JIT state is shared: fresh-per-call
+adds **11.9 ms per round to m71 and 11.9 ms to m72** — identical — of which the
+lowering is only ~**0.57 ms per construction**. **A constant added to both engines
+cannot invert their order.** What it does is inflate the RATIO: within one process
+m72 / m71 read **1.061** fresh-per-call against **1.024** reused.
+
+Rebuilt construct-once, n=21:
+
+| | median | min | max | |
+|---|---|---|---|---|
+| m71 | 216.3 | 201.3 | 226.1 | — |
+| m72 | 218.4 | 205.4 | 230.2 | 1.0097, m72 faster in **10 of 21** paired rounds |
+| `_m72app` | 218.6 | 206.4 | 232.5 | |
+| `_m72p3` | 217.1 | 207.5 | 235.0 | |
+
+**And the ablation arms carried a confound.** `_m72app` is LINEAR where m72
+BISECTS, so `app / m72` charges I30 and credits the bisect inside one number —
+which is precisely why it read 1.0009 and looked like "I30 is free". The
+confound-free pairs are `_m72app` vs `_m72bs` (both linear, differing only in
+I30) and `_m72bs` vs m72 (differing only in the bisect). At n=21:
+
+| | median | min | max | what it is |
+|---|---|---|---|---|
+| m71 | 217.9 | 199.2 | 227.0 | the predecessor |
+| `_m72app` | 221.5 | 209.8 | 232.6 | m72, no I30, linear |
+| `_m72bs` | 252.8 | 239.2 | 269.6 | m72, I30, linear |
+| m72 | 222.0 | 208.5 | 248.1 | m72, I30, bisected |
+
+**I30's ordered insert costs 12.4%** (app / bs = 0.8762, app faster in **21 of
+21** paired rounds) **and the bisect gives 12.2% back** (m72 / bs = 0.8782, **20
+of 21**). Those two are the only clean separations anywhere in this occasion —
+everything else measured here is a coin flip. So I30 is not free and it is not
+3.8%: it costs **12.4%**, and it is **paid for**. That is a different claim and a
+better one. The ordering that turns enumeration into the tie-break rule is
+affordable only because split order is a total order the walk can bisect; the
+insight and the thing that pays for it are the same fact about the key.
+
+Against m71, m72 costs **1–2%**, not 2.7%. Three construct-once readings put the
+ratio at 1.0097, 1.0188 and 1.024, so the direction is consistent and real, but
+no single n=21 sweep resolves it — paired wins 10/21 and 7/21. **Withdrawn
+outright:** "m72 is 2.7% slower, at every one of 21 ranks"; "I29 costs 3.9%";
+"I30 costs 3.8%"; "the bisect is worth 5.0%". Each came from the fresh-per-call
+arm, and the last two from the confounded pair as well.
 
 **The lesson is that noise costs in both directions.** The same broken apparatus
 manufactured six hypotheses that were not there and hid one improvement that was.
@@ -5597,13 +5660,51 @@ to, which is why it is the more dangerous of the two. Any future row differing
 from its neighbour by single digits should be re-read with `_cold72` at n ≥ 21
 before the difference is believed, optimised against, **or dismissed**.
 
-**And the table's own column is not exempt.** In the full run that produced m72's
-row below, `latms` read **208.3** for m72 against **228.1** for m71 — the table
-says m72 is 8.7% *faster*, the cold sweep says it is 2.7% slower. The two
-instruments agree closely on m71 (223.2 cold vs 228.1 table) and not at all on
-m72, and 208.3 falls **below the minimum of all 21 cold samples**. It is a lucky
-single draw. The row is recorded because that is what the row is, but no claim
-rests on it.
+**And the table's own column is not exempt — it is the worst of the four.** In
+the full run that produced m72's row below, `latms` read **208.3** for m72
+against **228.1** for m71, and it is not a lucky single draw: across four full
+table runs m72's `latms` sat below m71's *every time* (medians 210.2 vs 225.0,
+ratio **0.934**). **No single-engine protocol reproduces that ordering**, fresh
+or construct-once, and all four of those put m72 slightly above m71. Forty-five
+engines share one VM in the table. The row is recorded because that is what the
+row is; treat `latms` as comparative-within-a-run at best, and let no claim rest
+on it.
+
+**The fourth error is also the one the first three were made of.** Errors one
+(apparatus), two (sample size) and three (a real win discarded) were each found
+by fixing the instrument and re-reading. Error four says the fixed instrument was
+still answering a different question than the column it was built to check, and
+it was found only by building the control — `_cold72b`, identical in every
+respect except where the constructor sits. **When two instruments disagree about
+the ORDER of two things rather than the size of a difference, neither sample size
+nor repetition will resolve it: the disagreement is structural, and the move is a
+control that changes exactly one thing.**
+
+### Re-reading BOTH timing columns against m62, on the fixed protocol
+
+Once the protocol error was found, every timing claim in this occasion had to be
+re-taken — including the one the brief actually turns on, *"m62 is faster."* That
+sentence had only ever rested on the table. `_coldbat` reads the 519-mutant
+battery exactly as `_cold72` reads the latency corpus: one engine, alone, in its
+own process, built outside the clock, warmed on every input first.
+
+| | latency n=21 | vs m62 | battery n=15 | vs m62 |
+|---|---|---|---|---|
+| m62 | **210.9** | — | **251.6** | — |
+| m71 | 218.8 | | 320.4 | |
+| m72 | 219.9 | 1.0427, m72 faster in **2 of 21** | 318.0 | 1.2639, m72 faster in **0 of 15** |
+
+**m62 is 4.3% faster on latency and 26.4% faster on the battery**, the latter at a
+total 0-of-15 rank separation. The table had those same two gaps at 3.75%
+(400 vs 415) and a dead tie (208.1 vs 208.3). **It understated the battery gap by
+seven-fold and hid the latency gap entirely.** This was checked in the hope that
+m62's speed advantage would shrink under a clean instrument; it did the opposite,
+and the hope is exactly why it needed checking by someone who would report either
+answer.
+
+m72 against m71 lands where the other sweeps put it: latency 1.0050 (7/21),
+battery 0.9925 (10/15) — a hair slower on one column, a hair faster on the other,
+neither resolvable, with 49 fewer lines.
 
 ### Where m72 stands
 
@@ -5613,15 +5714,27 @@ byte-identical to m71 — 98 wrong, 226 fixed against m62, 0 regressed, 0 cost
 differences — and the witness gate reads 0 certificate differences with 2245
 certified by each.
 
-Against m71 it is **49 lines smaller at a measured 2.7% latency cost**, every
-other column tied. That is the honest trade, and it is a trade, not a
-domination: what the lines buy is a reconstruction that cannot fail because it
+Against **m71 it is a genuine improvement**: 49 lines smaller, with every other
+column tied and both timing columns unresolvable in either direction across four
+construct-once sweeps. The earlier reading of this as "smaller at a 2.7% latency
+cost" was an artifact of the fresh-per-call harness; the residual cost, if any,
+is 1%. What the deleted lines buy is a reconstruction that cannot fail because it
 is no longer a search, and an acyclicity argument that replaces a runtime
 cycle-token set with a proof.
 
-Against **m62 it does not dominate and is not dominated**: m62 is 789 LOC and
-faster on both timing columns, but scores conformance 3/5 against m72's 5/5 and
-is wrong on 324 of the 2387 brute-force truths against m72's 98. Smaller and
-faster, or correct — the table still has no engine that is both, and the reason
-is recorded in the size-floor note: with `dart/lib` frozen the engine cannot fork
+Against **m62 it does not dominate, and the gap is wider than this file used to
+say.** m62 is 789 LOC — 190 fewer — **4.3% faster on latency, 26.4% faster on the
+battery**, and holds RRmax ≥4096 against m72's 2048. m72 answers the true PEG
+language where m62 answers the CFG reading of a possessive `*` and a committed
+`/` (conformance 5/5 against 3/5), and is wrong on 98 of the 2387 brute-force
+truths against m62's 324. So the standing summary is unchanged in shape and worse
+in magnitude: **smaller and faster, or correct — the table still has no engine
+that is both.**
+
+**The brief is therefore not met, and the target is now exact.** A successor must
+reach ≤789 LOC, ≤251.6 ms battery, ≤210.9 ms latency and RRmax ≥4096 while
+holding conformance 5/5, shape ≥517 and ≤98 wrong. The 26.4% battery gap is the
+new item on that list and the least understood: m62 never re-parses, and both of
+the other two carry the oracle. The reason the size half of it is hard is
+recorded in the size-floor note — with `dart/lib` frozen the engine cannot fork
 or resume a parse, so the relaxed DP must exist in full.
