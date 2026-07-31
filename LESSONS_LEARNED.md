@@ -6172,6 +6172,7 @@ They are not I31's and must not be credited to it.
 | m72 | 979 | 517/519 | 519/519 | 436 | 200.0 | 0.40x | ≥4096 | ≥4096 |
 | m73 | 839 | 517/519 | 519/519 | 389 | 202.9 | 0.41x | 1024 | 2048 |
 | **m74** | **787** | 517/519 | 519/519 | **372** | **179.2** | **0.36x** | ≥4096 | ≥4096 |
+| **m75** | **746** | 474/519 | 519/519 | **349** | 179.7 | 0.36x | ≥4096 | ≥4096 |
 
 Every engine but v6 reads crsh 0, bmin 519/519, bund 0, valid 7/7, cost 44/44,
 tree 44/44, pred 69/69, unsnd 0; v6 reads 38/44, 55/69 and unsnd 5.
@@ -6387,3 +6388,136 @@ before this session: 27 errors, all in three untracked scratch files
 (`_restart72.dart` 24, `_dbg72.dart` 2, `scratch.dart` 1), none of them touched
 here. m74's own gates unchanged after the strip: `_conf74` **5/5**, `_a74` 531
 inputs, 0 cost-diffs, 531 certified, 0 bad trees.
+
+## The thirty-ninth occasion: the repaired string was never the answer, and the tie-break had no exchange rate to invent
+
+**I32 -- THE REPAIR IS SCAFFOLDING; THE TREE IS OVER THE INPUT.** m74's I31 was
+right that the certificate already builds a parse tree and wrong about whose
+tree it is. It parses the REPAIRED string, so every fabricated character becomes
+a node, and the node is indistinguishable from evidence once it is in the tree.
+Asked to repair `[2,33,ture]`, m74 returns `[2,33,true]`: a boolean the author
+never wrote, with `ture` gone.
+
+The rule that settles it is checkable, not a matter of taste. **Put each leaf of
+the finished tree back to the pure parser, at its own position, over the
+UNTOUCHED input, and count the leaves that do not read their own span.**
+
+| engine | certified | TILES | TOTAL | SHAPE | UNSUPPORTED nodes |
+|---|---|---|---|---|---|
+| m74 | 519/519 | 519/519 | 519/519 | 517/519 | **535** |
+| m75 | 519/519 | 519/519 | 519/519 | 474/519 | **0** |
+
+TILES is every node's span lying inside `[0, len)` with children ordered,
+disjoint and inside the parent; TOTAL is every input character lying under some
+node, so nothing is dropped on the floor. m75 reads the same witness out
+differently and the search is untouched:
+
+| what the witness says | what goes in the tree |
+|---|---|
+| input the grammar cannot use | a `SyntaxError` span at the structural position that failed |
+| grammar the input cannot fill | a **zero-width** span there; the demanded symbol is NOT written |
+| everything else | the oracle's own subtree, verbatim |
+
+The zero-width case is the one that had to be argued rather than coded around: a
+wide character class cannot say WHICH symbol was missing, so writing one is
+serialization, not evidence. `_xOf` and `_reindex` go with the remapping. This
+is also what `SkipResult`'s docstring (skip_recovery.dart:91-96) has always
+promised and no engine delivered -- unparseable regions as SyntaxError CHILDREN
+of the tree, which the thirty-seventh occasion recorded as m74's honest
+deviation.
+
+**THE SHAPE COLUMN IS NOW MEASURING THE THING THE BRIEF FORBIDS.** m75 reads
+474 against m74's 517, and the split says why: on **all 43** inputs where m74
+matches the pre-corruption shape and m75 does not, m74 buys the match with at
+least one unsupported node -- 43 of 43 -- and there are **0** inputs where m75
+matches and m74 does not. The battery is built by inverting a known corruption,
+so `shape` scores guessing the original document. Where the corruption changed a
+token's TYPE, guessing it back requires inventing the token.
+
+**THE TIE-BREAK, DERIVED RATHER THAN TUNED.** Regret charged a fabrication the
+FLAT whole-Unicode width no matter what it wrote. Replace the one secondary slot
+with **`(invention, loss)` lexicographic**: invention is the bits a repair
+asserts that the input did not justify, `log2|C|` per fabricated character and
+**zero when the grammar forced it** (a singleton class asserts nothing); loss is
+input characters not preserved. `_width` already computed exactly this quantity
+in millibits and had never been applied to fabrication.
+
+**They are ordered, not summed, and that is the whole point.** There is no
+exchange rate between a bit and a character, and inventing one would be the
+arbitrary constant this project forbids. The order is forced: an invented
+character is unfalsifiable, since nothing downstream can tell it from real data,
+while a destroyed character is still sitting in the input the caller holds.
+Invention corrupts; loss only omits.
+
+It is **free**: relaxations are bit-identical at **1,222,729** with **0 of 519**
+inputs differing, so it changes which of the equally-cheap repairs survives and
+nothing else. It wins **both** cases named in the brief where m74 wins one, and
+cuts input characters destroyed across the battery from **471 to 334**.
+
+**REFUTED, AND IT WAS THE HEADLINE FEATURE: the certificate cannot go yet.** The
+brief said never start a new parse, so the first m75 took the chase's own checks
+as the proof and deleted the re-parse. It passed a smoke test and was wrong:
+
+| gate | with certificate | without |
+|---|---|---|
+| wrong of 2387 | 98 | **319** |
+| cost differences vs m71 | 0 | **292** |
+| `'a'* "ab"`, an EMPTY language | -1 everywhere | **2, verified**, on 28 of 31 strings |
+
+The engine was certifying repairs that do not exist. The obligations are still
+approximated to **one character**, so the chase is not a membership proof, and
+the parse cannot go until they are exact. `_repaired` and `_spelling` survive
+for a yes/no only; their text never reaches the tree. **Cost identity is not
+evidence of soundness and neither is a clean conformance run** -- `_conf75`
+printed 5/5 while the subset gate was reading 319 wrong, because the two
+harnesses ask different questions.
+
+**ALSO REFUTED, before it was built:** making the certificate CONDITIONAL on the
+derivation having used only exact obligations buys nothing. Obligations are
+enforced only in the tight pass, and I28's entire result is that the tight pass
+never runs on JSON -- so the certificate would still always fire. No speed, no
+soundness, more code.
+
+**A CORRECTION TO THE THIRTY-SEVENTH OCCASION.** I reported the possessive-star
+stop as exact on the strength of three star grammars. It is not, and Codex found
+the case: `("ab")* "abc"` has an **empty** language for the same reason
+`'a'* "ab"` does, and m74 answers 3/2/0/0/1 on `""`/`"c"`/`"abc"`/`"ababc"`/
+`"abab"` -- wrong on all five, `verified=false` on all five. My probes could not
+exhibit it because in each one the star's FOLLOWER does not begin with the
+star's BODY, so the stop never had to be proved. `_notFirst` returns `_free`
+whenever `_oneCharClass` is null (m75.dart:784 for the stop, :344 for a branch
+guard), and that single approximation is the residual 98, the star hole, the
+multi-character lookahead wall and the silently-dropped choice guard -- one
+missing function, `fail(A,p)`, wearing four symptoms.
+
+**MEASURED.** One engine per process, constructed once outside every clock,
+n=21 paired rounds, entry point `recover`:
+
+| corpus | m75 | m74 | m75 faster in |
+|---|---|---|---|
+| battery | 292.3 | 300.7 | 14 of 21 |
+| latency | 178.3 | 183.6 | 13 of 21 |
+
+**Both are weak separations and neither is a win** -- 14/21 and 13/21 do not
+separate two engines. The table's own single-sample columns read the latency the
+other way (m75 179.7, m74 170.6) while agreeing on the battery (349 against
+397), which is the m72 occasion's rule holding again: treat `latms` as
+comparative-within-a-run and let no claim rest on it.
+
+Everything else holds at m74's values: **cost 44/44, tree 44/44, pred 69/69,
+unsnd 0, cover 519/519, bmin 519/519, crsh 0, LRmax/RRmax >=4096**, 0 cost
+differences from m71 over all 2387 brute-force truths, wrong on 98, conformance
+5/5. LOC **746** against m74's 791 and m62's 793 -- the smallest engine in the
+m-line that answers the true PEG language.
+
+**WHAT IS OPEN, stated precisely so the next session does not re-derive it.**
+The obligation is a one-character class where it should be a **DFA state**. A
+predicate body built from terminals, `Seq` and `*`/`+` is choice-free and
+possessive, hence deterministic, hence regular; the complement of a regular
+language is regular; so `fail(A,p)` is a regular constraint on the repaired
+suffix, and the current class is its 1-step truncation. The real boundary is
+**recursion, not choice** -- union, intersection and complement all close over
+regular languages, so a `First` or a nested `&`/`!` inside a predicate body
+stays regular, and only a self-recursive branch escapes. Making that exact is
+what would let the certificate go, and it is the same change that reaches the
+residual 98.
