@@ -169,15 +169,12 @@ final _locCache = <String, int>{};
 
 int _locOf(String name) => _locCache.putIfAbsent(name, () {
       final dir = File.fromUri(Platform.script).parent.path;
-      // A reference row re-registers an existing engine under a suffixed name
-      // (`m62x` is m62) so it can be timed in the same run as the engine it is
-      // the reference for. Strip the suffix until a source file appears.
-      var stem = _locSource[name] ?? name;
-      while (stem.isNotEmpty && !File('$dir/$stem.dart').existsSync()) {
-        stem = stem.substring(0, stem.length - 1);
+      final stem = _locSource[name] ?? name;
+      final src = File('$dir/$stem.dart');
+      if (!src.existsSync()) {
+        throw StateError('engine $name has no source at ${src.path}');
       }
-      if (stem.isEmpty) return -1;
-      final lines = File('$dir/$stem.dart').readAsLinesSync();
+      final lines = src.readAsLinesSync();
       var from = 0, to = lines.length;
       final start = lines.indexOf('// ERROR RECOVERY START');
       if (start >= 0) {
@@ -345,9 +342,8 @@ const bugLegend = <String, String>{
 };
 
 /// The `eleg` column: (score, the one-line reason). A JUDGMENT, not a
-/// measurement -- see `Eng.eleg` for the five criteria it weighs. Reference
-/// re-measurement rows (`m26b`, `m42e`, ...) carry their original engine's score,
-/// since they ARE that engine.
+/// measurement -- see `Eng.eleg` for the five criteria it weighs. One entry per
+/// engine: a MISSING key crashes the run, a stale one is inert.
 const elegNotes = <String, (int, String)>{
   'dot': (2, 'recovery as its own algorithm: hand-written skip/insert passes, '
       '797 LOC, nothing shared with the parser'),
@@ -579,35 +575,21 @@ const elegNotes = <String, (int, String)>{
       'to m53 on all 252 smoke inputs; loses a point because the deferred-leaf '
       'rule that would finish the collapse breaks witness-tie parity'),
   // Reference re-measurements: the same engine, so the same score.
-  'm26b': (7, 'm26'),
   'm26c': (7, 'm26'),
   'm26d': (7, 'm26'),
   'm42e': (10, 'm42'),
   'm43f': (10, 'm43'),
-  'm44g': (9, 'm44'),
-  'm45h': (7, 'm45'),
   'm46i': (8, 'm46'),
-  'm49j': (8, 'm49'),
-  'm50k': (9, 'm50'),
-  'm51k': (9, 'm51'),
-  'm52k': (9, 'm52'),
-  'm53k': (10, 'm53'),
-  'm53l': (10, 'm53'),
-  'm53m': (10, 'm53'),
-  'm53n': (10, 'm53'),
-  'm53o': (10, 'm53'),
-  'm60p': (9, 'm60'),
-  'm60q': (9, 'm60'),
-  'm62r': (10, 'm62'),
-  'm62s': (10, 'm62'),
-  'm62t': (10, 'm62'),
-  'm62u': (10, 'm62'),
-  'm62v': (10, 'm62'),
-  'm62w': (10, 'm62'),
-  'm62x': (10, 'm62'),
-  'm62y': (10, 'm62'),
 };
 
+// NO DUPLICATE ROWS. Engines used to be registered a second time under a letter
+// suffix -- m26b, m44g, m53k, m62r..m62y -- so that a new engine had a reference
+// row for the same engine measured in the SAME process. That was necessary when
+// one process measured every engine in sequence and JIT state carried across
+// them. It is not necessary now: each engine gets its own part-isolated, COLD
+// isolate, and the latency loop does one untimed warm pass before the timed
+// min-of-5. The cold start costs a little latency and buys a table that is one
+// row per engine and sorts. Do not re-add them.
 final engines = <Eng>[
   Eng('dot', (r, t) {
     final e = DotRecovery(rules: r, topRuleName: t);
@@ -770,31 +752,13 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m44 re-measured beside m45 in the same session: the letter continues the
-  // global sequence `b, c, d, e, f` used for reference re-measurements, and it is
-  // the only m44 timing comparable to m45's.
-  Eng('m44g', (r, t) {
-    final e = g44.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   // m46 verifies its own witness on every `recover`, which this table calls once
-  // per mutant -- so `battms` here INCLUDES the extra parse, and `m45h` beside it
+  // per mutant -- so `battms` here INCLUDES the extra parse, and the gap to m45
   // is what that costs.
   Eng('m46', (r, t) {
     final e = g46.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
-
-  Eng('m45h', (r, t) {
-    final e = g45.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  Eng('m26b', (r, t) {
-    final e = g26.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }, bugs: 'dup'),
 
   // I6 (m48) and I7 (m49). Both verify their own witness on every `recover`, as
   // m46 does, so `battms` includes that parse and m46 is the row to read them
@@ -821,20 +785,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // The same engine again, so that m50 has a reference row measured in the SAME
-  // process pair -- registry position biases the timings by more than I8 does.
-  Eng('m49j', (r, t) {
-    final e = g49.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m50', (r, t) {
-    final e = g50.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m50 again, so m51 has a reference row measured in the SAME process pair.
-  Eng('m50k', (r, t) {
     final e = g50.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -844,19 +795,7 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m51 again, so m52 has a reference row measured in the SAME process pair.
-  Eng('m51k', (r, t) {
-    final e = g51.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m52', (r, t) {
-    final e = g52.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m52 again, so m53 has a reference row measured in the SAME process pair.
-  Eng('m52k', (r, t) {
     final e = g52.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -866,20 +805,8 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m53 again, so the m54 probe has a reference row in the SAME process pair.
-  Eng('m53k', (r, t) {
-    final e = g53.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m57', (r, t) {
     final e = g57.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m53 again, so m57 has a reference row measured in the SAME process pair.
-  Eng('m53l', (r, t) {
-    final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
@@ -888,20 +815,8 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m53 again, so m58 has a reference row measured in the SAME process pair.
-  Eng('m53m', (r, t) {
-    final e = g53.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m59', (r, t) {
     final e = g59.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m53 again, so m59 has a reference row measured in the SAME process pair.
-  Eng('m53n', (r, t) {
-    final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
@@ -910,31 +825,13 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m53 again, so m60 has a reference row measured in the SAME process pair.
-  Eng('m53o', (r, t) {
-    final e = g53.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m61', (r, t) {
     final e = g61.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m60 again, so m61 has a reference row measured in the SAME process pair.
-  Eng('m60p', (r, t) {
-    final e = g60.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m62', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m60 again, so m62 has a reference row measured in the SAME process pair.
-  Eng('m60q', (r, t) {
-    final e = g60.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
@@ -948,12 +845,6 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m62 again, so m64 has a reference row measured in the SAME process pair.
-  Eng('m62r', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m65', (r, t) {
     final e = g65.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
@@ -964,20 +855,8 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m62 again, so m66 has a reference row measured in the SAME process pair.
-  Eng('m62s', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m67', (r, t) {
     final e = g67.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m62 again, so m67 has a reference row measured in the SAME process pair.
-  Eng('m62t', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
@@ -986,20 +865,8 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m62 again, so m68 has a reference row measured in the SAME process pair.
-  Eng('m62u', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('cgfr1', (r, t) {
     final e = gcgfr1.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m62 again, so cgfr1 has a reference row measured in the SAME process pair.
-  Eng('m62v', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
@@ -1008,20 +875,8 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m62 again, so cgfr2 has a reference row measured in the SAME process pair.
-  Eng('m62w', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
   Eng('m69', (r, t) {
     final e = g69.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
-
-  // m62 again, so m69 has a reference row measured in the SAME process pair.
-  Eng('m62x', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
@@ -1030,11 +885,6 @@ final engines = <Eng>[
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  // m62 again, so cgfr5 has a reference row measured in the SAME process pair.
-  Eng('m62y', (r, t) {
-    final e = g62.SuperDot3(rules: r, topRuleName: t);
-    return (e.recover, () => e.lastCost, e.recoverCost);
-  }),
 ];
 
 // ---------------------------------------------------------------- ground truth
