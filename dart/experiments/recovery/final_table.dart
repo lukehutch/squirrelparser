@@ -343,10 +343,13 @@ const bugLegend = <String, String>{
 
 /// The `eleg` column: (score, the one-line reason). A JUDGMENT, not a
 /// measurement -- see `Eng.eleg` for the five criteria it weighs. One entry per
-/// engine: a MISSING key crashes the run, a stale one is inert.
+/// engine: a MISSING key crashes the run, a stale one is inert. A reason must
+/// NOT restate the LOC column -- eleven of the thirteen that did had gone stale
+/// against the number printed beside them. Comparisons against another engine's
+/// size are fine, since the column cannot make those.
 const elegNotes = <String, (int, String)>{
   'dot': (2, 'recovery as its own algorithm: hand-written skip/insert passes, '
-      '797 LOC, nothing shared with the parser'),
+      'nothing shared with the parser'),
   'sd3': (3, 'first "superdot": one value per position, but left recursion '
       'hand-reasoned and got wrong'),
   'sd5': (3, 'sd3 plus a wider result; the cycle reasoning is still recovery\'s '
@@ -357,7 +360,7 @@ const elegNotes = <String, (int, String)>{
       'search; LR still hand-reasoned'),
   'm15': (4, 'per-end minimum arrives as a concept; four combinator cases still '
       'carry recovery logic each'),
-  'm16': (5, 'the compactness floor of the pre-A5 line at 352 LOC, and it is '
+  'm16': (5, 'the compactness floor of the pre-A5 line, and it is '
       'compact by omission -- LR is broken'),
   'm17': (5, 'same shape as m16, faster; the extra 5 lines are a memo-reuse rule '
       'that is derived, not tuned'),
@@ -366,7 +369,7 @@ const elegNotes = <String, (int, String)>{
   'm19': (5, 'm18 minus a redundant pass; still four recovery-aware combinators'),
   'm20': (5, 'reorganised for latency and lost it; the idea did not change'),
   'm21': (5, 'as m20, one rule less; no new concept and no new deletion'),
-  'm22': (5, 'the tightest the CFG-flavoured line gets, 337 LOC, and every '
+  'm22': (5, 'the tightest the CFG-flavoured line gets, and every '
       'correctness column says why it is cheap'),
   'm23': (6, 'A5: STOP REASONING ABOUT CYCLES, adopt MemoEntry field for field. '
       'The first idea in the line that deletes rather than adds'),
@@ -374,8 +377,8 @@ const elegNotes = <String, (int, String)>{
       'and the one piece of cycle logic recovery still owns'),
   'm25': (6, 'm24 with the regret weights in closed form; a loop over characters '
       'becomes a prefix sum'),
-  'm26': (7, 'the settled baseline: three edits, one memo, one deepening loop, '
-      '382 LOC -- but `maxCost` is still a chosen number'),
+  'm26': (7, 'the settled baseline: three edits, one memo, one deepening loop '
+      '-- but `maxCost` is still a chosen number'),
   'm27': (4, 'adds a PEG guard that consults the wrong string; machinery that '
       'cannot work is the least elegant kind'),
   'm28': (6, 'm26 with a doubling schedule -- one fewer arbitrary decision in '
@@ -404,7 +407,7 @@ const elegNotes = <String, (int, String)>{
   'm40': (6, 'the pricing reaches its final form (A1-A3 all derived) at the cost '
       'of 33 lines of derivation'),
   'm41': (9, 'THE RESTATEMENT: recovery is the parser over a wider value. Three '
-      'node kinds, no dot, currying supplies the item boundaries -- 379 LOC, and '
+      'node kinds, no dot, currying supplies the item boundaries, and '
       'one hand-written insertion rule left'),
   'm42': (10, 'THERE IS NO THIRD EDIT: deletion is SUB applied to `Nothing`, '
       'repeated. The last hand-written recovery rule in any combinator is DELETED '
@@ -429,7 +432,7 @@ const elegNotes = <String, (int, String)>{
       'post a class: two mechanisms predicting what one value could carry'),
   'm49': (8, 'I7 UNIFIES THE THREE CHANNELS -- down is the argument, across is '
       'the value, up is the memo -- and deletes six mechanisms with it. The '
-      'deepest idea in the line, in the largest file: 668 LOC, and I4 is retained '
+      'deepest idea in the line, in the largest file, and I4 is retained '
       'with nothing depending on it'),
   'm50': (9, 'I8: POSITION IS THE STRATIFICATION VARIABLE, so one worklist is '
       'm49\'s LR fixed point, its RR native stack, and its deepening loop at once. '
@@ -470,9 +473,9 @@ const elegNotes = <String, (int, String)>{
       'in the table, and larger than the m68/m69 it was offered as an '
       'alternative to. The frontier idea is real and the score is for that; '
       'the size advantage was an accounting artifact.'),
-  'm69': (10, 'I25: A REPRESENTATIVE CHOSEN ALONE CANNOT MEET A CONSTRAINT IMPOSED BY SOMEBODY ELSE. m68 with the per-terminal proposal alphabet (lowest CharSet member, code unit 0 for AnyChar) replaced by the Boolean interval partition of the code-unit line: cut at every CharSet range boundary and every literal character, and each touched terminal proposes EVERY representative it accepts. An intersection of unions-of-intervals is itself a union of intervals, so the union over touched terminals always contains a representative of their intersection when one exists -- which the one-per-terminal alphabet could not, since m68 routes every lookahead to the tape. 1155 LOC; all m68 gates held identically, and the new _isect intersection gate goes 4/4 where m65 and m68 are 1/4'),
+  'm69': (10, 'I25: A REPRESENTATIVE CHOSEN ALONE CANNOT MEET A CONSTRAINT IMPOSED BY SOMEBODY ELSE. m68 with the per-terminal proposal alphabet (lowest CharSet member, code unit 0 for AnyChar) replaced by the Boolean interval partition of the code-unit line: cut at every CharSet range boundary and every literal character, and each touched terminal proposes EVERY representative it accepts. An intersection of unions-of-intervals is itself a union of intervals, so the union over touched terminals always contains a representative of their intersection when one exists -- which the one-per-terminal alphabet could not, since m68 routes every lookahead to the tape. All m68 gates held identically, and the new _isect intersection gate goes 4/4 where m65 and m68 are 1/4'),
   'cgfr2': (0, 'CGFR-2 AS RECEIVED, BROKEN. Three independent defects, diagnosed in full under `cgfr5`, which is the repair: a missing version stamp in _finish that leaves left-recursive positions permanently unsettled, a tape that enumerates over a hardcoded 12-character alphabet priced by |y| instead of edit distance and stops at a tuned input.length+10, and a narrow envelope that is only sound under I4 fusion. It does not terminate on the battery. Kept registered so the repair has something to be measured against.'),
-  'cgfr5': (10, 'THE REPAIRED CGFR-2 (measured dead end, kept as evidence). cgfr2 had three independent defects: (1) the version stamp missing from _finish, so any left-recursive widening left every entry at that position permanently unsettled and the driver re-pushed forever; (2) _tapeRecover enumerated strings over a hardcoded 12-character alphabet priced at |y| rather than edit distance from the input, pruning nothing and stopping at a tuned input.length+10 -- two tuning-parameter violations and a divergence; (3) its _wideG used m62s narrow envelope, which is only sound under I4 fusion, so a positive lookahead needing repair never terminated. Repaired with m68s tape, m68s conservative routing and the I25 interval alphabet it passes every gate, but at 1151 LOC it is LARGER than m68: cgfr2s apparent size advantage was an absent tape'),
+  'cgfr5': (10, 'THE REPAIRED CGFR-2 (measured dead end, kept as evidence). cgfr2 had three independent defects: (1) the version stamp missing from _finish, so any left-recursive widening left every entry at that position permanently unsettled and the driver re-pushed forever; (2) _tapeRecover enumerated strings over a hardcoded 12-character alphabet priced at |y| rather than edit distance from the input, pruning nothing and stopping at a tuned input.length+10 -- two tuning-parameter violations and a divergence; (3) its _wideG used m62s narrow envelope, which is only sound under I4 fusion, so a positive lookahead needing repair never terminated. Repaired with m68s tape, m68s conservative routing and the I25 interval alphabet it passes every gate, but at 1147 LOC it is LARGER than m68: cgfr2s apparent size advantage was an absent tape'),
   'm68': (10, 'I24: UNDER A CERTIFICATE, THE FAST ENGINE ONLY NEEDS TO BE A '
       'FLOOR. m67 with the I6/I7 obligation lattice deleted from the relaxed '
       'core: an under-report can never verify (its witness would realize a '
@@ -481,7 +484,7 @@ const elegNotes = <String, (int, String)>{
       'lookahead-free grammars the union relaxation is trivially a floor, '
       'and the whole performance corpus is lookahead-free, so the lattice '
       'was inert on every measured input. Any lookahead routes to the tape. '
-      '1138 LOC; all gates held including cost+shape smoke identity'),
+      'all gates held including cost+shape smoke identity'),
   'm67': (10, 'I23: THE ROUTER WAS A SEAM, NOT A DESIGN. m66\'s semantics '
       'hoisted into one class over one substrate: ONE relaxed core serves '
       'the fast path, the envelope floor and the fabrication floor; ONE '
@@ -490,7 +493,7 @@ const elegNotes = <String, (int, String)>{
       'ONE width/regret table prices the lattice, the tape edits, and the '
       'ranking; one set of result fields written by whichever search '
       'answers. Same re-verified semantics (certificate / floor / horizon), '
-      '1208 LOC standalone vs the 1325-LOC three-file composition'),
+      'standalone, against the three-file composition it replaced'),
   'm66': (10, 'I22: A VERIFIED WITNESS IS A CERTIFICATE OF EQUALITY. The '
       'CFG-union reading is a superset language, so the relaxed cost is a '
       'floor; when the relaxed witness survives I5 verification the true '
@@ -521,7 +524,7 @@ const elegNotes = <String, (int, String)>{
       'never touched the frontier fails on every extension), and the atoms '
       '(which next characters could matter). Ordered choice and possessive '
       'repetition mean what PEG says: the FIRST engine in the line to score '
-      '5/5 on the conformance cases, back to dot. 345 LOC. The price is '
+      '5/5 on the conformance cases, back to dot. The price is '
       'exponential worst-case search (NP-hardness licenses it); the ladder '
       'protocol is unviable at latency case 8, and -1 means "none within '
       'the derived cap n + CFG-fabrication floor"'),
@@ -565,7 +568,7 @@ const elegNotes = <String, (int, String)>{
       'round run once -- an array index, no heap, no budget, no ceiling, no '
       'packed cost unit (Delta is the pair (cost, regret), lexicographic). '
       'Every optimization any occasion measured answer-neutral is deleted; '
-      'what remains each answers a named requirement. 614 lines, bit-identical '
+      'what remains each answers a named requirement. Bit-identical '
       'to m53 on all 252 smoke inputs, every exactness gate green'),
   'm58': (9, 'I15: THE CLASS IS THE ROUND, RUN ONCE. m57\'s schedule at edit-count '
       'grain: Dijkstra across cost strata, m53\'s batched chaotic relaxation '

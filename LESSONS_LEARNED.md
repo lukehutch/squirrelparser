@@ -940,6 +940,15 @@ Every new engine gets registered there AND gets a row here, in the same commit.*
 `bugs` names defects specific to that engine; four defects are shared by every row
 and are listed once below rather than repeated 32 times.
 
+**SUPERSEDED, and kept as the historical record.** Every number below was measured
+one process, warming as it went, with LOC counted over a whole file rather than
+between the `// ERROR RECOVERY` markers, and with the `cost hist` column that the
+thirty-second occasion showed could not distinguish a sound engine from an unsound
+one. **The current table is in the thirty-second occasion**, at the end of this
+file: 60 engines, one cold isolate per part, LOC between the markers, `bmin`/`bund`
+in place of the histogram. Read this one only for what an engine looked like when
+it was built.
+
 | engine | LOC | shape | cover | crsh | cost hist | valid | cost | tree | bugs | battms | latms | /v6 | LRmax | RRmax |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | dot | 797 | 515/519 | 519/519 | 0 | {1:503, 2:16} | 7/7 | 44/44 | 44/44 | slow, shape | 7876 | 5879.9 | 12.39x | >=4096 | >=4096 |
@@ -4384,3 +4393,283 @@ free; -150 unifying the two witness machineries, costs 3 shape points and
 smoke identity; -60 the recursive driver, costs RRmax 2048 -> 512). Under
 400 is therefore not reachable by trimming this architecture; it needs the
 fused single-traversal rewrite, and that remains unbuilt.
+
+## The thirty-second occasion: five measurement defects, and what they were hiding
+
+No new engine here. This is the discovery that **five properties of the
+comparison table were not measuring what they were labelled**, and what the
+corrected numbers say. Three of the five made the table flatter than reality;
+one made an unsound engine look like the best engine in it; one made it
+unsortable. Four of the five share a shape worth naming up front: **a
+measurement that fails by printing a number instead of by stopping.**
+
+**Defect 1 — LOC counted what an engine wrote, not what it ran.** An engine that
+reached its work through `import 'm62.dart'` declared only the lines of its own
+file. Four engines did this, and the declared numbers were not close:
+
+| engine | declared LOC | measured after folding | ratio |
+|---|---|---|---|
+| cgfr1 | 210 | **1456** | 6.9x |
+| m66 | 61 | **1307** | 21.4x |
+| m65 | 478 | **1251** | 2.6x |
+| m63 | 345 | **1118** | 3.2x |
+
+cgfr1 was offered as a dramatically smaller alternative to m68/m69. Measured, it
+is the **largest engine in the table** — larger than the 1134/1156 it was meant
+to undercut. m66's "61 lines" was 61 lines of glue over 1246 lines of imported
+engine.
+
+The fix has two parts, because fixing only the first invites the second. Every
+engine now carries its own parser (`_core.dart`, copied in, not imported), and
+LOC is counted between `// ERROR RECOVERY START` and `// ERROR RECOVERY END`.
+That makes the parser free — which is only fair if the parser really is the same
+parser, so `_coregate.dart` gained **claim C**: every engine's copy must match
+`_core.dart` byte for byte, or recovery work could simply be moved above the
+START marker and reported as zero. `_foldeq.dart` separately checks the folds are
+answer-identical, so the LOC changed and the behaviour did not.
+
+**Defect 2 — the 30-second cap killed engines for being *correctly* slow.** The
+cap was added on the premise that "nothing should take that long." That premise
+is false, and the table had been asserting it for 21 of 82 rows. `_gate70.dart`
+times each gate in its own isolate. The LR/RR stack-ceiling ladder — which
+deliberately climbs to 4096-character inputs hunting for the overflow point — is
+**72–96% of every engine's clock**:
+
+| engine | lat | batt | valid | truth | pred | depthLR | depthRR |
+|---|---|---|---|---|---|---|---|
+| m62 (passed) | 1525 | 363 | 1 | 8 | 13 | **16810** | 4551 |
+| m53 | 2380 | 384 | 1 | 5 | 6 | **44923** | 8545 |
+| m32 | 1560 | 473 | 0 | 9 | 5 | **47970** | 53 |
+| m33 | 5792 | 425 | 0 | 5 | 3 | **49475** | 55 |
+| m34 | 10694 | 662 | 0 | 7 | 3 | **48459** | 54 |
+| m57 | 2623 | 1274 | 1 | 12 | 8 | 13686 | **58898** |
+
+m53's battery runs in **384ms** and its latency sum in 2.4s — and the whole row
+read `TO`, including the battery, shape, cost, tree and pred columns, because a
+probe that is *supposed* to be expensive was expensive. The recorded rows for
+m51/m52/m53/m57/m58 were never stale; the cap was wrong. Worse, m62 — the
+standing engine — was passing with **under 7 seconds of margin**, all of it
+hostage to the ladder. Any engine marginally slower there would have been erased
+with no indication why.
+
+The fix has two halves. The cap now applies to each **part** (`main`, `lat`,
+`depth`) separately, so a dead part costs only the columns it would have filled;
+and the threshold moved to **120 seconds**, with what exceeds it reported as
+`SLOW` rather than `TO`. The rename is not cosmetic: `TO` reads as the harness
+running out of room, and this is a verdict on the engine. Past two minutes the
+difference between "would have finished in three minutes" and "would never have
+finished" does not change the answer.
+
+Together they turned 21 dead rows into data, and the numbers they were hiding are
+not marginal:
+
+| engine | at 30s | measured at 120s |
+|---|---|---|
+| dot | `TO` in lat, /v6, LRmax, RRmax | latms **6121.4**, **13.14x v6**, LR/RR **>=4096** |
+| m51 / m52 / m53 | `TO` in LRmax, RRmax | **>=4096 / >=4096** — the best depth robustness in the table |
+| m57 | `TO` in LRmax, RRmax | **>=4096 / >=4096** |
+| m32 / m33 / m34 | `TO` in lat and depth | latms 245.0 / 904.6 / 1644.5, LR **>=4096** |
+| m63 | `TO` in every column | battms 30500, shape **467/519**, bmin 519/519 |
+| m65 | `TO` in lat and depth | battms 7425, LR/RR **2048** |
+| cgfr1 | `TO` in lat, LRmax, RRmax | battms 5400, LR/RR **2048** |
+
+The **`dot` row matters most**: this is the recovery the library actually ships,
+and until now it had never been measured end to end. It is correct where it
+counts — **519/519 bmin, 515/519 shape, >=4096 on both ladders** — and **13.14x
+slower than v6, 29x slower than m62**, with `unsnd` 8 and `pred` 57/69. The whole
+m-line's latency claim had been made against a baseline nobody had a complete
+number for.
+
+Six rows are still `SLOW` somewhere, and they are the verdict the cap is for:
+m58 (depth), m59 (lat + depth), m63 (lat + depth), m65 (lat), cgfr1 (lat), and
+**cgfr2, which is `SLOW` in every column including the plain battery** — it does
+not terminate, exactly as reported when it was handed over, and its previously
+recorded row (battms 348, latms 214, all gates passing) does not reproduce.
+
+**m59 straddles the cap, and that is worth stating rather than picking a
+reading.** Its latency sum measured 19726ms on the 21-engine re-run and `SLOW`
+here. Those are the same measurement: the loop runs one untimed warm pass plus
+min-of-5 over 12 cases, so 19726ms of sum-of-min is ~118s of wall clock against a
+120s cap. m59.dart is unchanged apart from its two marker comments and never
+calls `retarget`, so the algorithm did not move; the number sits on the boundary
+and run-to-run variation decides it. What is refuted is the `>6e5` recorded for
+m59 earlier — that figure does not reproduce under any protocol.
+
+**Defect 3 — the cost histogram was printed and never scored.** Every row printed
+`{1: 503, 2: 16}` for the 519-mutant battery. It read like a constant — until
+cgfr1 printed `{1: 510, 2: 9}`, and **no column in the table could say which one
+was right.** `unsnd` could not: it is computed on the pred corpus, not the
+battery. So an engine that underprices the battery displayed the *better-looking*
+histogram and nothing flagged it.
+
+The battery's true minimum is derived, not searched. `buildSetup` makes each
+mutant from `base` by exactly one edit, so undoing it costs 1 — except a
+**transposition**, which costs 2 under delete/insert/substitute unless some
+unrelated single edit happens to repair it. Only the 42 surviving transposes need
+searching, and that search is exhaustive over all 95 printable ASCII characters,
+so a negative result means *no single-byte repair exists at all*. Measured truth:
+`{1: 503, 2: 16}` — exactly what every sound engine had been printing.
+
+`bmin` (exact agreement) and `bund` (priced below the minimum) replace the
+histogram. Scored: every engine is **519/519** with `bund` 0, except m27
+(494/519, sound but non-minimal on 25), m29 (490/519, non-minimal on 29) and
+cgfr1 (512/519, **`bund` 7**). All seven of cgfr1's are transpositions —
+`":,1"` for `":1,"`, `"2[,"` for `"[2,"`, `"33t,rue"` for `"33,true"`, `"rtue"`
+for `"true"`, `"true,]"` for `"true],"`, `"unll"` for `"null"`, `"null,}"` for
+`"null},"` — each priced at 1 with no single-byte repair existing over the whole
+printable alphabet. **cgfr1 is unsound on the battery**, and this is the column
+that says so.
+
+The column earns its place twice over. It catches cgfr1's **unsoundness**, and it
+separately quantifies **non-minimality**, which `shape` only hinted at. The two
+failures are not the same and the table could previously distinguish neither:
+over-reporting is safe and merely worse, under-reporting names a repair that does
+not exist. It also moves the m-line's minimality claim from the 44 cases of the
+`cost` column to 519: **every engine except m27, m29 and cgfr1 is exactly minimal
+on every mutant in the battery.**
+
+**Defect 4 — adding a column silently overwrote another one.** `main()` wrote
+`latms`/`LRmax`/`RRmax` into rows at the literal indices 14/16/17. Replacing one
+column with two shifted the tail, so the latency total overwrote `battms` — and
+the table still printed, plausibly, one column short. The indices are now looked
+up by name in `head`, and a row whose length disagrees with the header throws
+instead of printing. A table that can print a wrong number without failing is not
+a measurement.
+
+**Defect 5 — the table had 82 rows for 60 engines.** 22 registrations were
+duplicates — `m26b`, `m44g`, `m45h`, `m49j`, `m50k`, `m51k`, `m52k`,
+`m53k`–`m53o`, `m60p`, `m60q`, `m62r`–`m62y` — each re-registering an engine that
+already had a row, under a letter suffix. They were not an oversight. When one
+process measured every engine in sequence, a new engine's number was only
+comparable to a reference measured in that *same* process, carrying the same JIT
+state; the suffixed row was that reference.
+
+The isolation work removed the premise. Every engine now runs in its own
+part-isolated, **cold** isolate, and the latency loop does one untimed warm pass
+before the timed min-of-5, so any two rows are comparable by construction. What
+was left was 22 rows that made the table refuse to sort. The cold start is not
+free — `v6` reads 511.7ms on a three-engine run against 466 warm — and that is
+the right trade: a per-row constant, the same for every row, in exchange for one
+row per engine.
+
+Removing them orphaned a mechanism worth naming, because it is the same defect
+class as the other four. `_locOf` found an engine's source by **stripping
+trailing letters off its name until a file appeared** — that is how `m62x` found
+`m62.dart`. With no suffixed names left, that loop can only convert a typo in the
+registry into a silent LOC of `-1`. It now throws.
+
+**Refuted on the way, and a retraction.** `_incr70.dart` measured that re-parsing
+a candidate `y` given its parent's parse is 7–10x cheaper than parsing `y` from
+nothing, and only ~2x cheaper when jumping between unrelated prefixes. Dijkstra
+pops in cost order, which is not trie order, so it jumps — and by I21 (the layer
+is the answer, the tie is only a ranking) reordering *within* a cost layer is
+free. That looked like a large win for nothing. `_order70.dart` prices it by
+replaying the tape's **actual** classification sequence on the real latency cases
+and counting the characters each order must re-parse:
+
+| order | characters | vs fresh |
+|---|---|---|
+| FRESH — parse every candidate whole | 3,624,441 | 1.00x |
+| AS-IS — LCP cache, in the order Dijkstra asks | 3,059,934 | **1.18x** |
+| TRIE — the same cache in the best order any schedule could achieve | 2,858,686 | **1.27x** |
+
+37,614 classifications. **Reordering the drain is worth 1.07x** — the gap between
+AS-IS and TRIE, and TRIE is a lower bound (it is the trie's own edge count), so no
+schedule does better. The idea is dead at its ceiling, not at its implementation.
+
+This also **retracts an earlier claim of mine**: I had read `_incr70`'s 7–10x as
+refuting Codex's kill test on reuse. It does not. 7–10x is what reuse is worth
+between a parent and its child; 1.18x is what reuse is worth along the sequence
+the tape really asks for. **Codex's conclusion stands.**
+
+**A sixth instance, found while finalizing.** Thirteen of the `eleg` reasons
+wrote an engine's LOC into their prose. **Eleven disagreed with the LOC column
+printed beside them** — dot said 797 against 790, m49 said 668 against 684, m67
+said 1208 against 1204 — because they were written under the pre-marker count.
+m63's said **345 against a measured 1118**: the number from before its fold, sat
+next to the number after it, in the same row. A reason that restates a measured
+column can only go stale, so the self-descriptions drop the figure and keep the
+claim; the two genuinely comparative ones (cgfr1's historic 210 vs its measured
+1456, cgfr5's 1147 against m68) keep theirs, re-measured. The rule is now written
+above `elegNotes`.
+
+### The table, 60 engines, 120s per part
+
+| engine | LOC | shape | cover | crsh | bmin | bund | valid | cost | tree | pred | unsnd | eleg | bugs | battms | latms | /v6 | LRmax | RRmax |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| dot | 790 | 515/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 57/69 | 8 | 2 | slow,shape | 8065 | 6121.4 | 13.14x | >=4096 | >=4096 |
+| sd3 | 491 | 512/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 32/44 | 39/44 | 45/69 | 4 | 3 | LR,empty | 487 | 676.9 | 1.45x | >=4096 | 2048 |
+| sd5 | 505 | 512/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 32/44 | 39/44 | 45/69 | 4 | 3 | LR,empty | 592 | 1095.8 | 2.35x | >=4096 | 2048 |
+| v6 | 518 | 512/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 3 | LR | 533 | 465.8 | 1.00x | >=4096 | 2048 |
+| m12 | 388 | 516/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 33/44 | 39/44 | 45/69 | 4 | 4 | LR,shape | 504 | 494.7 | 1.06x | >=4096 | 1024 |
+| m15 | 397 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 4 | LR | 533 | 459.6 | 0.99x | >=4096 | 1024 |
+| m16 | 347 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 5 | LR | 452 | 489.7 | 1.05x | >=4096 | 1024 |
+| m17 | 352 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 5 | LR | 437 | 289.1 | 0.62x | >=4096 | 1024 |
+| m18 | 369 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 5 | LR | 425 | 260.1 | 0.56x | >=4096 | 1024 |
+| m19 | 358 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 5 | LR | 442 | 263.3 | 0.57x | >=4096 | 1024 |
+| m20 | 346 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 5 | LR,slow | 1088 | 335.8 | 0.72x | >=4096 | 1024 |
+| m21 | 357 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 5 | LR,slow | 989 | 309.2 | 0.66x | >=4096 | 1024 |
+| m22 | 333 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 38/44 | 44/44 | 55/69 | 5 | 5 | LR | 453 | 266.4 | 0.57x | >=4096 | 1024 |
+| m23 | 367 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 42/44 | 55/69 | 5 | 6 | null | 550 | 303.9 | 0.65x | >=4096 | 1024 |
+| m24 | 389 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | - | 555 | 311.7 | 0.67x | >=4096 | 1024 |
+| m25 | 390 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | - | 372 | 269.5 | 0.58x | >=4096 | 1024 |
+| m26 | 378 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 7 | - | 398 | 273.6 | 0.59x | >=4096 | 1024 |
+| m27 | 383 | 494/519 | 519/519 | 0 | 494/519 | 0 | 7/7 | 44/44 | 44/44 | 52/69 | 5 | 4 | pegfix | 418 | 217.3 | 0.47x | >=4096 | 1024 |
+| m28 | 380 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | over | 371 | 1106.0 | 2.37x | >=4096 | 1024 |
+| m29 | 386 | 492/519 | 519/519 | 0 | 490/519 | 0 | 7/7 | 42/44 | 44/44 | 53/69 | 4 | 4 | pegfix,slow,stack | 5005 | 1564.3 | 3.36x | 512 | 512 |
+| m30 | 378 | 516/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 3 | slow,stack,shape | 5134 | 2086.9 | 4.48x | <512 | <512 |
+| m31 | 384 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 3 | slow,stack,latent | 5354 | 2635.7 | 5.66x | <512 | <512 |
+| m32 | 374 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | batt | 435 | 245.0 | 0.53x | >=4096 | 512 |
+| m33 | 385 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 5 | slow | 436 | 904.6 | 1.94x | >=4096 | 512 |
+| m34 | 377 | 516/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 5 | slow,shape | 701 | 1644.5 | 3.53x | >=4096 | 512 |
+| m35 | 377 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | batt | 442 | 251.5 | 0.54x | >=4096 | 512 |
+| m36 | 386 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 4 | noop | 410 | 239.2 | 0.51x | >=4096 | 512 |
+| m37 | 381 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | - | 361 | 256.2 | 0.55x | >=4096 | 1024 |
+| m38 | 403 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | LOC | 328 | 255.7 | 0.55x | >=4096 | 512 |
+| m39 | 392 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | LOC | 330 | 262.6 | 0.56x | >=4096 | 512 |
+| m40 | 425 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 6 | LOC | 341 | 256.7 | 0.55x | >=4096 | 512 |
+| m41 | 375 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 9 | - | 290 | 147.9 | 0.32x | >=4096 | 1024 |
+| m42 | 377 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 55/69 | 5 | 10 | - | 308 | 185.5 | 0.40x | >=4096 | 1024 |
+| m43 | 381 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 56/69 | 4 | 10 | - | 309 | 185.9 | 0.40x | >=4096 | 1024 |
+| m44 | 424 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 56/69 | 4 | 9 | - | 321 | 188.3 | 0.40x | >=4096 | 1024 |
+| m45 | 493 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 56/69 | 2 | 7 | - | 311 | 185.5 | 0.40x | >=4096 | 1024 |
+| m46 | 535 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 56/69 | 2 | 8 | - | 330 | 183.5 | 0.39x | >=4096 | 1024 |
+| m47 | 625 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 65/69 | 2 | 4 | leak | 342 | 185.9 | 0.40x | >=4096 | 512 |
+| m48 | 652 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 63/69 | 0 | 5 | - | 364 | 189.1 | 0.41x | >=4096 | 512 |
+| m49 | 684 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 8 | - | 343 | 192.6 | 0.41x | >=4096 | 512 |
+| m50 | 716 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 9 | - | 636 | 772.7 | 1.66x | >=4096 | >=4096 |
+| m51 | 741 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 9 | - | 448 | 414.1 | 0.89x | >=4096 | >=4096 |
+| m52 | 753 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 9 | - | 416 | 375.8 | 0.81x | >=4096 | >=4096 |
+| m53 | 755 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 405 | 335.9 | 0.72x | >=4096 | >=4096 |
+| m57 | 858 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 1154 | 308.0 | 0.66x | >=4096 | >=4096 |
+| m58 | 858 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 9 | - | 1168 | 751.7 | 1.61x | SLOW | SLOW |
+| m59 | 612 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 6700 | SLOW | SLOW | SLOW | SLOW |
+| m60 | 778 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 9 | - | 358 | 196.7 | 0.42x | >=4096 | >=4096 |
+| m61 | 713 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 9 | - | 447 | 306.5 | 0.66x | >=4096 | 1024 |
+| m62 | 789 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 400 | 208.1 | 0.45x | >=4096 | >=4096 |
+| m63 | 1118 | 467/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 30500 | SLOW | SLOW | SLOW | SLOW |
+| m64 | 913 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 8 | - | 379 | 195.1 | 0.42x | >=4096 | >=4096 |
+| m65 | 1251 | 514/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 7425 | SLOW | SLOW | 2048 | 2048 |
+| m66 | 1307 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 397 | 238.6 | 0.51x | 1024 | 2048 |
+| m67 | 1204 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 408 | 234.9 | 0.50x | 1024 | 2048 |
+| m68 | 1134 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 391 | 219.1 | 0.47x | 1024 | 2048 |
+| cgfr1 | 1456 | 474/519 | 519/519 | 0 | 512/519 | 7 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 6 | - | 5400 | SLOW | SLOW | 2048 | 2048 |
+| cgfr2 | 867 | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | 0 | - | SLOW | SLOW | SLOW | SLOW | SLOW |
+| m69 | 1156 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 475 | 230.0 | 0.49x | 1024 | 2048 |
+| cgfr5 | 1147 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 536 | 199.8 | 0.43x | 1024 | 2048 |
+
+`SLOW` is a verdict on the engine, not a limit of the harness: that part of the
+measurement exceeded 120 seconds and was killed, and past two minutes it does not
+matter whether it would have finished in three. The three parts (`main`, `lat`,
+`depth`) are capped independently, so a row can be `SLOW` in `LRmax`/`RRmax` and
+fully measured everywhere else.
+
+**What the table says, read straight.** m62 remains the standing engine on the
+combination that matters: 789 LOC, 517/519 shape, 519/519 bmin with `bund` 0,
+44/44 cost, 44/44 tree, 69/69 pred, `unsnd` 0, 208.1ms (0.45x v6), and `>=4096`
+on both stack ladders — the only rows besides `dot`, m50, m51, m52, m53, m57,
+m60 and m64 to reach that. m41 is the fastest engine in the table at 147.9ms
+(0.32x v6) and 375 LOC, at 55/69 pred and `unsnd` 5. The tape-carrying engines
+(m66, m67, m68, m69, cgfr5) buy true-PEG conformance for roughly 1150–1310 LOC
+and 219–239ms, and pay for it in the depth ladder: 1024/2048 against m62's
+>=4096. **Nothing in the table is both under 800 LOC and true-PEG conformant.**
