@@ -444,6 +444,17 @@ class SuperDot3 {
   int lastCost = -1, lastRegret = -1, lastSteps = -1;
   bool lastVerified = false;
   int get lastCells => _cells.length;
+
+  /// Total memo ENTRIES, not cells. `_cells` is keyed by (node, pos, c), so
+  /// its length cannot see the obligation -- that rides inside `key` in each
+  /// cell's flat list, which is exactly where I27 would fragment things.
+  int get lastEntries {
+    var n = 0;
+    for (final e in _cells.values) {
+      n += e.value?.length ?? 0;
+    }
+    return n ~/ 3;
+  }
   double get lastPerCell => _cells.isEmpty ? 0 : _steps / _cells.length;
 
   int _skipRegret(int from, int to) => _regretPrefix[to] - _regretPrefix[from];

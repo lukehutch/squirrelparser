@@ -5738,3 +5738,178 @@ new item on that list and the least understood: m62 never re-parses, and both of
 the other two carry the oracle. The reason the size half of it is hard is
 recorded in the size-floor note — with `dart/lib` frozen the engine cannot fork
 or resume a parse, so the relaxed DP must exist in full.
+
+## The thirty-sixth occasion: the battery gap was never in the search — it is the certificate, and the certificate is checking the wrong thing
+
+The thirty-fifth occasion closed with an exact target and one item on it marked
+"the least understood": m72 is **26.4% slower than m62 on the battery**, and the
+only explanation on file was a guess — "m62 never re-parses, and both of the
+other two carry the oracle." This occasion measures it. The guess was right in
+substance and wrong in emphasis, and five hypotheses had to die first.
+
+### The search is the same search
+
+Before anything else, the obvious suspect: I27 packs the ordered-choice
+obligation into the memo key, so the guarded reading should split cells that the
+CFG reading shares, and a fragmented memo would explain everything. It does not
+happen. Counted over the whole battery, m62 and m72 build **the same number of
+cells (ratio 1.0000)** and **880711 versus 880362 entries (0.9996)** — m72 has
+349 *fewer* — against 1.0000 entries on the latency corpus and a steps ratio of
+1.0120. `_cells` is keyed by `(node, pos, class)` and the obligation rides inside
+`key` in each cell's flat value list, so `lastCells` cannot see fragmentation at
+all; the entry sum can, and it says there is none.
+
+That is worth stating plainly because it is the opposite of what the file
+assumed: **true-PEG conformance costs essentially nothing in search terms.** On
+the relaxed pass, which is the pass that runs, the two engines explore the same
+space. Whatever the battery gap is, it is not the price of answering the right
+language.
+
+### Four more hypotheses, each killed by its own count
+
+**The head-walk restart.** m72:970-974 resets `f.pc = 1` whenever the head list
+grows, because I30's ordered insert can land a new split BEHIND the frame's
+cursor where an appended one was always ahead of it; m62 appends and the block is
+simply absent from the otherwise identical loop at m62:628. That is a re-walk
+inside a single frame, invisible to `_steps`, and it looked quadratic. It is not
+the gap: head-loop iterations come out at **1.0089** on the battery and **0.9953**
+on latency, and the inner tail-value iterations are *fewer* in m72 — **0.9678**
+and **0.9765** — across 205493 battery restarts. The restart is cheap because it
+almost always fires while the cursor is still low.
+
+**`_keepBest`.** The one hot-path member the two engines do not share: m62 scans
+linearly and appends, m72 bisects with an `_endOf` per probe and inserts in
+order, shifting every slot above the insertion point. Counted, it is a win, not a
+cost. On the battery m72 issues **1161448 probes against m62's 1919601 (0.605)**,
+only 11.3% of its inserts are interior, and the shifting costs 558276 int moves
+across 1141586 calls — half an int per call. On latency the bisect is
+overwhelming: **12791860 probes against 46644130 (0.274)**.
+
+That measurement also corrects a comment in m72 itself. `_keepBest`'s docstring
+says "the mean list holds 13.9 entries and the longest 90". The mean is **2.00 on
+the battery** and **27.67 on latency** (max 39 and 90). The number in the comment
+describes the latency corpus only, and on the battery the lists are so short that
+neither the bisect nor the shift can matter much either way.
+
+**The allocation in the ordered insert.** `_keepBest` called
+`insertAll(at, [key, cost, reg, why])`, which allocates a four-element literal on
+every interior insert. Replacing it with a grow-by-one-slot-group and an in-place
+shift (`_m72ins`) is answer-identical on all 538 gate inputs — 0 cost differences
+and 0 full-witness differences, which is the bar I30 demands, since when the
+comparison refuses a tie the enumeration order IS the tie-break rule and any
+change to the entry list is a change to the language. It is worth **2.1% on the
+battery (18/21) and 2.6% on latency (15/21)**: real, free, and far too small.
+
+**Making the key its own split order.** The bisect's order is
+`(_endOf(key), key)`, so every probe extracts a field; if the key packed `end`
+above `owed` the raw integer order would BE the split order and the extraction
+would vanish. This one dies on inspection rather than measurement, and both
+reasons are worth recording. `_classes` grows *during* the search — `_meet`
+(m72:442) calls `_intern` (m72:428), which appends — so a low-bits `owed` field
+has no width derivable before the pass. And putting `owed` in the high bits makes
+the raw-key order `(owed, end)` instead of `(end, owed)`, which is exactly the
+shortest-head-first rule I30 identifies as the definition of the language. There
+is no free version of it.
+
+### What it actually is
+
+m72's `recoverCost` calls `_certified`, which reconstructs the witness with
+`_build` and then hands it to `_verify`, which walks it into a string with
+`_emit` and re-parses that string with a **fresh `Parser`**. m62's `recoverCost`
+(m62.dart:913-963) returns the cost and stops — `_build` and `_verify` live
+behind `recover()`, at m62.dart:901-907, where a caller who wants the tree pays
+for it. **The battery column has been comparing cost-only work against
+cost-plus-certificate work**, and the table has no column that says so.
+
+Measured at n=21, one engine per process, on an uninstrumented copy carrying
+nothing but a `skipCert` / `skipVerify` flag:
+
+| arm | battery | latency |
+|---|---|---|
+| m62 | 253.6 | 219.1 |
+| m72 | 310.2 | 226.8 |
+| cert (control, = m72) | 319.1 | 226.8 |
+| nverify (`_build`, no re-parse) | 297.4 | 227.9 |
+| nocert (no certificate at all) | 280.0 | 227.4 |
+
+On the battery the certificate is **39.1 ms of the 65.5 ms gap — about 60%** —
+and it splits nearly evenly, **`_build` 17.4 ms against `_emit` plus re-parse
+21.7 ms**. A second n=21 sweep measuring against m72 rather than the control put
+it at 30.2 ms of 57.8; the two disagree on the exact figure and agree that it is
+between half and three fifths. On latency the certificate is **free** (−0.6 ms,
+every arm inside noise) — the documents are twelve, the reconstruction is
+amortised over a much longer search, and the whole 7.7 ms gap there is residual.
+
+The residual — everything except the certificate — is **26.4 ms on the battery
+(10.4%)** and **8.3 ms on latency (3.8%)**, and it remains unattributed after
+four counts that all say m72 does *less* work per input than m62: fewer probes,
+fewer tail iterations, the same cells, 349 fewer entries. It is per-operation
+weight, and the only untested candidate left with the right shape is the stride
+— every value list is 4 ints wide where m62's is 3, which is 33% more memory
+traffic in the hottest structure in the engine. `_m72p3` already packs
+`(reg, why)` into one word and is answer-identical over 531 inputs; it was priced
+at 0.2-0.6% on *latency*, where entries number 282k, and has never been run
+against the battery's 880k.
+
+### The certificate is checking the wrong thing
+
+The important consequence is not the number, it is what the number is spent on.
+I28's argument is that a witness the pure parser accepts is a proof, and the only
+way a relaxed answer fails to be a tight one is that it leaned on a commitment
+the ordered-choice law forbids. But being guarded-legal is a **local property of
+each step in the derivation**, and I29 already records, at every write, the
+predecessor that produced it. So the derivation can be checked directly — chase
+the back-pointers from the goal and confirm every step is one the guarded pass
+would also have taken — with no tree built, no string emitted, and no second
+parse. That is O(witness), against `_build` plus `_emit` plus a full re-parse of
+the whole document.
+
+`_certified` never fails on either timing corpus: measured, **0 tightenings on
+all 519 battery inputs and all 12 latency inputs, exactly 1.000 passes per
+input.** It earns its place on the conformance cases alone — deleting I28 as
+apparently dead code takes conformance from 5/5 to 3/5. So the entire 39.1 ms is
+spent proving, 519 times, something that is true every time, by the most
+expensive available means.
+
+### Where the 190 lines are, section by section
+
+The size half of the target was recorded as "finding 190 means taking one of the
+big three, not trimming." Counted by the file's own rule between the recovery
+markers, the growth is not where that suggests:
+
+| section | m62 | m72 | delta |
+|---|---|---|---|
+| reconstruction + verification | 159 | 237 | **+78** |
+| the driver | 172 | 216 | **+44** |
+| per-input state | 41 | 66 | +25 |
+| the value | 24 | 45 | +21 |
+| entry points | 78 | 88 | +10 |
+| header / preamble | 56 | 65 | +9 |
+| obligation lattice | 111 | 114 | +3 |
+| the derived ceiling | 92 | 92 | 0 |
+| building the normal form | 56 | 56 | 0 |
+| **total** | **789** | **979** | **+190** |
+
+I29 is recorded in the thirty-fifth occasion as shrinking the reconstruction from
+217 lines to 135, and it did — **against m71.** Against m62 the whole
+reconstruction-and-verification block has *grown* from 159 to 237. m71 had
+already carried it far past where m62 left it, and measuring the saving against
+the intermediate hid that the section is still the largest single piece of the
+gap. Two sections, reconstruction and the driver, are 122 of the 190.
+
+### What this says to build
+
+Not m72 with its costs shaved. m62 already holds four of the six target columns
+and its core searches the identical space; what it lacks is I27's guard
+machinery, which m62 does not have in any form (no `_notFirst`, no `_guardsOf`,
+no `_unmeetable`, no `_guarded`), and a certificate. It already has `_meet` and
+the obligation lattice, and it already packs the obligation into the key with the
+same `_key`/`_endOf`/`_oweOf` at m62:498-500 that m72 uses.
+
+So the successor is m62 plus I27, plus I28 with the derivation check standing in
+for build-emit-reparse, plus I29 packed into the regret word so the stride stays
+3, plus I30 for the four shape points the ordered insert buys. The certificate
+stops costing 39 ms because it stops being a parse, and the reconstruction stops
+being 237 lines because the chase replaces the search. **Both halves of the
+target are served by the same change, which is the first time in this file that
+has been true of the size and the speed at once.**
