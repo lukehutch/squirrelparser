@@ -4657,7 +4657,7 @@ above `elegNotes`.
 | cgfr2 | 867 | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | SLOW | 0 | - | SLOW | SLOW | SLOW | SLOW | SLOW |
 | m69 | 1156 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 475 | 230.0 | 0.49x | 1024 | 2048 |
 | cgfr5 | 1147 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 536 | 199.8 | 0.43x | 1024 | 2048 |
-| m70 | 1312 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 493 | 222.1 | 0.46x | >=4096 | 2048 |
+| m70 | 1331 | 517/519 | 519/519 | 0 | 519/519 | 0 | 7/7 | 44/44 | 44/44 | 69/69 | 0 | 10 | - | 477 | 220.6 | 0.46x | >=4096 | 2048 |
 
 `SLOW` is a verdict on the engine, not a limit of the harness: that part of the
 measurement exceeded 120 seconds and was killed, and past two minutes it does not
@@ -4765,7 +4765,7 @@ conformance, the intersection gate, size, speed and the ladders.
 
 | engine | LOC | conf | isect | battms | latms | /v6 | LRmax | RRmax | score | reasoning |
 |---|---|---|---|---|---|---|---|---|---|---|
-| m70 | 1312 | 5/5 | 4/4 | 493 | 222.1 | 0.46x | >=4096 | 2048* | **9** | the only engine with true-PEG conformance AND >=4096 on the LR ladder. Costs: largest file in the study, second-slowest battery of the healthy engines. `*` >=4096 in a fresh isolate; the official cell measures the carried parser, see below |
+| m70 | 1331 | 5/5 | 4/4 | 477 | 220.6 | 0.46x | >=4096 | 2048* | **9** | the only engine with true-PEG conformance AND >=4096 on the LR ladder. Costs: largest file in the study, second-slowest battery of the healthy engines. `*` >=4096 in a fresh isolate; the official cell measures the carried parser, see below |
 | m62 | 789 | 3/5 | 4/4 | 400 | 208.1 | 0.45x | >=4096 | >=4096 | **8** | the standing engine, and the best size/speed/depth combination anywhere in the table. One disqualifying weakness for this brief: it answers the CFG reading of a possessive `*` and a committed `/`. Its depth advantage is partly structural -- it never re-parses, so it never pays the oracle's recursion |
 | m64 | 913 | 3/5 | 4/4 | 379 | 195.1 | 0.42x | >=4096 | >=4096 | **7** | fastest latency in the study. But I19's incremental entry point is recorded by its own note as "economically empty at measured scales (0.96-1.11x)", so it is +124 LOC over m62 for no measured gain, and it inherits m62's 3/5 |
 | m60 | 778 | 3/5 | 4/4 | 358 | 196.7 | 0.42x | >=4096 | >=4096 | **7** | smallest of the both->=4096 group, faster than m62 and 11 lines smaller. 3/5, and its continuation still lives in the memo entry -- m62 is the same engine said properly, for 11 lines |
@@ -4862,8 +4862,8 @@ m70  C  buildSetup, main, lat, depth (the table)   LR >=4096   RR   2048
         the `lat` isolate alone, then depth        LR >=4096   RR   2048
 ```
 
-Three official `dart final_table.dart m70` runs gave `2048` three times with
-byte-identical traces; A and B give `>=4096`; so do `_marginal` (10/10),
+Seven official `dart final_table.dart` runs carrying m70 gave `2048` seven
+times, with byte-identical traces; A and B give `>=4096`; so do `_marginal` (10/10),
 `_depthrepro`, `_seq70` and `_rr70`. Running *any* other isolate first in the
 same isolate group flips it. Nothing about the engine changes between A and C.
 
@@ -4893,23 +4893,58 @@ and measured `package:squirrel_parser`'s `Parser` while the engine ran its own,
 which is how "the frozen parser survives len=4096" and "the frozen parser
 overflows at len=4096" both ended up in the same header.
 
-Two consequences. The `bugs` column's `RR` note should now read: what is left at
-the top of the RR ladder is not the witness descent — I26 removed that — nor
-`lib`'s parser, but the *carried* parser, at exactly its own limit. And
-degrading to the tape when `_verify` overflows, which would be the sound
-direction, buys nothing: forcing every input to the tape with a lookahead, the
-tape overflows at len=4096 too (7341ms, against 1780ms at 2048), because it
-reaches the same carried parser through classification.
+So the `bugs` column's `RR` note should now read: what is left at the top of the
+RR ladder is not the witness descent — I26 removed that — nor `lib`'s parser,
+but the *carried* parser, at exactly its own limit.
 
 This is the sixth entry in the thirty-second occasion's list of measurements
 that fail by printing a number rather than by stopping. It differs from the
 others in that it neither flattens the table nor mis-sorts it: it reports a real
 threshold, correctly, of something other than the engine under test.
 
+### The same mistake, twice in one occasion: the tape's overflow was mine
+
+The paragraph above originally had a second consequence attached to it, and it
+was wrong in exactly the way the first one was. Degrading to the tape when
+`_verify` overflows is the sound direction, so the question was whether the tape
+could finish a 4096-character input. Forcing every input to the tape with a
+lookahead, it overflowed at len=4096 too — and that was written down, into this
+file and into `m70.dart`'s header, as *the same carried parser reached through
+classification*. A second threshold attributed to a cause never traced.
+
+Instrumenting the catch to name the frames refutes it:
+
+```
+4096  7024  STACK OVERFLOW at SuperDot3._tremap <- SuperDot3._tapeRecover
+                             <- SuperDot3._recoverCore <- SuperDot3.recoverCost
+```
+
+`_tremap` is the tape's own remap of the witness through the alignment, mapping
+each node's positions from the emitted tape back to the original input. It is a
+**reconstruction**, so I26 governs it — and it was still native recursion,
+one frame per node, because the conversion pass had followed the ladders and the
+ladder grammars are lookahead-free, so the tape never runs on them and no
+column in the table could ever have shown it. I26 was incomplete, and the
+measurement that would have said so was read as confirming the opposite.
+
+Walked on an explicit stack like the rest — a `(m, n)` item meaning "the top `n`
+results are `m`'s children, join them", each occurrence rebuilt on its own so a
+memo-shared subtree still yields distinct nodes — the tape clears len=4096, at
+6996ms and 7144ms across two runs against ~1.8s at 2048; the scaling is the
+tape's own, not a cliff. **I26 is now complete on both routes**, and the
+carried parser's ceiling is reached by `_verify` alone.
+
+Both errors have one shape. A stack overflow reports a depth, not a culprit, and
+"the parser is the deep thing here" is a plausible story that fits any of them.
+The lesson is narrow and mechanical: *when an overflow is the evidence, read the
+stack trace before naming the cause* — it is four lines of instrumentation in the
+catch block and it decides the question outright. Every conclusion in this
+occasion that came from a trace held; both that came from plausibility failed.
+
 ### The trade, stated plainly
 
-m70 is **1312 LOC against m69's 1156 and m62's 789**, and its battery is 493ms
-against m62's 400. Set beside the standing directive to get an engine under 400
+m70 is **1331 LOC against m69's 1156 and m62's 789**, and its battery is 477ms
+against m69's 427 and m62's 340 in the same process. Set beside the standing directive to get an engine under 400
 LOC without losing conformance or sub-250ms latency, it moves the wrong way on
 size: I26 replaces mutual recursion with an explicit driver, and an explicit
 driver is always more lines than the recursion it replaces. What it buys is the
@@ -4922,3 +4957,65 @@ true-PEG conformant and reaches >=4096 on the LR ladder**, that it reaches
 in a fresh isolate, and that the official row's `2048` is the carried parser's
 ceiling rather than the engine's. It is also the largest engine in the study.
 Nothing here closes the size question.
+
+### The second opinion, and where it lands
+
+The standing rule is that a design pass of mine gets compared against one from
+Codex rather than merged with it. Codex was given the same brief — combine
+m50/m51/m52/m53/m57/m60/m62/m64 plus the 2048-depth engines into a super-engine
+— and came back with something structurally different from m70, so the two are
+worth setting side by side rather than averaging.
+
+**What Codex proposed.** Not a reconstruction fix at all: a *lazily activated,
+hash-consed suspended PEG residual*, replacing **both** m62's one-character
+obligation and m69's emitted-prefix tape with one object. The state is
+`V(node, inputPos, qIn) -> best (inputEnd, qOut, proofId)`, where `q` is a
+hash-consed conjunction of suspended decisions that distinguishes `Need` from
+`Fail` — with decision rules given per operator for `First`, `A*`, `&A` and
+`!A` — and repairs are promoted counterexample-guided and lazily, under a
+restart bound derived from the grammar rather than tuned. Estimated 830–930 LOC,
+5/5 conformance, ≥4096 on both ladders, 410–500ms battery, 215–245ms latency. It
+came with a keep/discard table over every source engine and a falsifying
+experiment: `_qequiv70.dart`, which counts `badMerge` and demands
+`|{residualAtStarEntry("a"^k)}| == 1` for `S <- 'a'* "ab"`.
+
+**Independent convergence, on exactly one item.** Codex's discard column lists
+m62's and m69's *recursive `_build`/`_row` reconstruction* as a thing to remove.
+That is I26, reached from the other direction and without seeing m70. Two
+independent passes over the same eight engines both landed on the reconstruction
+as the structural defect — which is the strongest evidence available that I26
+names something real about this family and not just about m69's stack traces.
+
+**One flat disagreement, and the measurements decide it.** Codex predicts
+≥4096/≥4096. The RR half of that is not obtainable by any recovery-side design.
+The whole of this occasion above says why: under the table's own conditions the
+RR cell reports the *carried parser's* ceiling, and any engine that re-parses a
+witness through its carried copy — which every certificate-based design must,
+Codex's included, since `proofId` has to be checkable — reads 2048 there. A
+prediction phrased as a property of the engine is measuring something else.
+
+**What the comparison does not settle.** These are not two deliverables of the
+same kind. m70 is built, gated, and bit-identical to its predecessor on all 471
+identity inputs; Codex's is an unbuilt design with estimated numbers. The file
+already records what such estimates are worth here: cgfr1 presented as 230 lines
+and cgfr2 as 853, and both turned out to be front-ends — cgfr2 had no working
+tape at all, and cgfr5, which is cgfr2's core with the three repairs it needed,
+measures **1147**. An 830–930 estimate deserves that same discount until a tape,
+a floor and an intersection gate are all actually present in the count.
+
+**The item worth keeping regardless.** Asked for the exact state, Codex answered
+that it is the quotient of emitted prefixes by their suspended PEG continuation:
+`(i, y) ↦ (i, D_G(y))`. That is sharper than anything in the line so far, and it
+reframes I25. The interval alphabet quotients the *alphabet* — one representative
+per class, which is what makes intersections answerable — but leaves the prefix
+itself concrete; the residual quotients the *whole prefix*, by its own Brzozowski
+derivative under the grammar. So I25 is a coarsening of the right quotient along
+one axis only. Whether the full quotient is computable cheaply enough to be an
+engine is open, and `_qequiv70.dart` is the right first measurement of it: if
+`|{residualAtStarEntry("a"^k)}|` is not 1, the idea is dead before any code is
+written. That experiment is cheap and has not been run.
+
+Codex's four citations into the codebase were all checked and all accurate
+(`m62.dart:617`, `m69.dart:1551`, `:1906`, `:1959`). The last of them is how the
+unconverted `_tremap` came to light at all — the second-opinion pass paid for
+itself on a pointer, not on a design.

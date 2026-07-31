@@ -77,10 +77,16 @@
 // the last rung that parser can do at all, and whether a `_verify` a few frames
 // down clears it is decided by a handful of frames.
 //
-// Both routes meet the same wall. Forcing every input to the tape with a
-// lookahead, the tape overflows at len=4096 too (7341ms; fine below, 1780ms at
-// 2048), so catching the `_verify` overflow and degrading to the tape -- the
-// SOUND direction -- moves the overflow rather than removing it.
+// The tape route is a different story, and finding that out cost this header a
+// wrong sentence first. Forcing every input to the tape with a lookahead, the
+// tape ALSO overflowed at len=4096, which was written down as the same carried
+// parser reached through classification. It was not: traced, the overflow was
+// `_tremap <- _tapeRecover`, the tape's own remap of the witness through the
+// alignment. That is a reconstruction, so I26 applies to it -- and it had been
+// missed precisely because the ladder grammars are lookahead-free, so the tape
+// never runs on them and no ladder column could see it. `_tremap` is now a
+// post-order walk on an explicit stack like the rest, and the tape clears
+// len=4096: ~7.0s there against ~1.8s at 2048, over two runs.
 //
 // m62 alone escapes, by never parsing anything but the original input -- which
 // is exactly the property that leaves it at 3/5 on conformance. The engine
@@ -2219,13 +2225,37 @@ class SuperDot3 {
     return (dp[_n][m], script.reversed.toList());
   }
 
-  MatchResult _tremap(MatchResult m, List<int> bnd) {
-    final pos = bnd[m.pos], end = bnd[m.pos + m.len];
-    if (m.subClauseMatches.isEmpty) {
-      return Match(m.clause, pos, end - pos);
+  /// I26, on the tape route. Post-order on an explicit stack: a parent needs
+  /// its children already remapped, so a `(m, n)` item means "the top `n`
+  /// results are `m`'s children, join them". Each occurrence is rebuilt on its
+  /// own, as the recursive form did, so a memo-shared subtree still yields
+  /// distinct nodes.
+  MatchResult _tremap(MatchResult root, List<int> bnd) {
+    final work = <Object>[root];
+    final done = <MatchResult>[];
+    while (work.isNotEmpty) {
+      final item = work.removeLast();
+      if (item is (MatchResult, int)) {
+        final (m, n) = item;
+        final kids = done.sublist(done.length - n);
+        done.length -= n;
+        done.add(Match(m.clause, bnd[m.pos], bnd[m.pos + m.len] - bnd[m.pos],
+            subClauseMatches: kids));
+        continue;
+      }
+      final m = item as MatchResult;
+      final subs = m.subClauseMatches;
+      if (subs.isEmpty) {
+        done.add(
+            Match(m.clause, bnd[m.pos], bnd[m.pos + m.len] - bnd[m.pos]));
+        continue;
+      }
+      work.add((m, subs.length));
+      for (var i = subs.length - 1; i >= 0; i--) {
+        work.add(subs[i]);
+      }
     }
-    return Match(m.clause, pos, end - pos,
-        subClauseMatches: [for (final c in m.subClauseMatches) _tremap(c, bnd)]);
+    return done.single;
   }
 
   SkipResult _tapeRecover(String input) {
