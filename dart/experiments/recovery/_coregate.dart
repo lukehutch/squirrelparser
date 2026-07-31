@@ -18,6 +18,15 @@
 // B is checked against a FRESH parse, not against itself, and the number of
 // entries actually retained is reported -- a reuse test that retains nothing
 // passes vacuously.
+//
+//   C. THE CORE IS THE CORE. LOC is now measured as the lines between the
+//      `// ERROR RECOVERY` markers, which means the parser an engine carries
+//      is free. That is only fair if it really is the same parser: an engine
+//      could otherwise move recovery work above the START marker and report a
+//      small number. So every engine's copy is compared, byte for byte, with
+//      the span between `// CORE BEGIN` and `// CORE END` in `_core.dart`.
+import 'dart:io';
+
 import 'package:squirrel_parser/squirrel_parser.dart';
 import '_core.dart' as core;
 
@@ -109,6 +118,31 @@ int memoCount(core.Parser p) {
   return n;
 }
 
+/// C: every engine that carries a parser carries THE parser. Returns the names
+/// of the engines whose copy has drifted from `_core.dart`.
+List<String> driftedCores() {
+  final dir = File.fromUri(Platform.script).parent;
+  final canonical = File('${dir.path}/_core.dart')
+      .readAsStringSync()
+      .split('// CORE BEGIN\n')[1]
+      .split('// CORE END\n')[0];
+
+  final drifted = <String>[];
+  for (final f in dir.listSync().whereType<File>()) {
+    final name = f.path.split('/').last;
+    if (!name.endsWith('.dart') || name.startsWith('_')) continue;
+    final s = f.readAsStringSync();
+    final start = s.indexOf('// ERROR RECOVERY START');
+    if (start < 0) continue;
+    // Everything above the START marker is the carried parser. An engine with
+    // no parser of its own (it uses the library) has nothing here to check.
+    final above = s.substring(0, start);
+    if (!above.contains('class Parser {')) continue;
+    if (!above.contains(canonical.trimRight())) drifted.add(name);
+  }
+  return drifted;
+}
+
 void main() {
   var aCases = 0, aFail = 0;
   var bCases = 0, bFail = 0, retained = 0, retainedNonZero = 0;
@@ -172,9 +206,14 @@ void main() {
   for (final f in failures) {
     print('  FAIL $f');
   }
+  final drifted = driftedCores();
   print('A equivalence vs frozen lib : ${aCases - aFail}/$aCases');
   print('B reuse == fresh parse      : ${bCases - bFail}/$bCases');
   print('  retained memo entries     : $retained total, '
       '$retainedNonZero/$bCases cases retained >0');
-  print(aFail == 0 && bFail == 0 ? 'CORE GATE PASS' : 'CORE GATE FAIL');
+  print('C engines carrying THE core : '
+      '${drifted.isEmpty ? "no drift" : "DRIFTED: $drifted"}');
+  print(aFail == 0 && bFail == 0 && drifted.isEmpty
+      ? 'CORE GATE PASS'
+      : 'CORE GATE FAIL');
 }

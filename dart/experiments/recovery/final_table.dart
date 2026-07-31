@@ -32,6 +32,7 @@
 // (`unsnd`, an under-report) given a column of its own.
 import 'dart:math';
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
 import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/parser/combinators.dart';
@@ -155,11 +156,67 @@ bool covers(MatchResult root, int len) {
   return ok && pos == len;
 }
 
+/// `dot` is the original recovery, which lives in the frozen library and so
+/// carries no markers; it is counted from the end of its import block, which is
+/// what the markers would have delimited anyway. `v6` is the table's name for
+/// sd6.
+const _locSource = {
+  'v6': 'sd6',
+  'dot': '../../lib/src/recovery/dot_recovery',
+};
+
+final _locCache = <String, int>{};
+
+int _locOf(String name) => _locCache.putIfAbsent(name, () {
+      final dir = File.fromUri(Platform.script).parent.path;
+      // A reference row re-registers an existing engine under a suffixed name
+      // (`m62x` is m62) so it can be timed in the same run as the engine it is
+      // the reference for. Strip the suffix until a source file appears.
+      var stem = _locSource[name] ?? name;
+      while (stem.isNotEmpty && !File('$dir/$stem.dart').existsSync()) {
+        stem = stem.substring(0, stem.length - 1);
+      }
+      if (stem.isEmpty) return -1;
+      final lines = File('$dir/$stem.dart').readAsLinesSync();
+      var from = 0, to = lines.length;
+      final start = lines.indexOf('// ERROR RECOVERY START');
+      if (start >= 0) {
+        from = start + 1;
+        final end = lines.indexOf('// ERROR RECOVERY END');
+        if (end > start) to = end;
+      } else {
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith('import ')) from = i + 1;
+        }
+      }
+      var n = 0;
+      for (final l in lines.sublist(from, to)) {
+        final s = l.trim();
+        if (s.isNotEmpty && !s.startsWith('//')) n++;
+      }
+      return n;
+    });
+
 /// One engine, behind the uniform surface every variant happens to share.
 class Eng {
-  Eng(this.name, this.loc, this.make, {this.bugs = '-'});
+  Eng(this.name, this.make, {this.bugs = '-'});
   final String name;
-  final int loc;
+
+  /// LOC IS MEASURED, NOT DECLARED: the non-blank, non-comment lines between
+  /// `// ERROR RECOVERY START` and `// ERROR RECOVERY END` in the engine's own
+  /// source, read when the row is printed. Two reasons it works this way:
+  ///
+  ///   1. It used to be an integer written here by hand, and it had gone stale
+  ///      for EVERY row at once -- the one column nobody re-derives.
+  ///   2. An engine may now carry its own copy of the parser, so that it is
+  ///      free to change it. That copy is identical wherever it appears and
+  ///      sits OUTSIDE the markers, so it is charged to nobody: what this
+  ///      column compares is the recovery code, and only that.
+  ///
+  /// An engine that reaches its work by importing ANOTHER engine would show a
+  /// small number here for a large program. Those have been folded in, so what
+  /// the file declares is what the engine costs.
+  int get loc => _locOf(name);
 
   /// ELEGANCE, 0-10. THIS IS THE ONE COLUMN IN THIS TABLE THAT IS A JUDGMENT AND
   /// NOT A MEASUREMENT, and it is labelled as such wherever it is printed. It
@@ -407,12 +464,18 @@ const elegNotes = <String, (int, String)>{
       'settle is the minimum, unrepairable means the queue drained, and the '
       'oracle short-circuit survives as a creation-time seed that is sound '
       'because it is redundant. Bit-identical to m53 on all 252 smoke inputs'),
-  'cgfr1': (10, 'CERTIFICATE-GUIDED FRONTIER REPAIR (CGFR-1). Zero overhead when '
-      'valid; harvests failure evidence at syntax error frontier f; evaluates '
-      'frontier-localized single edits via pure parser certificate checks; '
-      'falls back to reference tape for complex wide lookaheads. '
-      '210 LOC; 100% compliant across all gates.'),
+  'cgfr1': (6, 'CERTIFICATE-GUIDED FRONTIER REPAIR (CGFR-1). Zero overhead when '
+      'valid; harvests failure evidence at the syntax error frontier f; '
+      'evaluates frontier-localized single edits via pure parser certificate '
+      'checks; falls back to a reference tape for complex wide lookaheads. '
+      'The 210 LOC this note used to claim counted the frontier logic only: '
+      'the tape it falls back to was reached by importing m65, which imports '
+      'm62. Folded in and measured, the engine is 1456 lines -- the LARGEST '
+      'in the table, and larger than the m68/m69 it was offered as an '
+      'alternative to. The frontier idea is real and the score is for that; '
+      'the size advantage was an accounting artifact.'),
   'm69': (10, 'I25: A REPRESENTATIVE CHOSEN ALONE CANNOT MEET A CONSTRAINT IMPOSED BY SOMEBODY ELSE. m68 with the per-terminal proposal alphabet (lowest CharSet member, code unit 0 for AnyChar) replaced by the Boolean interval partition of the code-unit line: cut at every CharSet range boundary and every literal character, and each touched terminal proposes EVERY representative it accepts. An intersection of unions-of-intervals is itself a union of intervals, so the union over touched terminals always contains a representative of their intersection when one exists -- which the one-per-terminal alphabet could not, since m68 routes every lookahead to the tape. 1155 LOC; all m68 gates held identically, and the new _isect intersection gate goes 4/4 where m65 and m68 are 1/4'),
+  'cgfr2': (0, 'CGFR-2 AS RECEIVED, BROKEN. Three independent defects, diagnosed in full under `cgfr5`, which is the repair: a missing version stamp in _finish that leaves left-recursive positions permanently unsettled, a tape that enumerates over a hardcoded 12-character alphabet priced by |y| instead of edit distance and stops at a tuned input.length+10, and a narrow envelope that is only sound under I4 fusion. It does not terminate on the battery. Kept registered so the repair has something to be measured against.'),
   'cgfr5': (10, 'THE REPAIRED CGFR-2 (measured dead end, kept as evidence). cgfr2 had three independent defects: (1) the version stamp missing from _finish, so any left-recursive widening left every entry at that position permanently unsettled and the driver re-pushed forever; (2) _tapeRecover enumerated strings over a hardcoded 12-character alphabet priced at |y| rather than edit distance from the input, pruning nothing and stopping at a tuned input.length+10 -- two tuning-parameter violations and a divergence; (3) its _wideG used m62s narrow envelope, which is only sound under I4 fusion, so a positive lookahead needing repair never terminated. Repaired with m68s tape, m68s conservative routing and the I25 interval alphabet it passes every gate, but at 1151 LOC it is LARGER than m68: cgfr2s apparent size advantage was an absent tape'),
   'm68': (10, 'I24: UNDER A CERTIFICATE, THE FAST ENGINE ONLY NEEDS TO BE A '
       'FLOOR. m67 with the I6/I7 obligation lattice deleted from the relaxed '
@@ -546,163 +609,163 @@ const elegNotes = <String, (int, String)>{
 };
 
 final engines = <Eng>[
-  Eng('dot', 797, (r, t) {
+  Eng('dot', (r, t) {
     final e = DotRecovery(rules: r, topRuleName: t);
     return (e.recover, () => e.lastTotalCost, (s) => (e.recover(s), e.lastTotalCost).$2);
   }, bugs: 'slow,shape'),
-  Eng('sd3', 499, (r, t) {
+  Eng('sd3', (r, t) {
     final e = g3.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR,empty'),
-  Eng('sd5', 513, (r, t) {
+  Eng('sd5', (r, t) {
     final e = g5.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR,empty'),
-  Eng('v6', 526, (r, t) {
+  Eng('v6', (r, t) {
     final e = g6.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR'),
-  Eng('m12', 396, (r, t) {
+  Eng('m12', (r, t) {
     final e = g12.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR,shape'),
-  Eng('m15', 406, (r, t) {
+  Eng('m15', (r, t) {
     final e = g15.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR'),
-  Eng('m16', 352, (r, t) {
+  Eng('m16', (r, t) {
     final e = g16.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR'),
-  Eng('m17', 357, (r, t) {
+  Eng('m17', (r, t) {
     final e = g17.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR'),
-  Eng('m18', 373, (r, t) {
+  Eng('m18', (r, t) {
     final e = g18.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR'),
-  Eng('m19', 362, (r, t) {
+  Eng('m19', (r, t) {
     final e = g19.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR'),
-  Eng('m20', 350, (r, t) {
+  Eng('m20', (r, t) {
     final e = g20.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR,slow'),
-  Eng('m21', 361, (r, t) {
+  Eng('m21', (r, t) {
     final e = g21.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR,slow'),
-  Eng('m22', 337, (r, t) {
+  Eng('m22', (r, t) {
     final e = g22.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LR'),
-  Eng('m23', 371, (r, t) {
+  Eng('m23', (r, t) {
     final e = g23.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'null'),
-  Eng('m24', 393, (r, t) {
+  Eng('m24', (r, t) {
     final e = g24.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
-  Eng('m25', 394, (r, t) {
+  Eng('m25', (r, t) {
     final e = g25.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
-  Eng('m26', 382, (r, t) {
+  Eng('m26', (r, t) {
     final e = g26.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
-  Eng('m27', 387, (r, t) {
+  Eng('m27', (r, t) {
     final e = g27.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'pegfix'),
-  Eng('m28', 384, (r, t) {
+  Eng('m28', (r, t) {
     final e = g28.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'over'),
-  Eng('m29', 390, (r, t) {
+  Eng('m29', (r, t) {
     final e = g29.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'pegfix,slow,stack'),
 
-  Eng('m30', 382, (r, t) {
+  Eng('m30', (r, t) {
     final e = g30.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'slow,stack,shape'),
 
-  Eng('m31', 388, (r, t) {
+  Eng('m31', (r, t) {
     final e = g31.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'slow,stack,latent'),
 
-  Eng('m32', 378, (r, t) {
+  Eng('m32', (r, t) {
     final e = g32.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'batt'),
 
-  Eng('m33', 389, (r, t) {
+  Eng('m33', (r, t) {
     final e = g33.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'slow'),
 
-  Eng('m34', 381, (r, t) {
+  Eng('m34', (r, t) {
     final e = g34.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'slow,shape'),
 
-  Eng('m35', 381, (r, t) {
+  Eng('m35', (r, t) {
     final e = g35.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'batt'),
 
-  Eng('m36', 390, (r, t) {
+  Eng('m36', (r, t) {
     final e = g36.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'noop'),
 
-  Eng('m37', 385, (r, t) {
+  Eng('m37', (r, t) {
     final e = g37.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m38', 407, (r, t) {
+  Eng('m38', (r, t) {
     final e = g38.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LOC'),
 
-  Eng('m39', 396, (r, t) {
+  Eng('m39', (r, t) {
     final e = g39.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LOC'),
 
-  Eng('m40', 429, (r, t) {
+  Eng('m40', (r, t) {
     final e = g40.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'LOC'),
 
-  Eng('m41', 379, (r, t) {
+  Eng('m41', (r, t) {
     final e = g41.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m42', 381, (r, t) {
+  Eng('m42', (r, t) {
     final e = g42.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m43', 385, (r, t) {
+  Eng('m43', (r, t) {
     final e = g43.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m44', 428, (r, t) {
+  Eng('m44', (r, t) {
     final e = g44.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m45', 497, (r, t) {
+  Eng('m45', (r, t) {
     final e = g45.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -710,7 +773,7 @@ final engines = <Eng>[
   // m44 re-measured beside m45 in the same session: the letter continues the
   // global sequence `b, c, d, e, f` used for reference re-measurements, and it is
   // the only m44 timing comparable to m45's.
-  Eng('m44g', 428, (r, t) {
+  Eng('m44g', (r, t) {
     final e = g44.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -718,17 +781,17 @@ final engines = <Eng>[
   // m46 verifies its own witness on every `recover`, which this table calls once
   // per mutant -- so `battms` here INCLUDES the extra parse, and `m45h` beside it
   // is what that costs.
-  Eng('m46', 539, (r, t) {
+  Eng('m46', (r, t) {
     final e = g46.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m45h', 497, (r, t) {
+  Eng('m45h', (r, t) {
     final e = g45.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m26b', 382, (r, t) {
+  Eng('m26b', (r, t) {
     final e = g26.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'dup'),
@@ -743,232 +806,232 @@ final engines = <Eng>[
   // satisfies a non-empty constraint vacuously and it reports repairs that do not
   // exist (`_leak48.dart`, block A: 0 where brute force says 1). Every column
   // below is clean because JSON has no lookahead to get wrong.
-  Eng('m47', 629, (r, t) {
+  Eng('m47', (r, t) {
     final e = g47.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }, bugs: 'leak'),
 
-  Eng('m48', 656, (r, t) {
+  Eng('m48', (r, t) {
     final e = g48.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m49', 688, (r, t) {
+  Eng('m49', (r, t) {
     final e = g49.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // The same engine again, so that m50 has a reference row measured in the SAME
   // process pair -- registry position biases the timings by more than I8 does.
-  Eng('m49j', 668, (r, t) {
+  Eng('m49j', (r, t) {
     final e = g49.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m50', 720, (r, t) {
+  Eng('m50', (r, t) {
     final e = g50.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m50 again, so m51 has a reference row measured in the SAME process pair.
-  Eng('m50k', 716, (r, t) {
+  Eng('m50k', (r, t) {
     final e = g50.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m51', 745, (r, t) {
+  Eng('m51', (r, t) {
     final e = g51.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m51 again, so m52 has a reference row measured in the SAME process pair.
-  Eng('m51k', 739, (r, t) {
+  Eng('m51k', (r, t) {
     final e = g51.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m52', 757, (r, t) {
+  Eng('m52', (r, t) {
     final e = g52.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m52 again, so m53 has a reference row measured in the SAME process pair.
-  Eng('m52k', 749, (r, t) {
+  Eng('m52k', (r, t) {
     final e = g52.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m53', 759, (r, t) {
+  Eng('m53', (r, t) {
     final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m53 again, so the m54 probe has a reference row in the SAME process pair.
-  Eng('m53k', 751, (r, t) {
+  Eng('m53k', (r, t) {
     final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m57', 862, (r, t) {
+  Eng('m57', (r, t) {
     final e = g57.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m53 again, so m57 has a reference row measured in the SAME process pair.
-  Eng('m53l', 751, (r, t) {
+  Eng('m53l', (r, t) {
     final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m58', 862, (r, t) {
+  Eng('m58', (r, t) {
     final e = g58.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m53 again, so m58 has a reference row measured in the SAME process pair.
-  Eng('m53m', 751, (r, t) {
+  Eng('m53m', (r, t) {
     final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m59', 616, (r, t) {
+  Eng('m59', (r, t) {
     final e = g59.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m53 again, so m59 has a reference row measured in the SAME process pair.
-  Eng('m53n', 751, (r, t) {
+  Eng('m53n', (r, t) {
     final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m60', 782, (r, t) {
+  Eng('m60', (r, t) {
     final e = g60.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m53 again, so m60 has a reference row measured in the SAME process pair.
-  Eng('m53o', 751, (r, t) {
+  Eng('m53o', (r, t) {
     final e = g53.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m61', 717, (r, t) {
+  Eng('m61', (r, t) {
     final e = g61.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m60 again, so m61 has a reference row measured in the SAME process pair.
-  Eng('m60p', 780, (r, t) {
+  Eng('m60p', (r, t) {
     final e = g60.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m62', 793, (r, t) {
+  Eng('m62', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m60 again, so m62 has a reference row measured in the SAME process pair.
-  Eng('m60q', 780, (r, t) {
+  Eng('m60q', (r, t) {
     final e = g60.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m63', 345, (r, t) {
+  Eng('m63', (r, t) {
     final e = g63.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m64', 917, (r, t) {
+  Eng('m64', (r, t) {
     final e = g64.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so m64 has a reference row measured in the SAME process pair.
-  Eng('m62r', 787, (r, t) {
+  Eng('m62r', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m65', 478, (r, t) {
+  Eng('m65', (r, t) {
     final e = g65.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m66', 61, (r, t) {
+  Eng('m66', (r, t) {
     final e = g66.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so m66 has a reference row measured in the SAME process pair.
-  Eng('m62s', 793, (r, t) {
+  Eng('m62s', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m67', 1208, (r, t) {
+  Eng('m67', (r, t) {
     final e = g67.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so m67 has a reference row measured in the SAME process pair.
-  Eng('m62t', 793, (r, t) {
+  Eng('m62t', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m68', 1138, (r, t) {
+  Eng('m68', (r, t) {
     final e = g68.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so m68 has a reference row measured in the SAME process pair.
-  Eng('m62u', 793, (r, t) {
+  Eng('m62u', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('cgfr1', 210, (r, t) {
+  Eng('cgfr1', (r, t) {
     final e = gcgfr1.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so cgfr1 has a reference row measured in the SAME process pair.
-  Eng('m62v', 793, (r, t) {
+  Eng('m62v', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('cgfr2', 871, (r, t) {
+  Eng('cgfr2', (r, t) {
     final e = gcgfr2.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so cgfr2 has a reference row measured in the SAME process pair.
-  Eng('m62w', 793, (r, t) {
+  Eng('m62w', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('m69', 1155, (r, t) {
+  Eng('m69', (r, t) {
     final e = g69.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so m69 has a reference row measured in the SAME process pair.
-  Eng('m62x', 793, (r, t) {
+  Eng('m62x', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
-  Eng('cgfr5', 1151, (r, t) {
+  Eng('cgfr5', (r, t) {
     final e = gcgfr5.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
 
   // m62 again, so cgfr5 has a reference row measured in the SAME process pair.
-  Eng('m62y', 793, (r, t) {
+  Eng('m62y', (r, t) {
     final e = g62.SuperDot3(rules: r, topRuleName: t);
     return (e.recover, () => e.lastCost, e.recoverCost);
   }),
@@ -1207,6 +1270,102 @@ typedef Setup = (
   String Function(Eng, Map<String, Clause>, List<int>), // depthLimit
 );
 
+/// The battery's exact minimum edit cost, per mutant, in `battery` order.
+///
+/// This column used to be a HISTOGRAM: printed, never scored. Every engine read
+/// {1: 503, 2: 16} so it looked like a constant, until cgfr1 read {1: 510, 2: 9}
+/// and there was no column that could say which one was right. `unsnd` could
+/// not: it is computed on the pred corpus. So an engine that UNDERPRICES the
+/// battery displayed the better-looking histogram and nothing flagged it.
+///
+/// The truth is a construction property, not a search. `buildSetup` builds each
+/// mutant from `base` by exactly one edit, so undoing that edit is:
+///
+///   delete c / insert c / substitute c -> 1 edit, so the true minimum is 1
+///   transpose x,y                      -> 2 edits under delete/insert/subst,
+///                                         so the minimum is 2 UNLESS some
+///                                         unrelated single edit repairs it
+///
+/// Only the transposes need searching, and that search is exhaustive over all
+/// 95 printable ASCII characters: a negative result means no single-byte edit
+/// exists at all, not none over a chosen alphabet. 42 transposes survive the
+/// filter and cost ~2.6s to settle, which is why this runs in the 'main' part
+/// only. Measured: {1: 503, 2: 16} -- the histogram every sound engine printed.
+List<int> batteryTruth(Map<String, Clause> rules, List<String> battery) {
+  bool ok(String s) {
+    final p = Parser(rules: rules, topRuleName: 'JSON', input: s).parse();
+    return !p.hasSyntaxErrors && p.root.len == s.length;
+  }
+
+  // Rebuilt exactly as buildSetup builds it, but carrying the edit kind.
+  const base = '{"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}';
+  final mutants = <String>[], kinds = <String>[];
+  void add(String m, String k) {
+    mutants.add(m);
+    kinds.add(k);
+  }
+
+  for (var j = 0; j < base.length; j++) {
+    add(base.substring(0, j) + base.substring(j + 1), 'one');
+    if (j + 1 < base.length && base[j] != base[j + 1]) {
+      add(base.substring(0, j) + base[j + 1] + base[j] + base.substring(j + 2),
+          'transpose');
+    }
+  }
+  for (var j = 0; j <= base.length; j++) {
+    for (final c in ['Q', 'z', '}', '"', ',', '5']) {
+      add(base.substring(0, j) + c + base.substring(j), 'one');
+      if (j < base.length && base[j] != c) {
+        add(base.substring(0, j) + c + base.substring(j + 1), 'one');
+      }
+    }
+  }
+
+  final keptM = <String>[], keptK = <String>[];
+  for (var i = 0; i < mutants.length; i++) {
+    if (!ok(mutants[i])) {
+      keptM.add(mutants[i]);
+      keptK.add(kinds[i]);
+    }
+  }
+  // If the rebuild ever drifts from buildSetup, the kinds attach to the wrong
+  // strings and every truth below is silently wrong -- so fail loudly instead.
+  if (keptM.length != battery.length) {
+    throw StateError('batteryTruth rebuilt ${keptM.length} != ${battery.length}');
+  }
+  for (var i = 0; i < keptM.length; i++) {
+    if (keptM[i] != battery[i]) {
+      throw StateError('batteryTruth drifted at $i');
+    }
+  }
+
+  return <int>[
+    for (var i = 0; i < keptM.length; i++)
+      if (keptK[i] != 'transpose')
+        1
+      else ...[
+        () {
+          final s = keptM[i];
+          for (var j = 0; j < s.length; j++) {
+            if (ok(s.substring(0, j) + s.substring(j + 1))) return 1;
+          }
+          for (var j = 0; j <= s.length; j++) {
+            for (var c = 32; c < 127; c++) {
+              final ch = String.fromCharCode(c);
+              if (ok(s.substring(0, j) + ch + s.substring(j))) return 1;
+              if (j < s.length &&
+                  s[j] != ch &&
+                  ok(s.substring(0, j) + ch + s.substring(j + 1))) {
+                return 1;
+              }
+            }
+          }
+          return 2;
+        }()
+      ]
+  ];
+}
+
 Setup buildSetup() {
   final rules = MetaGrammar.parseGrammar(jsonGrammar);
   const base = '{"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}';
@@ -1293,47 +1452,68 @@ Setup buildSetup() {
       depthLimit);
 }
 
-/// One engine's entire measurement. Returns `['OK', row, latencies]`, which is
-/// distinguishable from the `[error, stack]` an isolate sends when it dies.
-List<Object> measureOne(String name) {
+/// ONE PART of one engine's measurement: `part` is 'main', 'lat' or 'depth'.
+///
+/// The split exists so the cap can kill a PART instead of an engine. It is not
+/// cosmetic. `_gate70.dart` times the gates separately, and the LR/RR ladder --
+/// which deliberately climbs to 4096-character inputs hunting the stack ceiling
+/// -- is 72-96% of every engine's clock: m62, which passes, spends 21.4s of its
+/// 23.3s there, and m32 spends 48.0s of 50.1s. Capping the engine as one unit
+/// therefore reported `TO` in the battery, cost, tree and pred columns of
+/// engines whose battery runs in 384ms, because a probe that is SUPPOSED to be
+/// expensive was expensive. Each part returns a payload whose first element is
+/// 'OK', which is distinguishable from the `[error, stack]` a dying isolate
+/// sends.
+List<Object> measureOne(String name, String part) {
   final (rules, battery, origShape, validDocs, latCases, depthLR, depthRR,
       depthLimit) = buildSetup();
   final engine = engines.firstWhere((e) => e.name == name);
 
-  final latList = <double>[];
-  final (_, _, latCost) = engine.make(rules, 'JSON');
-  // One untimed pass first. Each engine now gets a COLD isolate, so without this
-  // the timed loop measures JIT compilation: m69 read 243.0 cold against 213.1
-  // warm, purely from being the only thing its isolate had ever run.
-  for (final m in latCases) {
-    try {
-      latCost(m);
-    } catch (_) {}
+  if (part == 'depth') {
+    return <Object>[
+      'OK',
+      depthLimit(engine, depthLR, [256, 512, 1024, 2048]),
+      depthLimit(engine, depthRR, [256, 512, 1024, 2048]),
+    ];
   }
-  for (final m in latCases) {
-    var t = double.infinity;
-    for (var i = 0; i < 5; i++) {
-      final sw = Stopwatch()..start();
+
+  if (part == 'lat') {
+    final latList = <double>[];
+    final (_, _, latCost) = engine.make(rules, 'JSON');
+    // One untimed pass first. Each engine now gets a COLD isolate, so without
+    // this the timed loop measures JIT compilation: m69 read 243.0 cold against
+    // 213.1 warm, purely from being the only thing its isolate had ever run.
+    for (final m in latCases) {
       try {
         latCost(m);
-      } catch (_) {
-        t = -1;
-        break;
-      }
-      t = min(t, sw.elapsedMicroseconds / 1000);
+      } catch (_) {}
     }
-    latList.add(t);
+    for (final m in latCases) {
+      var t = double.infinity;
+      for (var i = 0; i < 5; i++) {
+        final sw = Stopwatch()..start();
+        try {
+          latCost(m);
+        } catch (_) {
+          t = -1;
+          break;
+        }
+        t = min(t, sw.elapsedMicroseconds / 1000);
+      }
+      latList.add(t);
+    }
+    return <Object>['OK', latList];
   }
-  final lat = <String, List<double>>{name: latList};
 
   final rows = <List<String>>[];
   for (final e in [engine]) {
     // battery
     final (rec, cost, _) = e.make(rules, 'JSON');
-    var shape = 0, cov = 0, crash = 0;
-    final hist = <int, int>{};
+    final bTruth = batteryTruth(rules, battery);
+    var shape = 0, cov = 0, crash = 0, bExact = 0, bUnder = 0;
     final sw = Stopwatch()..start();
-    for (final m in battery) {
+    for (var i = 0; i < battery.length; i++) {
+      final m = battery[i];
       SkipResult r;
       try {
         r = rec(m);
@@ -1341,12 +1521,16 @@ List<Object> measureOne(String name) {
         crash++;
         continue;
       }
-      hist[cost()] = (hist[cost()] ?? 0) + 1;
+      final c = cost();
+      if (c == bTruth[i]) {
+        bExact++;
+      } else if (c < bTruth[i]) {
+        bUnder++;
+      }
       if (covers(r.root, m.length)) cov++;
       if (treeShape(r.root) == origShape) shape++;
     }
     sw.stop();
-    final h = Map.fromEntries(hist.entries.toList()..sort((a, b) => a.key - b.key));
 
     // valid
     final (rec2, cost2, _) = e.make(rules, 'JSON');
@@ -1411,14 +1595,14 @@ List<Object> measureOne(String name) {
       }
     }
 
-    final total = lat[e.name]!.fold(0.0, (a, b) => a + max(b, 0));
     rows.add([
       e.name,
       '${e.loc}',
       '$shape/${battery.length}',
       '$cov/${battery.length}',
       '$crash',
-      h.toString(),
+      '$bExact/${battery.length}',
+      '$bUnder',
       '$clean/${validDocs.length}',
       '$tOk/$tTot',
       '$rOk/$tTot',
@@ -1427,24 +1611,23 @@ List<Object> measureOne(String name) {
       '${e.eleg}',
       e.bugs,
       '${sw.elapsedMilliseconds}',
-      total.toStringAsFixed(1),
+      '', // latms, from the separately capped 'lat' part
       '', // /v6, filled once v6's total is known -- index `v6Col` below
-      depthLimit(e, depthLR, [256, 512, 1024, 2048]),
-      depthLimit(e, depthRR, [256, 512, 1024, 2048]),
+      '', // LRmax, from the separately capped 'depth' part
+      '', // RRmax, likewise
     ]);
-    print('  ...${e.name} done');
   }
-  return <Object>['OK', rows.first, latList];
+  return <Object>['OK', rows.first];
 }
 
 void measureIso(List<Object> msg) {
-  (msg[0] as SendPort).send(measureOne(msg[1] as String));
+  (msg[0] as SendPort).send(measureOne(msg[1] as String, msg[2] as String));
 }
 
 /// Nothing here should take 30 seconds. Anything that does is killed.
-Future<List<Object>?> runCapped(String name, Duration cap) async {
+Future<List<Object>?> runCapped(String name, String part, Duration cap) async {
   final rp = ReceivePort();
-  final iso = await Isolate.spawn(measureIso, <Object>[rp.sendPort, name],
+  final iso = await Isolate.spawn(measureIso, <Object>[rp.sendPort, name, part],
       onError: rp.sendPort, onExit: rp.sendPort);
   try {
     final v = await rp.first.timeout(cap);
@@ -1469,27 +1652,66 @@ Future<void> main(List<String> args) async {
   print('battery=${battery.length}  valid=${validDocs.length}  '
       'latency cases=${latCases.length}');
 
+  const head = ['engine', 'LOC', 'shape', 'cover', 'crsh', 'bmin', 'bund',
+    'valid', 'cost', 'tree', 'pred', 'unsnd', 'eleg', 'bugs', 'battms', 'latms',
+    '/v6', 'LRmax', 'RRmax'];
+  // Derived, never written as literals. `bmin`/`bund` replaced a single
+  // `cost hist` column and the old literal 14 then pointed at `battms`, so the
+  // latency total overwrote the battery time and every row reported one column
+  // short. Looking the index up by name makes the next column addition inert.
+  final latCol = head.indexOf('latms');
+  final v6Col = head.indexOf('/v6');
+  final lrCol = head.indexOf('LRmax');
+  final rrCol = head.indexOf('RRmax');
+
   const cap = Duration(seconds: 30);
   final lat = <String, List<double>>{};
   final rows = <List<String>>[];
   final timedOut = <String>{};
   for (final e in engines) {
-    final out = await runCapped(e.name, cap);
-    if (out == null) {
-      timedOut.add(e.name);
-      lat[e.name] = List<double>.filled(latCases.length, -1);
-      rows.add([e.name, '${e.loc}', for (var c = 2; c < 18; c++) c == 15 ? '' : 'TO']);
-      print('  ...${e.name} KILLED after ${cap.inSeconds}s');
-    } else {
-      rows.add((out[1] as List).cast<String>());
-      lat[e.name] = (out[2] as List).cast<double>();
-    }
+    final mainOut = await runCapped(e.name, 'main', cap);
+    final latOut = await runCapped(e.name, 'lat', cap);
+    final depthOut = await runCapped(e.name, 'depth', cap);
+
+    // `eleg` and `bugs` are declared, not measured, so a killed part never
+    // costs them; only the columns the dead part would have filled read `TO`.
+    final row = mainOut != null
+        ? (mainOut[1] as List).cast<String>()
+        : <String>[
+            e.name,
+            '${e.loc}',
+            for (var c = 2; c < 12; c++) 'TO',
+            '${e.eleg}',
+            e.bugs,
+            'TO',
+            '', '', '', '',
+          ];
+    final ll = latOut == null
+        ? List<double>.filled(latCases.length, -1)
+        : (latOut[1] as List).cast<double>();
+    lat[e.name] = ll;
+    row[latCol] = latOut == null
+        ? 'TO'
+        : ll.fold(0.0, (a, b) => a + max(b, 0)).toStringAsFixed(1);
+    row[lrCol] = depthOut == null ? 'TO' : depthOut[1] as String;
+    row[rrCol] = depthOut == null ? 'TO' : depthOut[2] as String;
+    rows.add(row);
+
+    if (latOut == null) timedOut.add(e.name); // the /v6 ratio has no numerator
+    final dead = <String>[
+      if (mainOut == null) 'main',
+      if (latOut == null) 'lat',
+      if (depthOut == null) 'depth',
+    ];
+    print(dead.isEmpty
+        ? '  ...${e.name} done'
+        : '  ...${e.name} done, ${dead.join("+")} KILLED after '
+            '${cap.inSeconds}s');
   }
 
   // The /v6 column is a ratio to the baseline, so it only exists when the
   // baseline was one of the engines run.
   final v6 = lat['v6']?.fold(0.0, (a, b) => a + max(b, 0));
-  const v6Col = 15;
   for (var i = 0; i < engines.length; i++) {
     final t = lat[engines[i].name]!.fold(0.0, (a, b) => a + max(b, 0));
     rows[i][v6Col] = v6 == null ? '-' : '${(t / v6).toStringAsFixed(2)}x';
@@ -1498,9 +1720,12 @@ Future<void> main(List<String> args) async {
     if (timedOut.contains(engines[i].name)) rows[i][v6Col] = 'TO';
   }
 
-  const head = ['engine', 'LOC', 'shape', 'cover', 'crsh', 'cost hist', 'valid',
-    'cost', 'tree', 'pred', 'unsnd', 'eleg', 'bugs', 'battms', 'latms', '/v6',
-    'LRmax', 'RRmax'];
+  for (final r in rows) {
+    if (r.length != head.length) {
+      throw StateError('row ${r.first} has ${r.length} cells, '
+          'head has ${head.length}');
+    }
+  }
   final w = [
     for (var c = 0; c < head.length; c++)
       [head[c].length, for (final r in rows) r[c].length].reduce(max)
@@ -1511,7 +1736,7 @@ Future<void> main(List<String> args) async {
   for (final r in rows) {
     print(fmt(r));
   }
-  print('\nshape/cover/costhist/battms: 519-mutant battery.  cost: agreement '
+  print('\nshape/cover/bmin/battms: 519-mutant battery.  cost: agreement '
       'with\nbrute-force minimum edit distance over 5 grammars (44 cases).  '
       'tree: the witness\nrebuilds and covers the input on those same 44.  latms: '
       'sum of 12 latency\ncases, min-of-5, interleaved.  LRmax/RRmax: largest '
@@ -1523,6 +1748,15 @@ Future<void> main(List<String> args) async {
       'so it is the same on every row; the\n       4 cases whose grammar has an '
       'EMPTY language are outside it and score only in\n       `unsnd`, where '
       'naming a repair that cannot exist belongs.');
+  print('bmin:  agreement with the battery\'s EXACT minimum edit cost, and `bund` '
+      'is how\n       many of the 519 it priced BELOW that minimum. This column '
+      'used to be a\n       histogram -- printed, never scored -- and every engine '
+      'read {1: 503, 2: 16}\n       until cgfr1 read {1: 510, 2: 9}, which no '
+      'column could adjudicate. The truth\n       is derived, not guessed: 503 '
+      'mutants are one edit from `base` by construction,\n       and the 42 '
+      'transposes are settled by exhaustive search over all 95 printable\n'
+      '       ASCII characters. cgfr1 is 512/519 with 7 under; the m-line is '
+      '519/519.');
   print('unsnd: of those cases, how many the engine priced BELOW the true '
       'minimum -- i.e.\n       how many repairs it names that DO NOT EXIST. This '
       'is the one number in the\n       table that disqualifies outright, and it '

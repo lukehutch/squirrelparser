@@ -50,6 +50,8 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import 'package:squirrel_parser/src/recovery/skip_recovery.dart'
     show SkipResult, MissingObligation;
 
+// ERROR RECOVERY START
+
 const _floor = 20087;
 
 int _width(Clause? c) {
@@ -615,3 +617,4 @@ class SuperDot3 {
     return -1;
   }
 }
+// ERROR RECOVERY END

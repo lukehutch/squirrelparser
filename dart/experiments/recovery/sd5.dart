@@ -30,6 +30,8 @@ import 'package:squirrel_parser/src/recovery/skip_recovery.dart'
     show SkipResult, MissingObligation;
 import 'dart:math' as math;
 
+// ERROR RECOVERY START
+
 /// A multi-character literal desugared into a sequence of single-character
 /// literals. Repair then special-cases literals nowhere: "rue" -> "true" is a
 /// fabricated 't' inside an ordinary Seq, handled by the same machinery that
@@ -665,3 +667,4 @@ class SuperDot3 {
     return -1;
   }
 }
+// ERROR RECOVERY END

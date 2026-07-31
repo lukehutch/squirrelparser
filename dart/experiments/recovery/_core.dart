@@ -21,6 +21,7 @@
 // span between the CORE BEGIN and CORE END markers rather than importing it,
 // because the point of the copy is that an engine may tune its own core.
 import 'package:squirrel_parser/squirrel_parser.dart' as sp;
+import 'package:squirrel_parser/src/recovery/skip_recovery.dart' as spr;
 
 // CORE BEGIN
 String escapeString(String s) {
@@ -546,6 +547,42 @@ class ParseResult {
       this.unmatchedInput});
 }
 
+// ----------------------------------------------------------- recovery contract
+// The output shape every engine returns. It lives here, outside the marked
+// region, because it is the same contract for all of them and counting it would
+// charge each engine for the same boilerplate.
+
+class MissingObligation {
+  final Clause clause;
+  final int pos;
+  MissingObligation(this.clause, this.pos);
+  @override
+  String toString() => 'missing $clause at $pos';
+}
+
+class SkipResult {
+  /// Full-coverage parse tree over the original input; unparseable regions
+  /// appear as SyntaxError children, in position order.
+  final MatchResult root;
+
+  /// Skipped input spans (each also present in the tree as a SyntaxError).
+  final List<SyntaxError> errorSpans;
+
+  /// Obligations that were skipped as missing.
+  final List<MissingObligation> missing;
+
+  /// Number of recovery events (0 = input was valid).
+  final int recoveryEvents;
+
+  /// True if the event cap was hit and the tail was force-wrapped.
+  final bool forced;
+
+  SkipResult(this.root, this.errorSpans, this.missing, this.recoveryEvents, this.forced);
+
+  int get charsSkipped => errorSpans.fold(0, (a, e) => a + e.len);
+  bool get clean => recoveryEvents == 0;
+}
+
 // ------------------------------------------------------- library <-> core glue
 // The engine's public API speaks the library's types, so the grammar is lowered
 // in at construction and the witness tree is raised back out at the boundary.
@@ -600,8 +637,42 @@ sp.MatchResult toLib(MatchResult m, Map<Clause, sp.Clause> back) {
   if (m is SyntaxError) return sp.SyntaxError(pos: m.pos, len: m.len);
   final kids = [for (final k in m.subClauseMatches) toLib(k, back)];
   final c = m.clause;
-  return sp.Match(c == null ? null : back[c], m.pos, m.len, subClauseMatches: kids);
+  return sp.Match(c == null ? null : fromCore(c, back), m.pos, m.len,
+      subClauseMatches: kids);
 }
+
+/// Raise a core clause back into the library's types. Usually a lookup in
+/// [back], but an engine may INVENT a clause that was never lowered -- a
+/// fabricated `CharSet` naming a missing character, say -- so anything absent is
+/// rebuilt structurally rather than dropped.
+sp.Clause fromCore(Clause c, Map<Clause, sp.Clause> back) {
+  final hit = back[c];
+  if (hit != null) return hit;
+  if (c is Str) return sp.Str(c.text);
+  if (c is Char) return sp.Char(c.char);
+  if (c is CharSet) return sp.CharSet(c.ranges, inverted: c.inverted);
+  if (c is AnyChar) return const sp.AnyChar();
+  if (c is Nothing) return const sp.Nothing();
+  if (c is Ref) return sp.Ref(c.ruleName);
+  if (c is Seq) return sp.Seq([for (final s in c.subClauses) fromCore(s, back)]);
+  if (c is First) return sp.First([for (final s in c.subClauses) fromCore(s, back)]);
+  if (c is OneOrMore) return sp.OneOrMore(fromCore(c.subClause, back));
+  if (c is ZeroOrMore) return sp.ZeroOrMore(fromCore(c.subClause, back));
+  if (c is Optional) return sp.Optional(fromCore(c.subClause, back));
+  if (c is FollowedBy) return sp.FollowedBy(fromCore(c.subClause, back));
+  if (c is NotFollowedBy) return sp.NotFollowedBy(fromCore(c.subClause, back));
+  throw ArgumentError('unknown core clause ${c.runtimeType}');
+}
+
+/// Raise a whole recovery result into the library's types: the boundary every
+/// engine crosses exactly once, on the way out of `recover`.
+spr.SkipResult toLibResult(SkipResult r, Map<Clause, sp.Clause> back) => spr.SkipResult(
+      toLib(r.root, back),
+      [for (final e in r.errorSpans) sp.SyntaxError(pos: e.pos, len: e.len)],
+      [for (final m in r.missing) spr.MissingObligation(fromCore(m.clause, back), m.pos)],
+      r.recoveryEvents,
+      r.forced,
+    );
 // CORE END
 
 void main() {
