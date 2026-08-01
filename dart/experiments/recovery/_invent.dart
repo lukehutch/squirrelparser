@@ -38,6 +38,8 @@ import 'm84.dart' as g84;
 import 'm85.dart' as g85;
 import 'm86.dart' as g86;
 import 'm87.dart' as g87;
+import 'm88.dart' as g88;
+import 'm89.dart' as g89;
 
 typedef Build = MatchResult? Function(String) Function(
     Map<String, Clause>, String);
@@ -52,6 +54,8 @@ final Map<String, Build> extra = {
   'm85': (r, t) => g85.SuperDot3(rules: r, topRuleName: t).recover,
   'm86': (r, t) => g86.SuperDot3(rules: r, topRuleName: t).recover,
   'm87': (r, t) => g87.SuperDot3(rules: r, topRuleName: t).recover,
+  'm88': (r, t) => g88.SuperDot3(rules: r, topRuleName: t).recover,
+  'm89': (r, t) => g89.SuperDot3(rules: r, topRuleName: t).recover,
 };
 
 Build? resolve(String name) {
