@@ -28,6 +28,8 @@ import 'm84.dart' as g84;
 import 'm85.dart' as g85;
 import 'm86.dart' as g86;
 import 'm87.dart' as g87;
+import 'm88.dart' as g88;
+import 'm89.dart' as g89;
 
 /// A uniform surface over both engine generations: give it a grammar and a top
 /// rule, get back something that turns a damaged string into a tree or throws.
@@ -69,6 +71,14 @@ final Map<String, Build> extra = {
   },
   'm87': (r, t) {
     final e = g87.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm88': (r, t) {
+    final e = g88.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm89': (r, t) {
+    final e = g89.SuperDot3(rules: r, topRuleName: t);
     return e.recover;
   },
 };
@@ -131,15 +141,20 @@ void main(List<String> argv) {
   var crashed = 0, uncovered = 0, perfect = 0;
   double total = 0;
 
-  final sw = Stopwatch()..start();
+  // THE CLOCK COVERS THE ENGINE AND NOTHING ELSE. It used to span [scoreCase]
+  // too, which prices the evaluator's tree walk as though the engine had spent
+  // it -- the same class of error as measuring two arms on different clocks.
+  final sw = Stopwatch();
   for (final k in cases) {
     final c = byCorpus[k.grammar]!;
     MatchResult? produced;
+    sw.start();
     try {
       produced = made[k.grammar]!(k.mutant);
     } catch (_) {
       produced = null;
     }
+    sw.stop();
     final s = scoreCase(
       produced: produced,
       expected: expected['${k.grammar} ${k.original}']!,
@@ -153,8 +168,6 @@ void main(List<String> argv) {
     catScore[k.category] = (catScore[k.category] ?? 0) + s.score;
     catN[k.category] = (catN[k.category] ?? 0) + 1;
   }
-  sw.stop();
-
   // One machine-readable line: name, aggregate, perfect%, crashed, uncovered,
   // ms, then category=mean pairs.
   final cats = catN.keys.toList()
