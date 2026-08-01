@@ -9279,3 +9279,117 @@ the defect and the measurement separately; never let "I found a bug" stand in fo
 
 **Report the axis that went backwards.** m105 gets fewer cases exactly right than
 m78. That was true before this occasion and no table here said it.
+
+---
+
+## Occasion 51 — a fill of no characters repairs nothing, and 31 engines paid for pretending otherwise (I68)
+
+Codex's third finding was the one worth having. `_solveWitnesses` scores both
+predicates `(0, '')` — need 0, witness the EMPTY STRING rather than null
+(m105.dart:480-485) — because their bodies still have to be reachable from the
+witness walk. `_repair`'s fill gate then reads
+
+    if (need != null && need <= _budget && (_witness(sub) != null || need < minSkip))
+
+as: need 0 is within any budget, and `''` is not null, so a predicate is
+**fillable for nothing**. It emits
+
+    _Way(pos, /*cost*/ 0, 0, 0, true, site: 1, leaf: Filled(sub, pos, ''))
+
+and `cost` is the FIRST key in `_better`, so that way dominates every honest one.
+`_seq` calls `_element` on every sub-clause including predicates, so the path is
+live. A `!Kw` guard that correctly FAILS was discharged for free.
+
+**The rule is not about predicates.** A fill asserts CHARACTERS. Asserting none
+leaves the input and the position exactly as they were, so the clause that just
+failed must fail again. A zero-length fill can never convert a failure into a
+success — it is not a repair, it is only ever a free pass. The guard belongs on
+the fill's LENGTH, not on the clause kind, because that is where the reason
+lives:
+
+    m110:  if (need != null && need <= _budget && ...)
+    m112:  if (need != null && need > 0 && need <= _budget && ...)
+
+One conjunct. Nothing else can reach it: `e?`, `e*` and `Nothing` are the other
+clauses the solver gives need 0, and all three MATCH at zero width, so
+`_free(direct)` has already returned at m105.dart:1056. Only a clause that
+FAILED and needs no characters gets there, which is exactly the pathological
+case. I52 is untouched — its undetermined fill carries a POSITIVE cost and a
+zero-width NODE, and `need > 0` tests the cost, not the node.
+
+**Cost 0 is a claim, and it was false.** Cost 0 means "no repair was needed", so
+reporting it for a string the frozen parser REJECTS is a false statement about
+the grammar whatever tree comes with it. That makes this conformance, not taste,
+and it is the constraint the brief names. `_pred112.dart`:
+
+    Item <- !Kw Word WS       m78   m105   m112     frozen PEG
+      "if"                     1     0      1        REJECTS
+      "if ab"                  1     0      1        REJECTS
+    Item <- &Kw Word WS
+      "ab"                     2     0      2        REJECTS
+      "ab if"                  2     0      2        REJECTS
+
+m112's prices are right and minimal. `!Kw Word` on `"if"` costs 1: delete `"i"`,
+leaving `"f"`, which is a Word and not the keyword. Deleting `"f"` instead does
+NOT work, because `!Keyword` is evaluated at position 0 and still sees `if` — so
+the cost-1 repair is unique, not merely cheapest. `&Kw Word` on `"ab"` costs 2:
+assert the witness `"if"`, the uniquely determined spelling, which is the
+legitimate structural fill the brief permits.
+
+**The sweep is the finding.** `_conf1.dart` puts every engine on the same six
+probes:
+
+    m78    conformant     0 1 1 0 2 2
+    m79 … m111            0 0 0 0 0 0     — all 31, free on all four REJECTS
+    m112   conformant     0 1 1 0 2 2
+
+Every engine of the witness/fill lineage has it. It entered at m79 with the
+witness mechanism and survived thirty-one generations of deliberate improvement,
+including two full critique rounds and a rewrite of the evaluator. **It survived
+because the battery scores tree SHAPE and never asks whether the cost is a true
+statement.** A metric that only reads the answer cannot see the engine lying
+about its confidence in it. Add the conformance probe to the gate; a shape score
+is not a soundness check and was never going to be one.
+
+It also settles a fairness question the table would otherwise have carried
+silently: m78's 68.4% perfect is NOT earned by free passes. m78 shares none of
+this code — it is skip-based — and it prices all four correctly. The comparison
+stands as measured.
+
+**Removing a free candidate RAISED the score.** Paired interleaved runs, same
+harness, same evaluator:
+
+    m110   0.9573  67.2%  0 crash  0 uncov  4796 / 4891 ms  554 LOC
+    m112   0.9575  67.2%  0 crash  0 uncov  4810 / 4951 ms  557 LOC
+
+truncate — the heaviest category at weight 3.0 — goes 0.890 → 0.891, and no
+category moves down. That is the opposite of the expected shape of a soundness
+fix, and the reason is mechanical: a cost-0 way wins the FIRST key outright, so
+every tie it entered it took. The free pass was not a harmless extra option, it
+was actively displacing correct readings. +3 LOC is line-wrapping; the change is
+one conjunct.
+
+The path was live on the real battery, not constructed: `astdiff.dart:250-251` is
+the `stmt` corpus's own guard, `Name <- !Keyword [a-z]+` with
+`Keyword <- ("if" / "else") !([a-z])`, added deliberately to exercise the
+lookahead relaxation the owner granted. `_acc112.dart` shows the defect in the
+open on that grammar —
+
+    if = 1;      m105  cost 0   insert ""@0        <- the free pass, spelled out
+                 m112  cost 1   delete "i"@0
+
+`insert ""@0` is the engine writing down that it repaired the input by inserting
+nothing. Both brief cases are byte-identical across the change (`,3true` →
+`insert ","@18`; `[,2,` → `delete ","@13`), as are all four other JSON rows and
+the three non-predicate stmt rows.
+
+**m112 is the standing engine.** It is the first of the lineage that beats m78 on
+aggregate (0.9575 vs 0.9444) AND matches its conformance. The two open gaps
+against m78 are unchanged and still real: perfect% 67.2 vs 68.4, and latency
+4810 ms vs 2232 ms.
+
+**What to carry forward.** When a scoring function reads only the produced
+artifact, defects in what the engine CLAIMS are invisible to it by construction.
+Ask separately, and mechanically, whether each reported quantity is true — here,
+one six-row probe against the frozen parser caught what 1824 weighted cases and
+thirty-one generations could not.
