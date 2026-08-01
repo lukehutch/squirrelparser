@@ -9114,3 +9114,168 @@ build the sound alternative and measure it against the axes the brief actually
 constrains. Here all three steps were cheap -- one instrumented engine, two
 generated variants, three battery runs -- and the answer was the opposite of what
 the theory suggested.
+
+## The fiftieth occasion: the baseline I was chasing had moved, and four probes killed the marching order I had written for myself
+
+This occasion produced no new engine worth adopting. It produced a correction to
+the scoreboard, two verified defects that turned out not to matter, and the
+refutation of the plan the forty-eighth occasion left behind. All of that is
+worth more than another variant would have been.
+
+### I had been measuring against a number from before the evaluator changed
+
+`bf70015` -- *"The expectation is the repaired AST, not the undamaged one"* --
+landed at **10:21** on 2026-08-01. The figure `m78 = 0.8946` was written into
+this file at **08:54**, in commit `2047e80`, and is quoted at lines 7832, 7878,
+7993, 8086 and 8182, including in the table headed "Where this leaves the brief".
+
+Every one of those numbers scores an engine against the UNDAMAGED tree. After
+`bf70015` the target is the REPAIRED tree -- the thing the brief actually asked
+for. The two are different objectives, so the numbers either side of 10:21 do
+not belong in the same table.
+
+Measured today, same harness (`_score1.dart`), same evaluator, minutes apart:
+
+| engine | AST-diff | perfect % | crash | uncov | ms |
+|---|---|---|---|---|---|
+| m78 | 0.9444 | **68.4** | 0 | 0 | **2232 / 2247** |
+| m105 | **0.9573** | 67.2 | 0 | 0 | 4705 |
+| m110 | **0.9573** | 67.2 | 0 | 0 | 4671 |
+| m111 | **0.9573** | 67.2 | 0 | 0 | 4807 |
+
+m78 is **0.9444, not 0.8946**. The gap m105 has to defend is +0.0129, not
++0.063 -- a fifth of what this file claimed.
+
+The rows already in `allscores3.txt` were checked for the same contamination and
+are clean: the run began at 11:21, after the change, and re-running m62 today
+reproduced its recorded `0.9550 / 67.2` exactly.
+
+### The finding that correction exposes: m78 gets MORE cases exactly right
+
+m105 wins the aggregate and **loses the exact-shape count, 67.2 % against 68.4 %**.
+It is closer on average and right-on-the-nose less often. Per category:
+
+| category | weight | m78 | m105 |
+|---|---|---|---|
+| truncate | 3.0 | 0.824 | **0.890** |
+| delim-delete | 3.0 | **0.968** | 0.945 |
+| quote-delete | 2.5 | **0.999** | 0.997 |
+| junk-insert | 2.0 | 0.951 | **0.982** |
+| delim-insert | 2.0 | 0.953 | **0.980** |
+| literal-damage | 1.5 | 0.952 | **0.970** |
+| quote-insert | 1.5 | **0.984** | 0.966 |
+| multi-damage | 1.5 | 0.926 | **0.939** |
+| transpose | 1.0 | **0.968** | 0.956 |
+| content-damage | 1.0 | 1.000 | 1.000 |
+
+The two heaviest categories split: m105 takes truncate by 0.066, m78 takes
+delim-delete by 0.023. **An aggregate that moves by 0.013 while the exact-shape
+count moves the other way is not a strict improvement, and it should never again
+be reported as one.**
+
+### Where the brief actually stands
+
+| | m78 | **m105** | required |
+|---|---|---|---|
+| AST-diff | 0.9444 | **0.9573** | beat m78 -- met, +0.0129 |
+| perfect % | **68.4** | 67.2 | -- **m78 wins, unmet** |
+| LOC | 1296 | **554** | smaller -- met, 2.34x |
+| latency | **2232 ms** | 4705 ms | not higher -- **BROKEN, 2.11x** |
+
+The latency gap is **2.11x, not the 2.6x** this file recorded, because the old
+figure divided by a target measured under other conditions. Codex, working
+independently on the m81 generation, reached the same correction from the other
+side: *"the reproducible same-battery gap is approximately 2.1x, not 3.9x"*, and
+identified the cause as a benchmark-column mix-up -- a `latms` column read as a
+`battms` column. **Two independent instances of the same error in one project.**
+The rule that follows is in the next section.
+
+### Codex found two real defects; both are inert
+
+Both were confirmed by reading the code, not taken on report.
+
+**I66: A FILL IS A REPAIR EVENT WHEREVER IT IS WRITTEN.** `m105.dart:761`
+discharges a `FollowedBy` by asserting its witness -- positive cost, `synth`
+true, a `Filled` planted in the tree -- and was the ONE repair-creating site that
+left `site` at its default of `0`. Every other sets it: the skip at :1065, the
+element fill at :1130, the trailing skip at :566 and :578. Since `_better` reads
+`site` at level 5, a lookahead discharged by assertion outranked an equal-cost
+repair anywhere else, for no reason anyone chose. Fixed in **m110**.
+
+**I67: A TIE IS THE ONLY THING THE BRIEF DECIDED.** I54 suppresses the
+undetermined fill whenever `need >= minSkip`. Those two candidates **do not end
+in the same place** -- the fill is zero-width and ends at `pos`, a skip ends
+beyond it -- so as a dominance rule it is unsound: the continuation from `pos`
+can beat every continuation from the skip's ending by more than the local
+difference. The brief only ever settled the *tie* (`[,2,` -> `[2,`, both cost 1).
+**m111** narrows the rule to `need != minSkip`.
+
+Measured: **both are exactly score-neutral**, 0.9573 / 67.2 and identical in all
+ten categories, and m111 is ~2 % slower for generating candidates that never win.
+Both brief acceptance cases still hold on m111 (`,3true` -> insert `","`@18;
+`[,2,` -> delete `","`@13), along with all four other acceptance cases.
+
+So I54's unsoundness is real and never exercised on this battery. **m110 is
+adopted** -- the key now means what I63 says it means, at zero cost. m111 is
+recorded and not adopted: it buys a guarantee against a case no measurement
+reaches, and pays latency, which is the one axis already failing.
+
+### The marching order from the forty-eighth occasion is refuted
+
+That occasion left this instruction: *"I51, I52 and I53 are all currently
+expressed as additions. Re-expressing them as prunes is the next occasion's
+work."* Four counting probes were built to find where the time goes. Counts are
+immune to the machine contention that makes the `ms` column untrustworthy.
+
+| probe | question | answer |
+|---|---|---|
+| `_prof105` | is the deepening schedule the cost? | 26.2 % of 26.16 M offers are in rounds that fail; **no case succeeds at budget 0**; budgets 1/2/4/8/16 = 1179/461/166/11/7 |
+| `_bf105` | ceiling of a cost-ordered (Knuth 1977) schedule? | **1.54x** -- 65.1 % of offers are already final-round at cost <= optimum |
+| `_cell105` | ceiling of reusing `_pc` instead of re-deriving? | **1.45x** -- only 30.8 % of repair-round cells are pure-only, 49.0 % genuinely hold a repair |
+| `_first105` | is I53's `opened` list the waste? | **REFUTED** |
+
+`_first105` in full: `opened` receives 1,132,224 ways and discards **52,309** --
+4.6 % of `opened` and **0.2 % of the whole 26.16 M-offer search**. I53 fires in
+**17.0 %** of `_first` calls, so the list it builds is the ANSWER 95.4 % of the
+time. It was described here as a corner case; it is not one. Making it lazy
+would buy two parts in a thousand.
+
+The engine costs **204 ns per offered way** across 26.16 M offers. The search at
+cost <= optimum is genuinely large, and no single lever reaches 1.6x. **The
+schedule is not the problem, and neither is any of the three additions.**
+
+### What both analyses converged on
+
+Codex's ranked proposal #2, reached without seeing the probe results: *"replace
+round-cleared, pull-all-endings evaluation with a goal-directed, semi-naive
+weighted agenda... never rerun an entire cell merely because the permitted budget
+increased."* That is the same conclusion the four probes force -- the m10x
+semantics (way-sets, the eight-key vector, I39/I43/I50/I51/I53) carried onto the
+m5x/m6x SCHEDULE, which is a worklist over cells with a delta drive and is
+measured at 1295 ms for m62 against m105's 4705 ms on the identical battery.
+Independent convergence from two directions, which is the strongest signal
+available here.
+
+Of Codex's measured 1.27x implementation bundle for m81, two thirds is already
+spent in m105: `HashMap.identity()` is on all four maps (`m105.dart:384-398`),
+and the cost-zero fast check IS I58 (`m105.dart:1056`). Only the array-backed
+`_rep` remains -- `_rep` still scans its `reach` list linearly three times per
+step (`m105.dart:978, 991, 998-1000`) -- worth ~9 % standalone on m81, at a cost
+in lines the 554-LOC budget can ill afford.
+
+### The rules this leaves
+
+**A target is a measurement, not a constant. Re-measure the baseline on the
+current evaluator before quoting a ratio against it.** Both errors this project
+has made -- the `latms`/`battms` mix-up and this one -- are the same shape: a
+number kept after the thing it measured changed underneath it. When an evaluator
+commit lands, every score recorded before it is dead, and the file should say so
+at the point the numbers appear.
+
+**A defect confirmed by reading is still only a hypothesis about the score.**
+I66 and I67 are both real, both were worth fixing, and both moved nothing. State
+the defect and the measurement separately; never let "I found a bug" stand in for
+"it changed the answer."
+
+**Report the axis that went backwards.** m105 gets fewer cases exactly right than
+m78. That was true before this occasion and no table here said it.
