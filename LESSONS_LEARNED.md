@@ -9393,3 +9393,95 @@ artifact, defects in what the engine CLAIMS are invisible to it by construction.
 Ask separately, and mechanically, whether each reported quantity is true — here,
 one six-row probe against the frozen parser caught what 1824 weighted cases and
 thirty-one generations could not.
+
+## Occasion 52 — a prefix can only carry where its doubt STARTED, so `span` is the one key that cannot be searched (I69)
+
+Codex's final report shipped two executable counterexamples. Both reproduce
+exactly on my side (`_codexcx.dart`), and the first one kills a key.
+
+**CX1.**
+
+    S <- P '!';  P <- A / B;
+    A <- 'p' 'y' 'a' 'b' 'c' 'd' 'e' 'f' ';';
+    B <- 'p' 'x' 'a' 'Z' 'b' 'c' 'd' 'e' ';';
+    input  pxabcdef;?
+
+    A alone   cost 4  doubt 1  echo 9  span 8
+    B alone   cost 4  doubt 3  echo 9  span 6
+    A / B     ->  m105 chose A (span 8),  m112 chose A (span 8)
+
+B is reachable at identical cost with a strictly smaller final span, so B wins
+level 6 of `_better` — and the engine returns A. **The engine emits a reading
+strictly worse under its own final objective.** That is a Bellman failure, not
+the acknowledged compromise I65 recorded. Codex's instrumentation puts the
+frequency at 459 of 6,636,557 contested `_put` decisions, every one of them
+discarding the way with the larger `doubt`.
+
+**Exactly one key causes it, and it is provable which.** Prefix-optimality means:
+if `w` beats `w'` at the same ending, then `extend(w, x)` beats `extend(w', x)`
+for every suffix `x`. Level by level, inside a group already tied on `cost`:
+
+  - `cost, net, got, blind, site` — additive. `w.f + x.f` preserves the order.
+  - `doubt` — `extend.doubt = w.cost > 0 ? w.doubt : x.doubt`. Tied on cost means
+    both repair or neither does. Neither: both are `_never`, so they were already
+    tied here. Both: each keeps its own. Order preserved, and it cannot COLLAPSE
+    into a tie.
+  - `echo` — `extend.echo = x.cost > 0 ? x.echo : w.echo`. If the suffix repairs
+    both take `x.echo` and tie; otherwise each keeps its own. Order preserved.
+    Losing strictness at the LAST level is a full tie, so nothing follows it.
+  - `span = echo - doubt` — a suffix repair at `q` sends both to `q - w.doubt`
+    and `q - w'.doubt`. Smaller `w.span` says nothing about `w.doubt`, so **the
+    comparison can reverse.** CX1 is that reversal, executed.
+
+**I69: the only prefix-optimal shadow of "the damage is confined" is `doubt ↑`.**
+This is not a preference between two keys, it is forced. Try to repair `span` by
+making confinement additive — score a way by the sum of gaps between consecutive
+repairs. Composing gives `w.spread + x.spread + (x.doubt - w.echo)`: the bridging
+term carries `-w.echo`, which differs between candidates, so to make the
+comparison suffix-independent the key must be `spread - echo`, which is `-doubt`.
+It collapses straight back. **A suffix repair overwrites the right endpoint, so
+the only thing about its own window a prefix can soundly carry is where that
+window OPENED.** Every formulation that reaches for the right endpoint is
+unsearchable with one way per ending; `doubt ↑` is what survives.
+
+**m113 = m112 with level 6 deleted.** 555 LOC (m112 557 — the key loses a nesting
+level). It fixes CX1 by construction: with `span` gone, level 6 is `doubt ↑`, B
+has doubt 3 against A's 1, so B wins locally AND globally. Conformant on the six
+`_conf1.dart` probes (inherits I68). Both brief cases byte-identical (`,3true` →
+`insert ","@18`; `[,2,` → `delete ","@13`).
+
+Paired interleaved on the 1824-case battery — scores are deterministic, so these
+are exact, not estimates:
+
+    m112   0.9575   67.2%   0 crash  0 uncov   557 LOC     span at level 6
+    m113   0.9573   67.0%   0 crash  0 uncov   555 LOC     span deleted
+
+Soundness costs 0.0002 aggregate and 0.2 perfect% — about 4 of 1824 cases, all
+small: junk-insert 0.982→0.981, delim-insert 0.980→0.979, multi-damage
+0.939→0.938. Nothing moves up. **That is the honest price and it is worth
+paying**, for the reason Occasion 51 established one lesson earlier: the battery
+reads only the produced tree, so it cannot see an engine contradicting its own
+objective. A metric that cannot detect the defect is not evidence the defect is
+harmless.
+
+**The option that was NOT taken, and why.** Codex's alternative is exact rather
+than a deletion: keep TWO representatives per ending — the closed-window winner
+under the full key, and the open-window winner (max `doubt`), since a later
+repair at `q` makes every final span `q - doubt`. It is correct, and it is
+derived rather than tuned. Note what the two representatives ARE: m112's winner
+and m113's winner, kept side by side. It was rejected on three counts. It adds a
+SECOND ordering to a file whose comparator is introduced as "THE ONE ORDERING IN
+THE ENGINE"; it turns one way per ending into a two-key Pareto set, so `_seq`'s
+pre-check, `_rep`'s `_at(reach, at)!` and the list rebuild in `_put` all have to
+handle two, on the two hottest loops of the engine whose largest remaining
+deficit is being 2.11x too slow; and it buys back 0.0002. Removing a level beats
+adding a mechanism at that exchange rate.
+
+**CX2 is still open.** `S <- A 'x' 'a'; A <- [ab];` on input `xa`: an
+undetermined zero-width `A` at 0 costs 1 and lets the real `x` and `a` satisfy
+the rest for nothing, but skipping `x` also costs 1, so `need == minSkip` and
+I54's `need < minSkip` gate suppresses the fill. m105, m111, m112 and m113 all
+report 3 where 1 is reachable. m111's `need != minSkip` does not fix it — the
+predicate is false exactly at equality. This is a GENERATION prune standing in
+for a GLOBAL comparison, which is why an ordering change cannot touch it, and it
+is the next thing to resolve.

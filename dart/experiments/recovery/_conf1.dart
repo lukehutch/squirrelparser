@@ -47,6 +47,7 @@ import 'm109.dart' as m109;
 import 'm110.dart' as m110;
 import 'm111.dart' as m111;
 import 'm112.dart' as m112;
+import 'm113.dart' as m113;
 
 const negGrammar = '''
 Top <- Item+;
@@ -100,6 +101,7 @@ final engines = <(String, Cost)>[
   ('m110', (r, t) => m110.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m111', (r, t) => m111.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m112', (r, t) => m112.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m113', (r, t) => m113.SuperDot3(rules: r, topRuleName: t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>
