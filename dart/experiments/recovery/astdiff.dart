@@ -205,10 +205,13 @@ Stmt <- Block / If / Assign;
 Block <- '{' WS Stmt* WS '}' WS;
 If <- "if" WS '(' WS Cond WS ')' WS Stmt;
 Assign <- Name WS '=' WS Cond WS ';' WS;
-Cond <- Name / Num;
+Cond <- Name / Num / Str;
 Name <- !Keyword [a-z]+;
 Keyword <- ("if" / "else") !([a-z]);
 Num <- [0-9]+;
+Str <- '"' Chr* '"';
+Chr <- [^"\\\\] / ('\\\\' Esc);
+Esc <- '"' / '\\\\' / 'n' / 't';
 ~WS <- [ \\t\\n]*;
 ''';
 
@@ -221,6 +224,10 @@ const corpora = <Corpus>[
     '{"k":[{"a":1},{"b":2}]}',
     '{"n":[0,-7,1.5,2e3],"t":[true,false,null]}',
     '{"alpha":"beta gamma","delta":["epsilon","zeta"]}',
+    // Delimiter-dense, to feed `delim-delete` -- see `weighted`.
+    '{"a":{"b":{"c":[1,2,{"d":[3,4]}]}},"e":[[1],[2,3]]}',
+    '[{"x":[1,2],"y":{"z":3}},{"x":[],"y":{}}]',
+    '{"p":[1,2,3],"q":[4,5,6],"r":[7,8,9],"s":[0,-1]}',
   ]),
   Corpus('expr', exprGrammar, 'Expr', {
     'Expr', 'Term', 'Factor', 'Num', 'Name', 'AddOp', 'MulOp',
@@ -228,13 +235,24 @@ const corpora = <Corpus>[
     'a+b*2-(3+c)*4',
     '1*(2+3*(4-5))',
     '(a*b)+(c*d)-(e+f)',
+    '((a+b)*(c-d))/((e+f)*(g-h))',
+    '1+2*3-4/5+(6*7)-(8+9)',
+    'a*(b+(c*(d+(e*f))))',
   ]),
   Corpus('stmt', stmtGrammar, 'Program', {
-    'Stmt', 'Block', 'If', 'Assign', 'Cond', 'Name', 'Num',
+    'Stmt', 'Block', 'If', 'Assign', 'Cond', 'Name', 'Num', 'Str',
   }, [
     'x=1; if (x) { y=2; z=3; } w=4;',
     'if (a) { if (b) { c=1; } }',
     '{ a=1; { b=2; } if (c) d=3; }',
+    '{ a=1; b=2; { c=3; if (d) { e=4; } f=5; } g=6; }',
+    'if (a) { b=1; } if (c) { d=2; } e=3;',
+    'x=1; y=2; z=3; { p=4; q=5; } r=6;',
+    // String literals in a NON-JSON grammar, so `quote-delete` and
+    // `content-damage` are not measured against one grammar's string shape.
+    'x="ab"; y="c"; { z="de"; }',
+    'if (a) { b="hi"; } c="jk"; d=1;',
+    '{ p="q"; { r="st"; } if (u) v="w"; }',
   ]),
 ];
 
