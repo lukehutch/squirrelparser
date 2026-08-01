@@ -9022,3 +9022,95 @@ Also measured, and worth having: `m67` and `m68` take **874 and 854 SECONDS** on
 this battery against m105's ~5.6. The m6x family is not uniformly the fast one --
 m62 is fast at ~1.3 s and its neighbours are three orders of magnitude slower --
 so "the older engines were faster" is a claim that has to name WHICH engine.
+
+## The forty-ninth occasion: I named the compromise, then measured it, and the sound repairs of it cost 19 lines and bought nothing
+
+I65 ranks `span` = `echo - doubt` above both of its endpoints and records, in the
+same breath, that `span` is **not prefix-optimal**: under a repairing suffix the
+final span is `x.echo - w.doubt`, so the prefix that wins is the one with the
+LARGER doubt, not the one with the smaller span. I wrote that down as a named
+compromise and moved on. Naming a compromise is not measuring it, and the whole
+point of `_put` keeping ONE way per ending is that an unsound prune there loses
+the optimum outright.
+
+### The measurement
+
+`_spanprobe.dart` runs the battery on `_m105cnt.dart` -- m105 with `_put`
+instrumented to evaluate both the full order and the span-free order (which is
+exactly m102's) at every contested prune, and to count the disagreements. The
+control line reproduces 0.9573/67.2, so the instrumentation did not change the
+engine.
+
+    contested _put calls   6,636,557
+    span flipped verdict         459   (0.0069%)
+      discarded larger doubt     459   (100%)
+
+The first number says the compromise is reached. The third is the one that
+matters: **every single flip is in the unsound direction.** There is no
+population of harmless flips diluting a few bad ones -- when span overrides the
+prefix-optimal order at all, it always throws away the way a repairing suffix
+would have wanted. That is as bad as the theory allows.
+
+### Two sound repairs, both built, both measured
+
+**m108 -- ask span only where it is determined.** `span` is a property of a
+COMPLETED reading. m105 asks it of prefixes, where the answer is not yet fixed.
+m108 prunes with m102's seven keys, each prefix-optimal on its own, and applies
+`span` only in `_beatsFinal`, over whole-input ways at the top of `recover`.
+
+**m109 -- ask locality with an ADDITIVE key.** This is I63's own finding taken to
+its conclusion. `site`-as-events prices repair volume; `site`-as-runs priced
+locality; neither definition does both, so ask both questions with two keys
+rather than approximating the second with a non-prefix-optimal one. m98's run
+count comes back as its own field: `runs(wx) = runs(w) + runs(x) - (w ends
+repairing AND x opens repairing)`, with the `tail` bit restored. It is additive
+up to a correction of at most one, so `r1 < r2` gives `r1 - r2 <= -1` and the
+correction moves the difference by at most `+1` -- the order is never reversed,
+which is exactly what a prune needs.
+
+| engine | locality asked as | prune sound | AST-diff | perfect% | LOC |
+|---|---|:-:|--:|--:|--:|
+| **m105** | `span`, above both endpoints | **no** | **0.9573** | **67.2** | **554** |
+| m109 | `runs`, additive, below `site` | yes | 0.9572 | 67.2 | 573 |
+| m108 | `span`, at the final choice only | yes | 0.9572 | 67.1 | 571 |
+| m102 | not asked (`doubt`/`echo` only) | yes | 0.9571 | 67.0 | 552 |
+
+`_delta m109 m105`: 8 of 1824 move, four each way, three perfect lost and three
+won -- a coin flip. `_delta m108 m105`: 12 move, seven to five. The three ways of
+asking the locality question land within 0.0002 of each other, and the cheapest
+one wins.
+
+### What this actually establishes
+
+**The property is real and the instrument for it barely matters.** Locality is
+worth ~0.0002-0.0004 over m102 however it is asked. Anyone reading the m105 key
+vector should know that `span` is not load-bearing as a specific formula -- it is
+one of three interchangeable ways to price the same thing, and it was kept
+because it is free.
+
+**Free is why it wins.** `span` adds no field: `cost > 0` iff a way has a repair
+at every construction site, so `echo - doubt` is exactly 0 when there is none,
+and both endpoints already exist. `runs` needs two fields (`runs`, `tail`), a
+fold function, and a `tail: true` at seven repair sites -- 19 lines for a result
+0.0001 lower. Under a brief whose two hard axes are LOC and latency, a sound
+formulation that costs 19 lines and scores no better is not an improvement, and
+saying so is not defending the compromise.
+
+**The soundness argument was correct and did not predict the outcome.** m108 is
+strictly sound and scores 0.9572; m105 is unsound in 459 prunes and scores
+0.9573. The unsound prune wins because it encodes a true prior the objective
+never states -- damage is confined -- and steering the search with that prior
+early is right more often than the repairing-suffix case it mishandles is
+reached. **Prefix-optimality guarantees you keep the optimum of the STATED
+objective. It says nothing about whether the stated objective is the one you
+wanted.** When the objective is itself a proxy for human expectation, an unsound
+prune can score better, and only a measurement can tell you which way it went.
+
+### The rule this leaves
+
+A named compromise is a debt, not a disclosure. Naming it discharges nothing:
+write the probe that counts how often it is reached and in which direction, then
+build the sound alternative and measure it against the axes the brief actually
+constrains. Here all three steps were cheap -- one instrumented engine, two
+generated variants, three battery runs -- and the answer was the opposite of what
+the theory suggested.
