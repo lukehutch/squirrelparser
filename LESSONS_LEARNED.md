@@ -7463,3 +7463,364 @@ against 763 (1468 for m77 once the borrowed 705-line library parser is counted,
 which the standalone rule requires — so m78 is the *smaller* complete artifact).
 m77 remains the better choice for anyone who cares only about the JSON battery
 and wants the lower latency.
+
+## The forty-second occasion: the AST is primal, so the evaluator had to be rebuilt before any engine could be judged
+
+This occasion is a reframing, not an optimisation. The brief that governs it
+replaced the object being computed, and with it the thing that counts as a
+score. Everything below follows from four sentences of it, quoted verbatim
+because paraphrase has already cost this project one occasion:
+
+> the AST is primal; the input sequence is just the evidence used to optimally
+> build the right AST, either in parsing or in recovery mode, and the input
+> should not be modified or fixed in-place, ever.
+
+> you should not launch whole new parser instances; you should keep working with
+> and updating the same memo table, which contains the AST nodes
+
+> you should probably not be trying to evict nodes from the memo table (if you
+> have to do that to prevent the parser stopping at a memoized wrong value in
+> some future re-parse of the same clause at the same position, then your
+> algorithm is wrong, you shouldn't have written that memo entry in the first
+> place -- similarly, LR handling in the squirrel parser has to communicate back
+> up the parse tree so that the recursion frame that ENTERED the left recursion
+> does iterative expansion, not the stack frame that closed the LR cycle,
+> otherwise the memo table 'blocks itself' and the LR semantics are wrong)
+
+> you should never invent terminals of a class that aren't there (e.g. inserting
+> a zero to complete a list), although STRUCTURALLY if the only way of fixing the
+> parse is to 'insert' a paren or brace, to optimally fix the STRUCTURE of the
+> AST, you can in fact fix the AST structure as if that missing character were
+> present
+
+The third of those predicted, in advance and in the brief's own words, the
+largest defect found this occasion. That is recorded below under I50, and it is
+the reason this section leads with the quote rather than with the engine.
+
+### What the reframing deletes
+
+m74 through m78 are all built on I31: apply the edits, hand the repaired string
+to the pure parser, re-index the tree it returns back onto the input. That is a
+*sequence* answer with a tree recovered from it. Under the brief it is the wrong
+shape twice over -- it modifies the input, and it launches a second parse -- and
+the two are the same defect, because the second parse exists only to interpret
+the modified input.
+
+Deleting it deletes the machinery that served it. What replaces it is I35.
+
+### I35: A REPAIR IS A CLAIM ABOUT THE TREE, NOT AN EDIT TO THE EVIDENCE
+
+Two primitives, and the asymmetry between them is the whole of the brief's
+"never invent terminals" rule:
+
+- `SKIP(p, n)` -- the reader passes over `n` characters at `p` that the grammar
+  cannot explain. It becomes a `SyntaxError` span **in the tree**. The evidence
+  is untouched; the claim is that these characters exist and are unexplained.
+- `FILL(c, p)` -- a construct the grammar requires is absent at `p`. It becomes a
+  **zero-width** `Filled` node. Zero-width is the point: nothing is inserted into
+  the input, and the node covers no characters, so no caller can mistake it for
+  evidence.
+
+A `SKIP` is always legal, because the characters it names are really there. A
+`FILL` is a claim about something that is *not* there, so it needs a licence.
+
+### I36: SYNTHESIS IS LEGAL EXACTLY WHEN THE WITNESS IS UNIQUE
+
+The licence is uniqueness. `FILL(c, p)` is permitted iff `c` has exactly one
+minimal string in its language -- iff, having decided something is missing, the
+grammar leaves no choice about what. `'}'` has one; `[0-9]` has ten. So a brace
+may be filled and a digit may not, which is precisely the brief's distinction
+between "inserting a zero to complete a list" (forbidden) and "fixing the AST
+structure as if that missing paren were present" (allowed).
+
+This is a derivation, not a heuristic. It is computed once per grammar by
+`_solveWitnesses`, a least-fixed-point over the clause graph, and it answers the
+brief's "after satisfying yourself that that is in fact the optimal fix" with a
+property of the grammar rather than a judgment call. Nothing in the engine
+consults a table of "structural" characters; there is no such table.
+
+`,3true` -> `,3,true` and `[,2,` -> `[2,`, the two acceptance cases the brief
+states as hard requirements, both fall out of I36 plus I44 with no case
+analysis: the comma has a unique witness so it may be filled, and the leading
+comma in `[,2,` is cheaper to SKIP than anything the grammar can synthesise
+around it.
+
+### I44: THE OBJECTIVE IS UNEXPLAINED CHARACTERS, AND A TERMINAL THAT CONSTRAINS NOTHING EXPLAINS NOTHING
+
+(Assigned I40 first, twice restated, then renumbered when its final form
+changed what it measures.)
+
+Counting repairs prices what a repair *costs* and gives away what it *buys*. The
+objective is instead `net`: characters SKIPped, plus characters matched by a
+terminal **that constrains**. `.` matches any character and therefore constrains
+nothing, so a `.` match adds nothing to `net` -- it explains nothing, and a
+grammar that can absorb arbitrary text through `.` must not be paid for doing so.
+
+### I37, I38, I39, I41, I43, I46, I47, I48: the eight that make it affordable and correct
+
+| # | Insight | What it decides |
+|---|---|---|
+| I37 | THE BUDGET IS A PRUNE, NOT PART OF THE KEY | Iterative deepening without fragmenting the memo: the budget bounds what enters a cell, and never appears in the cell's identity |
+| I38 | THE CONTINUATION NEED NOT BE PUSHED DOWN IF THE ENDINGS ARE PULLED UP | Every clause returns **all** reachable endings, so a sequence is a fold and no continuation is threaded |
+| I39 | A PEG DECISION COMMITS TO A CHOICE, NOT TO AN ENDING | The pure table decides *which* alternative; that alternative is then re-run at full budget. Committing to the branch is not committing to where it stops |
+| I41 | POSSESSIVENESS IS HOW PEG RESOLVES A REPETITION WHEN NOTHING IS BROKEN | Collapse a repetition possessively **at budget 0 only**. Above 0 the parse has already failed, and possessiveness has no authority over a reading it never produced |
+| I43 | A REPAIR MAY NOT MAKE THE CHOICE | An alternative reached only *because* a repair was spent is not the alternative PEG would have taken. This is what keeps round 0 exactly the frozen parser |
+| I46 | A LEADING SKIP ALSO MAKES THE CHOICE, AND IS REDUNDANT | The corollary of I43 that closes the obvious hole in it |
+| I47 | THE ANSWER IS A LIST, NOT A MAP | The endings of a clause at a position are a short ordered list; a `Map<int, _Way>` prices a hash for a handful of entries. One `Map` survives, in `_rep` |
+| I48 | A TERMINAL IS NOT WORTH A MEMO CELL | Re-deriving a character-class match is cheaper than the cell that would remember it |
+
+And **A4, proved rather than assumed: a lookahead reads the ORIGINAL input at
+cost 0.** A lookahead is a predicate over the evidence. The evidence is never
+modified (I35), so there is nothing for a repair to change under it, and no
+lookahead can be charged for one. Under the brief's relaxation -- lookahead
+bodies are trees of terminals, `Seq`, and `*`/`+` -- such a body is choice-free
+and possessive, hence deterministic (D3), so this is exact and not an
+approximation.
+
+### Three that did not survive, kept with their numbers
+
+| # | Claim | Fate |
+|---|---|---|
+| I42 | DEEPEN ON THE OBJECTIVE, NOT ON ONE TERM OF IT | **Adopted, absorbed.** It is now just the cap `2*len + witness(top).length + 1` and the doubling schedule; it stopped being a separate idea |
+| I45 | FILL says WHAT is missing; HOLE says only THAT something is | **Dropped.** A second, weaker primitive for "something is missing but the witness is not unique" -- which is exactly the case I36 forbids. Adding a node to represent a forbidden claim re-admits the invented terminal through the back door, wearing a different label. No `HOLE` exists in any built engine |
+| I49 | A REF IS A NAME FOR ITS BODY, NOT A SECOND PARSE OF IT | **REFUTED BY MEASUREMENT, kept in the source as a warning** (`m82.dart:698`). `Ref` is 35.6% of every cell body the engine runs, so collapsing ref-cell and body-cell into one looks free. Measured: **907 -> 1351 ms, 1.49x WORSE.** The body cell is not a duplicate of the ref cell; it is reached by paths the ref cell cannot answer for, and collapsing it re-derives the body |
+
+I49 is the useful one. A profile said 35.6% and the change was obviously
+size-reducing and obviously correct; it cost half as much again. **A cell that
+looks like a duplicate of another cell may be the only cache on a different
+path.**
+
+### The evaluator, which had to come first
+
+The brief asks for a scoring function that "builds the correct repaired AST for
+the expected damage, and then does a diff comparison of the produced AST against
+the expected AST." That is `astdiff.dart`, and it is a different instrument from
+every score in this document before it.
+
+- **Expected** = the skeleton of the parse of the *original, undamaged* document.
+- **Produced** = the skeleton of the recovered tree over the *mutant*.
+- **Score** = `1 - editDistance / max(len)`, over the sequence of named-rule
+  labels, plus a coverage check.
+
+The critical property: the expected tree is derived from the original document,
+which the engine never sees. It is not the engine's own output re-examined, and
+no engine can be tuned toward it without actually recovering the shape a human
+would expect.
+
+Ten categories, weighted by how much a human would care: `delim-delete` 3.0,
+`truncate` 3.0, `quote-delete` 2.5, `junk-insert` 2.0, `delim-insert` 2.0,
+`literal-damage` 1.5, `quote-insert` 1.5, `multi-damage` 1.5, `transpose` 1.0,
+`content-damage` 1.0.
+
+**WEIGHTS ARE COVERAGE, NOT MULTIPLIERS.** A category's weight is how many cases
+it *contributes*, not a factor applied to its mean. The aggregate is then a plain
+unweighted mean over cases. This matters because a multiplier lets a
+well-supplied easy category buy points, where coverage makes an important
+category *be tested more*.
+
+### The battery's resolution is set by its scarcest category
+
+The rule above has a consequence that was not noticed until it was audited. The
+per-category case count is `weight * u`, and the unit `u` is derived from supply:
+
+    u = min over categories of floor(n_raw / weight)
+
+So **the scarcest category sets the resolution of the entire battery**, and every
+other category is truncated to match it. Measured: `u = 37`, set by
+`delim-delete` -- 113 raw cases at weight 3.0. The most important category was
+starving the battery.
+
+The waste was severe and invisible: **705 weighted cases out of 5610 generated,
+discarding 4906.** Per-category utilisation ran from `delim-delete` 98.2% down to
+`delim-insert` 3.9%. A category could be 96% unused and nothing in the output
+said so.
+
+The fix is the one the code's own comment already prescribed -- "if a category is
+short, the honest fix is to GENERATE MORE OF IT" -- so: 12 new documents, every
+one verified to parse before being added, and a string literal added to the
+statement grammar so that `quote-delete` and `content-damage` stop being
+single-grammar categories.
+
+| | before | after |
+|---|---|---|
+| documents | 11 | **23** |
+| raw cases | 5610 | **13605** |
+| weighted cases | 705 | **1824** |
+| unit `u` | 37 | **96** |
+| grammars spanned by `quote-delete` | 1 | **2** |
+
+The general lesson, which applies to any weighted-sampling gate: **when the
+sample size per stratum is derived from supply, the least-supplied stratum
+silently caps every other one.** Audit utilisation per stratum, not just the
+totals.
+
+`content-damage` was audited separately because a flat 1.000 is normally the
+signature of a vacuous test. It is not vacuous, and it is not tunable: the insert
+alphabet is `z Q " , } 5 ; ) \`, and inside a JSON string every one of those
+except `\` matches `[^"\\]` and still parses, so the `!parses` filter drops them
+all. Every case is a stray backslash **by construction**. Inspected case by case,
+all 96 produce a skeleton byte-identical to expected with coverage true. Solved,
+and genuinely narrow -- the grammar admits no other character that can break a
+string's interior.
+
+### I50: the memo table blocked itself, exactly as the brief said it would
+
+The rebuilt battery's `expr` corpus is left-recursive. The old 519-mutant battery
+is JSON-only. That one difference exposed a total-failure bug that had been
+present since m80.
+
+**Symptom.** `a+b*`, `a*b+`, `a*b*`, `a+b+`, `1+2*`, `a+b*2-(+c)*4` all returned
+`cost -1` -- no tree at all. Instrumentation showed budget 0 finding `end=3
+cost=0` and every budget >= 1 finding **nothing**. Raising the budget destroyed an
+answer it already had.
+
+**Cause.** In rounds >= 1, `_first` decides the choice by asking `_pure`, which
+answers from the *completed* budget-0 table `_pc`. That table reports a **global**
+fact: "this alternative matches purely at this position." Inside an unfinished
+left-recursion cycle that fact is not yet usable -- the cycle re-entry hands back
+an empty seed, so the recursive alternative yields nothing *yet*. `_first`
+committed to it anyway, got nothing, and **never tried the non-recursive
+alternative that exists precisely to seed the cycle.** Then `_grows(_none,
+_none)` is false, the growth loop breaks on its first pass, and the rule
+memoises "matches nothing here."
+
+Every left-recursive rule that has to GROW lost all its readings the moment the
+budget rose above zero.
+
+This is the brief's sentence, arrived at from the other direction: *"otherwise
+the memo table 'blocks itself' and the LR semantics are wrong."* The brief
+described the failure mode as a reason not to evict; the engine reached the same
+state without evicting anything, by writing a cell it should never have written.
+
+**Fix.** An empty answer where the pure table promised a match IS the signal that
+the cycle is seeding. Keep scanning in PEG order instead of committing:
+
+```dart
+for (final a in f.subClauses) {
+  if (_pure(a, pos) != null) {
+    final w = _clause(a, pos);
+    if (w != null) return _wrap(f, pos, w);   // <- was: return _wrap(f, pos, _clause(a, pos));
+  }
+}
+```
+
+The same guard is needed in `_opt`, for the same reason: a body the pure table
+promised can still yield nothing while its cycle seeds, and `e?` matching
+*nothing at all* -- not even the empty string -- is not a reading PEG admits.
+
+At budget 0 the guard cannot fire, because there `_pure` **is** `_clause` on the
+same table, so a non-null `_pure` guarantees a non-null `_clause`. Round 0
+therefore remains exactly the frozen parser, and PEG conformance is untouched.
+
+**Why it survived three engines.** The old battery has no left recursion. The
+standing LR probe asserts only that LR does not *hang*. Clean input never leaves
+budget 0. Three gates, and the bug is in the blind spot of all three
+simultaneously.
+
+**Measured, m81 -> m82:**
+
+| metric | m81 | m82 |
+|---|---|---|
+| JSON battery shape / covered / fail / costSum | 358 / 519 / 0 / 975 | **identical** |
+| six acceptance cases | -- | **byte-identical** |
+| LR probe | -- | identical, no hang |
+| LOC | 471 | 475 |
+| **AST-diff aggregate (1824 cases)** | **0.7683** | **0.8424** (+9.6% rel.) |
+
+Per category, m81 -> m82:
+
+| category | weight | m81 | m82 |
+|---|---|---|---|
+| delim-delete | 3.0 | 0.780 | **0.895** |
+| truncate | 3.0 | 0.454 | **0.495** |
+| quote-delete | 2.5 | 0.989 | 0.989 |
+| junk-insert | 2.0 | 0.818 | **0.912** |
+| delim-insert | 2.0 | 0.800 | **0.900** |
+| literal-damage | 1.5 | 0.673 | **0.793** |
+| quote-insert | 1.5 | 0.805 | **0.901** |
+| multi-damage | 1.5 | 0.782 | **0.860** |
+| transpose | 1.0 | 0.801 | **0.909** |
+| content-damage | 1.0 | 1.000 | 1.000 |
+
+The two that did not move are exactly the two with no `expr` cases. That is the
+control: the fix is confined to left recursion, and the categories that cannot
+reach left recursion are bit-identical.
+
+### The gate could not see the defect, again, and this is the third time
+
+m77 scored perfect on a table whose grammars contain no empty-language star,
+while being wrong on 711 of 6461 strings on a gate that has one (occasion 40).
+m81 scores 358/519 with 0 failures on a battery whose grammar has no left
+recursion, while returning *no tree at all* for the commonest damage to the
+commonest left-recursive grammar there is.
+
+**A gate that shares a blind spot with the engine reports the engine's blind spot
+as a pass.** The only defence that has ever worked here is widening the corpus
+until it contains a construct the engine treats specially -- not adding more
+cases of what is already covered.
+
+### Where the deliverable actually stands
+
+Honest status, stated as what is met and what is not:
+
+| requirement | status |
+|---|---|
+| AST-centric: no input modification, no second parser instance | **met** -- 0 `Parser(` and 0 `.parse()` in the recovery path |
+| never invent a terminal whose witness is not unique | **met**, by derivation (I36), not by a table |
+| in-place memo table, no eviction | **met** |
+| the two JSON acceptance cases | **met**, byte-exact |
+| AST-diff evaluator built | **met** (`astdiff.dart`) |
+| battery audited, recategorised, weighted, aggregated | **met** (23 docs, 1824 weighted cases) |
+| **smaller** than m78 | **met** -- 475 LOC against 1296, 2.7x smaller |
+| **not slower** than m78 | **NOT MET** -- ~895 ms against 229.3 ms on the same 519-mutant battery under the same one-engine protocol, **3.9x slower** |
+| all engines re-scored on the new battery | **not done** -- only m81 and m82 |
+| several rounds of critique, mine and Codex's, compared | **in progress** |
+
+The latency requirement is the one the brief states most bluntly -- *"this should
+NOT have resulted in higher latency or more lines of code, at all"* -- and it is
+the one not met. Half of it is met (lines), half is not (latency), and the
+failing half is not close.
+
+What is known about the 3.9x, from ablation rather than guess: tree-node
+construction accounts for ~15%, `FILL` for ~62%, deepening for ~29%. The 62% is
+required for quality -- it is what produces the structural repairs the brief
+asks for. So the honest reading is that **no implementation-level change closes
+3.9x**, and the gap needs an algorithmic change. Two measured schedule facts
+bound the deepening term: stepping the budget by 1 costs 1049 ms, doubling costs
+895, and stepping to 4 before doubling costs 880 -- inside the noise of doubling.
+The simplest schedule is already the fastest measured, so there is nothing to win
+there.
+
+The prediction recorded here, to be checked against Codex rather than
+rationalised afterwards: **Codex will return implementation-level wins --
+monomorphising the memo dispatch, flattening cell access -- that are real but sum
+to well under 2x, and will not claim to close 3.9x.** If it returns something
+that does close it, the insight will be about what the deepening loop recomputes
+between rounds, because that is the only term that is both large and not
+obviously necessary.
+
+### Marching orders
+
+1. **Latency, and it is the whole job.** 3.9x on the battery. Not an
+   implementation problem by every ablation taken so far. The candidate with the
+   most headroom: rounds >= 1 rebuild `_mc`/`_me` from scratch, while `_pc` -- the
+   budget-0 answer -- is already known to be budget-independent and is correctly
+   kept. Ask what *else* is round-independent.
+2. **Re-score every engine on the 1824-case battery and rebuild the table.**
+   Explicitly asked for and not started. It is also the only way to know whether
+   m75-m78 have their own left-recursion defect, which on present evidence is
+   likely -- none of them was ever run against a left-recursive grammar with
+   damage.
+3. **`truncate` 0.495 (weight 3.0, 7% perfect) and `literal-damage` 0.793 (1%
+   perfect) are the weakest categories.** That is where quality work belongs, and
+   `truncate` is tied for the highest weight in the battery.
+4. **The order-dependent tie-break is an arbitrary heuristic and a standing D2
+   violation** in both m81 and m82. There is now an evaluator that can judge it.
+5. **`1++2` costs 2, not the optimal 1.** The engine reads it as one `Num`,
+   because `Num <- [0-9]+` is a repetition and `_rep`'s element repair skips `++`
+   *inside* the number. The cost-1 reading `1+2` requires exploring the recursive
+   alternative WITH a repair, which I43 forbids. So I43 and the cost objective
+   disagree on this input, and one of them is wrong. Identical in m81, so this is
+   not an I50 regression. **Unresolved design tension, not a bug to patch.**
+6. Register m79/m80/m81/m82 in `final_table.dart` -- import, `Eng` block, and the
+   mandatory `elegNotes` entry for each.
