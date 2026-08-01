@@ -9485,3 +9485,267 @@ report 3 where 1 is reachable. m111's `need != minSkip` does not fix it — the
 predicate is false exactly at equality. This is a GENERATION prune standing in
 for a GLOBAL comparison, which is why an ordering change cannot touch it, and it
 is the next thing to resolve.
+
+## Occasion 53 — a repair pays for inventing only where the input offered something to read instead (I72)
+
+Occasion 52 closed with CX2 open: `S <- A 'x' 'a'; A <- [ab];` on `xa` reaches
+cost 1 by filling an undetermined zero-width `A` at 0 and letting the real `x`
+and `a` match for nothing, but I54's gate `_witness(sub) != null || need <
+minSkip` is false at `need == minSkip == 1`, so m105/m111/m112/m113 all pay 3 —
+deleting an `x` that is right there and asserting another one two columns along.
+The note said it was "a GENERATION prune standing in for a GLOBAL comparison".
+That was right, and it took four wrong fixes to find out what the prune was
+actually saying.
+
+**First: prove the prune cannot be repaired where it stands.** I54 exists to
+enforce the brief's second acceptance case — `[,2,` must repair as `[2,`,
+deleting the surplus comma rather than asserting a Value before it, "since
+simply inventing a character to insert is a bit ridiculous (it could be
+anything, so why pick 0)". So the fill must lose at pos 13 of `[,2,33,true]` and
+win at pos 0 of `xa`. Instrumenting the fill site in both (`_m113dbg.dart`,
+`_local.dart`) gives:
+
+```
+CX2      pos=0    clause=Ref  need=1  minSkip=1  witness=NONE  I54-allows=false
+BRIEF 2  pos=13   clause=Ref  need=1  minSkip=1  witness=NONE  I54-allows=false
+```
+
+Identical triples, opposite correct answers. **No local gate on (clause kind,
+need, minSkip, witness) can separate them**, so the decision is necessarily
+global. That is a proof, not an argument, and it killed the whole family of
+"tighten the predicate" fixes — including m111's `need != minSkip`, which is
+false exactly at equality.
+
+**Second: the 2×2, so a score change can be attributed to one change.**
+
+|          | I54 on              | I54 off             |
+|----------|---------------------|---------------------|
+| blind@4  | m113 .9573 / 67.0   | m114 .9588 / 67.7   |
+| blind@2  | m118 .9511 / 66.7   | m115 .9511 / 66.7   |
+
+Three things fell out. **m114 is the best score in the project** and reproduces
+Codex's independently-computed .9587/67.8 — that figure is now verified rather
+than reported. **m118 ≡ m115 to every digit and every category**, so raising
+`blind` to level 2 makes I54 dead code: the ordering already suppresses
+everything the prune did. They are two encodings of one statement. And that one
+statement costs .0062 as an ordering but only .0015 as a prune — while m114,
+which pays neither, breaks `[,2,` outright.
+
+**Third: a refuted prediction, recorded because it was mine.** I reasoned that
+banning blind fills outright "would empty the truncate category, the heaviest-
+weighted one, because truncated input often has no skip-only whole-input tree at
+all". Measured (m120): truncate 0.867 and uncovered 0 — identical to every
+repricing variant. The conclusion "preference, not prohibition" was right; the
+reason I gave for it was wrong. A category cannot be emptied by forbidding
+fills, because a determined fill is not a blind one and closing brackets are
+determined.
+
+**Fourth: a correction to a caution I had adopted from Codex** — that the
+battery is blind to invention, so the aggregate is not evidence here. Measured:
+on `[,2,` m114's skeleton is 90 tokens against the expected 84, because m11x
+wraps the zero-width span in a node for the filled CLAUSE and `Value` is in the
+json named set. The battery does see it. What it does not do is *weigh* it: six
+tokens on one of 1824 cases is about .0002 of the aggregate. The metric is not
+blind, it is averaging — which is why acceptance has to be a separate gate, and
+is now one (`_accept.dart`).
+
+### What actually broke it open: the per-category split
+
+The gap between m113 (.9573, keeps I54, fails CX2) and m117 (.9509, flat +1 fee
+on every blind fill, passes everything) is .0064. Where?
+
+| category       |  w  |  m113 |  m117 | weighted Δ |
+|----------------|----:|------:|------|-----------:|
+| **truncate**   | 3.0 | 0.891 | 0.867 | **−0.072** |
+| multi-damage   | 1.5 | 0.938 | 0.921 |     −0.026 |
+| literal-damage | 1.5 | 0.970 | 0.960 |     −0.015 |
+| the other 7    |     |       |       |     −0.004 |
+|                |     |       | sum/19| **−0.0061**|
+
+**59% of the entire argument is one category.** And the decisive row is not in
+that table: m113's truncate (0.891) is *identical to m114's* — the variant with
+I54 deleted outright. **I54 costs truncate nothing.**
+
+The reason is four lines up from the gate (m113.dart:1071): the skip loop runs
+`for (k = 1; k <= _budget && pos + k <= _in.length; k++)`. Past the end of a
+truncated input the body never executes, `minSkip` stays `_inf`, and `need <
+minSkip` is trivially true. **I54 is not a rule about fills at all. It is a rule
+about fills that compete with a skip** — and it is silent everywhere else, which
+is exactly why it costs .0015 where every global encoding costs .0062–.0079.
+
+So I54's *shape* was right all along and only its comparator was wrong: it is a
+BAN where it should be a PRICE. Hoisting I54 and I70 into one expression and
+simplifying:
+
+```dart
+final fee = need + ((w == null && minSkip <= need) ? 1 : 0);
+```
+
+**I72: A REPAIR PAYS FOR INVENTING ONLY WHERE THE INPUT OFFERED SOMETHING TO
+READ INSTEAD.** I54 is I72 with the fee set to infinity; I70 is I72 with the
+guard deleted. Both were single points on a line neither of them could see.
+
+**The derivation.** Under I33 cost is the width of the description. A skip's
+characters are in the input and a determined fill's are forced by the grammar,
+so naming the position names the content. An undetermined fill's are recoverable
+from neither — the clause admits many texts and the repair picks one — so its
+description must carry that choice. But *a choice is only made where there was
+an alternative.* `minSkip` is the cost of the cheapest reading reachable by
+discarding evidence at this exact site (it accumulates `k + e.cost`, so it is in
+the same units as `need`, not a raw length). Where `minSkip <= need` the input
+already holds a reading at least as cheap and the repair is preferring invented
+content over content that is present; that preference is part of the description
+and is charged. Where it does not — and it never does past the end of the input
+— the fill is the only description available and owes nothing.
+
+What it delivers, and why each case comes out the way it does:
+
+- `[,2,`: fill 1+1 = 2 against skip 1. Skip wins **on cost**, with no tie-break.
+- CX2: fill 1+1 = 2 against 3. Fill still wins, because **a price loses a tie
+  and a ban loses the whole comparison**.
+- truncate: `minSkip == _inf`, fee unchanged, so the category never hears about
+  it.
+
+### Schedule-independence, checked rather than assumed
+
+The fee reads `minSkip`, which is itself computed under the current `_budget` —
+so if its truth value could change between rounds, I72 would be tuned to the
+doubling schedule, which is the arbitrary heuristic D2 forbids and the reason
+m116 (`blind` above `cost`) was disqualified.
+
+It cannot. The repair memo is cleared at the top of every round
+(m113.dart:560-561), so `_clause` at budget *b* is complete for cost ≤ *b*. At
+*b* = `need` the skip loop admits exactly the ways with `k + e.cost <= need` —
+precisely those that could make the guard true — and every larger budget can
+only add ways with `k + e.cost > need`. **So `minSkip <= need` has the same
+truth value in every round in which the fill is considered.** m116 differs in
+kind: it reorders ways *within* a round, and which ways share a round is a
+property of the schedule.
+
+Measured, not just argued: replacing `_budget * 2` with `_budget + 1` and
+re-scoring. A step-by-one schedule visits every intermediate budget, so any
+engine whose answer depends on which costs happen to share a round must move.
+
+| probe      | AST-diff | perfect% | base | base AST-diff | moved? |
+|------------|---------:|---------:|------|--------------:|:------:|
+| m121step   |   0.9573 |     67.0 | m121 |        0.9573 | no     |
+| m113step   |   0.9573 |     67.0 | m113 |        0.9573 | no     |
+| **m116step** | **0.9511** | **66.4** | m116 | **0.9512** | **YES** |
+
+m121step and m113step are identical to their bases on the aggregate, on
+perfect%, and on all ten categories — not merely close. **m116step is not**:
+quote-insert falls 0.966 → 0.964 and nothing else moves. So the probe is
+sensitive enough to detect schedule-dependence, and it detects it exactly where
+the argument says it should — in the variant that reorders ways *within* a round
+— and nowhere in I72. Without that positive control the two "no"s would have
+been worthless; a probe that cannot fail proves nothing.
+
+(The probes run ~30% slower — 6,122 ms against m121's 4,711 — because stepping
+by one visits budgets the doubling schedule skips. That is the probe working,
+not a defect, and it is why the schedule is doubling in the shipped engine: it
+is a search-order optimisation, and the point of this section is that it is
+*only* that.)
+
+### Two measurement defects caught in passing
+
+**LOC mixed two formatter eras.** Dart 3.7 introduced the "tall" style, and
+which style applies is chosen by the LANGUAGE VERSION resolved for the file, not
+by the formatter binary; `dart/pubspec.yaml` declares `sdk: '>=3.0.0 <4.0.0'`,
+so in-package formatting selects the short style. Committed-vs-reformatted
+drift: m75 0, m62 +2, m113 +24, m112 +25, m105 +27, m78 +30, m109 +38. I read a
+"+20 line penalty" off m117 (575) against m113 (555) and called it the wrong
+direction on the project's loudest complaint. Normalised, they are 575 and
+**579** — m117 is the *smaller* file. Every LOC in the table is now measured
+after `dart format --language-version=3.0`.
+
+**The ranking mixed two different problems, and the top row was the wrong one.**
+The rebuilt table put m77 first (.9609 / 71.5% / 1,386 ms, passing all three
+acceptance cases). Opening it: m77.dart:1141-1143 builds a repaired string with
+`_repaired()` and runs a **second, brand-new `Parser`** over it, checking
+`hasSyntaxErrors`. That is the architecture the brief bans in four separate
+places. Its score is a score on a different task. Having found that by opening
+ONE file, the same question had to be asked of all of them, so the table now
+carries an `arch` column derived by extracting every `Parser(` construction with
+its `input:` argument and reading the distinct expressions by hand (`reparse.py`
+— the regex is the search, not the verdict). Over the scored engines: **own 48,
+probe 23, lib 31, reparse 6** (m66, m67, m68, m74, m75, m77). Constructing a
+`Parser` is not itself the violation — `probe` engines build one over a
+ONE-CHARACTER synthesized string to ask whether a clause accepts that character,
+which is a grammar query; and `lib` engines call the frozen parser over the
+ORIGINAL input, which is what the library is for. **The violation is
+constructing one over a string that is not the input.** Note also that `lib`
+rows report recovery-only LOC, so they were never comparable to `own` rows
+either; the column now says so. **A ranking without an architecture column was
+not a ranking, it was a mixture.**
+
+**And the first attempt to fix that was itself wrong.** Reformatting copies in a
+scratch directory gave m113 = 682, a 23% swing, which I nearly reported. `dart
+format` resolves the language version through `.dart_tool/package_config.json`,
+which a bare copy cannot reach, so the file falls back to the newest version and
+gets the tall style. A copy of `pubspec.yaml` alongside it does *not* fix this —
+also 682. `--language-version=3.0` reproduces the in-package figure exactly.
+**The rule: a formatting measurement is only valid under the package config the
+file actually lives under, and the way to check is to reproduce a known
+in-package number before trusting the method.**
+
+### Where this leaves it: m121 is the engine
+
+m121 is m113 with I54's ban replaced by I72's price, and it is **identical to
+m113 on every scored column** — aggregate .9573, perfect% 67.0, and all ten
+categories to three decimals — while passing all three acceptance cases m113
+fails. There was no trade-off to weigh. The only measured cost is latency, and it is
+the prune's own advantage: a banned candidate is never built, never keyed, never
+memoised, whereas a price has to build it in order to reject it.
+
+The size of that cost was itself re-measured, because the sweep's figures are
+single passes and a 6% claim off two single passes is not a measurement.
+Alternating the two engines three times, alone on the machine:
+
+| | r1 | r2 | r3 | mean | spread |
+|---|---:|---:|---:|---:|---:|
+| m113 | 4438 | 4448 | 4441 | **4442** | 0.2% |
+| m121 | 4585 | 4650 | 4674 | **4636** | 1.9% |
+
+**+4.4%, not the +6% the sweep implied** — and both engines returned .9573/67.0
+in all six runs, so the score identity is reproducible and not a one-pass
+coincidence. The sweep column in `SCORE_TABLE.md` still carries its own
+single-pass numbers (4,711 / 4,433) because every one of the 105 rows was
+measured that way and patching two of them would break the comparison; the
+back-to-back figure is the one to quote for this pair.
+
+Two open questions got measured answers rather than arguments while the
+apparatus was up. `minSkip <= need` beats the wider `minSkip < _inf` (m123) by
+.0009, **all of it in multi-damage** (.938 against .930) — charging a fill that
+faces no competing skip is charging for a choice that was never available.
+Deleting the `blind` key level under I72 (m122) costs .0002 and 0.6 perfect%, so
+the level still earns its place even once the price exists: the price decides
+*whether* a blind fill is affordable, the key decides which of two affordable
+ways is preferred, and those are different questions.
+
+The ranking, read honestly: **#1 m77** `reparse`, disqualified. **#2 m114**
+scores highest of anything legal (.9588) and breaks `[,2,` outright. **#3 m112,
+#4 m113** fail CX2. **#5–7 m110/m105/m111** fail CX2 *and* hand out 4/4 free
+passes — they cost 0 for all four strings the frozen parser rejects, which is
+unsound, not merely worse. **#8 m121** is the highest-ranked engine that is
+standalone, acceptance-compliant, and sound, and it is the first in the project
+to be all three at once.
+
+**What is still owed.** Size is met (578 normalised against m78's 1,326) and
+quality is met (.9573 against m78's .9444). **Latency is not: 4,711 ms against
+m78's 2,182, a factor of 2.16, and m62 runs this battery in 1,312.** That is now
+the whole remaining gap, and it is the one deficit no ordering or pricing
+insight has ever touched — every insight from I52 onward has moved quality or
+size. My analysis and Codex's converge independently on the same shape for it: a
+cost-stratified semi-naive deductive chart — dense clause IDs, one persistent
+memo array indexed by `(mode, clauseId, position)` instead of a per-round map,
+facts bucketed by exact cost, bucket 0 drained as the frozen parser, only newly
+arrived layers convolved, and only registered parents woken. Independent
+convergence on a design neither party can yet cost is worth recording as the
+next thing to build, not as a result.
+
+The remaining .0015 to m114 sits in literal-damage (.970 against .984) and
+multi-damage (.938 against .945), where a blind fill should win a *tie* against
+a skip. Under I72 it loses that tie by exactly the fee. Whether there is a
+principle there or only m114's freedom to invent is unresolved, and it should be
+approached as "what distinguishes these ties?" rather than by shaving the fee,
+which would just be tuning.

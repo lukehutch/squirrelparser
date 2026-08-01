@@ -16,6 +16,15 @@ paths); running them is the only check.
 
 ## Candidate implementations
 
+**The authoritative ranking is [`SCORE_TABLE.md`](SCORE_TABLE.md)** — all 105
+scored engines on the weighted AST-diff battery, with the architecture and
+acceptance columns that decide whether a row is comparable at all. The current
+engine is `m121.dart`.
+
+The table below is the **m12–m26 era only**, kept because the notes on those
+files are still accurate. Its "current winner" label is not: it predates the
+AST-diff battery, and by that measure m26 ranks 36th.
+
 | file | LOC | shape | note |
 |---|---|---|---|
 | **`m26.dart`** | **382** | **517/519** | **current winner**: A1-A5, left recursion correct, fastest |

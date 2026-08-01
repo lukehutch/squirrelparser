@@ -52,6 +52,19 @@ import 'm110.dart' as g110;
 import 'm111.dart' as g111;
 import 'm112.dart' as g112;
 import 'm113.dart' as g113;
+import 'm114.dart' as g114;
+import 'm115.dart' as g115;
+import 'm116.dart' as g116;
+import 'm118.dart' as g118;
+import 'm117.dart' as g117;
+import 'm119.dart' as g119;
+import 'm120.dart' as g120;
+import 'm121step.dart' as gm121step;
+import 'm116step.dart' as gm116step;
+import 'm113step.dart' as gm113step;
+import 'm121.dart' as g121;
+import 'm122.dart' as g122;
+import 'm123.dart' as g123;
 
 /// A uniform surface over both engine generations: give it a grammar and a top
 /// rule, get back something that turns a damaged string into a tree or throws.
@@ -189,6 +202,58 @@ final Map<String, Build> extra = {
   },
   'm113': (r, t) {
     final e = g113.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm114': (r, t) {
+    final e = g114.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm115': (r, t) {
+    final e = g115.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm116': (r, t) {
+    final e = g116.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm118': (r, t) {
+    final e = g118.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm117': (r, t) {
+    final e = g117.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm119': (r, t) {
+    final e = g119.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm120': (r, t) {
+    final e = g120.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm121step': (r, t) {
+    final e = gm121step.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm116step': (r, t) {
+    final e = gm116step.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm113step': (r, t) {
+    final e = gm113step.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm121': (r, t) {
+    final e = g121.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm122': (r, t) {
+    final e = g122.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm123': (r, t) {
+    final e = g123.SuperDot3(rules: r, topRuleName: t);
     return e.recover;
   },
 };

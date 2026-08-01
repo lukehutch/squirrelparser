@@ -48,6 +48,16 @@ import 'm110.dart' as m110;
 import 'm111.dart' as m111;
 import 'm112.dart' as m112;
 import 'm113.dart' as m113;
+import 'm114.dart' as m114;
+import 'm115.dart' as m115;
+import 'm116.dart' as m116;
+import 'm117.dart' as m117;
+import 'm118.dart' as m118;
+import 'm119.dart' as m119;
+import 'm120.dart' as m120;
+import 'm121.dart' as m121;
+import 'm122.dart' as m122;
+import 'm123.dart' as m123;
 
 const negGrammar = '''
 Top <- Item+;
@@ -102,6 +112,16 @@ final engines = <(String, Cost)>[
   ('m111', (r, t) => m111.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m112', (r, t) => m112.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m113', (r, t) => m113.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m114', (r, t) => m114.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m115', (r, t) => m115.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m116', (r, t) => m116.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m117', (r, t) => m117.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m118', (r, t) => m118.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m119', (r, t) => m119.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m120', (r, t) => m120.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m121', (r, t) => m121.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m122', (r, t) => m122.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m123', (r, t) => m123.SuperDot3(rules: r, topRuleName: t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>
