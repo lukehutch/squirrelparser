@@ -30,6 +30,7 @@ import 'm86.dart' as g86;
 import 'm87.dart' as g87;
 import 'm88.dart' as g88;
 import 'm89.dart' as g89;
+import 'm90.dart' as g90;
 
 /// A uniform surface over both engine generations: give it a grammar and a top
 /// rule, get back something that turns a damaged string into a tree or throws.
@@ -79,6 +80,10 @@ final Map<String, Build> extra = {
   },
   'm89': (r, t) {
     final e = g89.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm90': (r, t) {
+    final e = g90.SuperDot3(rules: r, topRuleName: t);
     return e.recover;
   },
 };
