@@ -7801,16 +7801,15 @@ obviously necessary.
 
 ### Marching orders
 
-1. **Latency, and it is the whole job.** 3.9x on the battery. Not an
-   implementation problem by every ablation taken so far. The candidate with the
-   most headroom: rounds >= 1 rebuild `_mc`/`_me` from scratch, while `_pc` -- the
-   budget-0 answer -- is already known to be budget-independent and is correctly
-   kept. Ask what *else* is round-independent.
+1. ~~**Latency, and it is the whole job.** 3.9x on the battery.~~ **THE 3.9x DOES
+   NOT EXIST. It was a cross-battery comparison -- see the correction below.**
+   Measured like-for-like, m82 is *faster* than m78. Latency is not the job;
+   quality is.
 2. **Re-score every engine on the 1824-case battery and rebuild the table.**
-   Explicitly asked for and not started. It is also the only way to know whether
-   m75-m78 have their own left-recursion defect, which on present evidence is
-   likely -- none of them was ever run against a left-recursive grammar with
-   damage.
+   Explicitly asked for and not started. ~~It is also the only way to know
+   whether m75-m78 have their own left-recursion defect, which on present
+   evidence is likely -- none of them was ever run against a left-recursive
+   grammar with damage.~~ **REFUTED BY MEASUREMENT -- see below.**
 3. **`truncate` 0.495 (weight 3.0, 7% perfect) and `literal-damage` 0.793 (1%
    perfect) are the weakest categories.** That is where quality work belongs, and
    `truncate` is tied for the highest weight in the battery.
@@ -7824,3 +7823,260 @@ obviously necessary.
    not an I50 regression. **Unresolved design tension, not a bug to patch.**
 6. Register m79/m80/m81/m82 in `final_table.dart` -- import, `Eng` block, and the
    mandatory `elegNotes` entry for each.
+
+### The correction: three of my own claims here were wrong, and measuring said so
+
+Marching order 2 above carried a prediction. It has now been measured, and it was
+wrong, so it is struck out rather than quietly dropped.
+
+**m78 scores 0.8946 on the 1824-case battery with 0 crashes and 0 uncovered
+cases.** The battery's `expr` corpus is left-recursive and damaged, so the
+prediction that m75-m78 "likely" share a left-recursion defect is refuted by the
+only test that could settle it. The reasoning behind the prediction was that none
+of them had been *run* against such a grammar -- which was true, and which is
+exactly why it should have been recorded as untested rather than as likely. An
+absence of evidence was written down as evidence.
+
+Registering the new engines in `final_table.dart` turns out to be blocked for a
+real reason, not a mechanical one. Engines to m78 return `SkipResult`; m79-m82
+return `MatchResult`. The adapter runs one way only: `.root` is already the
+full-coverage tree, so old engines score on the new metric losslessly, but
+forcing the new engines into the old table would put `lastCost` in the
+`recoveryEvents` column -- and under I44 that counts unexplained CHARACTERS where
+every earlier engine counts edit EVENTS. Two objectives in one column is the
+error this project has already made three times. So the new engines are scored on
+shape, which is objective-neutral, and are **not** back-fitted into the cost
+column. That is what `_score1.dart` exists for.
+
+#### The score has to be read next to the invention it may be buying
+
+The m75 elegNote already records that the OLD shape column was the metric being
+wrong, not the engine: on all 43 inputs where m74 matched the pre-corruption
+shape and m75 did not, m74 bought the match with at least one node the input does
+not support -- 43 of 43. The new evaluator compares against the skeleton of the
+UNDAMAGED document, so it can inherit exactly that bias: it pays for guessing the
+document back, and guessing is what the brief forbids.
+
+`_invent.dart` hands every leaf of the finished tree back to the PURE parser at
+its own position over the UNTOUCHED input and asks whether it reads its own span.
+The two kinds of failure are counted separately, because collapsing them is how
+this measurement would lie in the other direction:
+
+* **WIDE** -- `len > 0` and it does not read its own span. The node claims real
+  characters that do not say what it says. This is invention that corrupts, and
+  it is what the brief forbids.
+* **FILL** -- `len == 0`. It asserts structure and destroys nothing. I36
+  explicitly allows this for a uniquely-determined delimiter.
+
+| engine | AST-diff | WIDE | FILL | errNodes | LOC | re-parses? |
+|---|---|---|---|---|---|---|
+| m77 | **0.9078** | 0 | 369 | 2204 | 763 | **yes** (`Parser(` x2) |
+| m62 | 0.9035 | **1370** | 695 | 421 | -- | -- |
+| dot | 0.9034 | 0 | 928 | 1784 | -- | -- |
+| m74 | 0.9033 | **1790** | 547 | 0 | -- | -- |
+| m75 | 0.9004 | 0 | 362 | 2204 | 746 | **yes** |
+| m78 | 0.8946 | 0 | 260 | 2330 | 1296 | no |
+| m82 | 0.8424 | 0 | 2164 | 1809 | 475 | no |
+| m81 | 0.7683 | 0 | 2098 | 1912 | 471 | no |
+
+The positive control fires, which is what makes the zeros mean anything: a check
+that cannot fail proves nothing, and this one can. m74 and m62 read 1370-1790
+WIDE nodes while scoring ~0.903.
+
+**The evaluator is a large improvement and not a complete fix.** On the old shape
+metric m74 beat m75 517 to 474, a 8.3% premium bought entirely by invention. On
+the new metric the same pair reads 0.9033 to 0.9004 -- 0.32%. The invention
+premium is cut by about 26x. It is not cut to zero, so **WIDE is a mandatory
+column beside score in the rebuilt table**, not an optional diagnostic.
+
+#### THE 3.9x DOES NOT EXIST: it was 519 cases compared against 1824
+
+This is the fourth time this project has put two different measurements in one
+column, and it is the first time the error ran in the engine's FAVOUR to correct.
+
+The claim was "m82 is 3.9x slower than m78 on the same battery under the same
+protocol." Every clause of that is wrong except the first.
+
+* **m78's 229.3 ms is `battms`, and `final_table.dart:19` says what that is:
+  "shape / cover / cost histogram / crashes on the 519 mutants."** The old JSON
+  battery. 519 cases.
+* **m82's 895 ms was measured on the REBUILT battery. 1824 cases.**
+* 1824 / 519 = **3.51**. The entire "3.9x regression" is the case count, plus
+  11%.
+
+I had checked that both numbers were *battery* figures rather than *latency*
+figures and concluded "like-for-like" on that basis. That check was necessary and
+not sufficient: two battery figures over different batteries are no more
+comparable than a battery figure and a latency figure. **Naming the protocol is
+not enough; the DENOMINATOR has to be named too.**
+
+Measured properly -- same 1824-case battery, one engine per process from cold,
+`Stopwatch` around the `recover` call ONLY, two trials:
+
+| engine | trial 1 | trial 2 | mean | own matcher? | re-parses? |
+|---|---|---|---|---|---|
+| m75 | 1172 | 1212 | **1192** | no -- imports `Parser` | yes |
+| m77 | 1299 | 1297 | **1298** | no -- imports `Parser` | yes |
+| m82 | 2028 | 1896 | **1962** | yes | no |
+| m78 | 2204 | 2098 | **2151** | yes | no |
+| dot | 16624 | 16343 | **16484** | no | -- |
+
+**m82 is 0.91x m78 -- it is FASTER.** Against the only engine it is comparable to
+(both carry their own matcher, neither re-parses), m82 is 2.7x smaller AND 1.10x
+faster. It is not dominated. The one thing it loses is quality, by 0.052.
+
+A second protocol defect found while doing this, worth fixing before the numbers
+are reused: **`_score1.dart` times `scoreCase` inside its stopwatch**, so its ms
+column is engine + evaluator, not engine. `_where.dart` times the `recover` call
+alone and is the one to trust. The `_score1.dart` ms column should be read as an
+ordering hint only.
+
+#### Size: 2.7x, and checking it disqualified two other rows
+
+**The 2.7x is like-for-like, and checking it disqualified two other rows.** The
+`Eng` docstring already warns that LOC does not charge for the library an engine
+imports, so a row is only comparable to a row that reaches the parser the same
+way. Checked, per engine, by what each file actually references:
+
+| engine | LOC | reaches the parser by | comparable to m82? |
+|---|---|---|---|
+| m74 / m75 / m77 | 791 / 746 / 763 | imports and uses the frozen `Parser` | **no** -- parser is free |
+| m78 | 1296 | `hide Parser`; own `_Oracle` packrat | **yes** |
+| m79-m82 | 364-475 | own matcher; never calls `.match` or builds a `Parser` | **yes** |
+
+So the honest size comparison is m82's 475 against m78's 1296, both carrying
+their own matching. m75's 746 and m77's 763 are *not* 1.6x m82 -- they are 746
+and 763 lines PLUS a parser they did not have to write. This makes the size
+result stronger than it looked, and it makes m75/m77 a worse size comparison than
+the table has been implying.
+
+Worse, m82 already sits on the wrong side of its own curve: the MEASURED KNOB in
+`_repair` is set to the latency side, where turning it on is worth +4.3% shape
+and costs 1.8x time. So the engine is *paying* quality for a latency it still
+does not have.
+
+Two further readings from the table, both confirmed:
+
+* **m77 leads the clean ranking, and what its second parse is for matters.**
+  `m77.dart:1141-1144` builds a repaired string and runs a second `Parser` over
+  it -- but only for a yes/no. Its own comment records why, and it is measured,
+  not assumed: with obligations approximated to one character the chase's checks
+  are not a membership proof, and dropping this parse made m75 answer cost 2 on
+  inputs whose true cost is -1, on 28 of 31 strings. The tree m77 returns is
+  built over the ORIGINAL input by the chase, and no invented character reaches
+  it -- which is why its WIDE count is 0 and its 0.9078 is honestly earned as a
+  *tree*. What it violates is D1's construction ban and the no-repaired-string
+  rule, and it violates them for SOUNDNESS, not for shape. So the correct reading
+  is not "m77 cheats"; it is that **m77 pays a whole extra parse to get a
+  guarantee the new generation must obtain some other way** -- and that
+  guarantee, not the score, is what has to be replicated.
+* **The m55-m64 family is one engine as far as this metric can see.** m59, m60,
+  m61, m62 and m64 return byte-identical aggregate AND per-category scores. Ten
+  rows of the old table were measuring one behaviour.
+
+#### The over-fill hypothesis was wrong, and the truth is its opposite
+
+The hypothesis was that m82 loses shape by over-filling: it emits 2164 zero-width
+fills against m78's 260 while carrying FEWER SyntaxError nodes, and `skeleton()`
+emits `Name ( )` for any node whose clause is a named `Ref` regardless of width,
+so filling a named rule would inject spurious tokens. It was flagged as the claim
+most likely to be wrong, because it was fitted to one correlation. It was wrong.
+
+`_shape.dart` splits the shape error by DIRECTION, because over- and
+under-production have opposite fixes:
+
+| engine | score | over | under | namedFill | empty | giveup |
+|---|---|---|---|---|---|---|
+| m77 | 0.9078 | 210 | **13506** | 0 | 0 | 0 |
+| dot | 0.9034 | 30 | 15255 | 6 | 0 | 0 |
+| m75 | 0.9004 | 216 | 14649 | 0 | 0 | 0 |
+| m78 | 0.8946 | **390** | 15351 | 0 | 13 | 13 |
+| m82 | 0.8424 | **147** | **24984** | **13** | 9 | 1 |
+| m81 | 0.7683 | 147 | 42957 | 13 | 148 | 140 |
+
+* **m82 over-produces LESS than m78** -- 147 against 390.
+* **m82 under-produces 1.63x MORE** -- 24984 against 15351.
+* **Named fills are 13 in the whole battery.** The proposed mechanism can account
+  for 13 events out of a ~9600-token deficit. It is not the cause of anything.
+
+So m82 does not invent too much. **It recovers too little**, and it does so
+diffusely: only 9 cases come back with no named rule at all, and only 1 is the
+bare whole-input `SyntaxError`. The loss is about 5 skeleton tokens per case,
+spread across the battery, not a handful of catastrophes.
+
+Two things fall out of the same table. **I50 is worth far more than its writeup
+claims**: m81 -> m82 cuts total give-ups from 140 to 1 and empty trees from 148 to
+9, which is most of the 0.7683 -> 0.8424 gain. And **`empty`/`giveup` are invisible
+to the `crashed`/`uncovered` columns**, because a bare `SyntaxError` spanning the
+input is a valid, fully-covering tree that happens to say nothing -- so an engine
+can give up on 140 cases and read 0 crashed, 0 uncovered. That is a fourth
+instance of the gate not being able to see the defect, and the two columns are
+now in `_shape.dart`.
+
+**Where the remaining loss actually is**, per category, with time beside score so
+the two can be read together (`_where.dart`, engine-only timing):
+
+| category | n | m82 score | m78 score | gap | m82 share of time |
+|---|---|---|---|---|---|
+| truncate | 288 | 0.495 | 0.508 | -0.013 | 15.3% |
+| delim-delete | 288 | 0.895 | 0.968 | **-0.073** | 13.8% |
+| literal-damage | 144 | 0.793 | 0.952 | **-0.159** | 12.3% |
+| multi-damage | 144 | 0.860 | 0.926 | -0.066 | 10.6% |
+| delim-insert | 192 | 0.900 | 0.953 | -0.053 | 10.4% |
+| quote-insert | 144 | 0.901 | 0.984 | **-0.083** | 6.6% |
+| transpose | 96 | 0.909 | 0.968 | -0.059 | 5.4% |
+| junk-insert | 192 | 0.912 | 0.951 | -0.039 | 9.4% |
+| quote-delete | 240 | 0.989 | 0.999 | -0.010 | 12.2% |
+| content-damage | 96 | 1.000 | 1.000 | 0.000 | 3.9% |
+
+**`truncate` is NOT where m82 loses.** It is nearly tied there (-0.013) and it is
+the weakest category for BOTH engines, so it is a shared unsolved problem rather
+than a regression. The regression is concentrated in **`literal-damage` (-0.159),
+`quote-insert` (-0.083) and `delim-delete` (-0.073)** -- and `delim-delete` ties
+`truncate` for the highest weight in the battery, so it is worth 3.0.
+
+The time picture also refutes a hypothesis worth recording as dead: truncation
+was expected to drive the deepening ladder to its cap and dominate the clock. For
+m78 it does -- 37.5% of the time on 16% of the cases. **For m82 it does not**:
+15.3% of the time on 16% of the cases, almost exactly its share. Whatever else is
+true of m82's ladder, it is not blowing up on truncation.
+
+### Revised marching orders
+
+The six above were written against a picture in which latency was the whole job
+and m82 was dominated. Both are now measured false, so they are superseded.
+
+1. **Quality is the whole job, and it is 0.052 in one direction: m82 RECOVERS
+   TOO LITTLE.** 24984 tokens of under-production against m78's 15351, spread at
+   about 5 tokens per case, with over-production already *better* than m78's.
+   Every fix should be asked "does this recover more structure?", and any fix
+   that trades under- for over-production is moving the wrong way.
+2. **Three categories hold the whole regression: `literal-damage` (-0.159),
+   `quote-insert` (-0.083), `delim-delete` (-0.073).** `delim-delete` carries
+   weight 3.0. Start there, on real failing cases, not on the aggregate.
+3. **`truncate` is a shared unsolved problem, not a regression** -- 0.495 against
+   m78's 0.508, weight 3.0, and the weakest category for both generations. It is
+   the largest single quality opportunity in the whole table and no engine has
+   ever done well on it.
+4. **Size and latency are MET against the only comparable engine.** 475 LOC vs
+   1296, 1962 ms vs 2151 ms. Stop optimising them; they are not the deficit.
+   m75/m77 are faster still (1192/1298 ms) but import the frozen `Parser`, so
+   their LOC excludes it -- their *latency* advantage is nonetheless real and
+   unexplained, and is the one place a speed question remains worth asking.
+5. **Replicate m77's soundness guarantee without its second parse.** m77 pays a
+   whole extra `Parser` over a repaired string for a yes/no membership proof,
+   and its own comment records that dropping it made m75 report cost 2 on
+   inputs whose true cost is -1, 28 of 31. That guarantee, not the 0.9078, is
+   what the new generation lacks.
+6. **Fix the two measurement harnesses before their numbers are reused.**
+   `_score1.dart` times the evaluator inside its stopwatch. `crashed`/`uncovered`
+   cannot see a total give-up. Both are now known; only the second is fixed.
+7. Still open and untouched by any of this: the order-dependent tie-break (D2),
+   the `1++2` cost-2 tension with I43, and registering m79-m82 in
+   `final_table.dart` -- which remains blocked by the `SkipResult`/`MatchResult`
+   objective split, not by mechanics.
+
+**And the standing methodological rule this occasion cost the most to learn:**
+naming the protocol is not enough. *Name the denominator.* Two "battery
+milliseconds" over batteries of 519 and 1824 cases are not comparable, and the
+resulting 3.51x reads exactly like an engine regression.
