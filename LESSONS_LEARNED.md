@@ -9907,3 +9907,76 @@ attribution rule is wrong, not the opportunity enormous.
 
 I51 is not removable in any case, and the record already says so: it bought
 0.8424 → 0.8748 for +701 ms. Quality is a met goal; that trade does not reopen.
+
+### I74: THE MEMO BELONGS TO THE BUDGET, NOT TO THE ROUND
+
+I73 was the residual-0 case of a general rule, and the round profile said so
+outright: it collapsed round 1 from 1,716 ms to 224 and left every later round
+untouched. That is exactly what it must do. At budget 1 *every* cost-1 prefix has
+residual 0, so I73 fires on all of them; at budget 2 a cost-1 prefix has residual
+1 and it never fires at all.
+
+The general rule is that **what a clause can do at a position is a function of
+the budget alone** — every budget-sensitive test in the engine reads `_budget`
+and nothing else — so a table built at budget *b* is still correct at budget *b*
+in every later round. Give each budget its own family and the fold sets
+`_budget` to the residual across the call. I73's explicit `_pure` disappears:
+residual 0 sets the budget to 0, and `_element` at budget 0 is already `_clause`
+on `_pc`, which *is* `_pure`. The general rule is also the smaller one, so m125
+is generated from m121 rather than from m124.
+
+A second consequence was not the goal and arrives free: round 2's residual-1
+lookups land in the table round 1 already filled. That is the cross-round
+redundancy the semi-naive plan was going to be rewritten to eliminate — the
+28.4% — obtained as a side effect of a change made for a different reason. Only
+partly, since round 4 still needs tables 3 and 4 that no round built.
+
+### I75: ROUND THE RESIDUAL TO THE LADDER THAT IS ALREADY THERE
+
+I74 measured as two results, not one:
+
+| ord | budget | m124 ms | m125 ms | | m126 ms |
+|----:|-------:|--------:|--------:|---|--------:|
+| 1 | 1 | 224 | 252 | | 224 |
+| 2 | 2 | 966 | **234** | 4.1x faster | 234 |
+| 3 | 4 | 774 | **361** | 2.1x faster | 805 |
+| 4 | 8 | 464 | 377 | | 572 |
+| 5 | 16 | 560 | **1459** | **2.6x SLOWER** | 652 |
+
+**The regression is the exact price of the win, not a bug.** At budget 2 the
+residuals are {0,1,2}: three families, all cheap. At budget 16 they are {0..16}:
+seventeen families where m121 had one table that every caller shared whatever the
+residual was. I74 buys a cheaper search per call by giving up the sharing
+*between* calls at different residuals, and at budget 16 that trade inverts —
+53% of the whole clock, on seven cases.
+
+I75 rounds the residual **up to the next rung of the deepening ladder** —
+0,1,2,4,8,16 — so the families are O(log budget) instead of O(budget) and each
+rung is shared by the whole range of residuals reaching it. Sound for I74's
+reason: searching above the residual is what the engine did before I74, and the
+fold's `cost > _budget` filter still tests against the FULL budget. **No new
+constant** — the rungs are the schedule `recover` already walks, so this is a
+rule and not a tuning parameter.
+
+It is also the consistent choice rather than merely the faster one. Exact
+residuals are a step-by-one ladder, and stepping by one is the schedule this
+engine already measured and rejected for the deepening loop itself: *"stepping
+by one costs 1049 ms, doubling 895 ms"*. Using one ladder for the rounds and a
+different one for the residuals would need an argument nobody has.
+
+### Where the four insights leave the engine
+
+Three alternating back-to-back runs per engine, one process each:
+
+| engine | score | exact | ms | LOC | vs m121 |
+|---|---:|---:|---:|---:|---:|
+| m121 | 0.9573 | 67.0 | 4696 / 4659 / 4650 | 578 | — |
+| m124 (I73) | 0.9573 | 67.1 | 3177 / 3024 / 3187 | 584 | 1.52x |
+| m125 (I74) | 0.9573 | 67.2 | 2769 / 2809 / 2818 | 594 | 1.67x |
+| **m126 (I75)** | **0.9573** | **67.2** | **2579 / 2623 / 2636** | **602** | **1.79x** |
+
+Score unchanged to four decimals at every step and every category identical to
+three; acceptance `ok cx2=1 b1=1 b2=1` throughout; `_conf1` free-passes `.` with
+the identical cost vector `0 1 1 0 2 2`. **The gap to m78's 2,182 ms falls from
+2.16x to 1.20x**, and none of it came from the rewrite both analyses converged
+on. Every one of these four is a few lines inside the fold.

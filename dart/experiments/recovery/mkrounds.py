@@ -13,9 +13,12 @@ So: time each round separately, bucketed by round ORDINAL (0,1,2,4,8,... -> 0th,
 the engine rather than changing any behaviour: the loop body is untouched.
 """
 import re
+import sys
 
 D = '/home/luke/Work/squirrelparser/dart/experiments/recovery/'
-src = open(D + 'm121.dart', encoding='utf-8').read()
+# Which engine to instrument (default m121, the engine this was written for).
+ENG = sys.argv[1] if len(sys.argv) > 1 else 'm121'
+src = open(D + ENG + '.dart', encoding='utf-8').read()
 
 # 1. globals to accumulate into, next to the existing `int _budget = 0;`
 anchor = 'int _budget = 0;'
@@ -39,14 +42,15 @@ int kProdUs = 0;
 int _kPreUs = 0;
 ''')
 
-# 2. start the per-round clock right after the memo is cleared
-old = '''      _mc.clear();
+# 2. start the per-round clock right after the round's memo setup. m121/m124
+# clear the single round tables here; m125 onward (I74) instead makes the
+# per-budget families reach this budget, so accept either shape.
+setups = ['''      _mc.clear();
       _me.clear();
-      _rg = List.filled(s.length + 1, 0);'''
-assert src.count(old) == 1
-src = src.replace(old, '''      _mc.clear();
-      _me.clear();
-      _rg = List.filled(s.length + 1, 0);
+      _rg = List.filled(s.length + 1, 0);''', '      _room(_budget);']
+old = next((o for o in setups if src.count(o) == 1), None)
+assert old is not None, 'no round-setup anchor matched'
+src = src.replace(old, old + '''
       kRoundHits[_kOrd] += 1;
       _kSw.reset();
       _kSw.start();''')
@@ -87,5 +91,5 @@ src = src.replace(old, '''    _kOrd = 0;
     _kPreUs = 0;
     final cap = 2 * s.length + (_witness(top)?.length ?? 0) + 1;''')
 
-open(D + '_m121r.dart', 'w', encoding='utf-8').write(src)
-print('wrote _m121r.dart')
+open(D + '_' + ENG + 'r.dart', 'w', encoding='utf-8').write(src)
+print('wrote _' + ENG + 'r.dart')
