@@ -49,7 +49,7 @@ Why each row above m121 is out:
   - `probe` -- own parser, but still constructs a library `Parser` over a ONE-CHARACTER synthesized string to ask whether a clause accepts that character. A grammar query, not a parse of the input.
   - `lib` -- no parser of its own; calls the frozen library parser over the ORIGINAL input. LOC is recovery ONLY, so it is not comparable to an `own` row.
   - **`reparse` -- builds a repaired INPUT STRING and runs a second `Parser` over it.** The brief bans this in four separate places ("Don't ever start a new parse"; "you should not launch whole new parser instances"; "Why do you even need to produce a modified input string...? Just keep parsing, and repairing/flagging in-place"; "the input should not be modified or fixed in-place, ever"). **These rows are solving a different problem and their scores are not comparable.** The top-ranked engine is one of them.
-- `ms` is the engine clock summed over all 1824 cases, measured strictly sequentially and alone on the machine.
+- `ms` is the engine clock summed over all 1824 cases, measured strictly sequentially and alone on the machine. Two caveats, stated rather than smoothed over. **These are single passes**, so small differences are not real: m121 and m113 read 4,711 and 4,433 here, but measured back-to-back over three alternating rounds they are 4,636 and 4,442, so the gap is 4.4% and not the 6% these figures imply. And **m67's 869,454 includes a few seconds of contention** from a probe running alongside it; at 0.3% of its own figure it changes nothing about a disqualified `reparse` engine ranked 70th, so it was not re-run.
 - `brief` is the acceptance probe on the three cases that constrain the design: `,3true` -> `,3,true`; `[,2,` -> `[2,` WITHOUT inventing a Value; and `S <- A 'x' 'a'` on `xa` reaching its own minimum. `-` = not probed. **The battery cannot substitute for this** -- it reads only the tree produced, so an engine can top the ranking while breaking a hard requirement.
 - `free` is the conformance probe: how many of the 4 strings the FROZEN parser rejects the engine nevertheless costed at 0. `.` = none, sound. `-` = not swept (the sweep covers m78 onward).
 
@@ -290,7 +290,17 @@ Listed rather than omitted: omission would read as "these were covered".
 - `cgfr1` -- no score -- exceeded 1200 s on the battery, no per-case profile taken
 - `cgfr2` -- no score -- exceeded 1200 s on the battery, no per-case profile taken
 - `cgfr5` -- no score -- exceeded 1200 s on the battery, no per-case profile taken
-- `m63` -- did not finish -- combinatorial blowup on nested damage
-- `m65` -- did not finish -- combinatorial blowup on nested damage
-- `m69` -- did not finish -- combinatorial blowup on nested damage
-- `m70` -- did not finish -- combinatorial blowup on nested damage
+- `m63` -- did not finish -- blows up on **truncate** (4 of 6 first offenders); worst 16,076 ms on a 35-char input
+- `m65` -- did not finish -- blows up on **truncate** (5 of 6); worst 20,218 ms on a 42-char input
+- `m69` -- did not finish -- blows up on **transpose** (6 of 6); worst 12,192 ms on a 48-char input
+- `m70` -- did not finish -- blows up on **transpose** (6 of 6); worst 11,985 ms on a 48-char input
+
+These four were previously recorded as "combinatorial blowup on nested damage".
+**That was wrong**, and `_slowcase.dart` (per-case clock, first six cases over
+2,000 ms) says so: there are **two** different failure modes here, not one.
+m63/m65 blow up on truncated input, where the skip loop cannot run past the end
+and the search has only fills to work with; m69/m70 blow up on transposition,
+exclusively — not one truncate case among their offenders. An engine that is
+slow on a particular shape of damage is a different claim about the algorithm
+from one that is slow everywhere, and the earlier note asserted neither
+correctly. Raw output: `slowcase.txt`.

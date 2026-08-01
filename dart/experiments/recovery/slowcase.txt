@@ -1,0 +1,76 @@
+===== m63 =====
+m63: threshold 2000ms over 1824 weighted cases
+  ...200 cases, 9492ms cumulative
+  SLOW   #337  json/transpose  48 chars  4485ms
+         mutant: {"p":[1,2,3],"q":[4,5,6],"r":[7,8,9],"s":0[,-1]}
+  SLOW   #367  stmt/transpose  48 chars  3219ms
+         mutant: { a=1; b=2; { c=3; if (d) { e=4; } f5=; } g=6; }
+  ...400 cases, 34065ms cumulative
+  ...600 cases, 41835ms cumulative
+  ...800 cases, 49301ms cumulative
+  ...1000 cases, 60013ms cumulative
+  ...1200 cases, 67859ms cumulative
+  ...1400 cases, 72647ms cumulative
+  SLOW   #1404  json/truncate  28 chars  2074ms
+         mutant: {"a":1,"bc":[2,33,true],"d":
+  SLOW   #1407  json/truncate  35 chars  16076ms
+         mutant: {"a":1,"bc":[2,33,true],"d":{"e":nu
+  SLOW   #1408  json/truncate  37 chars  4011ms
+         mutant: {"a":1,"bc":[2,33,true],"d":{"e":null
+  SLOW   #1410  json/truncate  42 chars  7795ms
+         mutant: {"a":1,"bc":[2,33,true],"d":{"e":null},"f"
+(exit 0 -- 124 = hit the 200s cap, which is itself the finding)
+===== m65 =====
+m65: threshold 2000ms over 1824 weighted cases
+  ...200 cases, 1302ms cumulative
+  SLOW   #338  json/transpose  48 chars  2058ms
+         mutant: {"p":[1,2,3],"q":[4,5,6],"r":[7,8,9],"s":[0,-1}]
+  ...400 cases, 16789ms cumulative
+  ...600 cases, 17943ms cumulative
+  ...800 cases, 18790ms cumulative
+  ...1000 cases, 19654ms cumulative
+  ...1200 cases, 20661ms cumulative
+  ...1400 cases, 21972ms cumulative
+  SLOW   #1401  json/truncate  21 chars  4699ms
+         mutant: {"a":1,"bc":[2,33,tru
+  SLOW   #1407  json/truncate  35 chars  15492ms
+         mutant: {"a":1,"bc":[2,33,true],"d":{"e":nu
+  SLOW   #1410  json/truncate  42 chars  20218ms
+         mutant: {"a":1,"bc":[2,33,true],"d":{"e":null},"f"
+  SLOW   #1428  json/truncate  20 chars  2184ms
+         mutant: {"k":[{"a":1},{"b":2
+  SLOW   #1441  json/truncate  28 chars  13202ms
+         mutant: {"n":[0,-7,1.5,2e3],"t":[tru
+(exit 0 -- 124 = hit the 200s cap, which is itself the finding)
+===== m69 =====
+m69: threshold 2000ms over 1824 weighted cases
+  ...200 cases, 364ms cumulative
+  SLOW   #358  stmt/transpose  30 chars  2303ms
+         mutant: x=1; if (x) { y=2; z3=; } w=4;
+  SLOW   #363  stmt/transpose  29 chars  2785ms
+         mutant: { a=1; { b=2; } if ()c d=3; }
+  SLOW   #366  stmt/transpose  48 chars  4862ms
+         mutant: { a=1; b=2; { c=3; if ()d { e=4; } f=5; } g=6; }
+  SLOW   #367  stmt/transpose  48 chars  12192ms
+         mutant: { a=1; b=2; { c=3; if (d) { e=4; } f5=; } g=6; }
+  SLOW   #370  stmt/transpose  36 chars  3232ms
+         mutant: if (a) { b=1; } if ()c { d=2; } e=3;
+  SLOW   #371  stmt/transpose  36 chars  6785ms
+         mutant: if (a) { b=1; } if (c) { d=2; } e=;3
+(exit 0 -- 124 = hit the 200s cap, which is itself the finding)
+===== m70 =====
+m70: threshold 2000ms over 1824 weighted cases
+  ...200 cases, 406ms cumulative
+  SLOW   #358  stmt/transpose  30 chars  2309ms
+         mutant: x=1; if (x) { y=2; z3=; } w=4;
+  SLOW   #363  stmt/transpose  29 chars  2765ms
+         mutant: { a=1; { b=2; } if ()c d=3; }
+  SLOW   #366  stmt/transpose  48 chars  4835ms
+         mutant: { a=1; b=2; { c=3; if ()d { e=4; } f=5; } g=6; }
+  SLOW   #367  stmt/transpose  48 chars  11985ms
+         mutant: { a=1; b=2; { c=3; if (d) { e=4; } f5=; } g=6; }
+  SLOW   #370  stmt/transpose  36 chars  3185ms
+         mutant: if (a) { b=1; } if ()c { d=2; } e=3;
+  SLOW   #371  stmt/transpose  36 chars  6860ms
+         mutant: if (a) { b=1; } if (c) { d=2; } e=;3
+(exit 0 -- 124 = hit the 200s cap, which is itself the finding)

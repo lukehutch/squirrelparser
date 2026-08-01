@@ -9749,3 +9749,84 @@ a skip. Under I72 it loses that tie by exactly the fee. Whether there is a
 principle there or only m114's freedom to invent is unresolved, and it should be
 approached as "what distinguishes these ties?" rather than by shaving the fee,
 which would just be tuning.
+
+## Occasion 54 — the latency plan both analyses agreed on is refuted by one measurement
+
+Occasion 53 closed by naming latency as the whole remaining deficit (m121 ~4,600
+ms against m78's 2,182) and recording that my analysis and Codex's had
+independently converged on the same fix: a **cost-stratified semi-naive
+deductive chart**. Dense clause IDs; one persistent memo array indexed by
+`(mode, clauseId, position)` instead of the per-round map; facts bucketed by
+exact cost; bucket 0 drained as the frozen parser; only newly arrived layers
+convolved; only registered parents woken. I recorded the convergence as "worth
+recording as the next thing to build, not as a result." That was the right
+caution and it did not go far enough.
+
+**The plan's entire value is eliminating re-derivation.** The repair memo is
+cleared at the top of every deepening round (`m121.dart:570-571`), so round *b*
+re-derives what round *b−1* already had. Both analyses reasoned from that and
+neither of us measured how much of the clock it actually is.
+
+It takes about thirty lines to find out. `mkrounds.py` generates `_m121r.dart` —
+m121 with a per-round stopwatch and no behavioural change — and `_rprofile.dart`
+runs the battery and reports where the time went. Three runs:
+
+> **Re-derivation is 28.9%, 28.8%, 28.7% of the deepening loop.**
+
+A *perfect* rewrite that never re-derives anything takes m121 from ~4,590 ms to
+**~3,260**. The target is 2,182. **The plan closes at most 29% of a gap that
+needs 53% — and it is the most expensive rewrite on the table.** It is refuted,
+not deprioritised.
+
+**The generalisable lesson: independent convergence is not evidence.** Two
+analyses agreeing told me only that both had reasoned from the same unmeasured
+premise — *clearing the memo each round must be where the time goes*. It felt
+like corroboration because the reasoning was independent, but the reasoning was
+never the weak link; the premise was, and it was cheap to check the whole time.
+Convergence raises confidence about a chain of reasoning. It says nothing about
+the fact the chain starts from. When two independent parties agree, the thing to
+do is find the shared premise and measure *that*.
+
+**A smaller methodological catch inside the same measurement.** The first
+version apportioned each round's clock by how many of its entrants went deeper,
+which assumes every case costs the same within a round. Cases that go deeper are
+the harder ones, so the assumption is not neutral. Measuring it exactly, per
+call, moved the figure 26.2% → 28.9% — in the direction that assumption
+predicted. It did not change the conclusion, but an apportioned number was
+standing in for a measurable one, and the fix was four lines.
+
+### Where the time actually is
+
+| ord | budget | ms | % | entered | won here | ms/case |
+|----:|-------:|---:|--:|--------:|---------:|--------:|
+| 0 | 0 | 49 | 1.1% | 1824 | 0 | 0.027 |
+| **1** | **1** | **1716** | **37.2%** | **1824** | **1179** | **0.94** |
+| 2 | 2 | 957 | 20.9% | 645 | 458 | 1.48 |
+| 3 | 4 | 785 | 17.1% | 187 | 169 | 4.20 |
+| 4 | 8 | 496 | 10.8% | 18 | 11 | 27.6 |
+| 5 | 16 | 584 | 12.7% | 7 | 7 | 83.4 |
+
+Two targets, and neither of them is the plan:
+
+1. **Going from budget 0 to budget 1 costs 35x per case** (0.027 → 0.94 ms).
+   Round 1 is 37% of the entire clock, *every* case pays it, and 65% of cases
+   are answered there. Budget 0 is a pure parse and is nearly free; admitting a
+   single unit of repair is what explodes. That is the cost of the repair search
+   *within one round*, which the semi-naive plan does not address at all.
+2. **The deep tail: 25 cases — 1.4% — consume 23% of the clock.** Rounds 4 and 5
+   cost 27.6 and 83.4 ms per case against round 1's 0.94.
+
+Together those are ~61% of the loop, which is enough for the 2x. Redundancy
+never was.
+
+### A correction to the table, from the same discipline
+
+`SCORE_TABLE.md` recorded m63/m65/m69/m70 as "did not finish — combinatorial
+blowup on nested damage". `_slowcase.dart` (per-case clock, first six cases over
+2,000 ms) says that is wrong twice over. There are **two** failure modes, not
+one: m63 and m65 blow up on **truncate** (4 of 6 and 5 of 6 offenders; worst
+16,076 ms on 35 chars and 20,218 ms on 42 chars), while m69 and m70 blow up on
+**transpose** exclusively (6 of 6; worst 12,192 and 11,985 ms on 48 chars) with
+no truncate case among them. Neither is "nested damage". A phrase that sounded
+like a diagnosis was standing in for one, in a committed table, and the harness
+that could check it already existed.
