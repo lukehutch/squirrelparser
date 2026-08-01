@@ -31,6 +31,7 @@ import 'm87.dart' as g87;
 import 'm88.dart' as g88;
 import 'm89.dart' as g89;
 import 'm90.dart' as g90;
+import 'm91.dart' as g91;
 import 'm92.dart' as g92;
 import 'm93.dart' as g93;
 import 'm94.dart' as g94;
@@ -38,6 +39,13 @@ import 'm95.dart' as g95;
 import 'm96.dart' as g96;
 import 'm97.dart' as g97;
 import 'm98.dart' as g98;
+import 'm99.dart' as g99;
+import 'm100.dart' as g100;
+import 'm101.dart' as g101;
+import 'm102.dart' as g102;
+import 'm103.dart' as g103;
+import 'm105.dart' as g105;
+import 'm106.dart' as g106;
 
 /// A uniform surface over both engine generations: give it a grammar and a top
 /// rule, get back something that turns a damaged string into a tree or throws.
@@ -93,6 +101,10 @@ final Map<String, Build> extra = {
     final e = g90.SuperDot3(rules: r, topRuleName: t);
     return e.recover;
   },
+  'm91': (r, t) {
+    final e = g91.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
   'm92': (r, t) {
     final e = g92.SuperDot3(rules: r, topRuleName: t);
     return e.recover;
@@ -119,6 +131,34 @@ final Map<String, Build> extra = {
   },
   'm98': (r, t) {
     final e = g98.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm99': (r, t) {
+    final e = g99.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm100': (r, t) {
+    final e = g100.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm101': (r, t) {
+    final e = g101.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm102': (r, t) {
+    final e = g102.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm103': (r, t) {
+    final e = g103.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm105': (r, t) {
+    final e = g105.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm106': (r, t) {
+    final e = g106.SuperDot3(rules: r, topRuleName: t);
     return e.recover;
   },
 };

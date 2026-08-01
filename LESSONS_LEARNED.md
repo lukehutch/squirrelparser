@@ -8747,28 +8747,55 @@ Both cases the brief decides by hand still hold, and identically to m92 --
 with all four other hand-checked JSON cases. A tie-break change is the most
 likely thing to break those, so they were the first thing checked.
 
-### What is still order-dependent, and why no seventh key will fix it
+### ~~What is still order-dependent, and why no seventh key will fix it~~
 
-`_div m97 m98` is still 3 of 1824. Those survive all SIX keys, and adding a
-seventh will not help, because the residue is not a value problem:
+**REFUTED IN FULL BY THE FORTY-EIGHTH OCCASION, BOTH HALVES, AND THE SECOND HALF
+WAS REFUTED BY THE EXPERIMENT ITS OWN ARGUMENT PROPOSED.** A seventh key removed
+the residue completely -- `_div m107 m105` is **0 of 1824** -- and the state the
+argument named was not the state that mattered. Struck through and kept below,
+because the reasoning reads as sound and is worth being able to re-examine.
 
-**`_put` keeps one way per ENDING, but the transitions read more than the
-ending.** `_runs(w, x)` reads `w.tail`; `_extend`'s synth rule reads `w.got` and
-`w.synth`. Two ways that reach the same position with different `tail` are not
-interchangeable -- they extend to different `site` totals -- so discarding either
-one is not justified by the comparison that discarded it. The DP state is
-`(end, tail, synth)` and the engine keys it on `end` alone.
+> `_div m97 m98` is still 3 of 1824. ~~Those survive all SIX keys, and adding a
+> seventh will not help, because the residue is not a value problem:~~
+>
+> ~~**`_put` keeps one way per ENDING, but the transitions read more than the
+> ending.** `_runs(w, x)` reads `w.tail`; `_extend`'s synth rule reads `w.got`
+> and `w.synth`. Two ways that reach the same position with different `tail` are
+> not interchangeable -- they extend to different `site` totals -- so discarding
+> either one is not justified by the comparison that discarded it. The DP state
+> is `(end, tail, synth)` and the engine keys it on `end` alone.~~
+>
+> That also explains why `site` never had the clean prefix-optimality proof that
+> `cost`, `blind` and `doubt` have: it is the one key whose fold is not additive,
+> and the merge it performs is precisely the one that reads the state the table
+> does not keep.
+>
+> ~~The fix is to bucket by `(end, tail, synth)` rather than `end` -- up to four
+> ways per position instead of one.~~ **Naming the residue exactly is worth more
+> than removing three cases of it by adding a key that happens to land the right
+> way.**
 
-That also explains why `site` never had the clean prefix-optimality proof that
-`cost`, `blind` and `doubt` have: it is the one key whose fold is not additive,
-and the merge it performs is precisely the one that reads the state the table
-does not keep.
+The middle paragraph survives and is the only part that did any work: `site` was
+the one non-additive key, and I63 makes it additive. The rest was wrong in a
+specific and instructive way.
 
-The fix is to bucket by `(end, tail, synth)` rather than `end` -- up to four ways
-per position instead of one. It is principled and it is not free, and latency is
-already the failing metric, so it is a measurement to make and not a change to
-assume. **Naming the residue exactly is worth more than removing three cases of
-it by adding a key that happens to land the right way.**
+**What "adding a key will not help" got wrong.** It treated a tie as evidence of
+a missing DISTINCTION IN THE STATE when it was evidence of a missing DISTINCTION
+IN THE OBJECTIVE. Those look identical from the divergence count -- both present
+as "two readings the engine cannot separate" -- and they have opposite fixes.
+Bucketing keeps both readings so a later key can choose; a new key chooses now.
+The test that tells them apart is cheap and was never run: **ask whether the two
+survivors differ in anything the objective could name.** They did, in two things
+(where the damage ends, and how wide it is), and the ordering only ever looked at
+where it began.
+
+**What the `(end, tail, synth)` claim got wrong, by its own experiment.** I63
+removes `tail` from the way entirely. If `tail` were load-bearing state, the
+residue would move. `_div m99 m100` came back **3 of 1824, same composition** --
+identical to `_div m97 m98`. So `tail` was not what the two survivors disagreed
+on, and the state argument had picked the wrong field before the key argument
+even got its turn. Predicting the outcome and then measuring it is what caught
+this; the prediction was confident and it was wrong.
 
 ### A methodological note on the table now being rebuilt
 
@@ -8778,3 +8805,220 @@ and unaffected; **the `ms` column in `allscores3.txt` is contaminated and must b
 re-measured in a dedicated pass with nothing else running.** Recording it here
 rather than quietly re-running it, because a contaminated column that gets
 published is exactly how the 3.9x that did not exist got published.
+
+## The forty-eighth occasion: one key was answering two questions, and the tie it could not break was the second question going unasked
+
+I63 was meant to be housekeeping. `site` counted maximal RUNS of repair, which
+made its fold `w.site + x.site - (w.tail && x.synth ? 1 : 0)` -- the only
+non-additive key in the engine, and the only one without a prefix-optimality
+proof. Counting repair EVENTS instead makes the fold `w.site + x.site`, deletes
+the `tail` field and the `_runs` function, and buys the proof for free. Nine
+lines smaller, provably sound. It should have been a wash on quality.
+
+It was not a wash. It was 15 cases better and 9 worse, and the two sets had
+nothing in common.
+
+### The measurement that turned a wash into a finding
+
+An aggregate that rises while the perfect count falls is two disjoint sets of
+cases moving in opposite directions, and the summary line cannot separate them.
+`_div` was no help either: it reports THAT two engines disagree, not whether the
+disagreement was an improvement. So `_delta.dart` -- score both engines per case,
+report the direction, group by category:
+
+```
+m98 (runs) -> m100 (events): 24 of 1824 cases moved
+  better on 15 (+1.062)  {truncate: 12, multi-damage: 3}
+  worse  on  9 (-0.661)  {junk-insert: 3, quote-insert: 4, delim-insert: 2}
+```
+
+Every winner a truncation, every loser an insertion, and not one category on
+both sides. That is not noise, and a summary line would have hidden it behind
+`+0.0002`.
+
+### Reading the repair leaves, which is where the answer actually was
+
+A skeleton shows the shape that resulted. The question -- why do truncations and
+insertions move in opposite directions? -- is about the repairs that produced it,
+so `_leaf.dart` prints those instead. Both families are perfectly regular.
+
+**The nine losses.** One junk character at position `p`, and two readings that
+cost exactly the same two characters:
+
+```
+x=1; if (x) { y=2; z=3; ) w=4;
+  m98  (runs)    FILL "}"@24  SKIP ")"@24      both repairs AT the damage
+  m100 (events)  SKIP ")"@24  FILL "}"@30      skip at damage, fill at END
+```
+
+m98 closes the block where the damage is and leaves `w=4;` outside it, which is
+right. m100 defers the closer to end-of-input and swallows `w=4;` into the block,
+which is wrong. As runs that is 1 against 2, so runs picks correctly. As events
+it is 2 against 2 -- a tie -- and `doubt` ties too, because both readings first
+doubt the input at `p`. Six keys, all tied. **The linked list decided it.**
+
+**The fifteen wins.** The opposite shape:
+
+```
+x=1; if (x)
+  m98  (runs)    FILL "{"@12  FILL "}"@12     -> Stmt ( Block ( ) )
+  m100 (events)  FILL "{}"@12                 -> Stmt ( )
+```
+
+Runs prices a two-character invention the same as a one-character one, so m98
+materialises an entire empty `Block` the input never evidenced, for free. Events
+prices it 2 against 1 and declines. **The brief's overarching rule is that you
+never invent terminals of a class that are not there, and `site`-as-runs was the
+thing violating it.** Worse on `if (a`, where runs will spend `)`, `{` and `}` at
+one run and events spends `)` and a fused `{}` at two events.
+
+**So: events is right, and runs had been standing in for a second idea.** Not
+volume -- `cost` prices volume. LOCALITY: two repairs at one spot are one typo;
+two repairs straddling an intact statement are two separate claims of damage.
+Runs got that by accident, as a side effect of merging adjacent repairs. Events
+throws it away and leaves nothing in its place, so nine cases fall to the list.
+
+### I64: WHERE THE DOUBT ENDS
+
+`doubt` is the position of the FIRST repair, maximised: prefer the reading that
+trusted the input longer before doubting it. Its mirror is `echo`, the position
+of the LAST repair, minimised: prefer the reading that went back to trusting it
+sooner. Prefix-optimal by `doubt`'s own argument, mirrored -- extending `w` by
+`x` gives `x.cost > 0 ? x.echo : w.echo`, so when the suffix repairs every prefix
+ties on the key, and when it does not the smaller prefix echo stays smaller under
+every suffix.
+
+**Why it cannot be one field instead of two.** Total trust -- `doubt + (L - echo)`
+-- is a single scalar that says the same thing, and it is wrong. With `L = 100`,
+a prefix with repairs at `{10, 20}` scores 90 and one with repairs at `{5, 6}`
+scores 99, so the second wins; append a suffix repairing at 50 and they become 60
+and 55, so the first wins. The comparison FLIPS under extension. Two keys, or
+nothing.
+
+The order of the two is not a matter of taste, and both orders were built:
+
+| | aggregate | perfect% | truncate | transpose |
+|---|---|---|---|---|
+| m101 `echo` ABOVE `doubt` | 0.9537 | 64.9 | 0.873 | 0.955 |
+| m102 `echo` BELOW `doubt` | **0.9571** | **67.0** | **0.890** | **0.956** |
+| m103 `echo` INSTEAD of `doubt` | 0.9532 | 64.5 | 0.872 | 0.954 |
+
+**`doubt` strictly outranks `echo`, by 0.0034 and two points of perfect.** How
+long a reading trusted the input before doubting it matters more than how soon it
+went back. Both single-key variants lose badly, so neither end is disposable.
+
+### I65: THE DAMAGE HAS A WIDTH, AND THAT IS WHAT LOCALITY MEANT
+
+m102 still lost eight cases to m98, and they were all the same shape -- the ones
+where `doubt` does not tie, and picks wrong:
+
+```
+z a=1; b=2; { c=3; ... }      (the leading `{` was typed as `z`)
+  A  SKIP "z"@0  FILL "{"@1     doubt=0  echo=1     correct
+  B  SKIP "a"@2  FILL "{"@6     doubt=2  echo=6
+```
+
+`doubt` prefers B, because B doubts later. `echo` prefers A but is outranked. The
+thing that is right about A is neither end: it is that A's damage is one
+character wide and B's is four. **`site`-as-runs was approximating the SPAN.**
+
+Span needs no new field -- both ends are already carried, and `echo - doubt` is
+exactly 0 when there is no repair, since `cost > 0` is equivalent to "has a
+repair" at every construction site in the engine. So it is a derived key, four
+lines:
+
+| | aggregate | perfect% | truncate | junk-ins | transpose |
+|---|---|---|---|---|---|
+| m105 `span`, then `doubt`, then `echo` | **0.9573** | **67.2** | 0.890 | 0.982 | 0.956 |
+| m106 `span` INSTEAD of both | 0.9568 | 66.9 | 0.887 | 0.982 | 0.955 |
+
+The endpoints are still needed BELOW the span. Span says the damage is confined;
+the endpoints say where, and a tie on width is still a real choice.
+
+**Span is NOT prefix-optimal, and that is a deliberate, named compromise.** Under
+a repairing suffix the extended span is `x.echo - w.doubt`, so it reduces to
+maximising `doubt`; under a repair-free suffix it is the prefix's own span. No
+single scalar is correct in both branches, so `_put` may discard a way that would
+have won. `site`-as-runs had exactly this defect and it was the reason I63 was
+written. **The honest statement is that I63 removed a soundness hole from the
+volume key and I65 opens a smaller one in a lower key** -- lower, because span is
+only consulted after cost, net, got, blind and site have all tied. Whether the
+better approximation is worth the weaker guarantee is a measurement, and it is
+the one below.
+
+### The results
+
+Battery: 1824 weighted cases, 10 categories, AST-diff against the frozen parser's
+reading of the undamaged document. Every engine standalone (parser + recovery).
+
+| engine | key | LOC | aggregate | perfect% | truncate (w3.0) | crash | uncov |
+|---|---|---|---|---|---|---|---|
+| m92 | six keys, wave | 525 | 0.9559 | 66.3 | 0.884 | 0 | 0 |
+| m98 | + I60/I61/I62, `site`=runs | 550 | 0.9567 | 67.1 | 0.886 | 0 | 0 |
+| m100 | + I63, `site`=events | 541 | 0.9569 | 66.6 | 0.890 | 0 | 0 |
+| m102 | + I64 `echo` | 552 | 0.9571 | 67.0 | 0.890 | 0 | 0 |
+| **m105** | **+ I65 `span`** | **554** | **0.9573** | **67.2** | **0.890** | **0** | **0** |
+
+Per-case against the engine it replaces:
+
+```
+m98 -> m105: 23 of 1824 moved
+  better on 20 (+1.354)  {truncate: 12, transpose: 6, quote-delete: 1, multi-damage: 1}
+  worse  on  3 (-0.192)  {multi-damage: 3}
+  perfect lost 1, won 3
+```
+
+m105 is at or above m98 in **every one of the ten categories** and strictly above
+in `truncate` (the highest-weighted, 0.886 -> 0.890) and `transpose` (0.953 ->
+0.956). The three losses are all `multi-damage`, and that category comes out
+level at 0.939 either way.
+
+Both cases the brief decides by hand still hold, identically to m92 -- `,3,true`
+by inserting a comma at 18, `[2,` by deleting the comma at 13 -- along with all
+four other hand-checked JSON cases. A tie-break change is the likeliest thing to
+break those, so they were checked first, on every variant.
+
+**Cost: +4 LOC over m98, and 1.030x latency** (paired interleaved, median of 5,
+`_pair105.dart`). The 3% is one extra integer in every `_Way` allocation. It is a
+real regression on both of the axes the brief says must not regress, and it is
+reported as one.
+
+### The residue is gone, and that is what refutes the forty-seventh occasion
+
+The three order-dependent cases were the standing D2 defect: two implementations
+that provably compute the SAME set of ways -- wave and sweep, verified identical
+as sorted multisets over 1,197,132 `_rep` calls -- disagreeing on three answers,
+because `_better` returns false on an exact tie and so the way met FIRST wins.
+
+| comparison | keys | diverging |
+|---|---|---|
+| `_div m97 m98` | six | 3 of 1824 |
+| `_div m99 m100` | six, `site` additive | 3 of 1824 |
+| `_div m104 m102` | seven, with `echo` | **0 of 1824** |
+| `_div m107 m105` | eight, with `span` | **0 of 1824** |
+
+**Nothing on this battery is decided by list order any more.** The wave and sweep
+engines are kept in the tree precisely so this stays checkable: an engine cannot
+prove its own answer is order-independent, but two engines with independent
+orderings and identical outputs can.
+
+The general lesson is the one the forty-seventh occasion missed. A tie has two
+possible causes that look the same from a divergence count and have opposite
+fixes: state the table fails to distinguish, or a question the objective fails to
+ask. **Before adding state, ask whether the two survivors differ in anything the
+objective could name.** Here they differed in two things -- where the damage ends
+and how wide it is -- and the ordering had only ever looked at where it began.
+
+### On the timings in this section
+
+The 80-engine re-score was running throughout, so the machine was contended and
+every absolute figure here is inflated. Paired interleaved runs are the right
+instrument for exactly that: both arms alternate under the same conditions, one
+warm-up pass is discarded, and the median of five is reported. **The RATIOS are
+meaningful; the milliseconds are not**, and the `ms` column of the score table
+still owes a dedicated uncontended pass.
+
+Also measured, and worth having: `m67` and `m68` take **874 and 854 SECONDS** on
+this battery against m105's ~5.6. The m6x family is not uniformly the fast one --
+m62 is fast at ~1.3 s and its neighbours are three orders of magnitude slower --
+so "the older engines were faster" is a claim that has to name WHICH engine.
