@@ -1,0 +1,172 @@
+// _score1.dart -- score ONE engine on the AST-diff battery and print one result
+// line. One engine per process, so an engine that hangs on damaged
+// left-recursive input is killed by the caller's `timeout` instead of blocking
+// every other engine's measurement.
+//
+// THE ADAPTER RUNS ONE WAY ONLY, AND THAT IS WHY THIS FILE EXISTS RATHER THAN A
+// NEW COLUMN IN final_table.dart. Engines up to m78 return `SkipResult`, whose
+// `.root` IS the full-coverage tree this evaluator wants, so adapting them here
+// is lossless. Adapting the other way -- forcing m79-m82's `MatchResult` into
+// `SkipResult` for the old table -- is NOT lossless: `recoveryEvents` would have
+// to carry `lastCost`, and under I44 that is a count of unexplained CHARACTERS
+// where every earlier engine counts edit EVENTS. Putting two different
+// objectives in one column is the error this project has already made three
+// times, so the new engines are scored on the shape metric, which is
+// objective-neutral, and are not back-fitted into the cost column.
+//
+// Usage: dart run _score1.dart <engineName>
+import 'package:squirrel_parser/squirrel_parser.dart';
+
+import 'astdiff.dart';
+import 'final_table.dart' show engines;
+import 'm79.dart' as g79;
+import 'm80.dart' as g80;
+import 'm81.dart' as g81;
+import 'm82.dart' as g82;
+import 'm83.dart' as g83;
+import 'm84.dart' as g84;
+import 'm85.dart' as g85;
+import 'm86.dart' as g86;
+import 'm87.dart' as g87;
+
+/// A uniform surface over both engine generations: give it a grammar and a top
+/// rule, get back something that turns a damaged string into a tree or throws.
+typedef Build = MatchResult? Function(String) Function(
+    Map<String, Clause>, String);
+
+final Map<String, Build> extra = {
+  'm79': (r, t) {
+    final e = g79.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm80': (r, t) {
+    final e = g80.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm81': (r, t) {
+    final e = g81.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm82': (r, t) {
+    final e = g82.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm83': (r, t) {
+    final e = g83.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm84': (r, t) {
+    final e = g84.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm85': (r, t) {
+    final e = g85.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm86': (r, t) {
+    final e = g86.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm87': (r, t) {
+    final e = g87.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+};
+
+Build? resolve(String name) {
+  if (extra.containsKey(name)) return extra[name];
+  for (final e in engines) {
+    if (e.name == name) {
+      // `.root` is already the full-coverage tree over the ORIGINAL input.
+      return (r, t) {
+        final made = e.make(r, t);
+        return (String s) => made.$1(s).root;
+      };
+    }
+  }
+  return null;
+}
+
+void main(List<String> argv) {
+  if (argv.isEmpty) {
+    print('usage: dart run _score1.dart <engineName>');
+    return;
+  }
+  final name = argv[0];
+  final build = resolve(name);
+  if (build == null) {
+    print('$name UNKNOWN');
+    return;
+  }
+
+  final cases = weighted(buildBattery());
+  final byCorpus = <String, Corpus>{for (final c in corpora) c.name: c};
+  final rulesOf = <String, Map<String, Clause>>{
+    for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)
+  };
+
+  // Expected skeletons come from the FROZEN parser reading the UNDAMAGED
+  // document, so no engine can be tuned toward them.
+  final expected = <String, List<String>>{};
+  for (final c in corpora) {
+    for (final doc in c.documents) {
+      final r =
+          Parser(rules: rulesOf[c.name]!, topRuleName: c.top, input: doc).parse();
+      if (r.hasSyntaxErrors) {
+        throw StateError('corpus ${c.name}: document does not parse: $doc');
+      }
+      expected['${c.name} $doc'] = skeleton(r.root, c.named);
+    }
+  }
+
+  // One engine per grammar, reused across that grammar's cases -- the official
+  // protocol. Constructing per case would price the grammar lowering 1824 times.
+  final made = <String, MatchResult? Function(String)>{};
+  for (final c in corpora) {
+    made[c.name] = build(rulesOf[c.name]!, c.top);
+  }
+
+  final catScore = <String, double>{};
+  final catN = <String, int>{};
+  var crashed = 0, uncovered = 0, perfect = 0;
+  double total = 0;
+
+  final sw = Stopwatch()..start();
+  for (final k in cases) {
+    final c = byCorpus[k.grammar]!;
+    MatchResult? produced;
+    try {
+      produced = made[k.grammar]!(k.mutant);
+    } catch (_) {
+      produced = null;
+    }
+    final s = scoreCase(
+      produced: produced,
+      expected: expected['${k.grammar} ${k.original}']!,
+      inputLen: k.mutant.length,
+      named: c.named,
+    );
+    if (s.crashed) crashed++;
+    if (!s.covered) uncovered++;
+    if (s.score == 1.0) perfect++;
+    total += s.score;
+    catScore[k.category] = (catScore[k.category] ?? 0) + s.score;
+    catN[k.category] = (catN[k.category] ?? 0) + 1;
+  }
+  sw.stop();
+
+  // One machine-readable line: name, aggregate, perfect%, crashed, uncovered,
+  // ms, then category=mean pairs.
+  final cats = catN.keys.toList()
+    ..sort((a, b) => categoryWeight[b]!.compareTo(categoryWeight[a]!));
+  final parts = [
+    name,
+    (total / cases.length).toStringAsFixed(4),
+    (perfect / cases.length * 100).toStringAsFixed(1),
+    '$crashed',
+    '$uncovered',
+    '${sw.elapsedMilliseconds}',
+    for (final k in cats) '$k=${(catScore[k]! / catN[k]!).toStringAsFixed(3)}',
+  ];
+  print(parts.join(' '));
+}

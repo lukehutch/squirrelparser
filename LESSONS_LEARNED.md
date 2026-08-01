@@ -8080,3 +8080,135 @@ and m82 was dominated. Both are now measured false, so they are superseded.
 naming the protocol is not enough. *Name the denominator.* Two "battery
 milliseconds" over batteries of 519 and 1824 cases are not comparable, and the
 resulting 3.51x reads exactly like an engine regression.
+
+## The forty-third occasion: four insights that each recover structure, and the one constraint they all broke
+
+m82 scored 0.8424 against m78's 0.8946 on the rebuilt battery. Four insights
+close that gap and pass it. All four came from one probe -- `_tree.dart`, which
+prints the tree with spans and node kinds instead of a skeleton -- because a
+skeleton renders "matched real text", "asserted text that is not there" and
+"marked an absence with a zero-width node" identically, and the whole diagnosis
+turned on telling those three apart.
+
+**What the probe showed.** m78 never invents characters either. Where m82 dropped
+a construct entirely, m78 relaxed `[a-z]+` to zero repetitions with a zero-width
+`SyntaxError`, and matched `"if"` one character at a time -- `"i"` present, `"f"`
+asserted zero-width. m82's `Filled` is all-or-nothing per clause, so a clause
+that is partly present, or whose text is not unique, had **no legal repair at
+all** -- not an expensive one. That is the whole of the deficit.
+
+### I51: REACHING A LATER ALTERNATIVE CLAIMS THE EARLIER ONES FAILED, AND FAILING ON THE EVIDENCE IS NOT FAILING
+
+`_first` decided the choice from `_pure` alone, so a later alternative with a
+free reading answered the choice before the earlier alternatives had been offered
+the full budget. PEG priority says an earlier reading outranks a later one, and
+"no pure reading" is not "no reading". One pass, in PEG order; `out == null` is
+exactly "nothing earlier survived", so when the first alternative is pure the
+loop still returns on its first iteration.
+
+This deliberately re-introduces the full-budget scan whose *removal* `_pure`'s own
+comment records as a 1.58x speedup. Correctness demanded it back. Measured cost:
+**+701 ms**. Measured gain: 0.8424 -> 0.8748.
+
+### I52: A FILL IS MEASURED IN CHARACTERS, NOT CLAUSES
+
+Uniqueness decides what may be written; **length decides what it costs.** `_wit`
+had always solved both -- the minimum length and the unique string of that length
+-- and returning them as one nullable string threw the length away whenever the
+spelling was ambiguous. So a clause with a knowable minimum length but no unique
+spelling could not be filled at all. Splitting `_need` (length) from `_witness`
+(spelling) lets the ambiguous case be filled with a zero-width `SyntaxError`
+priced at its true character length. 0.8748 -> 0.8879, **+1200 ms**.
+
+### I53: A REPAIR MAY MAKE THE CHOICE ONLY WHEN NOTHING ELSE CAN
+
+A strict weakening of I43, firing only where I43 admitted nothing. I43 refuses any
+way that OPENS with a repair, on the grounds that the repair rather than the
+evidence would pick the shape. That is right while some alternative can still be
+entered on evidence; it is wrong when none can, because refusing every
+alternative does not preserve PEG priority -- it deletes the construct, and the
+enclosing rule loses everything the construct contained.
+
+Measured on `x="ab"; y="c"; { ="de"; }`: at the statement position inside the
+block the input begins with `=`, so `Block`, `If` and `Assign` all fail on the
+evidence and every candidate opens with a repair. I43 discarded all three, `Stmt*`
+took zero items, the `}` had nothing to close, and the entire
+`Stmt ( Block ( ... ) )` vanished -- where a cost-1 admission that a `Name` is
+missing recovers it whole. Two lists, and the repair-opened one is consulted only
+when the evidence-opened one is empty. 0.8879 -> **0.9064**, **+1753 ms**.
+
+### I54: A GUESS IS A COST YOU CANNOT SEE
+
+I52 broke acceptance case 2. `[,2,` must repair as `[2,` -- delete the surplus
+comma -- and after I52 it became a zero-width invented `Value`, because both
+readings cost 1 and nothing distinguished them. A **determined** fill (`,`, `}`)
+picks nothing: it is the only string that could go there. An **undetermined** fill
+picks one of many, and that choice is a cost the objective cannot see. So at
+equal cost, an undetermined fill loses to a skip.
+
+**The tie is genuine and cannot be won on both sides.** `[1,[2,[3,[4]]],5]` with a
+digit deleted gives `[1,[,[3,[4]]],5]` -- structurally identical to acceptance
+case 2, `[` immediately followed by `,`, cost 1 either way, and the *opposite*
+ground truth. No deterministic rule decides both correctly. The brief decides this
+one, so I54 is mandatory; the measured price of obeying it is 0.009 aggregate,
+concentrated in the value-deletion cases.
+
+**And the form of the rule matters more than the rule.** m86 expresses I54 as an
+ordering -- a `guess` field on every way, threaded through `_cons`, `_extend`,
+`_wrap` and both `_better` call sites. m87 expresses the same rule as a
+**generation-time prune**: `_repair` tracks `minSkip`, the cheapest reading
+reachable by discarding evidence first, and simply never creates the undetermined
+fill when a skip already costs less. The losing candidate is never built, never
+memoised and never re-examined.
+
+| | score | over | under | latency |
+|---|---|---|---|---|
+| m85 (no I54) | 0.9064 | 411 | 13842 | 5573 ms |
+| m86 (I54 as ordering) | 0.8973 | 198 | 15636 | 5969 ms |
+| **m87 (I54 as prune)** | **0.9044** | 309 | 14256 | **5398 ms** |
+
+The prune is better than the ordering on **both** axes -- +0.0071 score and
+-571 ms -- and both pass acceptance case 2. I expected the prune to be the weaker
+form, since `_repair` decides locally from ways that parsed `sub` without knowing
+whether the enclosing sequence completes, so it can discard a fill a global
+comparison would have kept. Measured, that costs nothing and the avoided work is
+worth more. **A preference that can be enforced where the candidate is created
+should never be enforced by a field on every candidate.**
+
+### Where this leaves the brief
+
+| | m78 | m82 | **m87** | required |
+|---|---|---|---|---|
+| AST-diff score | 0.8946 | 0.8424 | **0.9044** | beat m78 -- **met** |
+| LOC | 1296 | 475 | **499** | smaller -- **met, 2.6x** |
+| invented characters (`wide`) | -- | 0 | **0** | zero -- **met** |
+| latency | 2090 ms | 1919 ms | **5398 ms** | not higher -- **BROKEN, 2.6x** |
+
+Score, size and the no-invention rule are all met. **Latency is not, and the brief
+named it explicitly:** *"this should NOT have resulted in higher latency or more
+lines of code, at all!"* The attribution is exact -- I51 +701, I52 +1200, I53
++1753, I54 -175 -- and every one of those milliseconds buys structure that was
+previously dropped, so none of it is waste in the ordinary sense.
+
+But the brief's claim is not that the work is wasteful. It is that **a relaxation
+should prune, not add.** I54 is the proof of concept: the same rule cost +396 ms
+as an ordering and -175 ms as a prune. I51, I52 and I53 are all currently
+expressed as additions. Re-expressing them as prunes is the next occasion's work,
+and the standing target is m78's 2090 ms.
+
+| category | m87 score | m87 ms | share |
+|---|---|---|---|
+| delim-delete | 0.945 | 1122 | 20.8% |
+| truncate | **0.562** | 832 | 15.4% |
+| quote-insert | 0.963 | 636 | 11.8% |
+| quote-delete | 0.997 | 620 | 11.5% |
+| multi-damage | 0.938 | 493 | 9.1% |
+| transpose | 0.951 | 398 | 7.4% |
+| junk-insert | 0.979 | 394 | 7.3% |
+| delim-insert | 0.978 | 388 | 7.2% |
+| literal-damage | 0.969 | 285 | 5.3% |
+| content-damage | 1.000 | 231 | 4.3% |
+
+`truncate` (weight 3.0) remains the weakest category for both engine generations
+and the largest single quality opportunity in the table; `delim-delete` (weight
+3.0) is the most expensive.
