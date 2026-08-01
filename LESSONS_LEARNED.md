@@ -8212,3 +8212,127 @@ and the standing target is m78's 2090 ms.
 `truncate` (weight 3.0) remains the weakest category for both engine generations
 and the largest single quality opportunity in the table; `delim-delete` (weight
 3.0) is the most expensive.
+
+## The forty-fourth occasion: the search was carrying a tree it never read, and a tie it could not break
+
+Three changes, each of which was supposed to move only the clock. The first moved
+nothing and refuted the theory that motivated it. The second moved the clock and,
+by accident, exposed a defect worth more than the speedup. The third fixed the
+defect and improved the score.
+
+### I55: THE SEARCH DOES NOT NEED THE TREE
+
+Every `_Way` carried a list of built AST nodes, so that whichever way won could
+hand its nodes upward. Measured, **nothing in the search ever read a node.**
+`_beats` compares four integers; `_grows` compares end positions; `_put` keys on
+the end position. The only readers of the node list were `_cat`, which
+concatenates without looking inside, and `_list`, which runs once at the very
+end. The tree was write-only for the entire search, and the engine built one for
+every candidate way at every memo cell, of which exactly one is ever delivered.
+
+So a way now records **how it was made** -- a leaf, a wrap of another way, or the
+concatenation of two -- and `_emit` materialises the tree once, from the way that
+won. `_N`, `_T`, `_cat` and `_list` are deleted; the provenance is five fields on
+a class that already existed, so the promise costs no allocation at all.
+
+`_div` reports **0 diverging cases of 1824**, and every column of both the shape
+and the invention harness is identical. 501 -> 484 LOC.
+
+**And the latency did not move: 5482 ms against m87's 5398.** The hypothesis that
+drove the change -- that allocation *count* drives the clock -- is refuted by its
+own experiment. 75.8M of 155M objects went away and the engine got no faster,
+because the surviving `_Way` grew from 7 fields to 11 and absorbed the saving.
+**An object is not a unit of cost; a field is.**
+
+### The model that replaced the hypothesis
+
+Fitted over the ten categories, accurate to about 7% on every one of them:
+
+    ms  ~  60 ns per `_clause` call  +  46 ns per way allocated
+
+It predicts quote-delete at 0.624 s against 0.621 measured, delim-delete 1.123
+against 1.121, content-damage 0.238 against 0.235, truncate 0.937 against 0.875.
+**Object count is not in it.** What the model then says is that the levers are
+`_cons` -- 37.6M of the 79.2M ways -- and the cell count, and that
+
+**cell evaluations are already at their floor.** 22.3M cell bodies over 4502
+deepening rounds is 4954 per round, which is one evaluation per (clause,
+position, table) per round -- every cell, once. `_clause` calls can therefore
+only fall by cutting rounds, tables or reachable positions, never by being
+cleverer inside a cell. The skip loop, long suspected, runs 1.53 iterations per
+`_repair` and is not the problem.
+
+### I56: A WAY THAT IS ALREADY NEW DOES NOT NEED TO BE COPIED
+
+`_put` was the largest single allocator, and almost all of it was waste. 17.6M
+`_cons` calls copied a way the caller had built one line earlier and handed over,
+purely to give it a `next` pointer -- but a freshly built way is unlinked by
+definition, so it can simply *be* the new head. Another 15.8M rebuilt an entire
+list to replace one ending, when only the ways *before* the replaced one have to
+move: the new way takes over the old one's tail.
+
+`_Way.next` becomes the one mutable field, written only on a way that has just
+been built and linked nowhere. **5398 -> 5042 ms.**
+
+### I57: A TIE THE ENGINE CANNOT BREAK IS BROKEN BY THE LINKED LIST
+
+m89 changed only the order of the way list, and 15 of 1824 answers moved with it.
+
+The cause is not in `_put`'s arithmetic. One way per ending is still the
+invariant, so which way is the incumbent never depended on order. It is that
+**`_better` is a partial order.** Two ways can tie on all three of cost, net and
+got; then neither beats the other, the one that arrived first stays, and arrival
+order follows list order. **0.8% of the battery was being decided by a
+data-structure artefact** -- which is precisely the standing objection to
+arbitrary heuristics, no longer argued but measured.
+
+The fix is not a canonical list order. That would make the arbitrary choice
+repeatable without making it principled. The fix is a fourth key the objective
+already implies, and **I33 supplies it**: cost counts *characters*, and two
+readings that discard the same number of characters can still make claims of
+different width. One run of k characters is one position and one length; k
+scattered single characters are k positions and k lengths. Under
+description-in-bits the scattered reading is strictly the wider claim. So at
+equal cost, equal evidence and equal consumption, **prefer fewer repair sites**.
+A count, with no parameter in it, measuring a quantity `cost` provably cannot
+see.
+
+Two fields carry it: `site`, the number of maximal repair runs, and `tail`, the
+mirror of `synth` -- whether a way *closes* with a repair. A run closing one way
+and a run opening the next are the same run, which is the whole of the
+arithmetic. The key sits **last** among the tie-breaks on purpose, so it decides
+exactly the cases the linked list was deciding and nothing that a stated
+principle already decided.
+
+| engine | score | over | under | namedFill | plainFill | fills | worstUnder |
+|---|---|---|---|---|---|---|---|
+| m87 | 0.9044 | 309 | 14256 | 0 | 56441 | 2594 | 150 |
+| m89 | 0.9045 | 309 | 14274 | 0 | 56428 | 2641 | 150 |
+| **m90** | **0.9050** | 309 | 14268 | 0 | **56406** | **2492** | 150 |
+
+`wide 0`, `!tile 0`, `!cover 0`, `crash 0` throughout. Pricing scattered repair
+also *discourages* it: 149 fewer fills. All three acceptance cases still hold.
+
+### What the fix does not close, and the test that says so
+
+`m91` is m88 -- the **old** `_put` order -- with the same fourth key, so m90 and
+m91 differ in list order and nothing else. `_div` reports **11 diverging cases of
+1824, down from 15.**
+
+Four keys, every one of them forced by the objective, still leave 0.6% of the
+battery genuinely tied. What separates those readings is tree *shape* at
+identical damage -- `((a+b)*c-d))/...` can nest the recovered `Expr` deeply or
+spread it, at the same cost, the same evidence, the same consumption and the same
+number of repair runs. Deciding them requires a prior over shapes, which would be
+a **new axiom rather than a consequence of an existing one**. It is recorded here
+rather than guessed at.
+
+### The rule this occasion adds
+
+**A behaviour-preserving change that does not preserve behaviour has found a
+defect, and the defect is worth more than the change.** m89's only intended
+effect was on the clock. It is tempting to shrug at 15 cases out of 1824 moving
+by +0.0001 aggregate and call it noise. It was not noise: it was the engine
+admitting that its ordering was incomplete and that a linked list had been
+finishing the job. The right response to an unexplained difference is to explain
+it, and here the explanation was worth more than the 356 ms that surfaced it.
