@@ -59,6 +59,20 @@ import 'm121.dart' as m121;
 import 'm124.dart' as m124;
 import 'm125.dart' as m125;
 import 'm126.dart' as m126;
+import 'm127.dart' as m127;
+import 'm128.dart' as m128;
+import 'm129.dart' as m129;
+import 'm130.dart' as m130;
+import 'm131.dart' as m131;
+import 'm132.dart' as m132;
+import 'm133.dart' as m133;
+import 'm134.dart' as m134;
+import 'm135.dart' as m135;
+import 'm136.dart' as m136;
+import 'm137.dart' as m137;
+import 'm138.dart' as m138;
+import 'm139.dart' as m139;
+import 'm140.dart' as m140;
 import 'm122.dart' as m122;
 import 'm123.dart' as m123;
 
@@ -126,6 +140,20 @@ final engines = <(String, Cost)>[
   ('m124', (r, t) => m124.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m125', (r, t) => m125.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m126', (r, t) => m126.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m127', (r, t) => m127.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m128', (r, t) => m128.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m129', (r, t) => m129.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m130', (r, t) => m130.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m131', (r, t) => m131.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m132', (r, t) => m132.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m133', (r, t) => m133.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m134', (r, t) => m134.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m135', (r, t) => m135.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m136', (r, t) => m136.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m137', (r, t) => m137.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m138', (r, t) => m138.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m139', (r, t) => m139.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m140', (r, t) => m140.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m122', (r, t) => m122.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m123', (r, t) => m123.SuperDot3(rules: r, topRuleName: t).recoverCost),
 ];

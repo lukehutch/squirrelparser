@@ -9980,3 +9980,173 @@ three; acceptance `ok cx2=1 b1=1 b2=1` throughout; `_conf1` free-passes `.` with
 the identical cost vector `0 1 1 0 2 2`. **The gap to m78's 2,182 ms falls from
 2.16x to 1.20x**, and none of it came from the rewrite both analyses converged
 on. Every one of these four is a few lines inside the fold.
+
+---
+
+## Occasion 56 — the evidence question was being asked in the wrong place, and asking it at the ending beat every target at once (I76, I77, I78)
+
+m126 closed the latency gap to 1.20x by fixing four things inside the fold. The
+next round started by chasing the last of that gap and arrived somewhere else
+entirely: **the six slowest documents in the battery were slow because the engine
+was answering them wrong**, and the wrong answer was expensive to find.
+
+### The defect: a cost-1 answer discarded in favour of a cost-11 one
+
+On `"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}` — a JSON document with its
+opening `{` deleted — m126 answers at **cost 11**, by reading the entire document
+as one String, filling ten `\` escapes so that each real `"` becomes string
+content, then discarding the final `}`:
+
+    FILL@2 "\"  FILL@6 "\"  FILL@9 "\" ... FILL@42 "\"  SKIP@46+1 "}"
+
+Filling one `{` costs **1**. That reading is never compared. At position 0 the
+`Value` choice tries `Object` (no pure reading — its ways open with a filled `{`,
+so I43 sets them aside), then `Array` (likewise), then `String`, which *does*
+have a pure reading because `"a"` is a perfectly good String. I51's early return
+then answers the choice from `String` alone and the set-aside ways are dropped on
+the floor. The deepening then has to climb to budget 16 to find the expensive
+answer — which is why those six documents cost ~1,182 ms of the battery's 2,103.
+
+This is the exact swallow I43's own comment says it exists to stop, arriving by a
+route I43 does not cover: **the way opens on a REAL `"` and does its inventing
+INSIDE the body.**
+
+### I76 — I43's evidence test belongs at the ENDING, not at the alternative
+
+I39 already established that a PEG choice commits to a SHAPE but not to an
+ENDING. I43's question — *did the evidence choose this, or did the repair?* —
+therefore has to be asked at each ending separately, because **an ending is the
+only place two readings actually compete**:
+
+* the evidence reaches this ending for FREE → it decided, and the repair-opened
+  way is refused, exactly as I43 says;
+* the evidence reaches it only BY REPAIRING (or not at all) → it decided
+  nothing, both readings are guesses, and cost settles it.
+
+An alternative that is free at its first character and then needs ten fills to
+arrive was never "committed to by the evidence" in any sense I43 can appeal to.
+I43 was reading a one-character test as though it described the whole way.
+
+It is also what the brief asks for in as many words — a brace may be inserted to
+fix the structure *"after satisfying yourself that that is in fact the optimal
+fix"*. Satisfying yourself requires making the comparison, which a blanket
+discard prevents.
+
+**m127: 0.9573 → 0.9629, and 2,594 → 1,221 ms.** The quality fix *is* the
+latency fix; they were never two problems.
+
+### I76 cost `truncate`, and the same swallow was on the other side of it
+
+`truncate` fell 0.891 → 0.878. `_cmp.dart` isolated it: 18 cases worse, 3 better,
+worst `[1,[2,[3,[4` at 1.000 → 0.104.
+
+    m126  cost=4  FILL@11 "]" x4                 <- right
+    m127  cost=2  FILL@0 "\""  FILL@11 "\""      <- reads it as the String "[1,[2,[3,[4"
+
+Same swallow, entering from the other side. **Cost cannot separate the good case
+from the bad**, because the repair-opened way is cheaper in *both*.
+
+### I77 — an unexplained character costs what a deleted one costs
+
+I33 said this outright and the m79+ line lost it when cost became a plain
+character count. `net` (I44) counts characters matched by a terminal THAT
+CONSTRAINS WHAT IT ACCEPTS, so `got - net` is exactly *unexplained input wearing
+a parse node*. The first comparison key becomes `cost + got - net`, or `cost -
+net`; **a comparison key only, never a cost**, so `cost == 0` still means "pure
+PEG matched this", the budget still prunes on it, and round 0 is still exactly
+the frozen parser. Additive in all three components, so prefix-optimal, so
+pruning stays exact.
+
+**It does not fix `[1,[2,[3,[4`, and measuring that was the point.** The
+deepening ladder returns at the FIRST budget that succeeds, so cost 2 is accepted
+before cost 4 is ever built.
+
+> **A comparison key cannot override a cost-ordered deepening ladder that returns
+> at first success.** A key breaks ties *within* a round. Any fix that has to
+> beat a cheaper wrong answer must act where the answer is *admitted*, not where
+> two admitted answers are *ranked*. This is worth stating because the derivation
+> for I77 was clean, the arithmetic came out right on both cases (13 vs 4, 56 vs
+> 8), and it was still the wrong mechanism.
+
+I77 is not inert — it lifts quote-insert, transpose and truncate ties, and is
+worth +0.0019 to +0.0027 on the aggregate. It is just not the discriminator.
+
+### I78 — invention may COMPLETE a shape the input witnesses; it may not CONJURE one
+
+The discriminator was already in the engine and needed no new counter. A fill
+contributes `got: 0, net: 0`, so `net` is exactly "real input characters this way
+explained":
+
+    deleted `{`   the `{` is filled, the `}` is REAL, every key and value is real   net >> 0
+    truncation    BOTH quotes filled, eleven characters through `[^"\\]`            net == 0
+
+Strip the invented quotes from the swallow and no evidence of a String remains;
+strip the invented `{` and an object plainly remains. One test, `e.net == 0`, no
+new constant. **m134 (I76 + I77 + I78): 0.9668, 69.4% exact, 1,227 ms, 612 LOC** —
+acceptance `ok cx2=1 b1=1 b2=1`, conformance `.` with the cost vector
+`0 1 1 0 2 2`. No category regresses against m126; eight improve, two flat.
+
+This is the first engine in the project to beat **all three** of m78's targets at
+once: quality 0.9668 vs 0.9444, latency 1.77x faster, size 2.17x smaller.
+
+### The collapse that does not close — and why it cannot
+
+If "a repair may not conjure an unwitnessed shape" is the *whole* rule, then I43,
+I53, I76's guard and the two-list split should all be deletable and the ~34 lines
+they cost should come back. Four attempts, all measured, all lose:
+
+| engine | form | score | ms | LOC | fails on |
+|---|---|---:|---:|---:|---|
+| **m134** | I78 + I76 guard | **0.9668** | **1,227** | 612 | — |
+| m138 | I79 (`net > cost`) + guard | 0.9662 | 1,205 | 612 | truncate 0.891 |
+| m135 | I78, single list | 0.9637 | 1,508 | **599** | literal-damage 0.946 |
+| m139 | I79 (`net >= cost` admitted) | 0.9634 | 1,418 | 599 | literal-damage 0.945 |
+| m137 | I79 (`net > cost`), single list | 0.9621 | 1,403 | 599 | literal-damage 0.945 |
+| m140 | I79 **ungated** | 0.9485 | 1,646 | 599 | truncate 0.820 |
+
+`_cmp.dart m134 m135 literal-damage` says every regression is a value damaged or
+deleted where the grammar expects one, and on `{"a":1,"bc":[2,33,rue],...}`:
+
+    m134  cost=2  FILL@18 '"'  FILL@21 '"'          quote `rue` locally
+    m135  cost=2  FILL@10 '\'  FILL@23 '\'          escape two real quotes, swallow the span
+    m137  cost=2  SKIP@10+1 '"'  SKIP@23+1 '"'      delete them instead, same swallow
+
+Two separate reasons it cannot close, both worth keeping:
+
+> **`_Way.synth` records only how a way OPENS, so any rule gated on it is blind
+> to invention made INSIDE a way — and the swallows that matter are exactly
+> those.** The m135 way opens on the real `"` at position 7. `synth` is false and
+> the witness test never fires. Un-gating it (m140) applies it to honest repairs
+> too and costs 0.018.
+
+> **A fill can buy itself a witness.** A JSON escape is `'\\' ["\\/bfnrt]`, a
+> *constraining* set, so an invented `\` promotes the real `"` after it out of
+> the wide body class `[^"\\]` into a precise one — and that real character then
+> counts toward `net`. `net == 0` is therefore not a test a fill cannot game; it
+> is one that *this* fill games by construction. I79's `net > cost` was designed
+> to catch exactly that and does not, because `net` is a whole-way total and the
+> swallow sits inside an otherwise-correct parse that supplies plenty of it.
+
+The conclusion is not "I78 is wrong" — I78 is worth +0.0019 on top of I76+I77 and
+is what fixes `[1,[2,[3,[4`. It is that **I76's guard is the only one of the two
+that is positional.** It compares at each ending, which is the sole place the
+swallow and the honest reading differ. An aggregate witness test over a whole way
+cannot see a local swallow embedded in a correct parse, and no sharpening of the
+arithmetic changes that. The 34 lines stay.
+
+### Two process notes
+
+**Generated-engine headers accumulate.** Each generator replaced only the first
+line of its base file (`src[src.index('\n')+1:]`), so m134 still carried m127's
+banner — "…a repair-opened reading. Generated by mk127.py from m126.dart." — three
+generations after the fact, and an assertion in the next generator fired on prose
+rather than code. All four generators now strip the *whole* leading `//` block via
+a shared `_body()` helper, and assertions about deleted machinery check
+`src[_body(src):]`, never the header that describes the deletion.
+
+**`_cmp.dart` is the tool that made this round work.** Per-case score deltas
+between two engines, deduped by `(grammar, category, mutant)` and optionally
+filtered by category. It turned m127's opaque `truncate` regression into
+`[1,[2,[3,[4` in one command, and m135's opaque `literal-damage` regression into
+"every case is a damaged value" in another. An aggregate that moves by 0.003 says
+nothing about *what* moved; this says it in one line.
