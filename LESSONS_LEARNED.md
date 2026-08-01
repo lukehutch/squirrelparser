@@ -6330,7 +6330,9 @@ What it prices is **invention**. Consuming an input character without matching i
 costs `2 * _skipRegret` (m74.dart:726), twice the information content of the
 narrowest grammar class admitting that character — **zero** for a character the
 grammar names literally, like `,` or `{`. Fabricating a character costs
-`_widestClass` = 20087 millibits (m74.dart:729), the full code-point alphabet,
+`_widestClass` = 20087 millibits (m74.dart:729), the full code-point alphabet
+— which is the *wrong* alphabet, corrected to 16000 in m77 and explained in the
+fortieth occasion; harmless here because it scaled invention uniformly —
 because nothing in the input says what to insert. Among equal-cost repairs the
 engine returns the one that invents least, and 31 times out of 33 that is the
 repair the author would have wanted:
@@ -6521,3 +6523,943 @@ regular languages, so a `First` or a nested `&`/`!` inside a predicate body
 stays regular, and only a self-recursive branch escapes. Making that exact is
 what would let the certificate go, and it is the same change that reaches the
 residual 98.
+
+## The fortieth occasion: the brief that outranks the tree, and the tie-break that swallowed eleven characters
+
+This occasion records **constraints the user set**, not engines built. They
+outrank every earlier design decision in this file, including ones that were
+measured and won at the time.
+
+### The brief, as restated over four messages
+
+1. **The tree is over the input; the repair is only scaffolding.** *"the repairs
+   are ONLY used to implicitly reconstruct the correct AST in-place by reshaping
+   the recursive call tree; the repaired string should not insert nodes into the
+   AST that aren't actually supported by the input -- instead, syntax error spans
+   should be inserted into the actual AST nodes in the memo table. So the goal of
+   recovery is to FIX THE SHAPE OF RECURSIVE DESCENT only."* This is what I32
+   implements and what `_tree75.dart` machine-checks.
+2. **Never start a second parse.** *"You should not need to create a new Parser
+   engine, ever! ... respond to damage by updating the CURRENT memo-table,
+   in-place, as the damage is found and repaired. Don't ever start a new parse."*
+   m75 still violates this: `_certified` re-parses the repaired string for a
+   yes/no. That is a **known, measured** violation, not an oversight -- see the
+   thirty-ninth occasion for why deleting it without fixing the obligations gives
+   319 wrong of 2387.
+3. **The tie-break must be a principle, not a heuristic.** *"try to abstract a
+   higher-order principle that will better-explain human intuition -- nothing in
+   the algorithm should use arbitrary heuristics."*
+4. **Recover the deterministic part; spend the special handling on `First`.**
+   *"lean in on recovering the deterministic part of the tree, applying special
+   handling only to do the best job possible across First clauses (which are
+   important, but are really at the core of the difficulty of recovering from
+   errors with PEG)."* With the endorsed premise: a predicate body built from
+   terminals, `Seq` and `*`/`+` is choice-free and possessive, so it has exactly
+   one run and is already deterministic.
+5. **Two repairs are hard requirements, and they are requirements about
+   *reasons*.** `,3true` must repair to `,3,true` and not `,true`; `[,2,` must
+   repair to `[2,`, because *"simply inventing a character to insert is a bit
+   ridiculous (it could be anything, so why pick `0` or anything else?), and
+   deleting the initial comma immediately yields a valid list."*
+6. **Lookahead scope is deliberately narrow.** Humans write `&`/`!` over trees of
+   `Seq`, `*`/`+` and terminals; nested predicates and `First` inside a predicate
+   body may be **documented as unsupported** rather than handled.
+
+### RECOVERY_TESTCASES.md: 538 cases, generated, self-checking
+
+`dart/experiments/recovery/_render75.dart` writes the repo-root document showing,
+for every case m75 is measured on, the mutated input, the corruption site (known
+by construction), the error marks m75 placed, and the JSON re-rendered from the
+repaired AST -- with structural punctuation emitted **by the grammar**, from the
+shape of the recursion tree, so any difference between the `in` and `ast` lines
+is exactly the reshaping recovery performed.
+
+Four self-checks run inside the generator and all pass: REPLACED (0 cases -- no
+input character dropped by the renderer rather than by the grammar), MARKS (0 --
+inline marker count equals the tree's `SyntaxError` count), ROUND-TRIP (0 over
+the 8 inputs that already parse), OVERDRAW (0 columns). Totals: battery
+519 cases / 201 missing / 334 unusable, valid 7/0/0, latency 12/23/5.
+
+**The cross-check that matters**: 201 + 334 = **535** markers, and `_tree75.dart`
+independently counts **535** error nodes covering **334** input characters. Two
+harnesses written for different questions agree exactly, which is the only kind
+of corroboration this project accepts for a rendering.
+
+Two tooling lessons paid for in bugs:
+
+- **The battery contains duplicate strings** -- deleting either of two identical
+  adjacent characters yields the same mutant -- so `battery.indexOf(s)` labels the
+  second occurrence with the first one's edit. Carry the mutation record
+  alongside the string; never look it up by value.
+- **Dart resolves a relative path against the process CWD**, and the run pattern
+  fixes that at `dart/`, not at the script's directory. `'../../x.md'` wrote
+  outside the repository entirely. Confirmed by finding the stray file.
+
+### D-C: the tie-break ranks the absurd reading FIRST, and scores it perfectly
+
+Reading the generated document surfaced a defect no gate in this project can
+see. Input `{"a":1,"bc":2[,33,true],"d":{"e":null},"f":"gh"}` (the `[2`
+transposed to `2[`). Measured directly from the engine:
+
+```
+cost 2  regret 0  verified true
+repaired   {"a":1,"bc":"2[,33,true]","d":{"e":null},"f":"gh"}
+```
+
+m75 inserts **two quotes** and reads `2[,33,true]` as a JSON `String`. Invention
+is 0 because a quote is a singleton class, so the grammar forced it; loss is 0
+because nothing was destroyed. **(0, 0) is the best score the secondary key can
+give**, so this is not the tie-break failing to prevent the reading -- it is the
+tie-break preferring it. The bracket move (delete `[`, insert `[` one place
+left) is also cost 2 but scores (0, 1) and loses. Eleven characters with tight
+structural roles become string content: the opposite of "fix the shape of
+recursive descent".
+
+**The fix candidate: description length subsumes loss.** Charge every input
+character the width of the class that gave it a role -- `log2|C|` bits -- and
+charge a character that got no role `log2|Sigma|`, the widest any class can be.
+Destruction stops being a separate axis and becomes the extreme case of
+description, so **an axis is deleted rather than added**. The engine already
+computes exactly this quantity as `_width`, in millibits, and applies it only to
+fabrication, so the two ends are in the same units by construction -- once
+`_width` is told the right alphabet, which it was not (see two paragraphs down).
+On B021 the string reading describes eleven characters with `Character <- [^"\\]`
+where the bracket reading uses singletons and `[0-9]`.
+
+**The number here was corrected twice, and the second correction found a
+pre-existing flaw in `_width` itself.** I first estimated ~16 bits from a
+65534-wide BMP class; then read `_width` and got **20087 millibits**, because it
+prices an inverted class over `0x110000` code points. That second figure is what
+m75 actually computes, and it is **wrong about the parser**.
+
+`CharSet.match` reads `parser.input.codeUnitAt(pos)` and returns a match of
+length 1 (`lib/src/parser/terminals.dart:97-113`). The parser's symbol is one
+**UTF-16 code unit**, so |Sigma| = 2^16 = 65536. A supplementary code point never
+reaches a class as a single symbol; it arrives as two units, matched separately.
+`_width` was counting 1114112 things the parser cannot see. So the true widest
+class is **16000 millibits**, and `[^"\\]` admits 65534 of 65536 -- which rounds
+to **16000, the same number**.
+
+**Absorbing a character into a JSON string costs exactly what deleting it
+costs.** That is the honest statement of what a near-universal class tells you,
+and it is why B021 flips so decisively: eleven absorbed characters are eleven
+deletions.
+
+Two things about this flaw are worth recording. It was **invisible while `_width`
+priced only fabrication** -- a uniform over-count of every wide class scales the
+invention axis without reordering it -- and it becomes load-bearing under I33,
+where the same constant prices every character the repair discards. And the
+correction changes **nothing measurable**: with `_alphabetSize` fixed at `0x10000`
+in m77, every gate above returns byte-identical numbers, because the error scaled
+the wide classes uniformly. It is a correctness fix to the model, confirmed to be
+outcome-neutral rather than assumed to be. **Codex found it independently while
+building its own m76**; I confirmed it against the frozen library rather than
+taking either reading on trust.
+
+**Invention must stay strictly ahead, lexicographic, and the reason is now
+sharper than "no exchange rate":** a description can be checked against the input
+the caller still holds; an invention can be checked against nothing. Minimise the
+unfalsifiable part first, then the describable part.
+
+**REFUTED BEFORE BUILDING -- the summed variant breaks a hard requirement.** With
+one MDL total, `[,2,` would be repaired by *inventing* a digit (3322 millibits)
+instead of deleting the stray comma (16000), which is precisely the repair the
+user ruled out by name. Summing is the arbitrary constant wearing a formula.
+
+**The cost question, and how it was settled.** Description accumulates on every
+*clean* read, including inside the budget-zero walk -- which settles a whole
+subtree through the oracle in one step, with no children, precisely so it does
+not have to look inside. Pricing it per character would undo that shortcut. The
+fold is therefore memoised on the `MatchResult` **object identity** the packrat
+table already hands back (`Map.identity()`), so each distinct subtree is walked
+once per input and shared readings cost nothing; the cache is cleared per pass,
+because it is keyed on this parse's result objects rather than on the grammar.
+
+### D-A, sharpened: `_oneCharClass` is not a FIRST set, and on JSON the guard is simply absent
+
+The thirty-ninth occasion recorded that `_notFirst` returns `_free` when
+`_oneCharClass` is null. What it did not say is **how often that is**.
+`_oneCharClass` asks "does this clause match *exactly one* character", which a
+`Seq`, a multi-character `Str` and a rule whose body is either of those all fail.
+Measured, by printing `_guardsOf` on the lowered JSON grammar:
+
+| rule | branches | guards | enforced? |
+|---|---:|---|---|
+| `Value <- Object / Array / String / Number / Boolean / Null` | 6 | all `_free` | **no, none** |
+| `Boolean <- "true" / "false"` | 2 | all `_free` | **no, none** |
+| `Character <- [^"\\] / ('\\' Escape)` | 2 | `[_free, 0]` | yes |
+| `Escape <- '"' / '\\' / ... / ('u' hex x4)` | 9 | 8 dropped as implied, 9th guarded | yes |
+
+So on the central rule of the grammar this project benchmarks, **ordered choice
+is not enforced at all** -- the DP treats `Value` as an unordered choice. It
+survives only because JSON's six branch FIRST sets (`{`, `[`, `"`, `-`/digit,
+`t`/`f`, `n`) are pairwise disjoint, so no string can take two branches and
+unordered coincides with ordered. That is a property of *this grammar*, not of
+the engine.
+
+### ...but the residual 98 is NOT the choice guard, and the direction is the opposite of the one assumed
+
+Counting the wrong answers is not designing against them, so `_wrong75.dart`
+names them. Over the same 2387:
+
+| | count |
+|---|---:|
+| answer too LOW -- accepted a repair that does not exist | **0** |
+| answer too HIGH -- missed a repair that does exist | 41 |
+| answered `-1` where a repair exists | 57 |
+
+| grammar | wrong |
+|---|---:|
+| `S <- &(A 'b') A 'b' 'x';  A <- 'a'*;` | **97** |
+| `S <- 'a'? "ab";` (on `""` alone) | 1 |
+
+**Three earlier beliefs die here.** (a) The under-restriction produces **zero**
+wrong answers in this gate -- the certificate catches every one, which is
+precisely what it is for. (b) The residual is not the ordered-choice guard; it is
+**one multi-character positive lookahead**. (c) I had just written into this file
+that "the wrong answers live where branches overlap"; that was inferred from
+reading the code and is **refuted by the measurement above**.
+
+**The actual mechanism.** `_looks` reduces a lookahead to a one-character class;
+when it cannot, `_node` falls through to `_term(clause, editable: false,
+demands: _free)`, and `_step` then evaluates it with
+`node.orig.match(_parser, pos)` -- **the oracle, against the ORIGINAL input**.
+So any repair that would have made the lookahead succeed is invisible to the
+search, and the branch dies. `&(A 'b')` on `""` needs `bx` inserted, truth 2;
+m75 answers `-1`, because `'a'* 'b'` does not match the unrepaired empty string.
+
+This is inside the scope the brief explicitly asks for -- *"FollowedBy/
+NotFollowedBy with rules that include trees of Seq, ZeroOrMore/OneOrMore, and
+terminals"* -- and `&(A 'b')` with `A <- 'a'*` is exactly that shape. So the
+DFA obligation's first job is the **lookahead**, not the choice guard, and
+`_looks` is the site to generalise: it already turns a one-character lookahead
+into an obligation, and a DFA state is the same idea without the truncation.
+A positive lookahead becomes "this DFA must reach acceptance", a negative one
+"this DFA must never accept" -- one mechanism covering `&`, `!`, the branch
+guard and the star stop.
+
+**The trap in that construction, worth stating before anyone writes it.**
+`L_PEG(e* f)` is not `L_regex(e* f)`: PEG's star is possessive and never gives
+an iteration back, so `'a'* 'a'` matches nothing while `a*a = a+`. A Thompson
+construction is therefore *wrong* here. The correct one determinizes a
+**priority-ordered** thread set (the star's exit thread is pruned whenever the
+body thread can still advance), which is finite and lazily buildable. Independent
+of me, the Codex round on this occasion flagged the same trap first.
+
+The FIRST-vs-DFA split still stands for the choice guard:
+
+- A **FIRST set** (a fixpoint over the grammar, closing over recursion) gives a
+  guard that is *sound but over-restrictive* -- it can reject a valid repair
+  where a branch starts with the right character and fails later, e.g.
+  `("ab" / "ac") 'x'` on `acx`. Sound here means it never accepts a repair the
+  real parser rejects.
+- A **DFA** over the branch language is *exact*, and is available for every body
+  the user's scope covers, since union, intersection and complement all close
+  over regular languages. Only self-recursion escapes, and there FIRST is the
+  fallback.
+
+The current `_free` is the third possibility and the worst one: *under*-restrictive,
+so it accepts repairs the real parser rejects -- which is exactly the hole the
+certificate re-parse is still plugging.
+
+### m77 / I33, built and measured: destruction is the widest description
+
+D-C is fixed. m77 is m75 with `loss` replaced by a description length in
+millibits, `(edits, invention, description)` lexicographic, packed as
+`invention * descSpan + description` where `descSpan = inputLen * 16000 + 1`.
+Seventeen net lines of code (746 -> 763); no new constant, because `_width` and
+`_widestClass` were already there and already in millibits -- though
+`_widestClass` had to be corrected from a typed 20087 to a *derived*
+`log2(0x10000)` = 16000, which is the alphabet fix recorded above.
+
+The whole of the implementation is four places:
+
+- `_descOf(MatchResult)` -- the memoised fold described above.
+- the budget-zero walk pays `_descOf(m)` instead of 0 for the subtree it settles.
+- a clean terminal read pays `_widthOf(node.orig) * m.len`.
+- SUB pays `width * descSpan + _widestClass`; FAB pays `width * descSpan`. DELETE
+  needs no case at all: it is already SUB on `_junk`, whose class is empty, so it
+  invents 0 bits and pays the one widest description. **The axis was deleted, not
+  added** -- which is the test the brief sets for a principle over a heuristic.
+
+**A secondary key must not move a cost, and it does not.** `_id77.dart` runs both
+engines over every corpus:
+
+| corpus | n | cost differences | certified | TILES | TOTAL | UNSUPPORTED |
+|---|---:|---:|---|---|---|---|
+| battery | 519 | **0** | 519 -> 519 | 519 -> 519 | 519 -> 519 | 0 -> 0 |
+| valid controls | 7 | **0** | 7 -> 7 | 7 -> 7 | 7 -> 7 | 0 -> 0 |
+| latency | 12 | **0** | 12 -> 12 | 12 -> 12 | 12 -> 12 | 0 -> 0 |
+
+Correctness is likewise untouched, as a tie-break must be: `_wrong77.dart` gives
+**98 wrong of 2387**, with the identical split (0 too low, 41 too high, 57 false
+`-1`, 97 of them the one lookahead grammar). Conformance 5/5, `_m77diff` 0 diffs
+on all five grammars, `dart test` 308/308, core gate A 2996/2996, B 3252/3252,
+C no drift, D clean.
+
+**What moved is the shape, and it moved the right way.** `SHAPE` -- the recovered
+tree matching the *original, pre-mutation* document's shape -- goes **474 -> 500
+of 519**. Twenty-six mutants that m75 repaired into a differently-shaped document
+now recover the shape the author wrote. 65 battery trees changed in total.
+
+The named cases, with positions:
+
+| case | m75 | m77 |
+|---|---|---|
+| B021 `2[` | `String[12,23) <?>@12 <?>@23` | `Array[12,23) <!2!>@12 Array[13,14) <?>@14 Number[15,17) Boolean[18,22)` |
+| `ture` | `String[18,22) <?>@18 <?>@22` | `Boolean[18,22) <?>@19 <!r!>@20` |
+| `,3true` | `Number[17,18) <?>@18 Boolean[18,22)` | identical |
+| `[,33,true]` | `Number[13,16) <!,!>@13 Boolean[17,21)` | identical |
+| `"a":` empty | `Number[5,5) <?>@5` | identical |
+| `"a":"1` | `String[5,7) <?>@7` | `String[5,7) <!1!>@6` |
+
+Both hard requirements hold unchanged: `,3true` still reads `3` as a `Number` and
+inserts the separator before `true` (`,3,true`, not `,true`), and `[,33,true]`
+still *deletes* the stray comma rather than inventing a value.
+
+**B021 is worth reading closely, because the engine reaches a repair I would not
+have proposed and the reason is the user's own.** m77 substitutes the `2` into
+`[` and fabricates the inner `]`: `[[],33,true]`, cost 2. The "obvious" transpose
+-- delete `2`, re-insert it after the bracket -- is also cost 2, but re-inserting
+a digit is a fabrication from `[0-9]`, **invention 3322 millibits against m77's
+0**, and invention is the first tie-break key. So the engine refuses to invent a
+digit for exactly the reason the brief gives for `[,2,`: *"it could be anything,
+so why pick `0`?"*. The eleven characters get their structural roles back --
+`33` is a `Number`, `true` a `Boolean`, the brackets are brackets -- which is the
+thing D-C was about.
+
+**`"a":"1` is an exact tie, and naming it prevents a future bug hunt.** Inserting
+the closing quote reads `1` through `Character <- [^"\\]` at 16000 millibits;
+substituting `1 -> "` destroys it at 16000. Identical cost, identical invention
+(a quote is a singleton either way), identical description. The winner is
+whichever `_keepBest` sees first in split order. Both readings are legitimate and
+both satisfy the tree contract -- under the substitution the `"` at 6 *is* the
+closing quote, so nothing is missing and `<!1!>@6` correctly reports the one
+character the grammar could not use. This was initially logged as an unexplained
+result; it is a tie, not a defect.
+
+**What m77 does NOT do.** It does not touch D-A or D-B. The obligation is still a
+one-character class, the residual 98 is unchanged, and `_certified` still
+re-parses. I33 was always orthogonal to those -- it is the secondary key, and the
+measurements above confirm it stayed there.
+
+### The gate that could not see the defect it was guarding
+
+Before designing anything for D-A I re-took its evidence, because the recorded
+measurement was made on **m74**, an ancestor, and a defect argued from a
+superseded engine is not evidence about the standing one. `_starwide77.dart` runs
+m75 and m77 side by side; both return 3 / 2 / 0 / 0 / 1 on `""` / `"c"` / `"abc"`
+/ `"ababc"` / `"abab"` over `S <- ("ab")* "abc"`, whose language is **empty**, so
+the truth is -1 everywhere. The figures match the record exactly. The
+one-character-body control `S <- 'a'* "ab"` is right on all five, because there
+`_oneCharClass` is not null and the obligation really is carried.
+
+Then something the record does not contain. **Every one of those five wrong
+answers reports `lastVerified = false`.** The certificate detects the
+unsoundness; `recoverCost` throws the detection away, because I28's shape is
+"relax, and if that fails to certify, tighten" and it returns the tight cost
+**unconditionally** (`m77.dart:1175-1183`).
+
+That looks like a one-line fix, so I measured it rather than arguing it.
+`_veto77.dart` scores all 2387 subset strings under two policies, the returned
+cost and `lastVerified ? cost : -1`, with **no change to the engine**. Result:
+142 answers are uncertified, and the veto **rescues 0 and breaks 0** -- the two
+policies score identically, 98 wrong, low 0, high 41, false -1 57. Within those
+grammars an uncertified answer is *already* -1, so the certificate is fully acted
+on there and the one-line fix is worth nothing.
+
+**The finding is the `low 0`.** The subset gate has never once caught the engine
+accepting a repair that does not exist -- while `("ab")* "abc"` is wrong on every
+input. A suite that stays green with the defect present proves the case is
+untested. The reason is visible in the grammar list: its one empty-language
+grammar is `'a'* "ab"`, whose star body is **one character**, precisely the case
+that works. Every multi-character body is absent, and that is exactly where
+`_notFirst` falls back to `_free`.
+
+So `_gate77.dart` runs the same harness over a superset: all 14 inherited
+grammars plus nine chosen to make both faces observable. Red before green, on
+6461 strings:
+
+```
+                   wrong        LOW   high  false-1
+m75  all 23    711 / 6461       390     73      248
+m77  all 23    711 / 6461       390     73      248
+m75  the 9     613 / 4074       390     32      191
+m77  the 9     613 / 4074       390     32      191
+```
+
+The inherited part is `711 - 613 = 98` of `6461 - 4074 = 2387`: the old gate's
+number reproduced exactly, which is the check that the new one is a superset and
+not a different measurement. m75 and m77 agree on all 6461, re-confirming over a
+corpus 2.7x larger that I33 moves no cost.
+
+**The two faces separate perfectly by grammar shape, and they point opposite
+ways:**
+
+```
+ 327/364  LOW=327 high= 0 false-1=  0   S <- ("ab")* "abc";     EMPTY language
+  63/63   LOW= 63 high= 0 false-1=  0   S <- ("ab")* "aba";     EMPTY language
+ 196/364  LOW=  0 high= 5 false-1=191   S <- &("ab") 'a' 'b' 'c';
+  97/364  LOW=  0 high=41 false-1= 56   S <- &(A 'b') A 'b' 'x';  A <- 'a'*;
+  22/364  LOW=  0 high=22 false-1=  0   S <- !("ab") 'a' 'c';
+   5/1365 LOW=  0 high= 5 false-1=  0   S <- !("ab" "cd") 'a' 'b';
+```
+
+- **A possessive star whose follower begins with the star's body is UNSOUND**:
+  all 390 too-low answers, and nothing else contributes one.
+- **A multi-character lookahead body, either polarity, is INCOMPLETE**: 321
+  answers too high or falsely -1, and it contributes no unsound answer at all.
+
+The second mechanism is confirmed in code rather than inferred. At
+`m77.dart:489-493`, when `_looks` returns null the lookahead clause becomes a
+`_Term` whose match is `node.orig.match(_parser, pos)` -- and `_parser` is built
+over the **original** input (`m77.dart:1194`). No repair can ever satisfy it, so
+real repairs are missed. `_free` being *too weak* explains the unsoundness;
+matching against the *unrepaired* input explains the incompleteness. They are
+different bugs wearing one symptom.
+
+**Why this changes the D-A design.** I had framed the obligation as `!A`. The
+measured residual is dominated by `&A`. So the lattice element is not "the suffix
+must not match A" but **"the repaired suffix from here must be accepted by
+machine D"** -- `&A` takes D, `!A` takes its complement, and DFAs are closed under
+complement, so one mechanism covers both polarities with no second case. `_free`
+is the universal machine, `_meet` is the product, `_unmeetable` is a product with
+no accepting path. m75 already has this shape; it simply cannot build the machine
+when the body is longer than one character.
+
+**And the construction cannot be Thompson.** `L_PEG(e* f) != L_regex(e* f)`:
+PEG's star is possessive, so `'a'* 'a'` matches nothing while `a*a = a+`. An NFA
+built from the body's syntax unions the "continue" and "exit" branches as equals,
+where PEG gives "continue" strict priority and reaches "exit" only by rolling
+back a failed iteration. The construction that survives is a state of
+`(current item, rollback item)` over the body's LR-style items, built lazily and
+interned -- at most `|items|^2`, which is finite, so it terminates.
+
+## The forty-first occasion: the prediction was wrong, and the tie-break was right about the wrong question
+
+Codex was briefed on D-A and D-B in parallel and built `m76.dart` independently.
+I wrote my own design first, to a file, *before* reading anything Codex produced,
+so that the comparison would be a comparison and not a rationalisation. Sources
+for everything below: Codex's thread transcript
+(`~/.codex/sessions/2026/07/31/rollout-...-019fbbd3-....jsonl`) and `m76.dart`
+itself, read directly.
+
+### The prediction I recorded, and its refutation
+
+I wrote: *"This is the part I expect an implementation to get wrong, because the
+syntax looks regular and the standard reflex is Thompson. Prediction to check
+against Codex: whether its construction models the rollback component at all."*
+
+**Refuted, cleanly.** Codex reached the trap before writing any code, from the
+same direction I did: *"A plain regex/NFA translation is wrong for PEGs because
+ordered choice and possessive repetition commit before the follower is known"*,
+then checked the derivative literature and concluded *"a PEG derivative has to
+retain backtracking followers; a plain regex derivative loses committed-choice
+semantics."* It chose exact PEG residuals where I chose `(item, rollback)` pairs.
+Two encodings of one insight, arrived at separately -- which is the strongest
+evidence available that the insight is the real constraint and not a preference.
+
+### Where Codex's construction is strictly better than my design
+
+Read off `m76.dart` rather than taken from its summary:
+
+- **Committed choice is explicit** (`m76.dart:533-536`):
+  `out = a == 0 ? b : b == 0 || _match(a).isNotEmpty ? a : _po(a, b);`
+  If the first alternative can already match, the second is *discarded*; only
+  while `a` is still undecided is `b` retained as a backtracking follower. A
+  Thompson union would keep both unconditionally. This is the semantics, in
+  three lines.
+- **Several rollback points, not one** (`m76.dart:501-508, 550-556`). My state
+  carried a single rollback item. Codex carries a *map* `followers: {mark ->
+  continuation}` over the set `_back(a)`. With ordered choice inside a predicate
+  body there can be several live rollback points at once, and one slot cannot
+  represent that. My design was sound only within the choice-free bodies the
+  brief endorses; Codex's covers choice too. **Codex's is more general and mine
+  was under-powered.**
+- **Canonical renaming of marks** (`m76.dart:569-598`). This is the piece I did
+  not have and did not see the need for. I said "intern the states"; interning
+  alone is not enough, because the mark counter advances on every derivative and
+  two structurally identical states carrying different mark numbers intern to
+  different indices. The state set then never closes and the DFA is infinite.
+  `_canonical` sorts the live marks and renumbers them `0..n`, which is what
+  makes the construction terminate. **A real gap in my design, closed by Codex.**
+- **Polarity as a flag, not a complement** (`m76.dart:600-625`). The obligation
+  is a set of `(residual, yes/no)` pairs; `_meet` is union, `_dead` is
+  contradiction, and `_internOb` returns `_dead` the moment the same residual is
+  demanded both positively and negatively (`:609`). I had argued for
+  complementing the machine for `!A`. Carrying the polarity is equivalent and
+  cheaper -- no complement construction at all.
+
+### Where we converged independently
+
+The budget-zero walk settles a whole subtree through the oracle in one step, so a
+live obligation threatens to reintroduce the per-character cost the walk exists
+to avoid. I answered this with a memoised `advance(q, i, j)` over the clean span.
+Codex wrote `_advanceSpan(c, pos, len)` (`m76.dart:960`), called at `:1371` with
+`m.pos, m.len`. Same answer, same place, reached separately. Its reported effect
+is that latency *recovered*: 209.5 ms over the 12 latency cases, under the 250 ms
+ceiling -- **Codex's number, not yet reproduced by me.**
+
+### Codex found a real flaw in I33, and my defence of it was incomplete
+
+> *"The description-length test exposed a real flaw in the proposal: it avoids the
+> quote-swallowing repair, but on the transposed bracket it prefers making an
+> empty nested array because singleton `]` has zero invention bits."*
+
+This is correct, and it is the behaviour I had already recorded and *defended*
+one section above. m77 on B021 gives
+`Array[12,23) <!2!>@12 Array[13,14) <?>@14 Number[15,17) Boolean[18,22)` --
+an inner **empty `Array`** whose closing bracket is fabricated: `[[],33,true]`.
+
+My account of *why* stands and is still right: re-inserting the digit is an
+invention of 3322 millibits against 0, invention is the first key, and the engine
+refuses to invent a digit for exactly the reason the brief gives for `[,2,`.
+What I got wrong was concluding from that that the outcome was therefore
+acceptable. **A correct reason for a wrong answer is still a wrong answer.** The
+author wrote no empty array, and a spurious `Array` node is precisely what the
+AST contract forbids.
+
+**Note what the gates do and do not see here.** `UNSUPPORTED` reports 0, and it
+is *right* to: every character the inner node covers is real, and its fabricated
+`]` is a zero-width `<?>`, which is exactly I32's legitimate "grammar the input
+cannot fill" reading. The node is **supported but spurious** -- a distinction no
+gate measures. Only `SHAPE` can catch it, and `SHAPE` is the metric still short
+at 500/519. (That B021 is among those 19 is *inferred* from `[[],33,true]` not
+matching the original's shape; not yet re-measured.)
+
+### The actual diagnosis: the edit alphabet is missing a primitive
+
+The tie-break is not the broken part. The **edit alphabet** is. A transposition
+is the one repair where every character is already present and only the order is
+wrong, but with only delete/insert/substitute available it must be spelled as
+delete-then-reinsert -- which *forces* a fabrication, which invention-first
+correctly penalises, which hands the win to a structurally worse repair. The
+engine is being punished for obeying the brief.
+
+An adjacent-transpose edge fixes this without adding a heuristic, and its
+justification is the one already load-bearing in I33: **falsifiability.** A
+transposition asserts nothing that cannot be checked against input the caller
+still holds -- both characters are right there -- so it invents 0 bits, and both
+keep their classes, so it destroys 0 bits.
+
+| repair for B021 `2[` | cost | invention | description | supported by input | score |
+|---|---|---|---|---|---|
+| transpose -> `[2,33,true]` | **1** with the edge, 2 without | 0 | 0 | fully; recovers the author's document | **10** |
+| m77 -> `[[],33,true]` | 2 | 0 | 30053 | supported but **spurious** empty `Array` | 5 |
+| m75 -> `"2[,33,true]"` as `String` | 2 | 0 | 220957 | 11 characters swallowed | 2 |
+
+With the edge the transpose wins **outright on the primary key**, so no tie-break
+is consulted at all -- the whole family stops depending on I33. That is a
+simplification, not an addition.
+
+**The cost, stated plainly, because it is not free.** This changes what "minimum
+edits" *means* across the project. `trueDist` enumerates no swap edge, and
+`final_table.dart:1168` deliberately prices a transpose as 2 under
+delete/insert/subst. Engine and oracle must move together or all 42 surviving
+transposes read "too low" and score as wrong. The battery was *generated* by
+applying single transpositions, so the oracle currently measures a different
+operation than the one that produced its own data -- which is an argument that
+the oracle is the party in error. **This is a change to the scoring metric and
+therefore the user's call, not mine; it is recorded here as a recommendation and
+has not been implemented.**
+
+**One over-claim, corrected before it becomes folklore.** It is tempting to say
+"I33 already prices a transposition at 0/0, the primary key just overrules it."
+That is false. Spelled as delete-then-insert, a transposition costs invention
+3322 **plus** description 16000 -- the delete destroys a character and the insert
+fabricates one. The true claim is narrower: a transpose *edge*, if added, would
+price to 0 invention and 0 description under I33's **existing** definitions,
+because both characters are present and both keep their classes. That makes the
+edge a consequence of the cost model rather than an exception to it, which is the
+whole argument for adding it; it is not evidence that the model already contains
+it.
+
+### m76 measured on the gate that can see D-A: 0 wrong of 6461
+
+`_cmp76.dart` scores all three engines on the 23-grammar gate in one run, with
+the truth from the same `trueDist` brute force. The gate was written **before
+m76 existed** and specifically to expose D-A.
+
+```
+=== all 23 grammars ===
+m75   wrong= 711 / 6461   LOW=390  high= 73  false-1=248
+m76   wrong=   0 / 6461   LOW=  0  high=  0  false-1=  0
+m77   wrong= 711 / 6461   LOW=390  high= 73  false-1=248
+```
+
+Per grammar, m76 is 0 on **every one**, including both families that defeated
+every previous engine in the m-line:
+
+```
+  NEW S <- ("ab")* "abc";      m75 327/L327   m76 0/L0   m77 327/L327   of 364
+  NEW S <- ("ab")* "aba";      m75  63/L 63   m76 0/L0   m77  63/L 63   of  63
+  NEW S <- &("ab") 'a' 'b' 'c';m75 196/L  0   m76 0/L0   m77 196/L  0   of 364
+      S <- &(A 'b') A 'b' 'x'; m75  97/L  0   m76 0/L0   m77  97/L  0   of 364
+```
+
+**The instrument discriminates**, which is the check that matters: m75 and m77
+score 711 on the identical run, so a 0 is a result and not a gate that passes
+anything handed to it. The 815 m76/m77 disagreements are all in m76's favour and
+they separate by face -- `"" true=3 m76=3 m77=-1` is the *incompleteness* face
+(m77 declares a repairable string unrepairable), and the two `("ab")*` grammars
+are the *unsoundness* face (m77 prices a repair in a language with no strings).
+That last 97-case grammar is the one m71's notes called reachable "only by a
+tape, and that is exactly the 542 lines I28 and I27 were built to avoid paying
+for". It is now closed without a tape.
+
+### I33 replicated byte-for-byte by an independently written engine
+
+Codex adopted I33 into m76 (`_score(invention, description) = invention *
+_descriptionSpan + description`, the UTF-16 alphabet, `_widestClass` derived).
+Running its own `_dc76.dart` on the six named cases, **m76's trees are identical
+to m77's on all six** -- same spans, same error marks, same ties:
+
+| case | m76 (= m77) |
+|---|---|
+| B021 `2[` | `Array[12,23) <!2!>@12 Array[13,14) <?>@14 Number[15,17) Boolean[18,22)` |
+| `ture` | `Boolean[18,22) <?>@19 <!r!>@20` |
+| `"a":"1` | `String[5,7) <!1!>@6` |
+| `,3true`, `[,33,true]`, `"a":` empty | identical to m75 |
+
+Two engines written independently, reaching byte-identical trees from the same
+principle, is the strongest replication available here. It also settles the B021
+question: **the spurious empty `Array` is present in m76 too**, so it is not an
+m77 artifact but an inherent consequence of invention-first with no transpose
+primitive -- exactly as diagnosed above, and now confirmed on a second
+implementation rather than argued from one.
+
+### The 0 of 6461 did not survive the re-run, which is why the re-run happened
+
+The gate above was run against the m76 that existed at the time. Codex kept
+editing (`m76.dart` mtime moved after that run), so it was scored again against
+the current file. **The answer changed:**
+
+```
+m76   wrong=  12 / 6461   LOW=  0  high=  0  false-1= 12
+```
+
+on one grammar that had scored **0 for all three engines** in the earlier run:
+
+```
+NEW S <- (A / 'a') 'b'; A <- 'a' &("bb");   m75 0   m76 12   m77 0   of 63
+```
+
+**The rule this pays for: a measurement of a file someone else is still editing
+expires the moment they save.** The earlier 0 was not wrong when taken; it was
+stale by the time it would have been reported, and reporting it would have been
+a confident claim about bytes that no longer existed.
+
+The direction matters and is worth stating precisely: all 12 are `false -1` --
+the engine calling a repairable string unrepairable. **`LOW` is still 0**, so it
+never prices a repair below truth. The safety-critical direction is intact; the
+defect is conservatism.
+
+### Isolating it: three controls, each of which passes
+
+`_reg76.dart` takes the failing grammar apart. Remove any single ingredient and
+the defect vanishes:
+
+| grammar | m76 wrong |
+|---|---|
+| `(A / 'a') 'b'; A <- 'a' 'b';` -- choice, **no** lookahead | 0 of 63 |
+| `(A / 'a') 'b'; A <- 'a' &('b');` -- choice, **one-char** lookahead | 0 of 63 |
+| `A 'b'; A <- 'a' &("bb");` -- **multi-char** lookahead, **no** choice | 0 of 63 |
+| `(A / 'a') 'b'; A <- 'a' &("bb");` -- all three | **12 of 63** |
+
+So the trigger is an ordered choice whose first alternative carries a
+**multi-character** lookahead. The language is tiny -- `L(S)` restricted to
+full-length matches is exactly `{"ab"}`, because branch `A` needs two characters
+of lookahead past a two-character match -- and every one of the 12 repairs to
+`"ab"`.
+
+**A scoring trap the probe walked into first, recorded so it is not repeated:**
+`trueDist(..., 3)` returns `null` for "further than 3", which is **not** `-1`.
+Writing `t ?? -1` scored three strings where every engine correctly answered 4 as
+three failures, and reported 15 instead of 12. The gate's own `Tally.score`
+already encodes the rule (`truth == null ? (c > 3 || c == -1) : c == truth`);
+restating it by hand invented failures that were the probe's, not the engine's.
+
+### Two hypotheses, two refutations, both by measurement
+
+Neither guess survived contact, and each cost a full 6461-string run:
+
+| hypothesis | patch | result |
+|---|---|---|
+| the residual's committed choice at `_derive:536` drops the fallback on a bare `_match(a).isNotEmpty`, where the seq case at `:543` correctly checks `j == mark` | `contains(mark)`, plus `_match` unioning both alternatives and `_po` losing its short-circuit | **0 of 6461 answers changed** |
+| `_mergeAlt:1262` prunes zero-cost alternatives against `_parser`, the oracle over the **original** input, which cannot know what a lookahead sees once edits land elsewhere | prune disabled wholesale | **0 of 6461 answers changed** |
+
+Both were plausible readings of real code. Both were wrong. The second is still
+worth recording as a fact about the engine: **the oracle-commit prune is inert on
+this gate** -- disabling it changes no answer anywhere in 6461 strings.
+
+### The actual cause: the search is right and the proof replay is not
+
+Exposing both passes (`_why76.dart`) ends the guessing:
+
+```
+"bbb" (true 2):   cheap=2 certified=false   tight=2 certified=false   -> -1
+"bbba"(true 3):   cheap=3 certified=false   tight=3 certified=false   -> -1
+"abb" (true 1):   cheap=1 certified=false   tight=1 certified=true    ->  1
+```
+
+**Both passes find exactly the true cost.** The DP is correct. What fails is
+`_certified` -- the back-pointer chase and exact residual replay that *replaced*
+the deleted second parse. It cannot rebuild a witness for a cost the search
+correctly found, and the fail-closed branch at `m76.dart:1518` converts that
+right answer into `-1`.
+
+Codex's own header predicted the shape of this: *"Exact search and exact replay
+are intended to be the same proof. If an implementation defect ever separates
+them, fail closed."* They have separated. The design choice is vindicated by its
+own failure -- the separation produced a conservative wrong answer rather than an
+unsound one, which is why `LOW` is 0 -- but **D-B's replacement is where the
+defect lives, not D-A's obligation machinery.** D-A is genuinely fixed: the two
+empty-language star families that defeated every previous engine are still 0.
+
+The general lesson, which is not about this engine: **when a search and an
+independent proof of the same fact disagree, the answer is not "trust the
+proof".** Fail-closed makes the disagreement safe, not correct, and it hides
+which half is broken behind a single `-1`. The instrument that mattered was the
+three-line one that printed both halves.
+
+### The 12 were not the defect. m76 throws on every damaged left-recursive input
+
+Running the table's own per-engine measurement (`measureOne`, so the numbers
+cannot disagree with the column they explain) put the synthetic 12 in
+perspective:
+
+| | LOC | shape | cover | bmin | bund | valid | **cost** | **tree** | **pred** | unsnd |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **m76** | 1294 | 496/519 | 519/519 | 519/519 | 0 | 7/7 | **26/44** | **26/44** | **67/69** | 0 |
+| **m77** | 763 | **500/519** | 519/519 | 519/519 | 0 | 7/7 | **44/44** | **44/44** | **69/69** | 0 |
+
+The JSON battery is clean for m76 -- every minimum cost exact, nothing
+under-priced. The ground-truth columns are not, and enumerating them
+(`_tc76.dart`) showed the losses are not wrong numbers at all but **thrown
+exceptions**, on three grammars that have one thing in common:
+
+```
+E <- E '+' T / T; T <- T '*' F / F; F <- [0-9];   9 throws   (direct left recursion)
+E <- A / F; A <- B '+' F; B <- E; F <- [0-9];     6 throws   (indirect)
+E <- E N / F; N <- '-'?; F <- [0-9];              3 throws   (left recursion + nullable)
+S <- A 'b'; A <- 'a' &'b' / 'c';                  2 wrong, no throw
+```
+
+`_lr76.dart` prints what is thrown:
+
+```
+m76 "1+2"  -> 0        clean input, no repair needed
+m76 "1++2" -> UnsupportedError: left-recursive obligation at grammar state 0
+                       at SuperDot3._norm (m76.dart:470)
+m76 "1+"   -> UnsupportedError: ... (same)
+m77 "1++2" -> 1        m77 "1+" -> 1
+```
+
+**m76 parses left-recursive grammars and cannot recover them.** Cost 0 works,
+because a clean parse never builds an obligation. Any repair at all forces one,
+`_norm` left-expands it into the recursive rule, and the engine throws.
+
+**This is a scope grant applied one level too wide.** The user's grant was about
+*predicate bodies*: humans write lookaheads over "trees of Seq, ZeroOrMore /
+OneOrMore, and terminals -- not First or nested FollowedBy/NotFollowedBy", and
+those corner cases "can be documented as not handled well". My own design note
+said the same and named the fallback that must be rejected rather than silently
+returned. Codex implemented the rejection -- correctly, and explicitly, which is
+better than m75 silently returning `_free` -- but applied it to **any obligation
+that left-expands into a recursive rule**, and an ordinary possessive stop or
+committed choice in a left-recursive *main* grammar does exactly that. Left
+recursion in the grammar is not a recursive predicate body. It is the feature
+this parser is built around.
+
+**Two blind gates, and neither is redundant.** My 23-grammar gate never saw this
+(its grammars are not left-recursive) and reported 12 wrong. The table's truth
+cases never saw D-A (they contain no empty-language star) and reported m77
+perfect at 113/113. Each gate certified the engine the other condemned. A single
+gate would have shipped whichever defect it was blind to.
+
+**And the crash is invisible in the table's own `crsh` column, which reads 0.**
+`crsh` counts battery crashes, and the battery is JSON, which has no left
+recursion; `measureOne` swallows truth-case throws in a bare `catch (_) {}` where
+they cost one exactness point and lose their stack trace. A column named for
+crashes reporting 0 while the engine throws on 18 cases is the same defect class
+as the one this file already records for `shape` and for the subset gate: **the
+number was not measuring what its name says.**
+
+### Where that leaves the deliverable, stated as a trade rather than a winner
+
+Neither engine is shippable as it stands, and the two defects are not comparable
+in kind:
+
+| | m75 | m77 (mine) | m76 (Codex) |
+|---|---|---|---|
+| LOC (whole file) | 746 | 763 | 1294 |
+| standalone? | no, borrows the 705-line library parser | no, same | **yes**, 151 lines of embedded parser |
+| D-A gate, 6461 strings | 711 wrong, **390 unsound** | 711 wrong, **390 unsound** | **12 wrong, 0 unsound** |
+| table truth cases | -- | **113/113** | 93/113, **18 throws** |
+| shape | 474/519 | **500/519** | 496/519 |
+| D-B second parse | present | present | **removed** |
+| left-recursive recovery | works | works | **throws** |
+
+m77 is unsound on an exotic family: possessive stars whose follower begins with
+the body, where it prices repairs into languages that contain no strings. m76
+hard-fails on a mainstream one: every expression grammar, as soon as anything
+needs fixing. **Unsoundness on grammars nobody writes is a lesser fault than a
+crash on grammars everybody writes**, so m77 stays the better standing engine
+today -- but it stays there with a named, measured unsoundness, not a clean bill.
+
+The merge is the obvious next move and it is not speculative: m76's obligation
+machinery is *right* about D-A (both empty-language families go to 0 and stay
+there), and its rejection of recursive obligations is a restriction on when that
+machinery may be built, not a property of the machinery itself. Lifting it --
+falling back to m75's coarser one-character obligation for a left-recursive
+expansion instead of throwing, which is sound-where-it-answers and no worse than
+what m77 does today -- is the smallest change that could give one engine both
+columns. **That is a design claim, not a measurement; it has not been built.**
+
+**On the LOC goal, with the comparison made fair.** m76 is 1294 against a
+standing target of 400, which reads as a large regression until the rule the user
+set is applied: every engine is supposed to be standalone, parser included. m76
+is (151 lines of embedded parser, `hide Parser` on the library import). m77 is
+not -- it imports the library `Parser`, which is 705 code lines across
+`lib/src/parser/`. As complete artifacts the comparison is **1294 for m76 against
+1468 for m77**, and m76 is the smaller of the two. Recovery-only it is 1143
+against 763, and that 380-line difference is the honest price of exact PEG
+obligations over a one-character approximation. The 400-line target was set
+before D-A was known; it was a target for an engine that is wrong on 711 of 6461
+strings, and no measurement since suggests exactness fits inside it.
+
+### m78 (I34): an obligation you cannot write down constrains nothing
+
+The merge predicted above was built, and the shape of it is not the one that was
+predicted. The prediction was to *fall back to m75's coarser one-character
+obligation* on a left-recursive expansion. That is not what the algebra allows,
+and working out why produced the actual principle.
+
+`_norm` throws in two places: a rule reference reached while left-expanding, and
+zero-width repetition. Both mean the same thing — *this obligation is not a
+regular language, so I cannot carry it as a derivative*. The question is what to
+return instead, and the answer is forced rather than chosen:
+
+- `_settle` (m76.dart:616) is the **only** place in the engine where a residual
+  meets its polarity. Everywhere else an obligation is just an index.
+- The vacuous residual is **polarity-dependent**. `fail` (index 0) discharges a
+  *negative* obligation and kills a *positive* one; an eps-accepting residual
+  does exactly the reverse. Check `_settle` and both are visible in two lines.
+
+So the inexpressible case **cannot be spelled with any constant already in the
+algebra** — no single index is vacuous in both polarities. It needs its own
+element. `_opaque` absorbs through every constructor (`_pn`, `_po`, `_pseq`,
+`_derive`, `_canonical`) and is discharged, imposing nothing, at the one point
+where the polarity is known. The rule underneath: **the engine may not enforce a
+requirement it cannot check, in either direction.** Refusing to answer is itself
+a claim, and a stronger one than the evidence supports.
+
+That is 2 net lines of code, 1294 -> 1296.
+
+**Measured on both gates, because each is blind where the other sees.** This is
+the part that mattered more than the fix:
+
+| | gate A: 23 grammars, 6461 strings (sees D-A) | gate B: table truth+pred, 113 cases (sees left recursion) |
+|---|---|---|
+| m75 / m77 | 711 wrong (390 too low, 248 false −1) | 113/113 |
+| m76 | 12 wrong | 93/113, **18 throws** |
+| **m78** | **12 wrong, 0 answers changed from m76** | **110/113, 0 throws** |
+
+The 18 exceptions become 15 correct answers and 1 wrong one. **Zero of 6461
+answers changed on gate A** — the fix buys back nothing, which is the check that
+mattered, not the one that looked impressive.
+
+In the table's own columns: `cost` 26/44 -> **43/44**, `tree` 26/44 -> **44/44**,
+`LRmax` **err -> ≥4096**, at 1296 LOC, battms 500, latms 229.3.
+
+### The table, one run, five engines on one clock
+
+Kept separate from "The whole table, one run" above rather than merged into it:
+that table's `v6` reads 547/494.2 and this one's reads 551/466.1, so the two were
+taken on different clocks and their rows must not be compared across tables.
+
+| engine | LOC | shape | cover | cost | tree | pred | eleg | battms | latms | /v6 | LRmax | RRmax |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| v6 | 526 | 512/519 | 519/519 | 38/44 | 44/44 | 55/69 | 3 | 551 | 466.1 | 1.00x | ≥4096 | 2048 |
+| m75 | 746 | 474/519 | 519/519 | 44/44 | 44/44 | 69/69 | 10 | 332 | 174.2 | 0.37x | ≥4096 | ≥4096 |
+| m76 | 1294 | 496/519 | 519/519 | 26/44 | 26/44 | 67/69 | 6 | 529 | 229.5 | 0.49x | **err** | ≥4096 |
+| m77 | 763 | 500/519 | 519/519 | 44/44 | 44/44 | 69/69 | 9 | 410 | 176.8 | 0.38x | ≥4096 | 2048 |
+| **m78** | 1296 | 496/519 | 519/519 | **43/44** | **44/44** | 67/69 | 8 | 500 | 229.3 | 0.49x | **≥4096** | **≥4096** |
+
+Every engine but v6 reads crsh 0, bmin 519/519, bund 0, valid 7/7, unsnd 0; v6
+reads unsnd 5. m76's `err` in LRmax is the `UnsupportedError`, which the harness
+reported as `[diag] len=512 THREW ... left-recursive obligation at grammar state
+0` — the crash was visible in the diagnostics all along and invisible in `crsh`,
+which counts battery crashes only.
+
+### The certificate re-parse is what caps m77's RRmax, and the harness said so unprompted
+
+Not looked for; read off the depth-ladder diagnostics in the same run:
+
+```
+m77: len=4096 SO ... Parser.parse <- SuperDot3._certified <- recoverCost
+m78: (no overflow)
+```
+
+m77 reads `RRmax 2048`; m78 reads `≥4096`. The stack overflow arrives *through
+the second parse* — so D-B is not only the D1 violation it was already known to
+be, it is also the thing holding the right-recursion ceiling down. **Deleting the
+certificate re-parse bought a depth doubling that no one had attributed to it.**
+
+### What remains, characterised exactly rather than estimated
+
+An obligation is discharged only when the window its lookahead reads is **free of
+edits**. The paired probe holds the grammar and the true cost fixed and varies
+only where the edit lands:
+
+| input | edit relative to the lookahead window | true | m78 |
+|---|---|---|---|
+| `"xab"` | before it | 1 | 1 ✓ |
+| `"axb"` | inside it | 1 | 2 ✗ |
+| `"abb"` | outside it | 1 | 1 ✓ |
+| `"bbb"` | inside it | 2 | −1 ✗ |
+
+`"xab"` and `"axb"` both delete one character and both read an original `b`, so
+**the boundary is the edit-free window, not the original character** — the
+obvious reading, and the wrong one. The chase then ends with
+`_edits.length == cost` but `_atEnd(proof)` false, and `recoverCost` fails closed
+to −1 rather than return an uncertified answer. Costs 12 of 6461 and 3 of 113.
+
+This is **m43's rule** (the oracle is authoritative as far as the edit-free window
+reaches) reappearing in the obligation replay instead of the oracle. That it is
+the same rule in a second place is the reason to expect one mechanism, not three.
+
+### Three hypotheses refuted by measurement before the right one
+
+Recorded because the refutations cost real time and each was a plausible reading
+of real code:
+
+| hypothesis | how it was tested | result |
+|---|---|---|
+| `_derive`'s choice case is missing the `mark` check its seq case has | patched a copy, re-ran 6461 | **0 answers changed** |
+| the `_mergeAlt` oracle-commit prune discards live alternatives | patched a copy, re-ran 6461 | **0 answers changed** |
+| `_chosenEmission` cannot pick an invented character satisfying the obligation | instrumented every null return | **0 misses on every failing input** |
+
+The third was the strongest of the three — a replay that could not choose an
+invented character would have explained all 15 failures at once — and it is
+simply not what happens. The useful by-product of the second: **the oracle-commit
+prune is inert on this gate**, so it is not carrying its own weight there.
+
+### Which engine is standing, stated as a trade
+
+The table's columns slightly favour m77 (`cost` 44/44 vs 43/44, `shape` 500 vs
+496, `pred` 69/69 vs 67/69, latms 176.8 vs 229.3). **The table cannot see the
+defect this work was about.** Its grammars contain no empty-language star, which
+is why it scored m77 perfect while m77 is wrong on 711 of 6461 strings on the
+gate that does contain one. On the two defects the brief actually named:
+
+| | D-A (unsound/incomplete obligations) | D-B (second parse of the repaired string) | left recursion |
+|---|---|---|---|
+| m77 | **711 wrong of 6461** | **present** — `_certified` re-parses | fine |
+| m78 | 12 wrong of 6461 | **absent by construction** (0 `Parser(`, 0 `.parse()`) | fine |
+
+m78 is the engine that fixes what was asked, at 1.3x latency and 1296 lines
+against 763 (1468 for m77 once the borrowed 705-line library parser is counted,
+which the standalone rule requires — so m78 is the *smaller* complete artifact).
+m77 remains the better choice for anyone who cares only about the JSON battery
+and wants the lower latency.
