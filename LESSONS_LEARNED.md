@@ -8485,3 +8485,296 @@ cannot collide the way a space can. The cost is that `grep` classifies the file
 as binary and **silently searches nothing**; `final_table.dart` has three of
 them. That is the second time this session that `command grep -a` was the
 difference between an answer and a confidently wrong one.
+
+## The forty-sixth occasion: a count of cells is not a measure of time, and the LOC column was comparing two different programs
+
+Two things were measured this occasion, and both of them contradicted a number
+this project had been reasoning from.
+
+### I59: A CELL THAT NEVER CONSULTED THE CAP CANNOT CHANGE WHEN IT RISES
+
+The deepening loop re-parses the whole document once per budget, throwing both
+round tables away between rounds. The counting probe said 62.7% of cell bodies
+run in round 1 and 35.7% in rounds 2 and later, so reuse across rounds looked
+like the largest sound lever left, capped at 35.7%.
+
+It is a real theorem. Costs only rise along a way, so the ways with cost `<= b`
+are *complete* at budget `b`: raising the cap can only ADD ways, and every added
+way is strictly dearer. `_better` orders by cost FIRST, so a dearer way can never
+displace an incumbent. A cell whose evaluation refused nothing for exceeding the
+cap -- and which read only cells with that same property -- therefore holds the
+same answer at every larger budget.
+
+m93 implements it with one flag. `_bound` is cleared on entry to a cell body and
+set wherever the cap refuses a candidate (`_put`, `_seq`, `_rep`, `_expand`'s
+lookahead fill, `_repair`'s skip loop, its cost prune and its refused fill),
+wherever an in-cycle seed is read, and wherever a cell computed earlier in the
+same round is read. On the way out the cell records `fin = !_bound` and restores
+the caller's flag with its own or-ed in. The budget-0 table needs no special
+handling: it answers a question with no cap, so its cost tests never set the flag
+and its cells are final the moment they complete -- which is why `_pure` can run
+at budget 0 inside a capped cell without poisoning it.
+
+It is correct. `_div m92 m93` diverges on **0 of 1824** cases.
+
+It is also worth nothing.
+
+| arm | median of 5 interleaved passes | vs m92 |
+|---|---|---|
+| m92 -- no flag, tables cleared | 6325 ms | -- |
+| m93 -- flag, tables kept | 6274 ms | 0.992x |
+| m93b -- flag, tables cleared (ablation) | 6287 ms | 0.994x |
+
+The flag alone costs -0.6% and the reuse it buys is +0.2%; an earlier two-arm run
+of the same harness put m93 at 1.023x. Every one of those is inside the noise.
+m93 is 562 LOC against m92's 525, so it was dropped.
+
+### Why it is worth nothing, which is the part that generalises
+
+The census, over 13,523,810 cell bodies run at budget > 0:
+
+| | count | share |
+|---|---|---|
+| completed, marked final | 630,117 | 4.66% of completions |
+| completed, cap-dependent | 12,893,693 | 95.34% of completions |
+| final-cell hits from an EARLIER round | 2,556,437 | **18.90% of bodies** |
+| final-cell hits from the same round | 1,979,194 | 14.63% (m92 already caught these) |
+
+So the mechanism does exactly what it promised: **18.9% of all cell bodies are
+genuinely skipped**, and the engine does not get faster.
+
+The reason is that the cells it skips are the cheap ones. A cell is final exactly
+when nothing beneath it was ever refused for cost -- which is to say, when it is
+far from the damage and holds one way. Those cost a `_fix` frame and a trivial
+body. The expensive cells are the way-list cross products near the damage, and
+those are cap-dependent *by construction*: the cap biting is what makes a cell
+expensive and what makes it non-final, at the same time and for the same reason.
+
+**THE RULE. A count of calls is not a measure of time when the calls are not
+alike.** The cost model `ms ~= 60 ns x _clause calls + 46 ns x ways` is an
+average over a mixed population. Using it to price a change that selects a
+*biased subpopulation* overstates the change by the ratio of that
+subpopulation's mean cost to the population's -- here about 9 to 1, which is
+exactly the gap between 18.9% of bodies and ~2% of time. Before pricing a lever
+by how many calls it removes, ask whether the calls it removes are the average
+call. If the selection criterion is correlated with cost -- and "the cap never
+bit here" is about as correlated as a criterion can be -- the count is worthless.
+
+### What a profiler says, which the cost model does not
+
+No `perf` on this machine, so the Dart VM's own sampler was used: run one engine
+over the whole battery under `--profiler --profile-period=200`, pause on exit,
+pull `getCpuSamples` over the service protocol, aggregate by exclusive leaf.
+
+m92, 15,620 samples, 5163 ms:
+
+| exclusive | inclusive | function |
+|---|---|---|
+| 15.86% | 99.37% | `_fix` |
+| 7.86% | 99.36% | `_clause` |
+| **7.64%** | 9.97% | `_IdentityHashMap.[]` |
+| 7.15% | 98.12% | `_repair` |
+| 5.56% | 99.18% | `_seq` |
+| 5.54% | 7.68% | `_put` |
+| 4.66% | 4.94% | `_extend` |
+| 4.28% | 4.28% | `_wrap` |
+| 3.91% | 99.33% | `_expand` |
+| 3.07% | 3.07% | `_cons` |
+| 2.45% | **66.45%** | `_rep` |
+
+Summing every hash-table entry -- the identity memo probes, the `LinkedHashMap`
+and `LinkedHashSet` machinery that `_rep` allocates per call, `identityHashCode`,
+`_hashPattern`, `_getHash` -- gives **18.7% of exclusive time in hashing**. It is
+the largest single category in the engine and it does not appear in the cost
+model at all. `_rep` at 66.45% inclusive is the other headline: two thirds of the
+engine's time is under repetitions.
+
+m62, 8,204 samples, 1450 ms, for contrast: 19.37% in libc, `_step` 8.56%,
+`putIfAbsent` 6.75%, `_findValueOrInsertPoint` 6.47%, `_insert` 4.39%, `_init`
+3.90%, `_entryAt` 3.25%, `_keepBest` 2.78%. Its hash machinery totals about
+**30.4%** -- proportionally worse than m92's. Both engines are hash-bound, and
+neither cost model said so.
+
+### The LOC column has been comparing two different programs
+
+The instruction was to fold the parser into every engine so that the file's line
+count is the whole cost, with a "double-check that you actually did that"
+attached. Checked, by looking for a `Parser(` construction or a
+`clause.match(parser, ...)` call in each engine's own source:
+
+* **65 engines call the frozen library's parser.** Everything up to m77,
+  including m26 (382 LOC), m62 (793), m75 (746) and m77 (763). Their line counts
+  are RECOVERY ONLY.
+* **16 engines contain their own.** m76 (1294), m78 (1296) and m79 through m92
+  (364, 440, 471, 475, 479, 495, 499, 509, 501, 484, 491, 516, 509, 525). Their
+  line counts are PARSER PLUS RECOVERY.
+
+m62's profile shows this directly: `Parser.match` 20.55% inclusive,
+`Seq.match` 21.65%, `MemoEntry.match` 17.47%. It builds a `Parser` at m62.dart:875
+and :921 and matches through it at :562, :579, :732, :832 and :846.
+
+The frozen library's matching half is 705 lines -- `combinators` 150, `tree` 172,
+`terminals` 108, `parser` 94, `utils` 63, `match_result` 54, `memo_entry` 37,
+`parser_stats` 18, `clause` 9 -- on top of the 363-line metagrammar that every
+engine imports either way.
+
+Two consequences, both of which change conclusions already written down:
+
+1. **m92's 525 against m62's 793 understates m92.** The comparison is
+   parser-plus-recovery against recovery alone.
+2. **The under-400 goal was already met, at m79, with the parser inside.** 364
+   lines, standalone -- fewer than m26's 382 lines of recovery that still leans on
+   the library for every match.
+
+**THE RULE. A column is only a comparison if every row measured the same thing.**
+The LOC column survived thirty occasions without anyone re-checking what it
+counted, because a line count looks like the one measurement that cannot drift.
+It drifted the moment half the population started including a component the other
+half imported.
+
+## The forty-seventh occasion: the list order was the tie-break, and two of the three keys it was standing in for were already in the brief
+
+I59 was correct and bought nothing, so the next question was whether anything in
+`_rep` could be removed rather than remembered. It could. What that rewrite
+exposed was not a bug in the rewrite: it was the D2 violation that had been
+standing, named and untouched, since I30.
+
+### I60: a repetition only moves forward, so position order IS topological order
+
+`_rep` refuses an iteration that explains no character, and an iteration that
+explains a character must end past where it began. So every edge in the
+relaxation points strictly right, and a graph whose edges all point right is
+already topologically sorted by position. m92 did not use that. It carried a
+`Map<int, _Way>` of endings and a `Set<int>` frontier and relaxed in waves,
+re-visiting an ending whenever a wave improved it. The sweep visits each ending
+once, in increasing order, with every way into it already built: no frontier to
+remember and no second pass.
+
+**Verified as an identity, not as a score.** `_repchk.dart` computes BOTH inside
+one engine on every case and compares the ways as a sorted multiset, so list
+order can neither hide nor manufacture a difference:
+
+```
+_rep calls        1197132
+content differs   0  (0.0000%)
+```
+
+Paired and interleaved, five passes after a discarded warm-up, m92 faster in
+none of them: **5624 ms → 5059 ms, 0.900x.** The arms do not overlap
+(m92 5545-5630, m94 4960-5076), which is why the number survives a contended
+machine.
+
+### The rewrite changed 4 answers anyway, and that was the real finding
+
+`_div m92 m94` reported 4 of 1824. A rewrite that provably computes the same set
+of ways cannot change an answer -- unless something downstream is reading the
+ORDER of that set. Something was. `_better` returns false on an exact tie, so the
+incumbent wins, so **whichever way is met first wins**. That is I30's standing
+observation, and it had been sitting in the marching orders as "the
+order-dependent tie-break is an arbitrary heuristic and a standing D2 violation"
+without a measurement attached. Now it has one: on this battery the linked list
+decides **4 cases of 1824**, and it decided them for four keys' worth of ties.
+
+The obvious response -- preserve the old order -- is the wrong one. It preserves
+the arbitrariness and pays for it. The right response is to state the missing
+principles, and two of the three were already written down.
+
+### I61: cost says how much you doubted, it cannot say when
+
+`cost` counts repaired characters, `site` counts the runs they fall in, and
+neither can say WHERE the first one is. A reader goes left to right. Between two
+readings priced identically, the one whose first repair is LATER agreed with the
+input for longer before it doubted, so everything it committed to before that
+point it committed to on evidence alone. **Prefer the later first doubt.**
+
+Sound, not merely repeatable, and the proof is one line: a tie on `cost` means
+both readings repair or neither does, because cost IS the count of repaired
+characters. If neither repairs, both first doubts are `_never`. If both do,
+nothing appended on the right can move a first doubt already on the left -- so
+the winner of a tie stays the winner under extension, which is exactly what
+keeping one way per ending requires.
+
+Not derivable from I33, and the attempt is instructive: describing a repair run
+needs its position, and whether a later position costs more bits or fewer depends
+on which end you measure from. Description-in-bits is silent here. The asymmetry
+is not in the encoding, it is in the machine -- **the parser and the reader both
+go left to right.**
+
+### I62: a fill you cannot spell is a wider claim than one you can
+
+The fifth key took 4 divergences to 3. The survivors tie on all five. Dumping the
+winning ways for `e=;3` (from `e=3;`) gave the reason:
+
+| | cost | net | got | site | doubt | the repairs |
+|---|---|---|---|---|---|---|
+| wave order | 2 | 35 | 35 | 2 | 34 | delete `;`@34, insert `;`@36 |
+| sweep order | 2 | 35 | 35 | 2 | 34 | **a Name is missing**@34, delete `3`@35 |
+
+The first undoes the transposition. The second **invents a Name** -- and the
+brief forbids exactly that: *never invent terminals of a class that are not
+there, although structurally you may fix the AST as if a missing character were
+present.* A missing `;` has one spelling. A missing Name has 26.
+
+I52 already draws that line in the code -- `_witness` returns a spelling only
+when the grammar determines one, and where it does not, `_repair` builds a
+zero-width error under the clause instead. The engine could tell the two apart
+and was not pricing the difference. I33 prices it with no parameter: a determined
+fill is described by its position, an undetermined one by its position AND which
+of its class it was, so at equal character count it is strictly the wider claim.
+**Prefer fewer fills the grammar cannot spell.** I33's third application, after
+`site`. Additive, hence prefix-optimal for the same reason `cost` is.
+
+It outranks `site`: the brief states it as overarching, where the run count is a
+width argument about the same characters.
+
+### What the three insights are worth
+
+| engine | keys | AST-diff | perfect % | LOC | vs m92 |
+|---|---|---|---|---|---|
+| m92 | 4 | 0.9559 | 66.3 | 525 | — |
+| m95 | +I61 `doubt` | 0.9565 | 66.8 | 539 | |
+| m97 | +I62 `blind` | 0.9567 | 67.1 | 551 | |
+| **m98** | **+I60 sweep** | **0.9567** | **67.1** | **550** | **0.941x** |
+
+`crashed 0`, `uncovered 0` throughout, and no category moves down: `truncate`
+0.884 → 0.886, `literal-damage` 0.969 → 0.970, `junk-insert` 0.981 → 0.982,
+`transpose` 0.952 → 0.953, the rest flat. The sweep is worth 0.900x on its own
+and the two keys hand about 4% of it back, for a net **0.941x** paired against
+m92 over five interleaved passes.
+
+Both cases the brief decides by hand still hold, and identically to m92 --
+`,3,true` by inserting a comma at 18, `[2,` by deleting the comma at 13 -- along
+with all four other hand-checked JSON cases. A tie-break change is the most
+likely thing to break those, so they were the first thing checked.
+
+### What is still order-dependent, and why no seventh key will fix it
+
+`_div m97 m98` is still 3 of 1824. Those survive all SIX keys, and adding a
+seventh will not help, because the residue is not a value problem:
+
+**`_put` keeps one way per ENDING, but the transitions read more than the
+ending.** `_runs(w, x)` reads `w.tail`; `_extend`'s synth rule reads `w.got` and
+`w.synth`. Two ways that reach the same position with different `tail` are not
+interchangeable -- they extend to different `site` totals -- so discarding either
+one is not justified by the comparison that discarded it. The DP state is
+`(end, tail, synth)` and the engine keys it on `end` alone.
+
+That also explains why `site` never had the clean prefix-optimality proof that
+`cost`, `blind` and `doubt` have: it is the one key whose fold is not additive,
+and the merge it performs is precisely the one that reads the state the table
+does not keep.
+
+The fix is to bucket by `(end, tail, synth)` rather than `end` -- up to four ways
+per position instead of one. It is principled and it is not free, and latency is
+already the failing metric, so it is a measurement to make and not a change to
+assume. **Naming the residue exactly is worth more than removing three cases of
+it by adding a key that happens to land the right way.**
+
+### A methodological note on the table now being rebuilt
+
+The 80-engine re-score writes an `ms` column, and this session ran scorers,
+paired timers and profilers alongside it. The AST-diff scores are deterministic
+and unaffected; **the `ms` column in `allscores3.txt` is contaminated and must be
+re-measured in a dedicated pass with nothing else running.** Recording it here
+rather than quietly re-running it, because a contaminated column that gets
+published is exactly how the 3.9x that did not exist got published.

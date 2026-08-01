@@ -1,0 +1,1115 @@
+// m98 -- I62 over I60/I61: the sixth key, with the SWEPT repetition.
+//
+// m97's keys on m94's `_rep`. If the keys have really replaced the list order,
+// this file and m97 must agree on every case.
+//
+// I62: A FILL YOU CANNOT SPELL IS A WIDER CLAIM THAN ONE YOU CAN.
+//
+// m95/m96 still disagreed on 3 cases whose winning ways tie on ALL FIVE keys:
+// cost 2, net 35, got 35, site 2, doubt 34. Given `e=;3` for `e=3;` one reads
+// "delete the `;`, a `;` is missing at the end" -- the transposition, undone --
+// and the other reads "a Name is missing after `=`, and the `3` is junk". The
+// list order was choosing between them.
+//
+// I52 already draws the line the brief draws: `_witness` returns a spelling only
+// when the grammar DETERMINES it. A missing `;` has exactly one spelling, so
+// asserting it claims nothing beyond "a character belongs here". A missing
+// `Name` has 26 -- asserting one invents a terminal of a class that is not
+// there, which the brief forbids as an ordinary move and permits only where
+// structure leaves no alternative.
+//
+// I33 prices that difference without a parameter. Cost counts CHARACTERS, and
+// two readings that assert the same number of characters can still make claims
+// of different width: a determined fill is described by its position alone,
+// an undetermined one needs its position AND which of its class it was. So at
+// equal cost, equal evidence and equal consumption, PREFER FEWER FILLS THE
+// GRAMMAR CANNOT SPELL. This is I33's third application, after `site` -- not a
+// new principle and not an exchange rate.
+//
+// It outranks `site` because the brief states it as overarching where the run
+// count is a width argument about the same characters. It is additive, so it is
+// prefix-optimal for the same reason `cost` is: tie on the earlier keys and the
+// smaller sum stays smaller under any common extension.
+
+import 'dart:collection';
+
+import 'package:squirrel_parser/squirrel_parser.dart';
+
+// ---------------------------------------------------------------------------
+// The two repair marks. Both are `Match` subclasses, so `treeShape`, `covers`
+// and `buildAST` in the frozen library consume them with no changes.
+
+/// Zero-width stand-in for text the grammar DETERMINES must be here, but which
+/// the evidence does not show. Legal only where the witness is unique (I36).
+class Filled extends Match {
+  Filled(Clause? c, int pos, this.text) : super(c, pos, 0);
+
+  /// The unique minimal witness of the filled clause.
+  final String text;
+
+  @override
+  String toPrettyString(String input, {int indent = 0}) =>
+      '${'  ' * indent}<Filled ${clause ?? '?'}>: "$text"\n';
+}
+
+// ---------------------------------------------------------------------------
+
+/// APPEND the nodes [w] promised to [out]. The only reader of the promise, and
+/// it runs once, on the way that won.
+void _emit(_Way? w, List<MatchResult> out) {
+  if (w == null) return;
+  if (w.leaf != null) {
+    out.add(w.leaf!);
+  } else if (w.c != null) {
+    final kids = <MatchResult>[];
+    _emit(w.a, kids);
+    out.add(Match(w.c, w.pos, 0, subClauseMatches: kids));
+  } else {
+    _emit(w.a, out);
+    _emit(w.b, out);
+  }
+}
+
+/// One way of reaching one end position: what it cost, how much of the input it
+/// explained, whether it was SELECTED by synthesis, and how it was made.
+/// No repair anywhere, so no position to report. Larger than any position, so
+/// "never doubted" wins the [_Way.doubt] key against every way that did.
+const int _never = 1 << 30;
+
+class _Way {
+  _Way(this.end, this.cost, this.got, this.net, this.synth,
+      {this.site = 0, this.tail = false, this.doubt = _never,
+      this.blind = 0,
+      this.leaf, this.c, this.pos = 0, this.a, this.b, this.next});
+
+  /// The position this way reaches. In m80 this was the map KEY; carrying it in
+  /// the way itself is what lets the answer be a list (I47).
+  final int end;
+
+  /// THE WHOLE OBJECTIVE: characters discarded by a SKIP plus characters
+  /// asserted by a FILL. `cost == 0` is what "pure PEG matched this" means.
+  final int cost;
+
+  /// Characters matched, whether or not the grammar had anything to say about
+  /// them. Used ONLY to tell "no evidence read yet" from "some", for I43.
+  final int got;
+
+  /// I44: characters matched by a terminal THAT CONSTRAINS WHAT IT ACCEPTS.
+  /// `.` and an inverted set accept anything (or all but one), so matching one
+  /// asserts nothing about the input -- it consumes evidence without explaining
+  /// it. This is the tie-break, and replacing [got] with it is what stops the
+  /// SWALLOW: at equal cost, re-reading half the document as one string's
+  /// contents explains far less than repairing the structure, even though it
+  /// MATCHES exactly as many characters.
+  final int net;
+
+  /// I33 SAYS A TIE IS NOT A TIE. Two ways may discard the same NUMBER of
+  /// characters at the same price and still not describe the same damage: one
+  /// contiguous run of k characters is one position plus one length, where k
+  /// scattered single characters are k positions plus k lengths. Under
+  /// description-in-bits the scattered reading is strictly the wider claim, so
+  /// at equal cost the engine prefers FEWER REPAIR SITES. This is not a new
+  /// principle and not a parameter -- it is I33 applied to a quantity that
+  /// [cost] cannot see, because cost counts characters and this counts runs.
+  ///
+  /// It sits LAST among the tie-breaks on purpose: it decides exactly the
+  /// cases that were previously decided by where a way happened to sit in a
+  /// linked list, and nothing that a stated principle already decided.
+  final int site;
+
+  /// I62: HOW MANY FILLS THIS WAY CANNOT SPELL. A fill whose clause determines
+  /// its text asserts only that a character belongs at a position; a fill whose
+  /// clause does not asserts that AND which of its class it was. Under I33 the
+  /// second is the wider claim at the same character count, and the brief names
+  /// it outright: never invent terminals of a class that are not there, though
+  /// structure may be fixed as if a missing delimiter were present. A delimiter
+  /// has one spelling; a Name has 26.
+  ///
+  /// Additive, so prefix-optimal: given a tie on the earlier keys, the smaller
+  /// sum stays smaller under any common extension.
+  final int blind;
+
+  /// I61: WHERE THIS WAY FIRST DOUBTED -- the position of its first repair, or
+  /// [_never] if it has none. [cost] counts how many characters a reading
+  /// doubted and [site] counts in how many places, but neither can say WHERE,
+  /// and a reader goes left to right: the reading that agrees with the input for
+  /// longer before its first repair committed to more on evidence alone. So at
+  /// equal cost, equal evidence, equal consumption and equal sites, prefer the
+  /// LATER first doubt.
+  ///
+  /// This is the key that replaces the linked list. It is sound rather than
+  /// merely repeatable because a tie on [cost] means both readings repair or
+  /// neither does -- cost IS the count of repaired characters -- and a way that
+  /// already repairs cannot have its first doubt moved by anything appended to
+  /// its right. So the winner of a tie stays the winner after extension, which
+  /// is what keeping one way per ending requires.
+  final int doubt;
+
+  /// Whether this way CLOSES with a repair -- the mirror of [synth], and what
+  /// lets [_extend] tell an adjoining pair of repairs (one site) from two
+  /// separated by evidence (two).
+  final bool tail;
+
+  /// I43/I46: does this way OPEN with a REPAIR -- a FILL *or* a SKIP before any
+  /// character of evidence has been read? Such a way may not decide an ordered
+  /// choice, because the reading it offers ("discard k, then alternative a") is
+  /// one the enclosing element already offers as "discard k, then the whole
+  /// choice", where it does not bias which alternative wins. See [_first].
+  final bool synth;
+
+  /// HOW THIS WAY WAS MADE, and therefore the tree it promises -- exactly one
+  /// of three forms, tested in this order:
+  ///   [leaf] non-null -- that one node;
+  ///   [c] non-null    -- one node for [c] at [pos] over the nodes of [a];
+  ///   otherwise       -- the nodes of [a] followed by the nodes of [b].
+  /// A way with all of them null promises nothing, which is what a sequence's
+  /// zero-width seed and an optional's empty alternative both need.
+  ///
+  /// These are read ONLY by [_emit]. Nothing in the search may read them, and
+  /// nothing does -- that is the whole of I55.
+  final MatchResult? leaf;
+  final Clause? c;
+  final int pos;
+  final _Way? a, b;
+
+  /// The next ENDING in the same clause's answer -- see I47. Nothing else in
+  /// the engine is a list; this is the whole of it.
+  ///
+  /// The ONE mutable field, written only by [_put] and only on a way that has
+  /// just been built and linked nowhere. Everything a way promises is final, so
+  /// a way already referenced as provenance is never disturbed by a relink.
+  _Way? next;
+}
+
+/// I38: every ending a clause can reach, with the cheapest way of reaching it.
+/// This is the engine's only data structure, and it is what the enclosing
+/// clause chooses from.
+typedef _Ways = _Way?;
+
+const _Ways _none = null;
+
+/// The zero-width way at [pos] -- a sequence's seed and an optional's empty
+/// alternative.
+_Way _nil(int pos) => _Way(pos, 0, 0, 0, false);
+
+/// [w] with a new tail. Ways are immutable, so a list can be shared by any
+/// number of cells and rebuilt by [_put] without copying what it shares.
+_Way _cons(_Way w, _Way? next) => _Way(w.end, w.cost, w.got, w.net, w.synth,
+    site: w.site, tail: w.tail, doubt: w.doubt, blind: w.blind,
+    leaf: w.leaf, c: w.c, pos: w.pos, a: w.a, b: w.b, next: next);
+
+/// THE ONE ORDERING IN THE ENGINE, and it only ever compares ways that END AT
+/// THE SAME POSITION -- so it is a tie-break, not the search. Cost less; failing
+/// that, EXPLAIN more of the input; failing that, consume more of it. It has no
+/// parameters.
+/// DECIDE BEFORE YOU BUILD. The comparison takes the three numbers rather than
+/// a built way, so a growth point can reject an extension before allocating its
+/// node list -- and the search proposes far more extensions than it keeps.
+bool _better(
+        int cost, int net, int got, int blind, int site, int doubt, _Way? b) =>
+    b == null ||
+    cost < b.cost ||
+    (cost == b.cost &&
+        (net > b.net ||
+            (net == b.net &&
+                (got > b.got ||
+                    (got == b.got &&
+                        (blind < b.blind ||
+                            (blind == b.blind &&
+                                (site < b.site ||
+                                    (site == b.site &&
+                                        doubt > b.doubt)))))))));
+
+bool _beats(_Way a, _Way? b) =>
+    _better(a.cost, a.net, a.got, a.blind, a.site, a.doubt, b);
+
+/// This round's cap. Every way that enters any map passes through [_put], so
+/// this is the only place it has to be enforced -- and since cost is
+/// non-negative and additive, a partial way's cost is a lower bound on any
+/// completion of it, so the cap prunes exactly rather than approximately.
+/// Round 0 sets it to 0, which is what makes that round the frozen parser: no
+/// skip loop runs and nothing fills.
+int _budget = 0;
+
+/// Whether any way in [w] is FREE -- reached with no skip and no fill.
+bool _free(_Ways w) {
+  for (var e = w; e != null; e = e.next) {
+    if (e.cost == 0) return true;
+  }
+  return false;
+}
+
+/// The way in [head] that ends at [end], if any.
+_Way? _at(_Way? head, int end) {
+  for (var p = head; p != null; p = p.next) {
+    if (p.end == end) return p;
+  }
+  return null;
+}
+
+/// Offer [v] to the answer [head], keeping the better way at each ENDING, and
+/// return the new head.
+///
+/// [v] MUST be freshly built and not yet linked into any list -- it is taken
+/// over, not copied. Every caller that offers a way belonging to another list
+/// copies it first, which is the only place `_cons` survives.
+_Way? _put(_Way? head, _Way v) {
+  if (v.cost > _budget) return head;
+  var old = head;
+  while (old != null && old.end != v.end) {
+    old = old.next;
+  }
+  if (old == null) {
+    v.next = head; // a new ending: no copy at all
+    return v;
+  }
+  if (!_beats(v, old)) return head;
+  // [v] takes over the replaced way's tail, so only the ways BEFORE it move.
+  v.next = old.next;
+  var out = v;
+  // [old] is in the list, so every step before it is non-null.
+  for (var q = head!; q != old; q = q.next!) {
+    out = _cons(q, out);
+  }
+  return out;
+}
+
+/// Concatenate two ways. Synthesis stays "at the head" only while no evidence
+/// has been read yet, which is what makes [_Way.synth] mean what I43 needs.
+_Way _extend(_Way w, _Way x) => _Way(
+    x.end,
+    w.cost + x.cost,
+    w.got + x.got,
+    w.net + x.net,
+    w.got == 0 ? w.synth || x.synth : w.synth,
+    // A repair that ENDS [w] and one that OPENS [x] touch, so they are one run.
+    site: _runs(w, x),
+    tail: x.got == 0 ? x.tail || w.tail : x.tail,
+    // The first doubt is [w]'s if [w] has one, since nothing appended on the
+    // right can fall before it. `cost > 0` IS "has a repair".
+    doubt: w.cost > 0 ? w.doubt : x.doubt,
+    blind: w.blind + x.blind,
+    a: w,
+    b: x);
+
+/// The number of repair RUNS in `w` followed by `x` -- the two counts, less one
+/// if the run closing `w` and the run opening `x` are the same run.
+int _runs(_Way w, _Way x) =>
+    w.site + x.site - (w.tail && x.synth ? 1 : 0);
+
+/// PEG's possessive repetition. Among cost-0 ways there is exactly one chain --
+/// every cost-0 step is deterministic -- and PEG follows it as far as it goes.
+/// Keeping the shorter prefixes would let a repair-free derivation stop early,
+/// which pure PEG never does.
+_Ways _possessive(_Ways w) {
+  var last = -1;
+  for (var e = w; e != null; e = e.next) {
+    if (e.cost == 0 && e.end > last) last = e.end;
+  }
+  if (last < 0) return w;
+  _Way? out;
+  for (var e = w; e != null; e = e.next) {
+    if (e.cost != 0 || e.end == last) out = _cons(e, out);
+  }
+  return out;
+}
+
+/// One memo cell. Nothing is ever evicted; [gen] is the left-recursion
+/// generation stamp, exactly as in the frozen `MemoEntry`.
+class _Cell {
+  _Ways ways = _none;
+  bool inPath = false, foundLR = false, done = false;
+  int gen = -1;
+}
+
+// ---------------------------------------------------------------------------
+
+class SuperDot3 {
+  SuperDot3({required Map<String, Clause> rules, required this.topRuleName})
+      : rules = {} {
+    for (final e in rules.entries) {
+      this.rules[e.key.startsWith('~') ? e.key.substring(1) : e.key] = e.value;
+    }
+  }
+
+  final Map<String, Clause> rules;
+  final String topRuleName;
+
+  /// Cost of the last [recover]; -1 if no whole-input tree was reachable.
+  int lastCost = -1;
+
+  String _in = '';
+
+  /// Left-recursion generation stamps, one array per memo family, because the
+  /// pure tables outlive the round tables and must not be invalidated by them.
+  List<int> _pg = const [], _rg = const [];
+
+  /// Memo tables for a clause's own ways, and for a clause's ways WITH A LEADING
+  /// REPAIR. Two tables because they answer different questions at the same
+  /// (clause, position), and the second is what a sequence element needs.
+  ///
+  /// `_pc` holds the BUDGET-0 answer -- the frozen parser's -- which cannot
+  /// depend on the budget, so it is solved once per input and shared by every
+  /// round. `_mc`/`_me` hold the answer under this round's budget and are
+  /// cleared when it changes. There is no budget-0 element table: with no
+  /// repair allowed, an element IS its clause, so it would duplicate `_pc`.
+  final Map<Clause, List<_Cell?>> _pc = HashMap.identity(),
+      _mc = HashMap.identity(),
+      _me = HashMap.identity();
+
+  // -------------------------------------------------------------------------
+  // I36: the unique minimal witness.
+  //
+  // `(minimum length, the unique string of that length)`. A null string means
+  // the minimum is reached by more than one string (or by none), and synthesis
+  // would therefore be a CHOICE -- which is exactly what must never happen.
+  // Recursive rules need a least fixed point, so lengths start at "unreachable"
+  // and the pass repeats until nothing moves.
+
+  static const int _inf = 1 << 29;
+  final Map<Clause, (int, String?)> _wit = HashMap.identity();
+  bool _witReady = false;
+  bool _moved = false;
+
+  void _solveWitnesses() {
+    if (_witReady) return;
+    _witReady = true;
+    do {
+      _moved = false;
+      for (final body in rules.values) {
+        _visitWitness(body, {});
+      }
+    } while (_moved);
+  }
+
+  /// Least fixed point: a clause already on the current path is "unreachable so
+  /// far", which is what makes a recursive rule converge upward to its true
+  /// minimum rather than declaring itself free.
+  void _visitWitness(Clause c, Set<Clause> path) {
+    if (!path.add(c)) return;
+    (int, String?) v;
+    switch (c) {
+      case Str s:
+        v = (s.text.length, s.text);
+      case Char ch:
+        v = (ch.char.length, ch.char);
+      case CharSet cs:
+        // Unique only when the set names exactly one code unit. An inverted set
+        // names 65535 of them, so it never qualifies.
+        final one = !cs.inverted &&
+            cs.ranges.length == 1 &&
+            cs.ranges[0].$1 == cs.ranges[0].$2;
+        v = (1, one ? String.fromCharCode(cs.ranges[0].$1) : null);
+      case AnyChar _:
+        v = (1, null); // 65536 choices
+      case Nothing _:
+        v = (0, '');
+      case Seq s:
+        var n = 0;
+        final w = StringBuffer();
+        String? text = '';
+        for (final sub in s.subClauses) {
+          _visitWitness(sub, path);
+          final (ln, t) = _wit[sub] ?? (_inf, null);
+          n += ln;
+          if (t == null) {
+            text = null;
+          } else {
+            w.write(t);
+          }
+        }
+        v = (n > _inf ? _inf : n, text == null ? null : w.toString());
+      case First f:
+        var best = _inf;
+        String? text;
+        var many = false;
+        for (final sub in f.subClauses) {
+          _visitWitness(sub, path);
+          final (ln, t) = _wit[sub] ?? (_inf, null);
+          if (ln < best) {
+            best = ln;
+            text = t;
+            many = t == null;
+          } else if (ln == best && ln < _inf) {
+            // A second way to reach the same minimal length: unique only if it
+            // spells the same string.
+            if (t == null || t != text) many = true;
+          }
+        }
+        v = (best, many ? null : text);
+      case Repetition r:
+        _visitWitness(r.subClause, path);
+        final (ln, t) = _wit[r.subClause] ?? (_inf, null);
+        // `e*` is minimally empty; `e+` is minimally one `e`.
+        v = r.requireOne ? (ln, t) : (0, '');
+      // These three are minimally empty, but their BODIES still need solving:
+      // every clause the engine may be asked to FILL has to be reachable from
+      // this walk, and a `,` that lives inside `(... ',' ...)?` is otherwise
+      // never visited at all.
+      case Optional o:
+        _visitWitness(o.subClause, path);
+        v = (0, '');
+      case FollowedBy f:
+        _visitWitness(f.subClause, path);
+        v = (0, ''); // zero-width; nothing to synthesise
+      case NotFollowedBy n:
+        _visitWitness(n.subClause, path);
+        v = (0, '');
+      case Ref r:
+        final body = rules[r.ruleName];
+        if (body == null) {
+          v = (_inf, null);
+        } else {
+          _visitWitness(body, path);
+          v = _wit[body] ?? (_inf, null);
+        }
+      default:
+        v = (_inf, null);
+    }
+    path.remove(c);
+    final old = _wit[c];
+    if (old == null || old.$1 != v.$1 || old.$2 != v.$2) {
+      _wit[c] = v;
+      _moved = true;
+    }
+  }
+
+  /// The text a FILL of [c] would stand for, or null if synthesis would be a
+  /// choice. Zero-width clauses return `''`, which fills for free.
+  String? _witness(Clause c) {
+    final v = _wit[c];
+    if (v == null || v.$1 >= _inf) return null;
+    return v.$2;
+  }
+
+  /// How many characters a FILL of [c] must assert, or null if [c] cannot be
+  /// produced at all.
+  ///
+  /// I52: THE PRICE OF A FILL IS KNOWN EVEN WHEN ITS SPELLING IS NOT. `_wit`
+  /// has always solved two separate things -- the minimum length, and the
+  /// unique string of that length -- and returning them as one nullable string
+  /// threw the length away whenever the spelling was ambiguous.
+  int? _need(Clause c) {
+    final v = _wit[c];
+    if (v == null || v.$1 >= _inf) return null;
+    return v.$1;
+  }
+
+  // -------------------------------------------------------------------------
+  // Entry points.
+
+  /// Recover a whole-input tree over [s]. The input is never modified.
+  ///
+  /// The top rule is required to span the whole input: anything it does not
+  /// explain is a trailing SKIP and is charged for. That is what makes the cost
+  /// a GLOBAL objective, and what stops a construct closing early and leaving
+  /// the rest as somebody else's problem.
+  MatchResult recover(String s) {
+    _in = s;
+    _solveWitnesses();
+
+    final top = rules[topRuleName];
+    if (top == null) throw ArgumentError('Rule "$topRuleName" not found');
+
+    // Budget 0 forbids repair outright, so the first round is exactly the frozen
+    // parser and undamaged input never pays for a search it does not need. Each
+    // later round allows more, and THE FIRST ROUND THAT SUCCEEDS IS OPTIMAL BY
+    // CONSTRUCTION: it explored every reading worth no more than its budget, so
+    // nothing cheaper was missed.
+    //
+    // The budget DOUBLES. Doubling overshoots -- the successful round may allow
+    // up to twice the true cost -- but the alternative pays for the overshoot in
+    // rounds instead. Measured on the battery: stepping by one costs 1049 ms,
+    // doubling 895 ms, and stepping to 4 before doubling 880 ms, which is inside
+    // the run-to-run noise of doubling. The simplest schedule is therefore also
+    // the fastest one measured, so it is the one kept.
+    final cap = 2 * s.length + (_witness(top)?.length ?? 0) + 1;
+    _pc.clear();
+    _pg = List.filled(s.length + 1, 0);
+    for (_budget = 0; _budget <= cap; _budget = _budget == 0 ? 1 : _budget * 2) {
+      _mc.clear();
+      _me.clear();
+      _rg = List.filled(s.length + 1, 0);
+
+      _Way? best;
+      for (var e = _element(top, 0); e != null; e = e.next) {
+        final trail = s.length - e.end;
+        final cand = _Way(s.length, e.cost + trail, e.got, e.net, e.synth,
+            site: e.site + (trail > 0 && !e.tail ? 1 : 0),
+            tail: trail > 0 || e.tail,
+            // A trailing skip is priced here rather than in its own leaf, so it
+            // is the first doubt only when the way it closes had none.
+            doubt: e.cost > 0
+                ? e.doubt
+                : (trail > 0 ? e.end : _never),
+            blind: e.blind,
+            a: e,
+            b: trail > 0
+                ? _Way(s.length, 0, 0, 0, false,
+                    site: 1, tail: true,
+                    leaf: SyntaxError(pos: e.end, len: trail))
+                : null);
+        if (cand.cost <= _budget && _beats(cand, best)) best = cand;
+      }
+      if (best != null) {
+        lastCost = best.cost;
+        final kids = <MatchResult>[];
+        _emit(best, kids);
+        return Match(null, 0, s.length, subClauseMatches: kids);
+      }
+    }
+    lastCost = -1;
+    return SyntaxError(pos: 0, len: s.length);
+  }
+
+  /// The repair cost of [s], or -1 if no whole-input tree was reachable.
+  int recoverCost(String s) {
+    recover(s);
+    return lastCost;
+  }
+
+  // -------------------------------------------------------------------------
+  // The matcher. Both entry points memoise on (clause, position), because a
+  // clause's ways no longer depend on anything else.
+
+  /// A clause's own ways, with left recursion handled exactly as the frozen
+  /// `MemoEntry` handles it: the frame that ENTERED the cycle iterates, the
+  /// frame that CLOSED it only signals.
+  /// I48: A TERMINAL IS NOT WORTH A MEMO CELL. It cannot recurse and it costs
+  /// one character comparison, so the cell allocation, the map probe and the
+  /// generation check all cost more than simply re-reading the character.
+  /// Measured on the battery, terminals were 32% of every memo cell body the
+  /// engine ever ran, and they were the cheapest 32%.
+  _Ways _clause(Clause c, int pos) => c is Terminal
+      ? _expand(c, pos)
+      : _fix(_budget == 0 ? _pc : _mc, c, pos, _expand);
+
+  /// A clause's ways WITH A LEADING REPAIR allowed -- what a sequence element,
+  /// a repetition iteration or an optional body needs.
+  _Ways _element(Clause c, int pos) =>
+      _budget == 0 ? _clause(c, pos) : _fix(_me, c, pos, _repair);
+
+  /// WHAT THE FROZEN PARSER SAYS AT (c, pos), asked at any budget. Every way it
+  /// can contain costs 0, so a non-empty answer IS a repair-free reading.
+  ///
+  /// I39: A PEG DECISION COMMITS TO A CHOICE, NOT TO AN ENDING. Ordered choice,
+  /// `e?` preferring its body, an element preferring a real match -- each turns
+  /// on whether a repair-free reading EXISTS, and this answers that WITHOUT
+  /// collapsing the map of endings. Collapsing it is m79's error one level up:
+  /// it discards the endings the enclosing clause needed, and the search buys
+  /// them back at a far higher price. Measured, collapsing turned `[2,33true]`
+  /// from a cost-1 filled comma into a cost-2 reading of the whole document as
+  /// one string, and drove single-character transpositions to costs of 24 and 33.
+  ///
+  /// ASKING IT FIRST IS ALSO THE WHOLE OF THE ENGINE'S SPEED, and that took a
+  /// measurement. `_first` used to evaluate each alternative AT THE FULL BUDGET
+  /// before discovering a later one was free -- so at every position where a
+  /// `Value` is a `Number`, it ran a complete repair search inside `String` and
+  /// threw it away. The cap that makes recovery affordable was being defeated
+  /// inside every ordered choice in the grammar. Measured on the battery (519
+  /// mutants, everything else held fixed, `_ab80.dart`): 5033 ms -> 3195 ms,
+  /// 1.58x, with an identical cost sum of 975, so it is not an approximation --
+  /// a free reading beats every repaired one under [_beats] anyway, so the
+  /// repair search it skips could never have won.
+  _Ways _pure(Clause c, int pos) {
+    final save = _budget;
+    _budget = 0;
+    final r = _clause(c, pos);
+    _budget = save;
+    return r;
+  }
+
+  _Ways _fix(Map<Clause, List<_Cell?>> memo, Clause c, int pos,
+      _Ways Function(Clause, int) body) {
+    if (pos > _in.length) return _none;
+    final gen = _budget == 0 ? _pg : _rg;
+    final cell = (memo[c] ??= List.filled(_in.length + 1, null))[pos] ??=
+        _Cell();
+    if (cell.inPath) {
+      // Second visit with no result yet: the fixed point of a left recursive
+      // cycle. Signal the ancestral frame and answer with the seed so far.
+      cell.foundLR = true;
+      return cell.ways;
+    }
+    if (cell.done && cell.gen == gen[pos]) return cell.ways;
+    cell
+      ..inPath = true
+      ..ways = _none
+      ..foundLR = false;
+    while (true) {
+      final r = body(c, pos);
+      if (!_grows(r, cell.ways)) break;
+      // MERGE, never replace. The frozen parser keeps a re-derived left
+      // recursive result only while it is strictly longer, so the seed is
+      // monotone; lifted to a list of endings, monotone means merge. Replacing
+      // lets the cell SHRINK, and then `_grows` fires forever on an ending it
+      // already had: `1+2` against `Expr <- Expr WS AddOp WS Term / Term`
+      // oscillated between {1} and {3} and never returned. Merging also gives
+      // the termination proof -- every pass either lowers a cost or raises a
+      // count at some ending, and both are bounded.
+      if (cell.ways == null) {
+        cell.ways = r; // merging into nothing is the thing itself
+      } else {
+        var merged = cell.ways;
+        for (var e = r; e != null; e = e.next) {
+          merged = _put(merged, _cons(e, null));
+        }
+        cell.ways = merged;
+      }
+      if (!cell.foundLR) break;
+      cell.gen = ++gen[pos];
+    }
+    // Left recursion IS a repetition -- `E <- E op T / T` is `T (op T)*` -- so
+    // I41 applies to it unchanged: PEG resolves a repetition possessively.
+    // Collapsing here is what keeps round 0 exactly the frozen parser.
+    if (cell.foundLR && _budget == 0) cell.ways = _possessive(cell.ways);
+    cell
+      ..inPath = false
+      ..done = true
+      ..gen = gen[pos];
+    return cell.ways;
+  }
+
+  /// Does [a] strictly improve on [b] anywhere? This is the left-recursion
+  /// termination test -- the frozen parser's "the new result must be strictly
+  /// longer", lifted to every end position.
+  bool _grows(_Ways a, _Ways b) {
+    for (var e = a; e != null; e = e.next) {
+      if (_beats(e, _at(b, e.end))) return true;
+    }
+    return false;
+  }
+
+  // -------------------------------------------------------------------------
+
+  _Ways _expand(Clause c, int pos) {
+    switch (c) {
+      case Ref r:
+        final body = rules[r.ruleName];
+        if (body == null) throw ArgumentError('Rule "${r.ruleName}" not found');
+        // REFUTED, kept as a warning. `Ref` is 35.6% of every cell body the
+        // engine runs, and a ref looks like a mere name for its body, so
+        // expanding the body inline -- one cell per rule per position instead
+        // of two -- looks free. Measured: 907 -> 1351 ms, 1.49x WORSE. The body
+        // cell is not a duplicate of the ref cell; it is reached by paths the
+        // ref cell cannot answer for, and collapsing it re-derives the body.
+        return _wrap(r, pos, _clause(body, pos));
+
+      case Seq s:
+        return _wrap(s, pos, _seq(s.subClauses, pos));
+
+      case First f:
+        return _first(f, pos);
+
+      case Repetition r:
+        // I41: POSSESSIVENESS IS HOW PEG RESOLVES A REPETITION WHEN NOTHING IS
+        // BROKEN, AND IT HAS NO AUTHORITY ONCE THE PARSE HAS ALREADY FAILED.
+        // Dropping the shorter free chains is right at budget 0 -- it is what
+        // makes this engine PEG rather than a general parser, and the deepening
+        // loop runs budget 0 FIRST, so wherever a pure parse exists it is still
+        // the answer. But at budget 0 those chains are also the only thing
+        // standing between a repair and the honest reading: in `{"a:1,"bc":...}`
+        // the free chain runs `"a:1,"` straight through the delimiter, and
+        // stopping at `"a"` and filling the quote is then unreachable, so the
+        // engine escapes the quote instead and keeps the wrong key. Where a
+        // repair is in play, stopping early is a candidate like any other and
+        // the cost function decides between them.
+        return _wrap(
+            r, pos, _budget == 0 ? _possessive(_rep(r, pos)) : _rep(r, pos));
+
+      case Optional o:
+        return _opt(o, pos);
+
+      case FollowedBy f:
+        // A4: predicates read the ORIGINAL input, at cost 0.
+        if (_pure(f.subClause, pos) != null) {
+          return _Way(pos, 0, 0, 0, false, leaf: Match(f, pos, 0));
+        }
+        // The evidence does not show it. If the grammar DETERMINES what belongs
+        // here (I36) the guard may be discharged by asserting it; otherwise the
+        // guard stands and the match fails.
+        final w = _witness(f.subClause);
+        if (w == null || w.length > _budget) return _none;
+        return _Way(pos, w.length, 0, 0, true,
+            doubt: pos, leaf: Filled(f, pos, w));
+
+      case NotFollowedBy n:
+        // A negative guard can only be satisfied by REMOVING evidence, and
+        // removal is a SKIP, which belongs to the enclosing sequence. There is
+        // nothing to synthesise, so this stays exactly pure PEG.
+        if (_pure(n.subClause, pos) != null) {
+          return _none;
+        }
+        return _Way(pos, 0, 0, 0, false, leaf: Match(n, pos, 0));
+
+      case Terminal t:
+        final m = _term(t, pos);
+        // `.` and an inverted set accept (all but) everything, so what they
+        // match is consumed but not explained -- see [_Way.net].
+        final explains =
+            !(t is AnyChar || (t is CharSet && t.inverted)) ? m?.len ?? 0 : 0;
+        return m == null
+            ? _none
+            : _Way(pos + m.len, 0, m.len, explains, false, leaf: m);
+
+      default:
+        return _none;
+    }
+  }
+
+  /// Terminals, matched against the original input. Deliberately a copy of the
+  /// frozen library's terminal semantics rather than a call into it, so the
+  /// engine owns every decision it makes about the evidence.
+  Match? _term(Terminal t, int pos) {
+    switch (t) {
+      case Str s:
+        if (pos + s.text.length > _in.length) return null;
+        for (var i = 0; i < s.text.length; i++) {
+          if (_in.codeUnitAt(pos + i) != s.text.codeUnitAt(i)) return null;
+        }
+        return Match(s, pos, s.text.length);
+      case Char c:
+        if (pos >= _in.length) return null;
+        return _in.codeUnitAt(pos) == c.char.codeUnitAt(0)
+            ? Match(c, pos, 1)
+            : null;
+      case CharSet cs:
+        if (pos >= _in.length) return null;
+        final u = _in.codeUnitAt(pos);
+        var inSet = false;
+        for (final (lo, hi) in cs.ranges) {
+          if (u >= lo && u <= hi) {
+            inSet = true;
+            break;
+          }
+        }
+        return (cs.inverted ? !inSet : inSet) ? Match(cs, pos, 1) : null;
+      case AnyChar _:
+        return pos < _in.length ? Match(t, pos, 1) : null;
+      case Nothing _:
+        return Match(t, pos, 0);
+      default:
+        return null;
+    }
+  }
+
+  /// Re-parent every way's nodes under one node for [c].
+  _Ways _wrap(Clause c, int pos, _Ways w) {
+    _Way? out;
+    for (var e = w; e != null; e = e.next) {
+      out = _Way(e.end, e.cost, e.got, e.net, e.synth,
+          site: e.site, tail: e.tail, doubt: e.doubt, blind: e.blind,
+          c: c, pos: pos, a: e, next: out);
+    }
+    return out;
+  }
+
+  // -------------------------------------------------------------------------
+
+  /// A sequence is a FOLD over the ways: carry every end position the prefix
+  /// can reach, and extend each of them by the next element. This is the whole
+  /// of the search, and it is where the enclosing clause's need for a particular
+  /// ending finally meets the sub-parse that can supply it.
+  _Ways _seq(List<Clause> subs, int pos) {
+    _Way? ways = _nil(pos);
+    for (final sub in subs) {
+      _Way? next;
+      for (var w = ways; w != null; w = w.next) {
+        for (var x = _element(sub, w.end); x != null; x = x.next) {
+          final cost = w.cost + x.cost;
+          if (cost > _budget) continue;
+          if (!_better(cost, w.net + x.net, w.got + x.got,
+              w.blind + x.blind, _runs(w, x),
+              w.cost > 0 ? w.doubt : x.doubt, _at(next, x.end))) {
+            continue;
+          }
+          next = _put(next, _extend(w, x));
+        }
+      }
+      if (next == null) return _none;
+      ways = next;
+    }
+    return ways;
+  }
+
+  /// Ordered choice. A cost-0 alternative is what pure PEG returns, so the FIRST
+  /// alternative that has one is taken alone and the rest are never tried. Only
+  /// where no alternative is free does the choice open, and then every ending
+  /// every alternative can reach is offered to the enclosing clause.
+  ///
+  /// I43: A REPAIR MAY NOT MAKE THE CHOICE. I36 says synthesis must not choose
+  /// the TEXT; this says it must not choose the SHAPE either. A way that OPENS
+  /// with a FILL was selected by text that is not there, so here -- and only here,
+  /// because this is the only construct in PEG that decides between shapes -- it
+  /// is refused. Synthesis may still COMPLETE an alternative the evidence has
+  /// already committed to, which is every case that matters:
+  ///     `[2,33true]`   fill the `,`; the list was already a list      ALLOWED
+  ///     `{"a":1`       fill the `}`; the object was already an object ALLOWED
+  ///     `{"e":ull}`    fill a `"` to make `ull` a String              REFUSED
+  ///     `{"a"1:...}`   fill a `\` to make the `"` escape content      REFUSED
+  ///
+  /// Measured, the last two were the battery's largest failure buckets: the `\`
+  /// alone is 172 of 519 mutants, because one invented character costs 1 and buys
+  /// the reclassification of a real delimiter into string content. No cost model
+  /// prices that correctly -- I tried, and the character it captures is matched by
+  /// a PRECISE terminal, so there is nothing to charge for. It is not a pricing
+  /// error, it is a category error, and the fix is a prohibition.
+  _Ways _first(First f, int pos) {
+    // The pure table DECIDES THE CHOICE; the chosen alternative is then returned
+    // at the full budget, because I39 says committing to a choice is not
+    // committing to an ending.
+    //
+    // I50: A CHOICE MAY ONLY BE DECIDED BY AN ALTERNATIVE THAT CAN PRODUCE A
+    // READING HERE. `_pure` answers from `_pc`, which is COMPLETE -- it reports
+    // the global fact "this alternative matches purely at this position". Inside
+    // an unfinished left-recursion cycle that fact is not yet usable: the cycle
+    // re-entry hands back an empty seed, so the recursive alternative yields
+    // nothing YET. Committing to it anyway returned nothing and, fatally, never
+    // tried the non-recursive alternative that exists precisely to seed the
+    // cycle -- so `_grows(_none, _none)` was false, the growth loop broke on its
+    // first pass, and the rule memoised "matches nothing here". Every
+    // left-recursive rule that has to GROW lost all its readings the moment the
+    // budget rose above 0, which made every damaged input to a left-recursive
+    // grammar fail outright (`a+b*` -> cost -1, having had the correct `a+b` in
+    // hand at budget 0).
+    //
+    // An empty answer where the pure table promised a match IS the signal that
+    // we are seeding, so keep scanning in PEG order instead. At budget 0 this
+    // cannot fire -- there `_pure` IS `_clause` on the same table, so a non-null
+    // `_pure` guarantees a non-null `_clause` -- and round 0 therefore remains
+    // exactly the frozen parser.
+    // I51: ONE PASS, IN PEG ORDER. An alternative with a pure reading answers
+    // the choice -- but only once the alternatives BEFORE it have been given
+    // their chance at the full budget, because PEG priority says an earlier
+    // reading outranks a later one and "no pure reading" is not "no reading".
+    //
+    // `out == null` is exactly "nothing earlier survived", and it is what makes
+    // the common case cost nothing: when the first alternative is pure, the
+    // loop returns on its first iteration having called `_clause` once, as m82
+    // did. At budget 0 the earlier-alternative scan is skipped entirely, so
+    // round 0 remains the frozen parser, unchanged.
+    // I53: A REPAIR MAY MAKE THE CHOICE ONLY WHEN NOTHING ELSE CAN.
+    //
+    // I43 refuses any way that OPENS with a repair, on the grounds that the
+    // repair, not the evidence, would be picking the shape. That is right while
+    // SOME alternative can still be entered on evidence. It is wrong when none
+    // can: refusing every alternative does not preserve PEG priority, it just
+    // deletes the construct, and the enclosing rule then loses everything the
+    // construct contained.
+    //
+    // Measured on `x="ab"; y="c"; { ="de"; }`: at the statement position inside
+    // the block the input begins with `=`, so `Block` (`{`), `If` (`if`) and
+    // `Assign` (a `Name`) all fail on the evidence and every candidate way opens
+    // with a repair. I43 discarded all three, `Stmt*` took zero items, the
+    // block's `}` then had nothing to close, and the whole `Stmt ( Block ( ... ) )`
+    // vanished -- while a cost-1 admission that a Name is missing recovers it
+    // entirely.
+    //
+    // So the ways are kept in two lists, and the repair-opened ones are consulted
+    // only if the evidence-opened ones are empty. This is a strict weakening of
+    // I43: wherever I43 admitted anything at all, its answer is unchanged.
+    _Way? out, opened;
+    for (final a in f.subClauses) {
+      if (_pure(a, pos) != null) {
+        final w = _clause(a, pos);
+        if (w != null) {
+          if (out == null) return _wrap(f, pos, w);
+          for (_Way? e = w; e != null; e = e.next) {
+            out = _put(out, _cons(e, null));
+          }
+          return _wrap(f, pos, out);
+        }
+        // Empty where the pure table promised a match: we are seeding a
+        // left-recursion cycle (I50). Keep scanning in PEG order.
+      }
+      if (_budget == 0) continue;
+      // No pure reading -- PEG would skip this alternative, but it fails on the
+      // EVIDENCE, and a repair may still give it one. I43: it may not OPEN with
+      // a repair, or the repair would be choosing the shape.
+      for (var e = _clause(a, pos); e != null; e = e.next) {
+        if (!e.synth) {
+          out = _put(out, _cons(e, null));
+        } else {
+          opened = _put(opened, _cons(e, null));
+        }
+      }
+    }
+    return _wrap(f, pos, out ?? opened);
+  }
+
+  /// Repetition as reachability: every end position an iteration chain can
+  /// reach, cheapest first. It terminates because an iteration must explain
+  /// evidence, so it must advance.
+  _Ways _rep(Repetition r, int pos) {
+    // I60. The endings are settled left to right. When [at] is reached, every
+    // way into it comes from an ending strictly before it, and every one of
+    // those has already been swept -- so this way is final and is never revised.
+    _Way? reach = _nil(pos);
+    for (var at = pos; at >= 0;) {
+      final w = _at(reach, at)!;
+      for (var x = _element(r.subClause, at); x != null; x = x.next) {
+        // A repetition exists to consume evidence. An iteration that explains
+        // no characters is not evidence of a repetition -- and it is also what
+        // would make a fillable body loop forever. One rule retires both, and
+        // it subsumes the frozen parser's zero-length guard. It is ALSO what
+        // makes every edge here point forward, which is what I60 rests on.
+        if (x.got == 0) continue;
+        final cost = w.cost + x.cost;
+        if (cost > _budget) continue;
+        if (!_better(cost, w.net + x.net, w.got + x.got,
+            w.blind + x.blind, _runs(w, x),
+            w.cost > 0 ? w.doubt : x.doubt, _at(reach, x.end))) {
+          continue;
+        }
+        reach = _put(reach, _extend(w, x));
+      }
+      // The next ending to settle is the nearest one still ahead of this one.
+      var nxt = -1;
+      for (var p = reach; p != null; p = p.next) {
+        if (p.end > at && (nxt < 0 || p.end < nxt)) nxt = p.end;
+      }
+      at = nxt;
+    }
+    // `e+` needs one iteration, and an iteration always advances, so the start
+    // position is exactly the zero-iteration way. Where the body is fillable the
+    // enclosing `_element` supplies the FILL.
+    if (!r.requireOne) return reach;
+    _Way? out;
+    for (var p = reach; p != null; p = p.next) {
+      if (p.end != pos) out = _cons(p, out);
+    }
+    return out;
+  }
+
+  /// `e?`. PEG prefers the body, so a free body retires the empty alternative.
+  _Ways _opt(Optional o, int pos) {
+    // I50 again, and for the same reason: a body the pure table promised can
+    // still yield nothing while its cycle is seeding, and `e?` matching NOTHING
+    // -- not even the empty string -- is not a reading PEG admits. Fall through
+    // to the empty alternative, which is what `e?` means when the body cannot
+    // match here.
+    if (_pure(o.subClause, pos) != null) {
+      final w = _element(o.subClause, pos);
+      if (w != null) return _wrap(o, pos, w);
+    }
+    if (_budget == 0) return _wrap(o, pos, _nil(pos));
+    return _wrap(o, pos, _put(_element(o.subClause, pos), _nil(pos)));
+  }
+
+  // -------------------------------------------------------------------------
+
+  /// THE ONLY PLACE A REPAIR IS INTRODUCED. Three ways to satisfy a required
+  /// clause: match it outright; SKIP characters that explain nothing and then
+  /// match it; or, if and only if the grammar determines the text (I36), FILL
+  /// it. Every ending any of them reaches is returned, because which one is
+  /// right is not knowable here.
+  ///
+  /// A cost-0 direct match commits, so on undamaged input this is exactly
+  /// `clause.match(parser, pos)` and costs the same.
+  _Ways _repair(Clause sub, int pos) {
+    final direct = _clause(sub, pos);
+    // MEASURED KNOB. Dropping this guard -- so a SKIP is also tried where the
+    // pure parse SUCCEEDS -- is what it takes to read `"bc":2[,33,true]` as a
+    // transposed array instead of a Number followed by wreckage, because the
+    // character to discard sits where nothing is failing yet. It is worth
+    // 345 -> 360 shape and costs 3166 -> 5718 ms, so it stays off while latency
+    // is the binding constraint.
+    // I58: A FREE WAY IS ALREADY THE PROOF, SO DO NOT GO AND FETCH IT.
+    // `cost == 0` means no skip and no fill, which is what "pure PEG matched
+    // this" means -- so a free way in `direct` answers `_pure` without probing
+    // the budget-0 table at all. The implication runs ONE WAY: `_pure` can be
+    // non-null when `direct` has no free way, because inside an unfinished
+    // left-recursion cycle `_clause` hands back an empty seed while the global
+    // fact stays true. That is exactly why `_pure` remains the fallback rather
+    // than being replaced -- collapsing the two is what once regressed `a+b*`
+    // to cost -1.
+    if (_free(direct) || _pure(sub, pos) != null) return direct;
+
+    // Ways are immutable, so the direct answer is the starting list itself --
+    // `_put` shares its tail rather than copying it.
+    var out = direct;
+    // The cheapest reading reachable by DISCARDING evidence first. I54 needs it.
+    var minSkip = _inf;
+    for (var k = 1; k <= _budget && pos + k <= _in.length; k++) {
+      final skip = _Way(pos + k, 0, 0, 0, false,
+          site: 1, tail: true, leaf: SyntaxError(pos: pos, len: k));
+      for (var e = _clause(sub, pos + k); e != null; e = e.next) {
+        if (k + e.cost > _budget) continue;
+        if (k + e.cost < minSkip) minSkip = k + e.cost;
+        out = _put(
+            out,
+            _Way(e.end, k + e.cost, e.got, e.net, true,
+                site: _runs(skip, e),
+                tail: e.got == 0 ? true : e.tail,
+                doubt: pos,
+                blind: e.blind,
+                a: skip,
+                b: e));
+      }
+    }
+
+    // I52: UNIQUENESS DECIDES WHAT MAY BE WRITTEN; LENGTH DECIDES WHAT IT COSTS.
+    //
+    // m83 gated the whole repair on the spelling, so a rule whose text is not
+    // determined -- `Name <- !Keyword [a-z]+`, one of 26 -- had NO repair at
+    // all, not an expensive one. Measured consequence: given `{ ="de"; }` the
+    // engine could not say "a Name is missing here" for one character, so it
+    // bought a cost-3 reading that ran the string literal through `"; { ="` and
+    // dropped the whole enclosing Block. It paid three characters to avoid
+    // admitting one.
+    //
+    // The grammar knows exactly how many characters are absent even when it
+    // cannot say which. So charge that, and let the NODE carry the difference:
+    // a determined spelling is written as a `Filled`, an undetermined one
+    // becomes a zero-width parse-error span standing under the rule it belongs
+    // to. The tree then records that a Name is missing WITHOUT inventing which
+    // name it was -- the input is untouched either way, and the brief's rule
+    // against invented terminals is kept where it actually bites, on the
+    // CHARACTERS, not on the shape.
+    // I54: A GUESS IS A COST YOU CANNOT SEE, AND IT IS CHEAPER TO REFUSE IT THAN
+    // TO OUTRANK IT.
+    //
+    // I52 prices a fill whose spelling is unknown, which makes two repairs cost
+    // the same that are not equally believable. Given `[,2,33,true]` the surplus
+    // comma can be DISCARDED for one character, or a Value can be ASSERTED
+    // before it for one character. Both cost 1 -- and every remaining tie-break
+    // prefers the assertion, because it leaves every character of the input in a
+    // role. The brief requires the opposite, and gives the reason: the asserted
+    // value "could be anything, so why pick one?", while the comma is simply one
+    // character too many.
+    //
+    // The line the brief draws is DETERMINACY, and I36 already computes it: a
+    // fill the grammar SPELLS (a `,`, a `}`) picks nothing and is never a guess.
+    // Only an unspelled one is, and it is admitted only when discarding evidence
+    // cannot reach a reading at the same price. Expressed here, at the point the
+    // guess would be created, it is a PRUNE and not an ordering -- the losing
+    // candidate is never built, never memoised and never re-examined, so the
+    // rule costs nothing to enforce instead of costing a field on every way.
+    //
+    // What it cannot do is win both sides of a genuine tie. `[,2,33,true]` (a
+    // comma inserted) and `[,[3,[4]]]` (a digit deleted) present the SAME
+    // evidence -- `[` then `,` -- with opposite ground truths, at cost 1 either
+    // way. No rule decides both correctly; the brief decides this one.
+    final need = _need(sub);
+    if (need != null && need <= _budget && (_witness(sub) != null || need < minSkip)) {
+      final w = _witness(sub);
+      out = _put(
+          out,
+          w != null
+              ? _Way(pos, need, 0, 0, true,
+                  site: 1, tail: true, doubt: pos, leaf: Filled(sub, pos, w))
+              : _Way(pos, need, 0, 0, true,
+                  site: 1,
+                  tail: true,
+                  doubt: pos,
+                  blind: 1,
+                  c: sub,
+                  pos: pos,
+                  a: _Way(pos, 0, 0, 0, false,
+                      site: 1,
+                      tail: true,
+                      leaf: SyntaxError(pos: pos, len: 0))));
+    }
+    return out;
+  }
+}
