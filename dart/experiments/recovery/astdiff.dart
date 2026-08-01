@@ -62,6 +62,47 @@ List<String> skeleton(MatchResult r, Set<String> named) {
   return out;
 }
 
+/// The skeleton a correct recovery is EXPECTED to produce for one damaged
+/// document, given the parse of the undamaged one.
+///
+/// For nine of the ten categories the damage leaves every character position
+/// occupied -- a delimiter is gone, a quote is doubled, two characters are
+/// swapped -- so the undamaged skeleton is exactly what a reader still expects
+/// to see, and this returns it unchanged.
+///
+/// TRUNCATION IS THE EXCEPTION, AND IT WAS SILENTLY WRONG. A truncate case is
+/// `doc.substring(0, k)`: the tail of the document is not damaged, it is ABSENT.
+/// Every named node lying entirely past `k` covers no character the engine can
+/// read, so producing it would mean inventing content -- which the brief
+/// forbids -- and demanding it charged every engine for obeying the rule. The
+/// nodes that begin before `k` are kept, including the one straddling the cut,
+/// because a node whose text runs off the end is precisely the unterminated
+/// construct a reader does still expect to see reported.
+///
+/// Measured: this raises the truncate ceiling from 0.566 to 1.0, which is what
+/// it should always have been. No named node in any corpus is zero-width
+/// (0 of 667), so `pos < k` is exactly "covers at least one retained character".
+List<String> expectedFor(Case k, MatchResult original, Set<String> named) {
+  if (k.category != 'truncate') return skeleton(original, named);
+  final cut = k.mutant.length;
+  final out = <String>[];
+  void walk(MatchResult m) {
+    final c = m.clause;
+    if (c is Ref && named.contains(c.ruleName)) {
+      if (m.pos >= cut) return;
+      out.add(c.ruleName);
+      out.add('(');
+      m.subClauseMatches.forEach(walk);
+      out.add(')');
+    } else {
+      m.subClauseMatches.forEach(walk);
+    }
+  }
+
+  walk(original);
+  return out;
+}
+
 /// Levenshtein distance over label sequences: the number of structural errors.
 ///
 /// Two rows rather than a full matrix, because this runs once per engine per

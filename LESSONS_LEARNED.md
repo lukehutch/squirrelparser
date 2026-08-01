@@ -8336,3 +8336,152 @@ by +0.0001 aggregate and call it noise. It was not noise: it was the engine
 admitting that its ordering was incomplete and that a linked list had been
 finishing the job. The right response to an unexplained difference is to explain
 it, and here the explanation was worth more than the 356 ms that surfaced it.
+
+---
+
+## The forty-fifth occasion: the heaviest column was measuring the evaluator
+
+Four things happened here. One micro-optimisation landed (**I58**, 9.5%). One
+hypothesis was tested and died in a single run. One instrument was found to be
+lying, and the lie was in the column carrying the most weight. And the full
+re-score had to be thrown away and restarted, because a table built on a broken
+metric is worse than no table.
+
+### I58 -- a free way is already the proof, so do not go and fetch it
+
+`_repair` asked `_pure(sub, pos)` -- "does this clause match purely here?" --
+before deciding whether it was allowed to skip. That question is answered by a
+lookup in `_pc`, the budget-0 table, and answering it can force a whole budget-0
+evaluation of the subtree.
+
+But `direct` -- the list of ways already computed for this clause at this
+position -- is right there, and a way with `cost == 0` **is** a pure match: it
+reached the end with no skip and no fill. If one exists, the question is already
+answered and the table need not be consulted:
+
+```dart
+if (_free(direct) || _pure(sub, pos) != null) return direct;
+```
+
+`_pure` stays as the fallback, because the converse does not hold: `direct` is
+computed under the current budget in the current table, and a clause can match
+purely here while this round's list happens not to contain that way.
+
+**9.5%**, measured paired and interleaved (m90 5483/5503/5538 ms vs m92
+4926/4981/5001), `_div` **0 of 1824**. The credit is Codex's: I had refuted this
+idea in the form *replace `_pure` with a scan of `direct`* -- which is wrong, and
+the refutation was correct -- and then discarded the whole family. Codex proposed
+the *short-circuit* form, where the scan is an early exit and `_pure` still
+backs it. **A refutation of one form of an idea is not a refutation of the
+idea.** Check which form you disproved before you close the file on it.
+
+### The hypothesis that died: undetectable damage
+
+Deleting the comma from `[1,2]` gives `[12]`, which is a perfectly good array of
+one number. There is nothing to detect and nothing to recover, yet the battery
+would score it against the two-Number skeleton and charge every engine for
+failing to undo an edit that left no evidence. If the battery were full of those,
+the whole table would be measuring an impossibility.
+
+`_undetect.dart` counted them: **0 of 1824**. The generator's `add` already
+keeps only mutants that fail to parse (`if (m.isNotEmpty && !parses(m))`), which
+is exactly the right filter and was written before anyone thought to ask. One
+run, hypothesis closed, no code changed.
+
+### The defect: truncate could not be scored above 0.566
+
+A truncate case is `doc.substring(0, k)` -- and it was scored against the
+skeleton of the **undamaged whole document**. Every named node lying entirely
+past `k` covers characters that are simply not in the input. Producing it means
+inventing content, which the brief forbids in as many words; not producing it was
+charged as a structural error. Every engine in the table was being penalised for
+obeying the rule.
+
+`_ceilcat.dart` priced it. Restrict the expected skeleton to named nodes
+beginning before `k` -- the most any engine could produce without inventing --
+and the ceiling for the category is:
+
+| | |
+|---|---|
+| truncate cases | 288 |
+| mean reachable ceiling | **0.5662** |
+| mean m92 score | 0.5614 |
+| cases already at or above the ceiling | **216 (75.0%)** |
+| real headroom | **0.0047** |
+
+**Forty-three percent of that column's range was unreachable by construction**,
+in the category holding the *heaviest* coverage weight (3.0) and 288 of the 1824
+cases. It had been read for a generation of engines as the weakest area and the
+obvious place to improve. It was not: m92 was already at 99.2% of what the
+metric permitted.
+
+### The fix was in the brief the whole time
+
+The specification for this evaluator says it should build *"the correct repaired
+AST **for the expected damage**"*. Not the undamaged AST -- the repaired one. For
+nine of the ten categories those coincide, because the damage leaves every
+character position occupied: a delimiter goes missing, a quote doubles, two
+characters swap, and a reader still expects the whole structure back. Truncation
+is the one category where the tail is **absent rather than corrupted**, and there
+the correct repaired AST is the prefix's, with the unterminated construct marked.
+
+`expectedFor` in `astdiff.dart` now owns that distinction, and every scorer calls
+it. It keeps named nodes with `pos < k`, *including the one straddling the cut* --
+a node whose text runs off the end is precisely the unterminated construct a
+reader does still expect to see reported. No named node in any corpus is
+zero-width (**0 of 667**, checked), so `pos < k` is exactly "covers at least one
+retained character" with no boundary case to argue about.
+
+### Verified surgical, and the correction is predictable in closed form
+
+m62's nine non-truncate columns are **byte-identical** before and after the
+change; only truncate moved, 0.490 -> 0.816. Since only 288 of 1824 cases change,
+the new aggregate is exactly
+
+    new = old + (new_truncate - old_truncate) * 288/1824
+
+| engine | old agg | old trunc | predicted | **measured** |
+|---|---|---|---|---|
+| m62 | 0.9035 | 0.490 | 0.9550 | **0.9550** |
+| m90/m92 | 0.9050 | 0.562 | 0.9558 | **0.9559** |
+
+That closed form is what makes the re-run auditable: any engine whose new
+aggregate does not satisfy it has had something *else* change, and that would be
+a bug in the fix rather than a result.
+
+### What the corrected metric says about the standing engine
+
+| engine | aggregate | perfect % | ms | LOC | truncate | wins on |
+|---|---|---|---|---|---|---|
+| m62 | 0.9550 | **67.2** | **1359** | -- | 0.816 | 7 of 10 categories |
+| m92 | **0.9559** | 66.3 | 4916 | **525** | **0.884** | truncate, literal-damage |
+
+m92's entire aggregate lead is truncate. It is *behind* m62 on delim-delete
+(0.945 vs 0.965), junk-insert (0.981 vs 0.997), delim-insert (0.980 vs 0.995),
+quote-insert (0.966 vs 0.998), transpose (0.952 vs 0.971), quote-delete and
+multi-damage; it produces fewer exactly-correct trees (66.3% vs 67.2%); and it
+costs **3.6x** the latency. It is less than half the code, and it is the only one
+of the two that is AST-centric. That is the honest position, and the defective
+column had been flattering it.
+
+### The rule this occasion adds
+
+**A metric no engine can saturate is partly measuring its own construction, so
+price the best possible answer before you trust the column.** The check is
+cheap -- build the best skeleton the rules permit and score *that* -- and it
+should be run on every column of a new evaluator before the evaluator is used to
+rank anything. Here it turned the weakest-looking category into an almost-solved
+one and moved every aggregate in the table by about +0.05.
+
+A corollary for the record itself: **every score written down before this fix is
+in the old units.** They are recoverable through the closed form above, given the
+truncate column, which is why that column is reported everywhere and why nothing
+earlier in this file has been rewritten.
+
+### Also learned, in passing
+
+Composite map keys in this project are `'$a\x00$b'` -- NUL-separated, which
+cannot collide the way a space can. The cost is that `grep` classifies the file
+as binary and **silently searches nothing**; `final_table.dart` has three of
+them. That is the second time this session that `command grep -a` was the
+difference between an answer and a confidently wrong one.

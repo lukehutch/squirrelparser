@@ -125,9 +125,11 @@ void main(List<String> argv) {
     for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)
   };
 
-  // Expected skeletons come from the FROZEN parser reading the UNDAMAGED
-  // document, so no engine can be tuned toward them.
-  final expected = <String, List<String>>{};
+  // Expectations come from the FROZEN parser reading the UNDAMAGED document, so
+  // no engine can be tuned toward them. [expectedFor] then adjusts them for the
+  // one category where the damage removes text outright rather than corrupting
+  // it -- see the note on that function.
+  final original = <String, MatchResult>{};
   for (final c in corpora) {
     for (final doc in c.documents) {
       final r =
@@ -135,7 +137,7 @@ void main(List<String> argv) {
       if (r.hasSyntaxErrors) {
         throw StateError('corpus ${c.name}: document does not parse: $doc');
       }
-      expected['${c.name} $doc'] = skeleton(r.root, c.named);
+      original['${c.name} $doc'] = r.root;
     }
   }
 
@@ -167,7 +169,7 @@ void main(List<String> argv) {
     sw.stop();
     final s = scoreCase(
       produced: produced,
-      expected: expected['${k.grammar} ${k.original}']!,
+      expected: expectedFor(k, original['${k.grammar} ${k.original}']!, c.named),
       inputLen: k.mutant.length,
       named: c.named,
     );

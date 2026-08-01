@@ -74,12 +74,12 @@ void main(List<String> argv) {
   final rulesOf = <String, Map<String, Clause>>{
     for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)
   };
-  final expected = <String, List<String>>{};
+  final original = <String, MatchResult>{};
   for (final c in corpora) {
     for (final doc in c.documents) {
       final r =
           Parser(rules: rulesOf[c.name]!, topRuleName: c.top, input: doc).parse();
-      expected['${c.name} $doc'] = skeleton(r.root, c.named);
+      original['${c.name} $doc'] = r.root;
     }
   }
 
@@ -112,7 +112,7 @@ void main(List<String> argv) {
       catScore[k.category] = (catScore[k.category] ?? 0) +
           scoreCase(
             produced: produced,
-            expected: expected['${k.grammar} ${k.original}']!,
+            expected: expectedFor(k, original['${k.grammar} ${k.original}']!, c.named),
             inputLen: k.mutant.length,
             named: c.named,
           ).score;
