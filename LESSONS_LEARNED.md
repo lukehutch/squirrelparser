@@ -10529,3 +10529,103 @@ of the input, so does a top-down parser — for free, with a length comparison.
 I80 was the sweep's *conclusion* transplanted whole; I81 is the part of it that
 was actually true, and the part that was actually true was about the end of the
 input all along.
+
+---
+
+## Occasion 59 — I82: a guard on the descent cannot bind a chart
+
+The chart was already refuted twice: at 17.8x latency (occasion 58) and at zero
+latency (`_chartcost.dart`, holding I81 constant, the chart costs 0.0025 AST-diff
+and 1.5 perfect points). Both were empirical. This occasion found the structural
+reason, and it came from building the gate that *should* have caught the failure
+in the first place.
+
+### The gap that prompted it
+
+m145 produces this on `[1,[2,`:
+
+    expect  Value (Array (Value (Number ()) Value (Array (Value (Number ())))))
+    m143    cost=3  err= 0   [1,[2,<]><]>       closes both brackets
+    m145    cost=2  err=19   <">[1,[2,<">       "the whole document is a string"
+
+and it **passes acceptance, conformance and free-span**. Three gates, none of
+which can see an engine that throws away the structure its healthy prefix
+already committed to. Only the 1792-case battery caught it, and only in
+aggregate — as 0.0025.
+
+That is a hole in the gate set, not a quirk of one engine. `_freespan.dart`
+catches engines that DELETE input which already matched; nothing caught engines
+that RE-READ it under a different rule. `_recommit.dart` is the companion: the
+input's first character determines an unambiguous arm of the grammar's own
+top-level choice, and whatever the repair does further right, the tree must
+still be headed by that arm. The choice set is read off the grammar
+(`Value <- Object / Array / String / Number / Boolean / Null`), so the question
+is one the grammar poses, not one I picked.
+
+### What it found, which was not what it was built to find
+
+    m125 pre-I76           PASS  array,  cost 3
+    m126 pre-I76           PASS  array,  cost 3
+    m127 I76               FAIL  STRING, cost 2   <- I76 opens the reading
+    m128 I76 strict        FAIL  STRING
+    m129 I76 + I77         FAIL  STRING           <- I77 was built for this
+    m130 I77 without `got` FAIL  STRING
+    m131 I77 without I76   PASS  (I76 absent, so this says nothing about I77)
+    m132 I76 + I78         PASS  array,  cost 3   <- I78 closes it
+    m143 I76 + I78 + I81   PASS  array,  cost 3, err 0
+    m141 I78 + chart       FAIL  STRING, cost 2
+    m145 I78 + I81 + chart FAIL  STRING, cost 2
+
+**First result: I77 does not do the thing it was named for.** Its header states
+its purpose verbatim — "the first key is repairs PLUS unexplained characters, so
+a String that swallows structure loses to the reading that explains it". m129
+carries it and produces the String anyway. m131 passes, but m131 is I77 *without*
+I76, and m126 (neither) also passes, so m131's pass is not attributable to I77.
+The attribution is clean in both directions: I76 alone fails, I76+I77 fails,
+I76+I78 passes. I77 was withdrawn on score; this is the harder reason, and it
+would have been worth knowing at the time.
+
+**Second result, the structural one: m141 and m145 CARRY I78 and fail anyway.**
+Both files contain the guard at the same two sites as m132. I78 admits a
+repair-opened alternative only where the input witnesses it — and that is a
+condition on the **descent**, on which alternative may be *opened*. A chart
+materializes cells directly; there is no opening at which to ask the question,
+so the guard has nothing to bind to.
+
+The measurement that makes this "unreachable" rather than "outranked": m132
+reports **cost 3** on `[1,[2,`, and cost is the first key of `_better`. If the
+cost-2 String reading were anywhere in m132's search space it would win
+outright. It reports 3. I78 does not demote that reading, it deletes it from the
+space — and the chart puts it back.
+
+### I82
+
+**A PEG-fidelity guard phrased over the derivation path is unenforceable in a
+bottom-up half.** I76's ending-evidence test, I78's witness test and I72's
+invention test are all conditions on *how a cell came to be opened*. A chart
+knows only that a cell holds; it cannot know why. So the two modes cannot share
+a guard set — not as an implementation difficulty but by construction, because
+one of them has discarded the object the guards quantify over.
+
+This is why the requested two-mode design fails, and it is a better answer than
+the latency one. A top-down parser's search space is *shaped by its guards*.
+Completing it bottom-up does not fill in missing readings; it re-admits the ones
+the guards were written to exclude. The 9 cases where `_chartcost.dart` found the
+chart cheaper are not discoveries. They are I78 violations smuggled past a guard
+that had no surface to act on.
+
+The corollary for the brief's own requirement — "anticipating probable human
+intent in how insertions/deletions/mutations are relatively prioritized" — is
+that intent lives in the *path*, not in the cell. Two invented quotes cost less
+than three invented brackets by any cell-local measure. What makes the brackets
+right is that the reader had already committed to an array by character one, and
+only a formalism that remembers the descent can express that.
+
+### The lesson
+
+**Build the gate that would have caught the thing you found by accident.** The
+String reading was found by reading a witness by hand. Three existing gates were
+blind to it; the one that catches it took forty lines and immediately found two
+results neither the witness nor the battery had shown — a withdrawn insight that
+never worked, and the reason an architecture fails that no latency number could
+have given.

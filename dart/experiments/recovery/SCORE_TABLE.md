@@ -121,6 +121,44 @@ The brief asks recovery to anticipate probable human intent in prioritising
 insertions, deletions and mutations. This is the sharpest statement of that the
 project has produced: **cost-minimality is not human intent.**
 
+**I82 — and the reason is structural, not a matter of taste.** `_recommit.dart`
+is the gate that catches this class, added because acceptance, conformance and
+free-span are all blind to it (m145 passes all three). It asks only that the
+repaired tree still take the arm of the grammar's own top-level choice that the
+input's first character committed to. Bisected across the engine line:
+
+| engine | insights | `_recommit` | cost | reading |
+|---|---|:-:|--:|---|
+| m126 | pre-I76 | PASS | 3 | array |
+| m127 | I76 | **FAIL** | **2** | **string** |
+| m129 | I76 + I77 | **FAIL** | 2 | string |
+| m131 | I77 without I76 | PASS | – | (I76 absent — says nothing about I77) |
+| m132 | I76 + **I78** | PASS | 3 | array |
+| m143 | + I81 | PASS | 3 | array, err 0 |
+| m141 | I78 + **chart** | **FAIL** | **2** | **string** |
+| m145 | I78 + I81 + **chart** | **FAIL** | **2** | **string** |
+
+Two results. **I77 does not do what it was named for** — its header says "a
+String that swallows structure loses to the reading that explains it", and m129
+carries it and produces the String anyway. I78 is what closes it. I77 was
+withdrawn on score; this is the harder reason.
+
+**And m141/m145 carry I78 at the same two sites as m132 and fail regardless.**
+I78 admits a repair-opened alternative only where the input witnesses it — a
+condition on the **descent**, on which alternative may be *opened*. A chart
+materializes cells with no descent to test. That m132 reports cost **3** while
+the chart reports **2**, with cost the first key of `_better`, shows I78 does not
+demote the String reading in the top-down search — it removes it from the space,
+and the chart re-admits it.
+
+So: **a PEG-fidelity guard phrased over the derivation path is unenforceable in a
+bottom-up half.** I72, I76 and I78 are all such guards. The two modes cannot
+share a guard set by construction, and the 9 cases where the chart is cheaper are
+not discoveries but I78 violations that had no guard surface to act on. Intent
+lives in the path, not the cell: two invented quotes beat three invented brackets
+by any cell-local measure, and what makes the brackets right is a commitment made
+at character one.
+
 Both proposed ways to bound the chart were also refuted by measurement:
 repair sites are **100% at-or-before the frontier and 0% after** it (median 13
 characters left of it, p90 37), so a forward wavefront from the failure point
@@ -374,21 +412,27 @@ column before the score column.
 † fails `_freespan.dart`: deletes real input from a span that already matched
 (I77). Disqualified regardless of score -- see "Why I77 is withdrawn".
 
+‡ fails `_recommit.dart`: re-reads a prefix that already matched under a
+different arm of the grammar's top-level choice, discarding the structure the
+healthy prefix committed to. The two failure modes are complements -- one throws
+away input, the other throws away the reading of it -- and the battery sees
+either only in aggregate. m129/m130 carry both marks.
+
 | # | engine | AST-diff | perfect% | LOC | arch | ms | brief | free | crash | uncov |
 |--:|---|--:|--:|--:|:-:|--:|:-:|:-:|--:|--:|
 | 1 | m134 † | **0.9668** | 69.4 | 612 | own | 1,227 | ok | . | 0 | 0 |
 | 2 | m133 † | **0.9663** | 69.7 | 612 | own | 1,247 | ok | . | 0 | 0 |
 | 3 | m138 † | **0.9662** | 69.5 | 612 | own | 1,205 | ok | . | 0 | 0 |
-| 4 | m130 † | **0.9656** | 69.3 | 611 | own | 1,262 | ok | . | 0 | 0 |
-| 5 | m129 † | **0.9649** | 69.7 | 611 | own | 1,271 | ok | . | 0 | 0 |
+| 4 | m130 †‡ | **0.9656** | 69.3 | 611 | own | 1,262 | ok | . | 0 | 0 |
+| 5 | m129 †‡ | **0.9649** | 69.7 | 611 | own | 1,271 | ok | . | 0 | 0 |
 | 6 | m132 | **0.9648** | 69.2 | 612 | own | 1,177 | ok | . | 0 | 0 |
 | 7 | m135 † | **0.9637** | 67.8 | 599 | own | 1,508 | ok | . | 0 | 0 |
 | 8 | m139 † | **0.9634** | 67.8 | 599 | own | 1,418 | ok | . | 0 | 0 |
-| 9 | m127 | **0.9629** | 69.1 | 611 | own | 1,221 | ok | . | 0 | 0 |
+| 9 | m127 ‡ | **0.9629** | 69.1 | 611 | own | 1,221 | ok | . | 0 | 0 |
 | 10 | m137 † | **0.9621** | 66.7 | 599 | own | 1,403 | ok | . | 0 | 0 |
 | 11 | m77 | **0.9609** | 71.5 | 763 | reparse | 1,386 | ok | - | 0 | 0 |
 | 12 | m136 | **0.9609** | 67.7 | 599 | own | 1,365 | ok | . | 0 | 0 |
-| 13 | m128 | **0.9601** | 67.6 | 611 | own | 2,592 | ok | . | 0 | 0 |
+| 13 | m128 ‡ | **0.9601** | 67.6 | 611 | own | 2,592 | ok | . | 0 | 0 |
 | 14 | m131 † | **0.9589** | 67.3 | 602 | own | 2,630 | ok | . | 0 | 0 |
 | 15 | m114 | **0.9588** | 67.7 | 576 <sub>(546)</sub> | own | 4,869 | x:b2 | . | 0 | 0 |
 | 16 | m112 | **0.9575** | 67.2 | 582 <sub>(557)</sub> | own | 4,554 | x:cx2 | . | 0 | 0 |
