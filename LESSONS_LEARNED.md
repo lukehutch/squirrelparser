@@ -10307,7 +10307,17 @@ failure point until the previous partial parse span can be bridged to the next.
 I built it, faithfully, as **m141**. It is m132 with the memo replaced by a real
 chart: every clause node x every position, relaxed to a within-position fixpoint
 right-to-left, per budget — the bottom-up dual of packrat, which is Pika
-parsing. It passes acceptance and free-span. It also loses:
+parsing.
+
+It is a faithful build, and that is measured rather than asserted: m141 passes
+acceptance (`ok cx2=1 b1=1 b2=1`), passes free-span, and reads **the same
+conformance row as m132** — `. 0 1 1 0 2 2`, identical costs on all six probes.
+So it is not slower because it is broken or because it computes something
+different. It computes the same answers under the same PEG semantics, and the
+17.8x is the **evaluation schedule alone**. That is what makes the refutation
+stick: there is no bug to fix that would recover the time.
+
+It also loses:
 
 | axis | m132 | m141 |
 |---|--:|--:|
@@ -10350,6 +10360,12 @@ m141 invented **27% fewer zero-width AST nodes** than m132 — 275 vs 378 — at
 nearly the same case count. Not fewer *cases*, fewer *nodes*: bottom-up invents
 less **deeply** (max depth 3 vs 4), because a right-to-left cell knows what lies
 to its right before it commits.
+
+It is worth being exact about how little the sweep actually fixed, because it
+sharpens where the win came from. m141 barely moved the *count* in the category
+that mattered — `truncate` 78 → 76 — it only made each tree shallower. m143
+takes that column to **0** and cuts affected cases 266 → 197, so the top-down
+fix strictly beats the sweep on the one property the sweep was better at.
 
 That is a local defect with a local fix, and the fix is top-down. On `{"a":`
 both engines produce the identical witness at identical cost, and differ only in
@@ -10416,6 +10432,30 @@ Guarded so the drop can never fire on a grammar that genuinely admits an empty
 match there: the cost-0 memo is consulted, and a node is kept if the frozen
 parser admits any zero-length reading at that position. The rule is decided by
 the grammar, not by a threshold.
+
+### The five cases that got worse, and why they are not I81's fault
+
+Category averages can hide offsetting per-case moves, so `_cmp.dart` was run
+rather than trusted: **63 cases better, 5 worse**. All five are `expr`, and on
+every one of them m143's tree is the *more* faithful of the two. On `(`:
+
+    expect  Expr (Expr (Term (Factor ())))      Factor has no children
+    m132    Term (Factor (Expr ()))    err=6    invents an Expr inside Factor
+    m143    Term (Factor ())           err=6    matches expected exactly
+
+m143 reproduces the expected `Factor ()` exactly and still scores no better,
+because the skeleton edit distance is over a **flat token sequence**: m132's
+stray `Expr` aligns against one of the two outer `Expr` wrappers that *both*
+engines fail to emit, so an invented node is paid for as if it were a missing
+one. `1+2*` is the same shape — expected has no trailing `Factor`, m132 emits
+one, and m132 scores err 8 to m143's 9.
+
+This is occasion 45's finding again (the heaviest column was measuring the
+evaluator), in a narrower form: a flat-sequence distance cannot tell a node in
+the wrong *place* from a node of the wrong *kind*, so deleting a wrong node can
+cost score even when it is right. Recorded, not chased — the effect is worth
+0.0002 aggregate against I81's +0.0045, and fixing it means changing the
+evaluator, which would invalidate every number in the table.
 
 ### The lesson
 

@@ -145,6 +145,14 @@ Concretely, both of these go from `err=6` to `err=0`:
 
 while `{"a":1,` — where the `Number` is real — is byte-identical under both.
 
+Per-case rather than per-category, `_cmp.dart` reads **63 better, 5 worse**. All
+five worse are `expr`, and on each one m143's tree is the *more* faithful: on
+`(` it reproduces the expected `Factor ()` exactly where m132 invents a
+`Factor (Expr ())`, and still scores no better, because the flat skeleton edit
+distance aligns m132's stray `Expr` against an outer `Expr` wrapper both engines
+fail to emit. That is an evaluator artifact, worth 0.0002 against I81's +0.0045,
+and it is recorded rather than chased — see LESSONS_LEARNED occasion 58.
+
 Controls, both measured rather than assumed:
 
 | engine | control | AST-diff | what it establishes |

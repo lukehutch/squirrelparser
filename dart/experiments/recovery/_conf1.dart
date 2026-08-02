@@ -65,6 +65,7 @@ import 'm129.dart' as m129;
 import 'm130.dart' as m130;
 import 'm131.dart' as m131;
 import 'm132.dart' as m132;
+import 'm141.dart' as m141;
 import 'm143.dart' as m143;
 import 'm133.dart' as m133;
 import 'm134.dart' as m134;
@@ -147,6 +148,7 @@ final engines = <(String, Cost)>[
   ('m130', (r, t) => m130.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m131', (r, t) => m131.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m132', (r, t) => m132.SuperDot3(rules: r, topRuleName: t).recoverCost),
+  ('m141', (r, t) => m141.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m143', (r, t) => m143.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m133', (r, t) => m133.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m134', (r, t) => m134.SuperDot3(rules: r, topRuleName: t).recoverCost),

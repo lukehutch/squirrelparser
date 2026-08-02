@@ -34,6 +34,7 @@ import 'm129.dart' as m129;
 import 'm130.dart' as m130;
 import 'm131.dart' as m131;
 import 'm132.dart' as m132;
+import 'm141.dart' as m141;
 import 'm143.dart' as m143;
 import 'm133.dart' as m133;
 import 'm134.dart' as m134;
@@ -90,6 +91,7 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
       'm130' => m130.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'm131' => m131.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'm132' => m132.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
+      'm141' => m141.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'm143' => m143.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'm133' => m133.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'm134' => m134.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
@@ -103,7 +105,7 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     };
 
 const engines = [
-  'm121', 'm126', 'm127', 'm132', 'm136', 'm143', // raw cost is the first key
+  'm121', 'm126', 'm127', 'm132', 'm136', 'm141', 'm143', // raw cost is the first key
   // `cost - net` outranks it. m135-m140 are the I79/collapse family, all built
   // from m134 or m135, so all of them inherit I77 along with everything else.
   'm129', 'm130', 'm131', 'm133', 'm134', 'm135', 'm137', 'm138', 'm139',
