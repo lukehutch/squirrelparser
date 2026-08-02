@@ -11478,3 +11478,126 @@ each trial, which is D1 unaddressed. And 454 code lines is 44 over r1 and 54 ove
 the 400 target; the fill itself is 9 lines (`_determined`), 19 (`_invents`), and
 the rest is the `_round` restructure into a `consider` closure so the fill and the
 skip are scored by the same code.
+
+## Occasion 62 — r3: the cell holds every reading, and the frontier disappears
+
+r1 and r2 kept ONE result per `(clause, pos)`. That single slot is the whole of
+why they needed a frontier at all: once a cell had answered, the answer could not
+be revisited, so a repair had to be arranged by re-running the parser from cold
+with a mark installed — a new `Parser` per trial, which is D1 unaddressed and was
+named as such at the end of Occasion 61.
+
+**r3 changes one thing: the cell holds a LIST of ways, one per reachable end
+position.** Everything the r-series built on top of the single slot then has
+nothing to do and is deleted — `_forget`, `_repairs`, the frontier walk, the span
+widening loop, the advancement test, the salvage pass. **0.9461 / 65.8 perfect /
+2837 ms / 409 code lines**, every control green, and it is 45 lines SMALLER than
+r2 while closing 73% of the r2-to-m143 gap.
+
+### Why one slot per cell was the ceiling
+
+`{"a:1,"bc":[2,33,true]}` — the closing quote of `"a` is gone. At position 1 the
+grammar asks for a `String`. Under PEG there is exactly one answer: `Character*`
+is possessive, so it runs to the next `"` at position 7 and `String` ends at 8.
+That reading is not wrong, and it is not repairable either — the damage is not
+inside it. The repair the document wants is the SHORTER `String` ending at 3,
+holding one unmet obligation. r1 and r2 cannot hold both, so they must guess
+which to keep before they know which the rest of the parse can use, and the
+quote-delete category is where that shows: **0.705 for r1, 0.841 for r2, 0.999
+for r3.** The category is not improved, it is finished.
+
+A cell holding both readings is a chart, and the objection to a chart is that it
+admits derivations PEG does not: `'a'* 'a'` matches nothing in PEG and matches
+`"a"` in a chart. That objection is answered by a bit, not by a mechanism —
+`_Way.peg` is set only along the reading the frozen parser itself would take
+(`_first` stops setting it once an arm has read cleanly; `_rep` only where the
+greedy count was taken), and a peg way outranks every other way of the same cost.
+**Conformance becomes a property of the ORDERING rather than a special case**, and
+`_conf1` and the 23 clean corpus documents confirm it: every one returns cost 0
+with a skeleton identical to the frozen parser's, left-recursive `expr` included.
+
+### The memo trick is the same trick, used for a second purpose
+
+The squirrel parser detects left recursion by having a descendant that re-enters
+a cell already on the path set `foundLeftRec` on the ancestor's own memo entry —
+a signal that crosses arbitrary tree depth in O(1) because the destination is
+addressable by content rather than by walking to it. r3's `_Cell` carries
+`inPath`, `foundLR` and `gen` unchanged.
+
+What is new is that **the loop the trick drives serves repair as well as left
+recursion.** "Re-run this cell while the answer improves, retiring the memo at
+this position with one integer bump" is the same loop whether the improvement
+comes from a left-recursive expansion or from a repair the first pass could not
+afford. `_improved` is the only thing that had to change: r1's version broke on
+reach alone, so an iteration that improved COST at the same reach was discarded
+and clean `expr` came back at cost 8. Reach OR rank fixes it, and accumulating
+across iterations makes termination monotone.
+
+### Iterative deepening is not a heuristic, and it is 19x
+
+The eager chart measured **51,835 ms** — 43x m143 — for 0.9353. A per-cell cap on
+surviving ways trades score for time smoothly with no free bound (cap4 0.8745 /
+12,164 ms, cap8 0.9226 / 20,654, cap20 0.9353 / 35,325), and a cap is exactly the
+tuning parameter the brief forbids. What works instead is m143's `_budget`, taken
+whole: **cost is non-negative and additive, so a partial way's cost is a lower
+bound on every completion of it, and a cap on the round's budget prunes EXACTLY
+rather than approximately.** Round 0 is therefore the frozen parser, bit for bit.
+2,733 ms, and the score went UP to 0.9371, because deepening finds the cheapest
+repair first instead of finding all of them and ranking. The ceiling is derived
+from the grammar (`_minFill` of the top rule plus the input length), so no
+parameter is introduced.
+
+### Two honesty rules, both narrower than they look
+
+**A repaired rule node that explains NOTHING is an invention** (`_lift`: admit a
+repaired way only where `net > 0`). This generalises r2's zero-width rule and it
+is what stops `[1,[2,` from coming back as a damaged JSON string: quote both
+ends, let the inverted `Character` class swallow the middle, and every character
+is "matched" by a class that constrains nothing. `net` counts only characters
+matched by a terminal that says what it accepts, so the whole reading explains
+zero and is refused — while the cost-3 repair that closes both brackets stands.
+`_recommit` is 12/12.
+
+**A slot left unmet at the end of the input is a STOP, not an absence.** The
+truncation probes exposed the last hole: `{"a":` came back as a `String` that
+filled its opening quote and appropriated the `"` at position 1, because `Object`
+could only cover `{` — `Value` is not shape-determined, so it could not be
+filled, and the remaining `"a":` was charged as four tail deletions. Cost 4 beat
+cost 5 and the gate failed. The fix is one clause: at `pos == _in.length` there
+is no evidence either way, because the document stopped, so the production stops
+too, owing `_minFill` of every slot it never reached and contributing NO NODE for
+any of them. **Stopping is the entire claim.** Carrying on to fill a closing
+bracket whose body never arrived would assert a part that was never reached — and
+measuring both showed exactly that: the version that kept filling scored 0.9472
+with **22 holes** in `_missing`, the version that stops scores 0.9461 with **0**.
+0.0011 of battery is the correct price for a tree that does not misalign its
+children, and m143 sits at 28 holes.
+
+### Where it stands
+
+| | r1 | r2 | r3 | m143 |
+|---|---|---|---|---|
+| battery | 0.8018 | 0.8822 | **0.9461** | 0.9693 |
+| perfect | 23.3% | 46.3% | **65.8%** | 72.1% |
+| ms | 689 | 2138 | 2837 | 1218 |
+| code lines | 410 | 454 | **409** | 628 |
+| `_missing` holes | 0 | 0 | **0** | 28 |
+| `_zerowidth` | 3/266 | 3/266 | **0/1792** | 197/266 |
+| `_recommit` | — | PASS | **PASS** | PASS |
+| `_accept` | 2/3 | 3/3 | **3/3** | — |
+
+`_freespan`, `_committed`, `_conf1`, `_charge` green; `dart test` 308/308.
+
+**The remaining 0.023 is not spread evenly — literal-damage is nearly half of
+it** (0.869 against m143's 0.970), then multi-damage (0.901 / 0.946) and truncate
+(0.900 / 0.919). Damage inside a literal is the one kind the chart does not help
+with, because the competing readings there differ in what a terminal ACCEPTS
+rather than in where a clause ENDS, and a cell keyed on end position cannot hold
+two of those apart. That is the next thing to look at, and it is a different
+mechanism from anything r3 added.
+
+**Latency is 2.3x m143 and is the honest cost of the design.** m143 threads one
+linked list of ways through a single pass; r3 materialises a list per cell and
+prunes it, which is simpler to read and strictly more allocation. The profile is
+flat — no hot spot to remove, 45,122 ways kept over 7,670 expansions on a 51-char
+document, with a long tail out to 52 ways in a single cell.

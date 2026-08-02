@@ -30,6 +30,7 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import 'm121.dart' as m121;
 import 'r1.dart' as r1;
 import 'r2.dart' as r2;
+import 'r3.dart' as r3;
 import 'm126.dart' as m126;
 import 'm127.dart' as m127;
 import 'm129.dart' as m129;
@@ -105,6 +106,7 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
       'm140' => m140.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'r1' => r1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'r2' => r2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
+      'r3' => r3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       _ => null,
     };
 
@@ -116,6 +118,7 @@ const engines = [
   'm140',
   'r1',
   'r2',
+  'r3',
 ];
 
 void main() {
