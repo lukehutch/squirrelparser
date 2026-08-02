@@ -10295,3 +10295,140 @@ does not.
 
 Build the control that could refute the change, then adopt it. Not the other way
 round.
+
+## Occasion 58 — the requested architecture lost by 17.8x, and what it revealed was a top-down bug (I79 refuted; I80 refuted; I81 is the engine)
+
+The instruction was specific: two modes. Standard top-down squirrel parsing in
+O(n); on incomplete parse, switch to bottom-up Earley-like parsing in O(n^3),
+replicate PEG semantics exactly in the Earley parser, choose SPPF or DAG over
+the malformed stream, and expand it iteratively with a DP wavefront from the
+failure point until the previous partial parse span can be bridged to the next.
+
+I built it, faithfully, as **m141**. It is m132 with the memo replaced by a real
+chart: every clause node x every position, relaxed to a within-position fixpoint
+right-to-left, per budget — the bottom-up dual of packrat, which is Pika
+parsing. It passes acceptance and free-span. It also loses:
+
+| axis | m132 | m141 |
+|---|--:|--:|
+| AST-diff | **0.9648** | 0.9641 |
+| perfect% | **69.2** | 67.8 |
+| ms | **1,200** | **21,319 (17.8x)** |
+| LOC | **612** | 674 |
+
+### Why it loses, measured rather than argued
+
+The chart's cost is not an implementation detail I could have tuned away. Four
+measurements, and two older ones that already said so:
+
+1. **m132's search is sparse and the chart's is not.** m132 touches **13.9
+   chart columns at p50** (55.1 at p90) out of |G| = 105 clause nodes for JSON.
+   Repair-cell density is **119 of 3,675 = 3.2%**. A chart fills 100%.
+2. **There is no redundancy for a chart to remove.** calls/cell is 1.00 at p50
+   and 1.28x aggregate, and that 1.28 is the LR fixpoint, not repeated work —
+   `_fix` already memoizes per (clause, pos, budget). The worklist floor
+   measured at m51 is **1.97 relaxations per cell**. A chart re-relaxes *more*
+   than the top-down search it replaces.
+3. **Two prior independent measurements already reported it.** The eager chart
+   in `lib/src/recovery/semiring_recovery.dart`: **11x**. m51's bottom-up
+   agenda: **14x**, recorded at the time as "Rejected: bottom-up agenda (14x)".
+   m141 makes three.
+4. **Both ways to bound the chart are refuted.** A wavefront forward from the
+   failure point searches the wrong direction: repair sites are **100%
+   at-or-before the frontier, 0% after**, median 13 characters left of it, p90
+   37. And a "healthy suffix" anchor to close the window against exists in only
+   **167 of 598** cases, bracketing every site in 49.1% of those.
+
+The framing worth keeping: **sparse top-down deepening is not a weaker form of
+chart parsing. On this workload it is the optimisation.** The chart's promise is
+that it never recomputes; its price is that it computes everything. At 3.2%
+density that trade is 31 to 1 against.
+
+### The one real signal, and how it was cashed
+
+m141 invented **27% fewer zero-width AST nodes** than m132 — 275 vs 378 — at
+nearly the same case count. Not fewer *cases*, fewer *nodes*: bottom-up invents
+less **deeply** (max depth 3 vs 4), because a right-to-left cell knows what lies
+to its right before it commits.
+
+That is a local defect with a local fix, and the fix is top-down. On `{"a":`
+both engines produce the identical witness at identical cost, and differ only in
+the tree:
+
+    m132   {"a":[--]<}>   Value(Object(Member(String() Value(Number()))))   err 6
+    m141   {"a":[--]<}>   Value(Object(Member(String() Value())))           err 3
+    expect                Value(Object(Member(String())))
+
+`_emptyprobe.dart` settles what that `Number` is: the frozen parser returns
+`SyntaxError`, not `Match`, for `Value`, `Number`, `Integer`, `Member` and
+`Object` on empty input. A zero-width `Number` is **not** a grammar artifact. It
+is invention — the thing the brief bans in its one overarching rule.
+
+### I80 was the obvious fix and it was wrong
+
+**I80: a node that explains no character and asserts none is not a node.** Drop
+it at emit time, wherever it is. Measured: 0.9656 aggregate — *up* — but
+perfect% **69.2 → 67.5**, `literal-damage` 0.970 → 0.943, `multi-damage` 0.946
+→ 0.933, and five categories regressed. Aggregate up, everything else down.
+
+(It also took two attempts to make it fire at all. The first version tested for
+childlessness, and scored byte-identical to m132 on every column — because
+`Number`'s child `Integer` is not a *named* rule, so `Number` has a child and
+still covers zero characters. Identical output across ten categories is not a
+subtle result; it means the code never ran. Diagnose that, never assume it.)
+
+### I81 is I80 with one restriction, and it costs nothing anywhere
+
+**I81: drop a hollow node only where no evidence could ever have reached it —
+`pos >= input.length`.**
+
+| | m132 | m142 (I80) | **m143 (I81)** |
+|---|--:|--:|--:|
+| AST-diff | 0.9648 | 0.9656 | **0.9693** |
+| perfect% | 69.2 | 67.5 | **72.1** |
+| ms | 1,168 | 1,147 | 1,171 |
+| truncate (w 3.0) | 0.890 | 0.919 | **0.919** |
+| literal-damage | 0.970 | 0.943 | **0.970** |
+| multi-damage | 0.946 | 0.933 | **0.946** |
+| every other column | — | regressed | **identical to m132** |
+
+m143 gains the full +0.029 on `truncate` — the heaviest weight and previously
+the weakest column — and gives back nothing. Latency is unchanged (medians of
+three alternating rounds on one clock: 1,168 vs 1,171).
+
+The restriction is the insight, and it is not a tuning parameter. Two situations
+were being conflated:
+
+- **Past the end of the input, the slot never existed.** The human never wrote
+  it. There is nothing to the right the node could have covered. Naming it is
+  invention.
+- **Mid-input, the slot exists and its evidence was destroyed.** `[1,x]` still
+  has two `Number` slots even though one's characters are gone. Naming it is
+  correct — and deleting it is the error, which is precisely what I80 did and
+  precisely what it paid for.
+
+`_zerowidth.dart` confirms the rule fires only where intended: truncate
+zero-width nodes **78 → 0**, `literal-damage` 74 → 73, `multi-damage` 37 → 37,
+`junk-insert` 24 → 24. The 266 nodes that remain are not defects. They are the
+engine correctly naming a slot whose evidence the damage destroyed.
+
+Guarded so the drop can never fire on a grammar that genuinely admits an empty
+match there: the cost-0 memo is consulted, and a node is kept if the frozen
+parser admits any zero-length reading at that position. The rule is decided by
+the grammar, not by a threshold.
+
+### The lesson
+
+**A refuted architecture is not a wasted one if you read what it got right.**
+m141 lost on every scored axis and was never going to be the engine. But it was
+the only thing in fifty-eight occasions that made the zero-width invention
+*visible*, by producing a strictly shallower tree on identical input at
+identical cost. The comparison was the instrument.
+
+And the corollary, which cost two engines to learn: **when a cross-architecture
+result suggests a fix, the fix belongs in whichever architecture is cheaper.**
+The right-to-left sweep's advantage was that it knows its future. Past the end
+of the input, so does a top-down parser — for free, with a length comparison.
+I80 was the sweep's *conclusion* transplanted whole; I81 is the part of it that
+was actually true, and the part that was actually true was about the end of the
+input all along.

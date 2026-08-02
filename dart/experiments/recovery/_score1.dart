@@ -82,6 +82,9 @@ import 'm137.dart' as g137;
 import 'm138.dart' as g138;
 import 'm139.dart' as g139;
 import 'm140.dart' as g140;
+import 'm141.dart' as g141;
+import 'm142.dart' as g142;
+import 'm143.dart' as g143;
 
 /// A uniform surface over both engine generations: give it a grammar and a top
 /// rule, get back something that turns a damaged string into a tree or throws.
@@ -339,6 +342,18 @@ final Map<String, Build> extra = {
   },
   'm140': (r, t) {
     final e = g140.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm141': (r, t) {
+    final e = g141.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm142': (r, t) {
+    final e = g142.SuperDot3(rules: r, topRuleName: t);
+    return e.recover;
+  },
+  'm143': (r, t) {
+    final e = g143.SuperDot3(rules: r, topRuleName: t);
     return e.recover;
   },
 };

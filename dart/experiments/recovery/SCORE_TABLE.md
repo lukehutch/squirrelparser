@@ -2,23 +2,27 @@
 
 ## The result
 
-**`m132.dart` is the engine.** It is standalone (`own` — carries its own parser
+**`m143.dart` is the engine.** It is standalone (`own` — carries its own parser
 and memo table), acceptance-compliant, sound (costs nothing at 0 that the frozen
-parser rejects), cost-minimal, and it is the first engine in the project to beat
-**all three** of m78's targets at once — quality, latency and size.
+parser rejects), cost-minimal, and it beats **all three** of m78's targets at
+once — quality, latency and size.
 
-|                | m132 | m121 (the previous standing engine) | m78 (the engine both replace) |
+|                | m143 | m132 (the previous standing engine) | m78 (the engine both replace) |
 |----------------|------:|------:|------:|
-| AST-diff       | **0.9648** | 0.9573 | 0.9444 |
-| perfect%       | **69.2** | 67.0 | 68.4 |
-| LOC normalised | 612 | **578** | 1,326 |
-| ms             | **1,166** | 4,680 | 2,171 |
+| AST-diff       | **0.9693** | 0.9648 | 0.9444 |
+| perfect%       | **72.1** | 69.2 | 68.4 |
+| LOC normalised | 629 | **612** | 1,326 |
+| ms             | **1,171** | 1,168 | 2,171 |
 | acceptance     | ok | ok | ok |
 | conformance    | `.` | `.` | `.` |
 | free-span      | PASS | PASS | — |
 
-Against m78: quality +0.0204, latency **1.86x faster**, size **2.17x smaller**.
-Against m121: quality +0.0075, latency **4.0x faster**, size +34 lines.
+Against m78: quality +0.0249, latency **1.85x faster**, size **2.11x smaller**.
+Against m132: quality +0.0045, perfect% +2.9, latency unchanged, size +17 lines.
+
+**m143 = m132 + I81, and it does not trade.** Every category is identical to
+m132 except `truncate`, which goes 0.890 → 0.919 — the heaviest weight (3.0) and
+previously the weakest column. There is no category it makes worse.
 
 The +34 lines are the one target not improved on, and they are stated here
 rather than buried. They buy I76's positional guard, and §"The collapse that
@@ -64,6 +68,82 @@ I76 is worth +0.0056 and 2.3x the speed for 9 lines; I78 is worth +0.0019 for
 **one** line, and it is the line that lifts `truncate` 0.878 → 0.890. Everything
 above m132 in the score column is an I77 engine, and every I77 engine fails the
 free-span control.
+
+## What changed since m132: I79–I81
+
+The user asked for a two-mode parser — top-down PEG in O(n), then on failure a
+bottom-up Earley/SPPF chart expanded by a DP wavefront from the failure point.
+That was built (m141) and it loses. What it *revealed* is I81, which is a clean
+win, and which is a top-down change.
+
+| engine | change | AST-diff | perfect% | ms | LOC | free-span |
+|---|---|--:|--:|--:|--:|:-:|
+| m132 | (previous standing engine) | 0.9648 | 69.2 | 1,168 | 612 | PASS |
+| m141 | **I79** — bottom-up right-to-left sweep over all clauses × positions | 0.9641 | 67.8 | **21,319** | 674 | PASS |
+| m142 | **I80** — drop every hollow node, anywhere | 0.9656 | 67.5 | 1,147 | 617 | PASS |
+| **m143** | **I81** — drop a hollow node only past end of input | **0.9693** | **72.1** | 1,171 | 629 | **PASS** |
+
+**I79 — the chart costs 17.8x and buys nothing.** m141 is m132 with the memo
+replaced by a genuine chart: every clause node × every position, relaxed to a
+fixpoint right-to-left, per budget. It is the requested architecture, built
+faithfully, and it is 17.8x slower for -0.0007 score. The reason is measured,
+not guessed: m132 already touches **13.9 chart columns at p50** (55.1 at p90) out
+of |G| = 105 clause nodes, and only **119 of 3,675 = 3.2%** of cells are repair
+cells. A chart fills 100% of them. Two earlier independent measurements agree —
+the eager chart in `lib/src/recovery/semiring_recovery.dart` measured **11x**,
+and m51's bottom-up agenda measured **14x**. Sparse top-down deepening is not a
+weaker form of chart parsing; on this workload it is the optimisation.
+
+Both proposed ways to bound the chart were also refuted by measurement:
+repair sites are **100% at-or-before the frontier and 0% after** it (median 13
+characters left of it, p90 37), so a forward wavefront from the failure point
+searches the wrong direction; and a "healthy suffix" anchor exists in only
+**167 of 598** cases and brackets every site in just 49.1% of those.
+
+**I80/I81 — the one real signal the chart produced.** m141 invented 27% fewer
+zero-width AST nodes than m132, because a right-to-left cell knows what lies to
+its right before it commits. That is a local defect, and it is fixable top-down.
+`_emptyprobe.dart` confirms the frozen parser returns `SyntaxError`, not `Match`,
+for `Value`, `Number`, `Integer`, `Member` and `Object` on empty input — so a
+zero-width `Number` is not a grammar artifact, it is invention, and the brief
+bans inventing terminals of a class that are not there.
+
+I80 dropped every node covering zero characters that asserts none. It *lost*:
+0.9656 but perfect% 69.2 → 67.5, with `literal-damage` 0.970 → 0.943 and
+`multi-damage` 0.946 → 0.933. I81 is I80 restricted to `pos >= input.length`,
+and it costs nothing anywhere.
+
+The restriction is the whole insight, and it is not a tuning parameter:
+
+- **Past the end of the input the slot never existed.** The human never wrote
+  it; there is no evidence to the right that the node could ever have covered.
+  Naming it is invention.
+- **Mid-input the slot exists and its evidence was destroyed.** `[1,x]` still
+  has two `Number` slots even though one's characters are gone. Naming it is
+  correct, and deleting it is the error — which is exactly what I80 did, and
+  exactly what it paid for.
+
+`_zerowidth.dart` confirms the rule fires only where intended:
+
+| engine | cases hit | nodes | by category |
+|---|--:|--:|---|
+| m132 | 266/1792 | 378 | truncate 78, literal-damage 74, multi-damage 37, junk-insert 24 |
+| m143 | 197/1792 | 266 | **truncate 0**, literal-damage 73, multi-damage 37, junk-insert 24 |
+
+Truncate goes to zero; every other category is untouched to within one node.
+The 266 that remain are not defects — they are the engine correctly naming a
+slot whose evidence the damage destroyed.
+
+Concretely, both of these go from `err=6` to `err=0`:
+
+```
+{"a":     m132  {"a":[--]<}>      Value(Object(Member(String() Value(Number()))))
+          m143  {"a":<}>          Value(Object(Member(String())))
+[1,[2,    m132  [1,[2,[--]<]><]>  ...Value(Array(Value(Number()) Value(Number())))
+          m143  [1,[2,<]><]>      ...Value(Array(Value(Number())))
+```
+
+while `{"a":1,` — where the `Number` is real — is byte-identical under both.
 
 Controls, both measured rather than assumed:
 
