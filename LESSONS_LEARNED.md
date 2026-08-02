@@ -11340,3 +11340,141 @@ worth two to four lines each at a cost in clarity, and one honest structural cut
 (reusing the m63 escape hatch noted in memory) that is a different task with real
 regression risk. 410 with every control green is the truthful report; 400 by
 contortion would not have been.
+
+## Occasion 61 — r2: the fill, and where the acceptance cases forced its shape
+
+r1 could only skip characters. The whole of its remaining gap was on damage that
+REMOVED input: mean 0.234 against 0.073 for damage that added it. r2 adds the
+other half — at a frontier site the clause may be GRANTED where it stands, at no
+width, behind the same anonymous mark. **0.8822 / 46.3 perfect / 2235 ms /
+454 code lines**, every control green, and it is the first engine in the r-series
+to pass all three acceptance cases.
+
+**The three acceptance cases pin the design down completely, and they rule out
+the two obvious rules before any measurement.** Read together:
+
+- `,3true` must repair as `,3,true`: a fill of `','` must beat an available
+  deletion.
+- `[,2,` must repair as `[2,`: a deletion must beat a fill of `Value`.
+- `xa` on `S <- A 'x' 'a'; A <- [ab]` must delete nothing: a fill of `A`, which
+  is a NAMED RULE, must beat every deletion.
+
+So "never fill a named rule" is refuted by the third, and "prefer whichever costs
+fewer edits" is refuted by the second against the third — no lexicographic order
+over (deletions, gaps, inventions) satisfies both, because `[,2,` wants deletion
+ahead of a one-gap fill and `xa` wants a one-gap fill ahead of deletion.
+
+**What separates `A <- [ab]` from `Value` is not the kind of clause but whether
+the grammar determines the SHAPE of what is absent.** Every string `A` derives is
+one character and yields the same tree; `Value` derives an object or an array or
+a number, and a zero-width `Value` node asserts which one happened. That is the
+user's own objection — "it could be anything, so why pick 0" — stated
+structurally, and it is exactly what `_zerowidth` already counts. Choice is the
+whole of the difference, so `First`, `Repetition` and `Optional` are the whole of
+the exclusion. `_determined` is nine lines and decides all three cases with no
+tie-break at all.
+
+**The guard has to be asked of the RESULT, not of the frontier clause.** `Value`
+is never itself a fill site: the brief's First rule walks every arm, so what
+reaches the frontier at `[,2,` is `Str('true')`, `Str('{')`, `Str('"')`, `[0-9]`
+— all shape-determined terminals. Filling any of them makes `Boolean` or `Object`
+or `Value` match at zero width, and the invention appears one level up from the
+clause that was granted. `_invents` therefore walks the candidate's tree and asks
+only of nodes that are both empty and standing over a mark: a `ZeroOrMore` that
+matched no times is ordinary PEG and says nothing was there, whereas the same node
+wrapped around a mark says something was required and is missing.
+
+### The l-loop is a cost order, and adding a free edit broke it
+
+The first implementation offered the fill at `l = 0` and left the widening loop
+otherwise alone. All three cases still failed the same way: `_round` returns at
+the FIRST `l` that improves, so a fill at `l = 0` pre-empted every equally cheap
+deletion before it was ever scored. I misread this as a cost-model fault and
+rewrote `_cheaper` as a uniform edit distance. That was wrong twice over — it did
+not fix `[,2,`, and once the real fault was fixed it measured identical (0.8822
+both ways, 46.0 against 46.3) and was reverted. **r1's `l` loop is not a search
+order that happens to be cheap-first; it IS the cost order, one character per
+step.** A fill costs one obligation the input never supplied, which is the price
+of one skipped character, so it belongs in the `l = 1` pass and is weighed against
+the one-character skip there. Nothing else changes.
+
+The lesson generalizes past this engine: when a search enumerates candidates in a
+sequence that is implicitly ordered by cost, adding a new candidate KIND means
+placing it at its price in that sequence. Adding it at the front and then
+adjusting the comparator is a fix in the wrong layer, and it will measure fine on
+cases where the comparator never has to break a tie.
+
+### `String <- '"' Character* '"'` will eat your whole document for two marks
+
+With fills unrestricted, `[1,[2,` came back as a top-level **String** at cost 2 —
+supply the opening quote at 0 and the closing quote at 6, and `Character*`
+swallows the entire input, cheaper than the array the parser had already built out
+of it. `{"a":` did the same. `_recommit` caught it; the battery did not, and in
+fact PREFERRED it: 0.8848 / 47.0 with the pathology, 0.8822 / 46.3 without.
+
+The fix is `_explained`'s rule again, in the only form a fill can break it. A fill
+deletes nothing, so it cannot destroy a match; what it can do is make the re-parse
+read already-explained characters some other way. **A fill belongs where the parse
+RAN OUT, and that is a position the parse never explained** — so a fill is refused
+at any `p` the current tree covers, and allowed at `p == _in.length`, which is
+exactly where truncation lives. One clause on one `if`. It also cut latency from
+5666 ms to 2235, because most candidate sites disappear.
+
+### Both new guards were ablated; one costs score and stays anyway
+
+| variant | battery | perfect | ms | `_accept` | `_recommit` |
+| --- | --- | --- | --- | --- | --- |
+| r2 (shipped) | 0.8822 | 46.3 | 2235 | ok (1 1 1) | PASS 12/12 |
+| r2 without `_invents` | **0.8843** | **48.1** | 2173 | **b2 FAIL** | PASS |
+| r2 without the `held` fill guard | **0.8848** | **47.0** | 5666 | ok | **FAIL 4 cases** |
+| r2 with edit-distance `_cheaper` | 0.8822 | 46.0 | 2306 | ok | PASS |
+| r1 | 0.8018 | 23.3 | 662 | cx2=0 b1=0 b2=1 | PASS |
+
+Both ablations score HIGHER than the engine that ships. This is the m75/m77
+pattern for the third time: the battery is a shape metric and cannot see a node
+asserted on no evidence, so every honesty guard reads as a loss on it. `_invents`
+costs 0.0021 of battery and 2.1 perfect points and buys `[,2,`; the `held` guard
+costs 0.0026 and 0.7 and buys `_recommit`. Naming the price is the point — an
+engine whose guards were never ablated has not been measured, it has been
+asserted.
+
+### Where r2 stands
+
+| gate | r1 | r2 |
+| --- | --- | --- |
+| battery / perfect / ms | 0.8018 / 23.3 / 662 | **0.8822 / 46.3 / 2235** |
+| crashed / uncovered | 0 / 0 | 0 / 0 |
+| `_accept` cx2 b1 b2 | 0 0 1 | **1 1 1** |
+| `_recommit` | PASS 12/12 | PASS 12/12 |
+| `_freespan` | PASS | PASS |
+| `_committed` | OK | OK |
+| `_conf1` free passes / costs | 0, `0 1 1 0 2 3` | 0, `0 1 1 0 2 3` |
+| `_missing` holes / prefixes | 0 / 257 (505 nodes) | 0 / **26** (40 nodes) |
+| `_zerowidth` cases / nodes | 3 / 7 | **3 / 7** |
+| `_charge` free / mischarged | 0 / 0 | 0 / 0 |
+| clean corpus / LR / crash | 23/23, covers, 0 | 23/23, covers, 0 |
+| `dart test` | 308/308 | 308/308 |
+| code lines | 410 | 454 |
+
+Category gains land exactly where the r1 diagnosis said they would. The three
+categories whose damage REMOVED characters carry the whole improvement —
+delim-delete 0.773 to 0.928, quote-delete 0.705 to 0.842, truncate 0.716 to 0.851,
+multi-damage 0.695 to 0.809 — while the three that ADDED characters barely move
+(junk-insert +0.017, delim-insert +0.008, quote-insert +0.007), because deletion
+already handled those. content-damage is unchanged at 0.908 to three places.
+
+**`_zerowidth` is identical to r1 at 3 cases and 7 nodes.** That was the risk
+worth guarding: insertion is precisely the mechanism that could have blown it up,
+and m143 sits at 197/266 with 65 times more invention than either r-engine.
+
+`_missing` prefixes falling from 257 to 26 is the honesty result underneath the
+score: r2 leaves a tenth as many productions stopped short, because it can now
+supply what is absent instead of merely stopping where the input failed.
+
+**Two costs, stated plainly.** Latency is 2235 ms against r1's 662 — 3.4x, because
+every frontier site now gets two full re-parses in the `l = 1` pass instead of one,
+and more rounds succeed so more rounds run. Both engines still re-parse from cold
+each trial, which is D1 unaddressed. And 454 code lines is 44 over r1 and 54 over
+the 400 target; the fill itself is 9 lines (`_determined`), 19 (`_invents`), and
+the rest is the `_round` restructure into a `consider` closure so the fill and the
+skip are scored by the same code.

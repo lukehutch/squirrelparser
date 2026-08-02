@@ -78,6 +78,7 @@ import 'm140.dart' as m140;
 import 'm122.dart' as m122;
 import 'm123.dart' as m123;
 import 'r1.dart' as r1;
+import 'r2.dart' as r2;
 
 const negGrammar = '''
 Top <- Item+;
@@ -162,6 +163,7 @@ final engines = <(String, Cost)>[
   ('m122', (r, t) => m122.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m123', (r, t) => m123.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('r1', (r, t) => r1.Squirrel(rules: r, topRuleName: t).recoverCost),
+  ('r2', (r, t) => r2.Squirrel(rules: r, topRuleName: t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>

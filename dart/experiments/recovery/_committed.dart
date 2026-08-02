@@ -10,6 +10,7 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 import 'r1.dart' as r1;
+import 'r2.dart' as r2;
 
 void collectErrors(MatchResult m, List<SyntaxError> out) {
   if (m is SyntaxError) out.add(m);
@@ -22,6 +23,7 @@ typedef Run = MatchResult Function(Map<String, Clause>, String, String);
 
 final engines = <String, Run>{
   'r1': (r, t, s) => r1.Squirrel(rules: r, topRuleName: t).recover(s),
+  'r2': (r, t, s) => r2.Squirrel(rules: r, topRuleName: t).recover(s),
 };
 
 void main() {
