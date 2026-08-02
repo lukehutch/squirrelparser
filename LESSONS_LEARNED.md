@@ -12646,3 +12646,91 @@ the I91 correction cost **+35 lines**, not the ~15 I had assumed before counting
 is still inherited from r5/r6, but r9 is now the largest engine in the series
 and the goal is 165 lines away. Honest negative, and the counting was the point:
 the estimate was wrong by more than 2x in the direction that flattered the work.
+
+*(Superseded by Occasion 69: `r9.dart` was reduced in place to **535** lines with
+the reading unchanged. The 565 above is what the file measured when this occasion
+was written; git holds it at `32b6dfc`.)*
+
+---
+
+## Occasion 69 — three reductions that keep the reading, and the one that only looked free
+
+r9 answered the coherence question but left the SIZE goal further away than ever
+(565 against 400). This occasion changes **no reading at all** — same battery
+score to four decimals, same ten category means, same eight gates — and asks only
+what of the file is not carrying its weight. `r9.dart` is edited in place rather
+than becoming r10, because there is no insight here to number: it is the same
+engine written with less code.
+
+**565 → 535 lines, and ~2% faster.** Both goals moved the right way, which is why
+all four candidates were measured separately rather than shipped as one patch.
+
+### What went in
+
+| # | change | lines | latency | why it is the same engine |
+| --- | --- | --- | --- | --- |
+| 1 | `_len` deleted; a terminal is read by the frozen library's own `Terminal.match` through a per-call `Parser` | **−28** | ≈0 | The five `Terminal` subclasses implement exactly what `_len` reimplemented, `mismatch` carries the same `len = −1` sentinel, and the returned `Match` is the leaf the engine was building by hand. |
+| 2 | the `giveUp()` closure and its `before` length-marker replaced by a `reached` flag, the two call sites folded into `if/else`, and `here.any((v) => v.free)` fused into the carry loop as `clean` | −3 | **−3.8%** | `before` counted `next.length + moved.length` *after* the carry, so it was already a flag for "did the move or the resync add anything". A stop still does not count as reaching the slot — that is preserved explicitly. |
+| 3 | `_afford` returns `ws.sublist(0, n)` after a prefix scan instead of filtering the whole list | −1 | small | Its argument is always a `_prune` result, and `_prune` sorts by `_rank`, whose first key is `del + gap`. The prefix is a property of the caller, not a hope. |
+| 4 | dead `_Way.fix` getter, and the `if (c is Ref)` arm of `_expand` | −2 | 0 | `_ways` answers every `Ref` at its own line 739, before `_expand` can be called; `fix` has no executable use anywhere in the repo. |
+
+**The prefix claim in #3 was measured, not asserted.** Instrumented over the whole
+battery: **213,566** `_afford` calls actually dropped something, and the prefix
+scan agreed with the filter it replaced on **every one of them** — 0 disagreements.
+
+### The one that was refuted: hoisting `_minFill(sub)` and `_owed(c, i)` out of the way-loop
+
+Both are properties of the grammar at a slot, not of the prefix arriving at it, so
+hoisting them above `for (final w in cur)` looks like free reuse. Codex measured
+it on r8 as **−2% latency, no line change**, and recommended it. On r9 it is a
+**7% regression** and it was thrown out.
+
+| build | median ms (n paired runs) | note |
+| --- | --- | --- |
+| r9 (before) | 1749 (7) | baseline |
+| +1+2+3+4 **with** the hoist | 1786 (7) | lost **7 of 7** pairs |
+| +2+3+4 **without** the hoist | 1666 (5) | won **5 of 5** pairs |
+
+**Why it inverts.** `_minFill` is a map lookup and `_owed` is a loop of them, but
+in r9 the code that needs them is the EXCEPTION: a way reaches `giveUp` only when
+the slot could not be read where it stands, could not be moved to, and could not
+be resynchronised past. Hoisting moves a rare-path cost onto the common path,
+where it is paid by every way at every slot of every `Seq` at every position. The
+general rule this is an instance of: **hoisting is only reuse if the loop body
+actually used the value.** Guarding a computation is not the same as memoising it,
+and a memo does not make an unnecessary lookup free.
+
+It also shows why a second engine's measurement is a hypothesis and not a result:
+r8 and r9 differ exactly in how often the give-up path runs (r9's I91 correction
+made it emit one mark per obligation), so the same edit has the opposite sign.
+
+### Numbers
+
+Twelve paired runs, alternating, whole battery per run:
+
+```
+r9 before : median 1738 ms      r9 after : median 1704 ms     after faster in 8 of 12
+score     : 0.9721 / 73.6% perfect / 0 crashed / 0 uncovered  -- IDENTICAL, both
+categories: delim-delete .977  truncate .946  quote-delete .999  junk-insert .977
+            delim-insert .975  literal-damage .957  quote-insert .982
+            multi-damage .949  transpose .968  content-damage 1.000
+```
+
+The 2% is inside the run-to-run spread (±5%), so the defensible claim is **not
+slower**, with a measured median improvement of 2%. The line count is exact.
+
+Gates, all at the recorded r9 baseline: `_score1` 0.9721/73.6/0/0 · `_charge`
+`0 0 0` · `_committed` `[2..2, 2..4] OK` · `_conf1` `0 1 1 0 2 3` · `_freespan`
+PASS · `_recommit` 12/12 · `_accept` `cx2=1 b1=1 b2=1` · `dart test` +308.
+
+### Where this leaves the size goal
+
+r1 410, r7 481, r5 483, r6 520, r8 530, **r9 535**. Still **135 lines** over, and
+nothing above is architectural — these are four pieces of slack, and there is no
+fifth of this kind left that Codex or I have found. Getting under 400 needs a
+mechanism to leave, not a tidier way to write the ones that are there.
+
+**A note on what the delegation actually buys**, beyond the 28 lines: a recovering
+parser that reimplements terminal matching can silently disagree with the parser
+it recovers for. It did not disagree here — I checked all five subclasses — but
+the only way not to disagree is not to have an opinion.

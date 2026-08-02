@@ -462,8 +462,6 @@ class _Way {
   /// the field is an O(1) memo of the tree and not an independent claim.
   final int key;
 
-  int get fix => key > _far ? _far : key;
-
   /// Whether this is the reading the frozen parser itself would take.
   bool get peg => key > _far;
 
@@ -583,6 +581,15 @@ class Squirrel {
   final String topRuleName;
 
   late String _in;
+
+  /// The frozen parser, held for ONE reason: so that reading a terminal is the
+  /// library's own [Terminal.match] and not a second implementation of it here.
+  /// A recovering parser that disagrees with the parser it is recovering for --
+  /// about a character class, about a surrogate pair, about anything -- is
+  /// wrong by construction, and the only way not to disagree is not to have an
+  /// opinion. It costs one `List.filled(n + 1, 0)` per call, which is the same
+  /// allocation [recover] already makes for [_version].
+  late Parser _ref;
 
   /// Every clause at every position, not just every rule: a chart's inner
   /// clauses are re-entered from as many chains as reach them.
@@ -779,14 +786,17 @@ class Squirrel {
   /// [_rank] orders by total cost first, so a cell's ways come out ordered by
   /// what they cost: the budget question and the ranking question are answered
   /// by the same order, and where the dearest way is affordable there is no
-  /// question left to ask. Measured over the battery, the argument was
-  /// cost-ordered on all 2,377,870 calls and 91.1% of them dropped nothing.
+  /// question left to ask. The argument is always a [_prune] result, which
+  /// sorts by [_rank], so the prefix is a property of the caller and not a
+  /// hope; measured over the battery it held on all 2,377,870 calls, of which
+  /// 91.1% dropped nothing.
   List<_Way> _afford(List<_Way> ws) {
     if (ws.isEmpty || ws.last.del + ws.last.gap <= _budget) return ws;
-    return [
-      for (final w in ws)
-        if (w.del + w.gap <= _budget) w
-    ];
+    var n = 0;
+    while (ws[n].del + ws[n].gap <= _budget) {
+      n++;
+    }
+    return ws.sublist(0, n);
   }
 
   /// Both ways an answer can get better: reaching further, or costing less.
@@ -803,8 +813,8 @@ class Squirrel {
     return false;
   }
 
+  /// [_ways] answers every [Ref] itself, so this is never asked one.
   List<_Way> _expand(Clause c, int pos) {
-    if (c is Ref) return _lift(c, pos, _ways(rules[c.ruleName]!, pos));
     if (c is Seq) return _seq(c, pos);
     if (c is First) return _first(c, pos);
     if (c is Repetition) return _rep(c, pos);
@@ -868,13 +878,17 @@ class Squirrel {
         _budget = full - w.del - w.gap;
         final here = _ways(sub, w.end);
         _budget = full;
-        for (final v in here) {
-          next.add(w.then(v));
-        }
         // Discarding input in front of a slot is offered only where the slot
         // cannot be read where it stands. Offering it anyway would let any
-        // sequence buy length by throwing the input away.
-        if (here.any((v) => v.free)) continue;
+        // sequence buy length by throwing the input away. The question is
+        // answered while the readings are carried forward, since that walk is
+        // over the same list.
+        var clean = false;
+        for (final v in here) {
+          next.add(w.then(v));
+          if (v.free) clean = true;
+        }
+        if (clean) continue;
         // GIVE THE SLOT UP AND CARRY ON -- but only where nothing else
         // reached it. A production may move, resynchronize past input it does
         // not want, or say this part was never supplied and go on to the next;
@@ -882,34 +896,19 @@ class Squirrel {
         // by junk, and only it asserts something on no evidence at all. So it
         // is offered where the other two found nothing, which is the same rule
         // [_first] already applies to a damaged arm: a reading that explains
-        // what it takes outranks one that assumes it.
-        final before = next.length + moved.length;
-        void giveUp() {
-          if (next.length + moved.length != before) return;
-          final fill = _minFill(sub);
-          if (fill > 0 && fill < _never && w.del + w.gap + fill <= _budget) {
-            // ONE MARK PER OBLIGATION, exactly as the stop below emits them.
-            // The charge is read back off the tree, so a single mark standing
-            // for [fill] obligations is a repair the tree does not show: on
-            // `if (a` the slot costs 2 and one mark reports 1. The engine may
-            // not charge the budget for something it then declines to say.
-            var x = w;
-            for (var j = 0; j < fill; j++) {
-              x = x.then(_Way.owe(w.end, 1));
-            }
-            next.add(x);
-          }
-        }
-        // AND A PRODUCTION THAT HAD TO MOVE MUST FIT WHERE IT MOVED TO.
-        // Discarding in front of the FIRST slot does not resynchronize within
-        // this production: nothing of it has been read yet, so there is no
-        // left bracket to be inside of. It moves the WHOLE production
-        // somewhere else, and the only evidence that it belongs there is that
-        // it fits there, entire. `[1,[2,` read as a `String` that begins at
-        // the second character and then still needs its closing quote supplied
-        // is not a String that moved; it is a String invented around whatever
-        // the deletion happened to leave behind.
+        // what it takes outranks one that assumes it. A STOP IS NOT REACHING
+        // IT: the production ends there, so the slot is still unaccounted for.
+        var reached = false;
         if (i == 0) {
+          // AND A PRODUCTION THAT HAD TO MOVE MUST FIT WHERE IT MOVED TO.
+          // Discarding in front of the FIRST slot does not resynchronize
+          // within this production: nothing of it has been read yet, so there
+          // is no left bracket to be inside of. It moves the WHOLE production
+          // somewhere else, and the only evidence that it belongs there is
+          // that it fits there, entire. `[1,[2,` read as a `String` that
+          // begins at the second character and then still needs its closing
+          // quote supplied is not a String that moved; it is a String invented
+          // around whatever the deletion happened to leave behind.
           for (var k = pos + 1; k <= pos + _budget && k <= _in.length; k++) {
             final full = _budget;
             _budget = 0; // it must read cleanly there; the move is the cost
@@ -928,23 +927,21 @@ class Squirrel {
             _budget = full;
             if (chain.isEmpty) continue;
             moved.addAll(chain);
+            reached = true;
             break;
           }
-          giveUp();
-          continue;
-        }
-        // THE INPUT RAN OUT. A slot left unmet here is not a construct claimed
-        // on no evidence -- there is no evidence either way, because the
-        // document stopped. So the production STOPS, owing what the rest of it
-        // would have cost, and contributes NO NODE for any of it. Stopping is
-        // the whole of the claim: carrying on to fill a closing bracket whose
-        // body never arrived would assert a part that was never reached, and it
-        // is the difference between saying "the document ended here" and saying
-        // "an object was here". Being at the end of the input is what makes it
-        // honest; `w.end > pos` is what keeps it from inventing a production
-        // that was never entered.
-        if (w.end > pos) {
-          final owed = _owed(c, i);
+        } else {
+          // THE INPUT RAN OUT. A slot left unmet here is not a construct
+          // claimed on no evidence -- there is no evidence either way, because
+          // the document stopped. So the production STOPS, owing what the rest
+          // of it would have cost, and contributes NO NODE for any of it.
+          // Stopping is the whole of the claim: carrying on to fill a closing
+          // bracket whose body never arrived would assert a part that was
+          // never reached, and it is the difference between saying "the
+          // document ended here" and saying "an object was here". Being at the
+          // end of the input is what makes it honest; `w.end > pos` is what
+          // keeps it from inventing a production that was never entered.
+          final owed = w.end > pos ? _owed(c, i) : 0;
           if (owed > 0 && owed < _never && w.del + w.gap + owed <= _budget) {
             var x = w;
             for (var j = 0; j < owed; j++) {
@@ -952,27 +949,41 @@ class Squirrel {
             }
             stops.add(x);
           }
-        }
-        // And only as far as the FIRST position where it can be read cleanly.
-        // Discarding more costs strictly more, so the nearest place the slot
-        // reappears is the cheapest resynchronization there is; scanning past
-        // it would price the same repair several ways over.
-        final room = _budget - w.del - w.gap;
-        for (var k = w.end + 1; k <= w.end + room && k <= _in.length; k++) {
-          final full = _budget;
-          _budget =
-              0; // the slot itself must read cleanly; the skip is the cost
-          final at = _ways(sub, k);
-          _budget = full;
-          if (at.isEmpty) continue;
-          final past = w.then(_Way.skip(w.end, k));
-          for (final v in at) {
-            if (!v.free) continue;
-            next.add(past.then(v));
+          // And only as far as the FIRST position where it can be read
+          // cleanly. Discarding more costs strictly more, so the nearest place
+          // the slot reappears is the cheapest resynchronization there is;
+          // scanning past it would price the same repair several ways over.
+          final room = _budget - w.del - w.gap;
+          for (var k = w.end + 1; k <= w.end + room && k <= _in.length; k++) {
+            final full = _budget;
+            _budget =
+                0; // the slot itself must read cleanly; the skip is the cost
+            final at = _ways(sub, k);
+            _budget = full;
+            if (at.isEmpty) continue;
+            final past = w.then(_Way.skip(w.end, k));
+            for (final v in at) {
+              if (!v.free) continue;
+              next.add(past.then(v));
+              reached = true;
+            }
+            break;
           }
-          break;
         }
-        giveUp();
+        if (reached) continue;
+        // ONE MARK PER OBLIGATION, exactly as the stop above emits them. The
+        // charge is read back off the tree, so a single mark standing for
+        // [fill] obligations is a repair the tree does not show: on `if (a`
+        // the slot costs 2 and one mark reports 1. The engine may not charge
+        // the budget for something it then declines to say.
+        final fill = _minFill(sub);
+        if (fill > 0 && fill < _never && w.del + w.gap + fill <= _budget) {
+          var x = w;
+          for (var j = 0; j < fill; j++) {
+            x = x.then(_Way.owe(w.end, 1));
+          }
+          next.add(x);
+        }
       }
       if (next.isEmpty) {
         whole = false;
@@ -1091,11 +1102,11 @@ class Squirrel {
   /// recorded as one obligation the input never supplied. Nothing is spelled,
   /// so no character of an absent class is ever invented.
   List<_Way> _terminal(Clause c, int pos) {
-    final len = _len(c, pos);
-    if (len >= 0) {
+    final m = (c as Terminal).match(_ref, pos);
+    if (m.len >= 0) {
       final n =
-          c is Str || c is Char || (c is CharSet && !c.inverted) ? len : 0;
-      return [_Way(pos + len, 0, 0, n, _peg, leaf: Match(c, pos, len))];
+          c is Str || c is Char || (c is CharSet && !c.inverted) ? m.len : 0;
+      return [_Way(pos + m.len, 0, 0, n, _peg, leaf: m)];
     }
     if (_budget < 1) return const [];
     // A MULTI-CHARACTER LITERAL IS A SEQUENCE OF SINGLE-CHARACTER OBLIGATIONS,
@@ -1140,37 +1151,6 @@ class Squirrel {
       }
     }
     return j == k ? (kids, fills) : null;
-  }
-
-  /// How many characters [c] matches at [pos], or -1 for a mismatch.
-  int _len(Clause c, int pos) {
-    if (c is Str) {
-      if (pos + c.text.length > _in.length) return -1;
-      for (var i = 0; i < c.text.length; i++) {
-        if (_in.codeUnitAt(pos + i) != c.text.codeUnitAt(i)) return -1;
-      }
-      return c.text.length;
-    }
-    if (c is Char) {
-      return pos < _in.length && _in.codeUnitAt(pos) == c.char.codeUnitAt(0)
-          ? 1
-          : -1;
-    }
-    if (c is CharSet) {
-      if (pos >= _in.length) return -1;
-      final ch = _in.codeUnitAt(pos);
-      var inSet = false;
-      for (final (lo, hi) in c.ranges) {
-        if (ch >= lo && ch <= hi) {
-          inSet = true;
-          break;
-        }
-      }
-      return (c.inverted ? !inSet : inSet) ? 1 : -1;
-    }
-    if (c is AnyChar) return pos >= _in.length ? -1 : 1;
-    if (c is Nothing) return 0;
-    throw StateError('unknown clause type ${c.runtimeType}');
   }
 
   /// THE TREE FOR ONE WAY, BUILT WHEN SOMETHING ACCEPTS IT.
@@ -1247,6 +1227,7 @@ class Squirrel {
   /// round that answers answers with the cheapest repair there is.
   MatchResult recover(String s) {
     _in = s;
+    _ref = Parser(rules: rules, topRuleName: topRuleName, input: s);
     _memo.clear();
     _version = List.filled(s.length + 1, 0);
 
