@@ -3,7 +3,56 @@
 Recorded so the comparison required by the standing directive is genuine and
 not retrofitted after reading Codex. Committed before its output was available.
 
+## CORRECTION, added after measuring (a) instead of arguing it
+
+**My answer to (a) below was wrong in its central claim, and I am leaving the
+original text intact underneath so the error is legible.**
+
+I claimed the top-down search already reaches the fixed point a chart would, on
+the strength of `calls/cell` being 1.00. `_chartcost.dart` compares the two
+directly over 1792 cases and refutes it:
+
+    identical cost      : 1782
+    chart found cheaper : 9      <- I predicted 0
+    search found cheaper: 1      <- so the chart is not a superset either
+
+So the chart **does** reach readings the search misses. What I got right was the
+conclusion, and for a reason better than the one I gave: **the readings it
+uniquely reaches are structurally worse.** Isolating I81 from the chart:
+
+| engine | chart | I81 | AST-diff | perfect% | ms |
+|---|:-:|:-:|--:|--:|--:|
+| m132 | - | - | 0.9648 | 69.2 | 1,168 |
+| m141 | yes | - | 0.9641 | 67.8 | 21,319 |
+| **m143** | - | **yes** | **0.9693** | **72.1** | **1,171** |
+| m145 | yes | yes | 0.9668 | 70.6 | 21,274 |
+
+Holding I81 constant, adding the chart **costs** 0.0025 and 1.5 perfect points.
+The 9 cheaper repairs make the trees worse. Concretely, on `[1,[2,`:
+
+    expect  Value (Array (Value (Number ()) Value (Array (Value (Number ())))))
+    m143    cost=3  err= 0   [1,[2,<]><]>     closes both brackets
+    m145    cost=2  err=19   <">[1,[2,<">     "the whole document is a string"
+
+Two invented quotes beat three invented brackets on cost, so a globally
+cost-minimal search prefers re-reading the entire document as a damaged JSON
+string. On `[1,[2,[3,` the same reading scores err=31 against m143's err=0.
+
+**The top-down search's parochialism is what protects it.** It honours the
+structure the undamaged prefix already committed to -- an Array -- and so never
+considers throwing that structure away. The chart, being unbiased and global,
+finds the cheapest reading of the whole input and is punished for it.
+
+That is a sharper answer to the brief's own requirement to anticipate "probable
+human intent in how insertions/deletions/mutations are relatively prioritized":
+**cost-minimality is not human intent, and a globally cost-minimal recovery is
+not merely slower than a locally committed one -- it is wrong.** The chart is
+refuted at 18x latency *and* at zero latency.
+
+---
+
 ## (a) Is there a two-mode formulation that avoids the chart's fill cost?
+### (original text, central claim REFUTED above -- kept for the record)
 
 **My answer: no, and the reason is that the property the chart buys is one the
 top-down search already has.**

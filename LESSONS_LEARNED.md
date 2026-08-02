@@ -10312,10 +10312,15 @@ parsing.
 It is a faithful build, and that is measured rather than asserted: m141 passes
 acceptance (`ok cx2=1 b1=1 b2=1`), passes free-span, and reads **the same
 conformance row as m132** — `. 0 1 1 0 2 2`, identical costs on all six probes.
-So it is not slower because it is broken or because it computes something
-different. It computes the same answers under the same PEG semantics, and the
-17.8x is the **evaluation schedule alone**. That is what makes the refutation
-stick: there is no bug to fix that would recover the time.
+So it is not slower because it is broken. There is no bug to fix that would
+recover the time.
+
+(An earlier version of this section said it "computes the same answers." That
+was too strong, and `_chartcost.dart` corrects it: over 1792 cases the two agree
+on cost 1782 times, the **chart is cheaper 9 times**, and the search is cheaper
+once. The chart really does reach readings the search misses. §"What the chart
+uniquely reaches, and why that is a reason to refuse it" below is what those
+readings turn out to be.)
 
 It also loses:
 
@@ -10432,6 +10437,58 @@ Guarded so the drop can never fire on a grammar that genuinely admits an empty
 match there: the cost-0 memo is consulted, and a node is kept if the frozen
 parser admits any zero-length reading at that position. The rule is decided by
 the grammar, not by a threshold.
+
+### What the chart uniquely reaches, and why that is a reason to refuse it
+
+I predicted the chart would find nothing new, reasoning from `calls/cell` = 1.00
+that the search was already at the fixed point. That prediction was wrong, and
+measuring it instead of arguing it produced the better result.
+
+`_chartcost.dart`, over 1792 cases: **1782 identical, chart cheaper on 9, search
+cheaper on 1.** So the chart reaches readings the search misses — and is not a
+superset either.
+
+The obvious next question is whether those 9 are worth 18x. Isolating I81 from
+the chart answers it, because m145 = m141 + I81 separates the two changes that
+were previously confounded:
+
+| engine | chart | I81 | AST-diff | perfect% | ms |
+|---|:-:|:-:|--:|--:|--:|
+| m132 | - | - | 0.9648 | 69.2 | 1,168 |
+| m141 | yes | - | 0.9641 | 67.8 | 21,319 |
+| **m143** | - | **yes** | **0.9693** | **72.1** | **1,171** |
+| m145 | yes | yes | 0.9668 | 70.6 | 21,274 |
+
+**Holding I81 constant, the chart costs 0.0025 and 1.5 perfect points.** Its
+extra reach is not unprofitable at 18x — it is negative at zero latency.
+
+What it reaches is worth seeing. On `[1,[2,`:
+
+    expect  Value (Array (Value (Number ()) Value (Array (Value (Number ())))))
+    m143    cost=3  err= 0   [1,[2,<]><]>     closes both brackets
+    m145    cost=2  err=19   <">[1,[2,<">     "the whole document is a string"
+
+Two invented quote characters beat three invented brackets, so the globally
+cost-minimal repair of a truncated nested array is **to re-read the entire
+document as a damaged JSON string**. On `[1,[2,[3,` that reading scores err=31
+against m143's err=0. Five of the nine are this exact pattern.
+
+**The top-down search's parochialism is the feature.** It honours the structure
+the undamaged prefix already committed to and never considers discarding it. The
+chart is unbiased and global, and is punished precisely for that.
+
+The brief asks the recovery to anticipate "probable human intent in how
+insertions/deletions/mutations are relatively prioritized." This is the sharpest
+statement of that requirement the project has produced: **cost-minimality is not
+human intent.** No human reads `[1,[2,` as a broken string. A recovery that
+searches the whole input for the globally cheapest reading will eventually find
+one that throws away structure the input already established, and the cheaper it
+gets the worse it reads. Local commitment is not an approximation of global
+search that we tolerate for speed — on this workload it is the more correct
+objective.
+
+That also retires the last defence of the two-mode design. It was refuted at
+17.8x; it is now refuted at 1x.
 
 ### The five cases that got worse, and why they are not I81's fault
 
