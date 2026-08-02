@@ -449,6 +449,17 @@ class Squirrel {
       frontier = _prune(grown);
       all.addAll(frontier);
     }
+    // A `+` the input supplied no occurrence of owes exactly ONE, and never
+    // more. The guard above rightly refuses a zero-width iteration to a
+    // repetition that is already growing -- that is the loop it would spin in
+    // forever -- but a `+` with nothing at all is the one place a zero-width
+    // occurrence is what the grammar REQUIRES rather than a way to grow.
+    if (all.isEmpty) {
+      for (final v in _ways(c.subClause, pos)) {
+        if (v.end != pos) continue;
+        all.add(_Way(pos, v.del, v.gap, v.net, false, v.node, zero));
+      }
+    }
     return [
       for (final w in all)
         _Way(w.end, w.del, w.gap, w.net, w.peg, _close(c, pos, w))
@@ -475,10 +486,46 @@ class Squirrel {
       return [_Way(pos + len, 0, 0, n, true, Match(c, pos, len))];
     }
     if (_budget < 1) return const [];
-    return [
-      _Way(pos, 0, 1, 0, false,
-          Repaired(c, pos, 0, const [], [SyntaxError(pos: pos, len: 0)]))
-    ];
+    // A MULTI-CHARACTER LITERAL IS A SEQUENCE OF SINGLE-CHARACTER OBLIGATIONS,
+    // so the slot-by-slot repair the rest of the engine already uses applies
+    // inside it: read the characters the input does supply, in order, and
+    // supply the rest at one obligation each. `k >= 1` is the same honesty rule
+    // as `net > 0` one level up -- a literal supplied ENTIRELY is an invention,
+    // a literal with a character restored is a repair the input witnessed.
+    final out = <_Way>[];
+    if (c is Str) {
+      for (var k = c.text.length - 1; k >= 1; k--) {
+        if (pos + k > _in.length || c.text.length - k > _budget) continue;
+        final n = _align(c.text, pos, k);
+        if (n == null) continue;
+        out.add(_Way(
+            pos + k, 0, n.$2.length, k, false, Repaired(c, pos, k, n.$1, n.$2)));
+      }
+    }
+    out.add(_Way(pos, 0, 1, 0, false,
+        Repaired(c, pos, 0, const [], [SyntaxError(pos: pos, len: 0)])));
+    return out;
+  }
+
+  /// The [k] input characters at [pos] read in order against [text]: the leaves
+  /// they account for, and the marks where [text] asked for a character the
+  /// input did not supply. Null where they are not a subsequence of [text] at
+  /// all. Greedy is exact for a subsequence test. Every character READ becomes
+  /// a leaf, because a node that claims a span its leaves do not account for is
+  /// not a tree over the input, whatever it is labelled.
+  (List<MatchResult>, List<SyntaxError>)? _align(String text, int pos, int k) {
+    final kids = <MatchResult>[];
+    final fills = <SyntaxError>[];
+    var j = 0;
+    for (var i = 0; i < text.length; i++) {
+      if (j < k && _in.codeUnitAt(pos + j) == text.codeUnitAt(i)) {
+        kids.add(Match(null, pos + j, 1));
+        j++;
+      } else {
+        fills.add(SyntaxError(pos: pos + j, len: 0));
+      }
+    }
+    return j == k ? (kids, fills) : null;
   }
 
   /// How many characters [c] matches at [pos], or -1 for a mismatch.
@@ -554,6 +601,12 @@ class Squirrel {
         ? true
         : c is Seq
             ? c.subClauses.every(_determined)
+            // A `+` offers no choice of SHAPE, only of count, and one
+            // occurrence is the only count a fill can mean. `*` and `?` never
+            // need filling -- they match nothing for free -- so `requireOne` is
+            // the whole of the repetition that can be granted.
+            : c is Repetition && c.requireOne
+                ? _determined(c.subClause)
             : c is Ref
                 ? _determined(rules[c.ruleName]!)
                 : false;

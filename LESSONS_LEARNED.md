@@ -11577,12 +11577,13 @@ children, and m143 sits at 28 holes.
 
 | | r1 | r2 | r3 | m143 |
 |---|---|---|---|---|
-| battery | 0.8018 | 0.8822 | **0.9461** | 0.9693 |
-| perfect | 23.3% | 46.3% | **65.8%** | 72.1% |
-| ms | 689 | 2138 | 2837 | 1218 |
-| code lines | 410 | 454 | **409** | 628 |
+| battery | 0.8018 | 0.8822 | **0.9588** | 0.9693 |
+| perfect | 23.3% | 46.3% | **70.3%** | 72.1% |
+| ms | 689 | 2138 | 2523 | 1186 |
+| code lines | 410 | 454 | **440** | 628 |
 | `_missing` holes | 0 | 0 | **0** | 28 |
-| `_zerowidth` | 3/266 | 3/266 | **0/1792** | 197/266 |
+| `_zerowidth` nodes | 7 | 12 | 78 | 268 |
+| ... of a shape the input never fixed | 2 | **7** | **0** | **108** |
 | `_recommit` | — | PASS | **PASS** | PASS |
 | `_accept` | 2/3 | 3/3 | **3/3** | — |
 
@@ -11601,3 +11602,68 @@ linked list of ways through a single pass; r3 materialises a list per cell and
 prunes it, which is simpler to read and strictly more allocation. The profile is
 flat — no hot spot to remove, 45,122 ways kept over 7,670 expansions on a 51-char
 document, with a long tail out to 52 ways in a single cell.
+
+### literal-damage was two atoms that were hiding structure, not a missing mechanism
+
+At 0.9461 the biggest deficit left was literal-damage, 0.869 against m143's
+0.970, weight 1.5. Reading the repairs r3 actually chose refuted the obvious
+diagnosis. On `{"a":1,"bc":[2,33,rue],...}` it did not touch the damaged `rue`
+at all -- it filled two quotes elsewhere and read a longer string, cost 2 --
+and on `if (a) { if (b) { c=; } }` it deleted `c=;` outright. **Both are cases
+where the repair r3 wanted was unreachable, so it bought a worse one that was.**
+
+Neither needed a new mechanism. Both were places where a clause the engine
+treats as an ATOM is really a sequence the engine already knows how to repair:
+
+- **A multi-character literal is a sequence of single-character obligations.**
+  `_len` matched `Str` all-or-nothing, so `'true'` against `rue` could only be
+  invented whole AND the `rue` deleted -- cost 4 for what is one missing
+  character. Reading the literal character by character, supplying what is
+  absent at one obligation each and requiring at least one character to come
+  from the input, is the same `net > 0` honesty rule one level down. +0.0051,
+  and literal-damage 0.869 to 0.900.
+- **A `+` with no occurrence owes exactly one.** `_rep` refuses a zero-width
+  iteration -- correctly, it is the loop it would otherwise spin in forever --
+  but that also made `Name <- !Keyword [a-z]+` unfillable, so `="hi";` had no
+  reading at all and the statement was deleted. Allowing exactly one zero-width
+  occurrence, and only where the repetition has none, costs four lines. +0.0076.
+
+Together **0.9461 to 0.9588**, and 300 ms FASTER, because a cheap repair found
+early ends the deepening that an expensive one runs on. Note the second one is
+`_determined` finally saying what its own argument implied: r2 excluded every
+`Repetition` because choice is what makes a fill an invention, but a `+` offers
+no choice of SHAPE, only of count -- and `*` and `?` never need filling at all,
+since they match nothing for free.
+
+**A third rule was proposed, measured, and refuted.** "The input must supply
+more of the literal than the repair does" (`fills < reads`) sounds like the same
+honesty argument and is not: it scored WORSE in both pairings, 0.9588 to 0.9579
+and 0.9512 to 0.9503. A four-character keyword with two characters left is still
+that keyword when nothing else can stand there, and the cost order already
+prices the doubt. It was deleted.
+
+### `_zerowidth` cannot see the distinction it exists to enforce
+
+Granting the `+` took `_zerowidth` from 0 to 78, and the raw count is the wrong
+reading. **`_accept` case cx2 REQUIRES a zero-width named node** -- `xa` on
+`S <- A 'x' 'a'; A <- [ab]` must fill `A`, a named rule, rather than delete --
+while the brief forbids inventing a construct whose shape the grammar does not
+fix. The control counts both alike, so its own summary line cannot separate the
+repair the acceptance cases demand from the invention they forbid.
+
+Broken out by rule, on the same battery:
+
+| | total | of a shape the grammar FIXES | of a shape it does NOT |
+|---|---|---|---|
+| r1 | 7 | 5 `Name` | 2 |
+| r2 | 12 | 5 `Name` | **7** — `Cond` 3, `Stmt` 2, `Assign` 2 |
+| r3 | 78 | **78 `Name`** | **0** |
+| m143 | 268 | 160 | **108** — `Cond` 41, `Value` 26, `Term` 13, `Stmt` 12, `Expr` 10, `Factor` 6 |
+
+**Every one of r3's 78 is `stmt.Name`, which is `A <- [ab]` with a guard in
+front of it -- cx2 exactly.** Not one is a `Cond`, `Value` or `Expr`. r2, which
+I had been treating as the honest baseline, invents shape-undetermined nodes
+that r3 does not, because its `_invents` walk asks the question of the tree and
+misses the case where the choice is made a level up. So the count went up and
+the property the count was built to protect got strictly better, in r3's favour
+against both neighbours. Read the breakdown, not the total.
