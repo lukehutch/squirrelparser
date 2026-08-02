@@ -10629,3 +10629,309 @@ blind to it; the one that catches it took forty lines and immediately found two
 results neither the witness nor the battery had shown — a withdrawn insight that
 never worked, and the reason an architecture fails that no latency number could
 have given.
+
+---
+
+# MARCHING ORDERS — the `r` series (r1 onwards)
+
+Recorded verbatim on 2026-08-01, at the owner's explicit instruction ("for now
+add this to LESSONS_LEARNED so you don't lose these instructions if you
+compact"). **This supersedes the `m` series as the active line of work.** The `m`
+series ends at m143 (0.9693 / 72.1% / 1,171 ms / 628 LOC recovery-only).
+
+## The brief, verbatim
+
+> ok, for the next round I want you to try something new. now we're going to try
+> an entirely new method: start a new series of algorithms starting with r rather
+> than m, i.e. start from r1. The algorithm should do the following: (1) Start
+> with a PURE squirrel parser implementation, as detailed in the paper. (2)
+> Modify it so that on incomplete parse, the parser switches from parse mode into
+> "frontier-finding" mode. In frontier-finding mode, the partial AST is traversed
+> to the first mismatch point (recursively traversing through memoized mismatch
+> nodes, and skipping forwards past any subclause syntax errors that have already
+> been identified for a given clause matching at a given position). Maintain a
+> frontier <clause, pos> list for the recovery process; add the nodes that you
+> encounter that are the *leaf mismatches* (i.e. mismatches that were reached
+> through recursing deeper into the AST, not nodes that were marked as mismatches
+> because their subclause matches were marked as one or more mismatches), in
+> postorder (bottom-up) order. For Seq nodes, add ALL mismatching subclauses
+> after the last matching subclause to the list (in increasing order), each with
+> the same start position at the end of the last subclause match (don't recurse
+> into matching subclauses); for OneOrMore/ZeroOrMore clauses, add the position
+> after the last match; First clauses don't serve as frontier clauses if all
+> clauses mismatch, just traverse through all their subclauses (if all
+> mismatched) to add fronteir nodes reachable through any subclause. Then once
+> you have found all the fronteir nodes and recursed all the way back up to the
+> root, you should have a list of positions where skipping a span of characters
+> could cause another match to be found, advancing the parse. (3) Now enter
+> syntax error spanning mode: for a syntax error span length l starting at 1,
+> iterate through each of the <clause, pos> pairs in your
+> postorder-traversal-obtained list, and try matching the clause at position p+l,
+> skipping any for which p+l > (input.length). The *first time* you find a new
+> match of a specific clause C at position p+l, you have identified a syntax
+> error span from p to p+l. Then stop iteratively expanding the syntax error
+> span, and enter stage (4), advancement: Fully recurse again into the parse
+> tree, ignoring mismatch nodes, until you reach the same clause C being matched
+> at the same position p, and insert a syntax error node of length l, then
+> memoize a match of C at position p+l, and add both the syntax error match and
+> the matching subclause as subclause matches. (Actually the AST nodes should
+> possibly have separate lists for subclause matches and syntax error matches, to
+> keep the subclause match index lined up with the grammar subclause index). (5)
+> From there, continue parsing in the normal way, using the standard squirrel
+> parser. So basically, this algorithm uses just the squirrel parser, with
+> iterative widening of syntax error spans for all frontier nodes, in
+> deepest/earliest-visitable order, so that repair is as localized as possible
+> (higher nodes in the AST typically span larger ranges of the input string, so
+> that's why we look for iteratively-widened matches at the depeest part of the
+> tree first). This should be O(|G|n^2) for recovery, I think: one order for
+> iteratively widening the syntax error span s, and one order for the max depth
+> of the parse tree, which is O(|G|n). Note that the recovery mechanism itself
+> effectively skips input characters (handles deletions) in a greedy,
+> depth-first, bottom-up order, but a recovery that is found deeper in the tree
+> but that cannot continue much further after recovery can be superceded by a
+> recovery higher in the tree that prunes the entire part of the AST that was not
+> able to fully recovery (which hadles insertion under the Levenshtein model,
+> figuratively speaking). Make sure you think very carefully about how all the
+> parts of this algorithm interact with all the other parts, so that the syntax
+> error tombstones added by one successful recovery attempt are correctly taken
+> into account if another recovery parse is attempted, and so that they are
+> handled properly when the parser returns to standard squirrel parsing after a
+> recovery span is obtained. Think in particular very carefully about when to
+> ignore the memoization of mismatches, and when to go back to using mismatch
+> memos to avoid duplicating work again, and think very carefully about whether
+> to parse state through the call stack, vs. adding state to the parser object
+> (e.g. the frontier node list should probably be added to the parser object).
+> Also carefully manage all the bookkeeping for recovery (e.g. clearing the
+> frontier node list when it is no longer needed). Carefully design all aspects
+> of this algorithm first, writing your planned design into LESSONS_LEARNED.md
+> for lack of a better place, then implement it, then check your implementation
+> is complete and correct, then test it for robustness and efficiency and
+> elegance. This design should in theory get you well below the 400-line limit
+> that I keep stipulating.
+
+## Required order of work
+
+1. Design every aspect first, and **write the design into LESSONS_LEARNED.md**.
+2. Implement.
+3. Check the implementation is complete and correct.
+4. Test for robustness, efficiency and elegance.
+
+## What carries over from the `m` series, and what does not
+
+Still binding: D1 (never start a new `Parser`, never re-parse a repaired
+string), the two JSON acceptance cases (`,3true` -> `,3,true`; `[,2,` -> `[2,`),
+never invent a terminal of a class that is not there, the AST is primal and the
+input is never modified, and the gate set — `_accept.dart`, `_conf1.dart`,
+`_freespan.dart`, `_recommit.dart`, `_score1.dart`, `dart test`.
+
+**No longer binding for `r1`:** the whole `m`-series cost/net/`_better` key
+vector, cost-stratified deepening, the `_Way` Pareto lists, `Filled`
+insertion marks. The `r` design is a *deletion-only* recovery (syntax error
+spans skip input) with insertion handled implicitly by a higher recovery pruning
+a subtree that could not continue. That is a different objective function, so
+`m`-series scores are a reference point, not a target to match line for line.
+
+**I82 remains the key structural constraint** and the `r` design honours it by
+construction: every recovery decision here is taken *during a descent*, from a
+frontier node discovered by traversing the partial AST, so PEG priority and the
+descent-phrased guards remain enforceable. Nothing in `r1` materialises a cell
+whose derivation is unknown.
+
+## Addendum to the marching orders
+
+> Also have Codex check your s1 implementation against my prompt, when you have
+> finished implementing it, to make sure that the implementation is complete,
+> correct, elegant, minimal, and efficient.
+
+("s1" = r1.) So the order of work gains a step 5: **hand r1 plus the verbatim
+brief to Codex and have it check completeness, correctness, elegance,
+minimality and efficiency**, then compare against my own audit.
+
+---
+
+# r1 — the design, written before implementation
+
+## What the frozen parser actually does (read, not assumed)
+
+Confirmed from `lib/src/parser/{parser,memo_entry,combinators,terminals,
+match_result,clause}.dart`:
+
+- **Memoization is at RULE granularity only.** `Parser.match(clause, pos)` is
+  reached exactly twice: from `matchRule` (the top call) and from `Ref.match`.
+  Every other combinator calls `subClause.match(parser, pos)` **directly**, with
+  no memo. So `_memoTable` is keyed by the *rule's top clause object*, never by
+  an inner `Seq`/`First`/terminal.
+- **Mismatches are memoized** (`result = newResult` stores the `mismatch`
+  singleton), but again only at rule level.
+- **`Seq.match` discards its partial children on failure** — it returns the bare
+  `mismatch` singleton. **There is therefore no partial AST to traverse.** Any
+  design that says "traverse the partial AST" must either store partial children
+  or re-derive the descent. r1 re-derives (see stage 2).
+- `Match(clause, pos, len, subClauseMatches: kids)` **ignores the passed pos/len
+  whenever `kids` is non-empty** and recomputes the span from the children. This
+  makes it impossible to build a `Match` that spans a leading syntax error which
+  is not itself a child.
+- Clause set: `Seq`, `First`, `Repetition`(`OneOrMore`/`ZeroOrMore`), `Optional`,
+  `Ref`, `NotFollowedBy`, `FollowedBy`; terminals `Str`, `Char`, `CharSet`,
+  `AnyChar`, `Nothing`. `Optional` and `ZeroOrMore` and `Nothing` **never
+  mismatch**.
+- LR is handled in `MemoEntry.match` via `inRecPath` / `foundLeftRec` /
+  `memoVersion[pos]`, with the *ancestral* frame doing iterative expansion.
+
+## The one modification the algorithm requires: `matchSub`
+
+The brief says to memoize a repaired match "of C at position p", where C is a
+frontier clause. But a frontier clause is usually an **inner** clause (a Seq
+element, a repetition body, a terminal), and inner clauses are matched by direct
+`c.match(parser, pos)` calls that never consult the memo table. **A repair
+installed at an inner clause would simply never be read.**
+
+So r1 adds exactly one indirection. Every combinator that matched a subclause by
+calling `c.match(parser, pos)` now calls `parser.matchSub(c, pos)`:
+
+    MatchResult matchSub(Clause c, int pos) =>
+        repairs[c]?[pos] ?? c.match(this, pos);
+
+That is the whole modification to the parsing core. It gives:
+- one place where repairs enter the parse, for **all** clause kinds;
+- a repair table separate from the memo table, so the two are cleared
+  independently (the bookkeeping question);
+- repairs visible to *normal* stage-5 parsing and to the stage-2 frontier walk
+  alike — which is exactly "skipping forwards past any subclause syntax errors
+  that have already been identified for a given clause matching at a given
+  position".
+
+Rule-level memoization is untouched, so the parser stays the paper's parser.
+
+## The repaired node
+
+`Match` cannot represent it (see above: it recomputes its own span). So:
+
+    class Repaired extends MatchResult {
+      final List<MatchResult> subClauseMatches;   // grammar-aligned, no error in it
+      final List<SyntaxError> errors;             // the skipped spans, separate
+    }
+
+extending `MatchResult` directly so `pos`/`len` are set explicitly and span
+`[p, p+l+innerLen)`. Keeping `errors` out of `subClauseMatches` is what preserves
+the index alignment between `subClauseMatches[i]` and `subClauses[i]` that the
+brief asks for.
+
+## Stage 2 — frontier finding
+
+Entry condition: `root.isMismatch || root.len != input.length`.
+
+`_frontier(Clause c, int pos)` mirrors `match` but records instead of building.
+It appends to `parser.frontier`, a `List<(Clause, int)>` **on the parser
+object** (state that outlives a single call stack and must be cleared per round
+— it is not call-stack state). Postorder = recurse first, append after.
+
+| clause | mismatched at p | contributes |
+|---|---|---|
+| `Seq` | subclause *i* is the first to fail, at `curr` | recurse into `sub[i]` at `curr`; then append `(sub[j], curr)` for **all** `j >= i`, increasing |
+| `First` | all arms failed | recurse into every arm at `p`; **append nothing for the `First` itself** |
+| `OneOrMore` | body failed at `curr`, zero reps | recurse into body at `curr`; append `(body, curr)` |
+| `ZeroOrMore` | *never mismatches* | reached only via the short-parse walk; append `(body, curr)` after the last rep |
+| `Optional` | *never mismatches* | nothing |
+| `Ref` | rule failed | recurse into the rule's top clause at `p` |
+| `FollowedBy` | body failed | recurse into body; append `(self, p)` |
+| `NotFollowedBy` | body **matched** | append `(self, p)` — do **not** recurse, nothing below it failed |
+| terminal | failed | append `(self, p)` — this is the leaf mismatch |
+
+The `Seq` rule is the load-bearing one and it is why the algorithm handles more
+than deletion: appending `sub[j]` for every `j >= i`, not just `j == i`, is what
+lets a repair *skip over a subclause that is missing entirely* and resume at a
+later element of the sequence.
+
+**Short-parse walk.** When the top rule matched but stopped short, nothing
+mismatched, so the table above never fires. r1 walks the **rightmost spine** of
+the successful match: at each `Repetition` on that spine, the body failed at the
+repetition's end `curr`, so recurse into the body at `curr` and append
+`(body, curr)`. This is the only way a *successful* match leaves a boundary the
+parse could be advanced past.
+
+Dedup on `(identical clause, pos)` while preserving first-seen postorder.
+
+## Stage 3 — span widening
+
+    for l = 1, 2, 3, ... while l <= input.length - minFrontierPos:
+      for (C, p) in frontier:                  // postorder: deepest/earliest first
+        if p + l > input.length: continue
+        r = matchSub(C, p + l)
+        if !r.isMismatch && r.len > 0: -> repair (C, p, l, r); goto stage 4
+
+**`r.len > 0` is a required guard, not a refinement.** Without it the algorithm
+is broken: the `Seq` rule appends *every* subclause after the failure point,
+and any `Optional`/`ZeroOrMore` among them matches vacuously at `p+1`, so l=1
+would always "succeed" with a repair that explains nothing. A zero-length match
+obtained by skipping l characters is a deletion, not a repair. (Same content as
+the `m` series' I68, arrived at independently here.)
+
+## Stage 4 — advancement
+
+Install, in order:
+
+1. **Invalidate stale memos** — the "when to ignore mismatch memos" question.
+   The precise rule, and why each half is needed:
+   - drop every **mismatch** memo at `q <= p`: its descent could have reached `p`
+     and would now succeed;
+   - drop every **match** memo with `q + len >= p`: it either ends exactly at the
+     repair and could now extend (`Stmt+` that stopped), or spans the repair and
+     could now take a *higher-priority* `First` arm that previously failed.
+   - **keep** mismatch memos at `q > p` and matches ending strictly before `p`:
+     nothing they consulted has changed. This is what stops recovery from
+     degenerating into a full re-parse per repair.
+2. `repairs[C][p] = Repaired(C, p, l + r.len, [r], [SyntaxError(pos: p, len: l)])`.
+3. Re-run `matchRule(topRuleName, 0)`.
+
+Step 3 is **not** a new parse: same `Parser`, same input, same memo table, the
+surviving memos carry the prior work. D1 is satisfied. The re-descent naturally
+"recurses again into the parse tree ignoring mismatch nodes" because the stale
+mismatch memos were just dropped, while the repair at `(C, p)` is picked up by
+`matchSub`.
+
+## Stage 5 — iterate, and supersession
+
+Clear `frontier`, and if the parse is still incomplete, go back to stage 2.
+
+**Supersession is emergent, not a separate mechanism.** The brief notes that a
+deep repair which cannot continue far should be superseded by a higher one that
+prunes the failed subtree. That is what iteration does: round *k*'s deep repair
+advances the parse a little; round *k+1*'s frontier is computed from the *new*
+partial parse and contains higher clauses whose repair spans a larger region,
+absorbing the earlier syntax-error span inside it. No undo is required. If
+measurement shows genuine deep-repair lock-in, an explicit undo attaches at
+stage 4 step 2 (drop the repair, mark `(C,p,l)` tried, continue widening) — this
+is the one place r2 would differ, and it is noted so the seam is known.
+
+**Termination.** Every repair adds `l >= 1` characters of input to the union of
+syntax-error spans, that union only grows, and it is bounded by `n`. So at most
+`n` rounds; each round is one `O(|G|n)` re-parse plus a frontier scan. Stop also
+when a round produces no repair at any `l`, and emit the remaining input as one
+trailing `SyntaxError` exactly as the frozen `parse()` already does.
+
+## What could go wrong, listed before implementing
+
+1. **Left recursion × repair.** A repair installed inside an LR cycle changes the
+   seed. `memoVersion` is per-position and untouched by the memo drop, so an
+   entry re-created after a drop starts at generation 0 while `memoVersion[pos]`
+   may be higher — a stale-looking entry that is actually fresh. Fix: after
+   dropping, set the new entry's `memoVersion` from the parser, or drop
+   `memoVersion[pos]` back to 0 for dropped positions. **Must be tested with a
+   left-recursive grammar** (`Expr <- Expr AddOp Term / Term`).
+2. **`NotFollowedBy` under repair.** `!K` at `p` currently fails because K
+   matches. After an unrelated repair, K may match *differently*. The memo drop
+   rule covers it only if K's memo is in scope — K is a rule so it is.
+3. **A repair inside a lookahead** would let a predicate consume a syntax error,
+   which is meaningless (predicates consume nothing). r1 must not install repairs
+   discovered under `FollowedBy`/`NotFollowedBy` bodies. Guard: do not recurse
+   into predicate bodies during frontier finding — the table above already stops
+   at `NotFollowedBy`, but `FollowedBy` recurses, and that is a live risk to
+   check.
+4. **Zero-length repetition bodies** already break `Repetition.match`'s loop
+   (`if (result.len == 0) break`); the `r.len > 0` guard must not reintroduce it.
+5. **The `,3true` and `[,2,` acceptance cases** are deletion-shaped, which suits
+   this design: `[,2,` should repair by skipping the leading `,` (span l=1 at the
+   `Value` frontier) rather than inventing a `0`. This design *cannot* invent a
+   terminal at all, so the "never invent a terminal" rule holds by construction —
+   a strong point worth verifying rather than assuming.
