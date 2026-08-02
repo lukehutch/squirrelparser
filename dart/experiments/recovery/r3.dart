@@ -44,9 +44,11 @@
 //     `'}'` and `A <- [ab]` have one tree whatever they derive; `Value` has one
 //     per arm, and a zero-width `Value` would assert an object or an array or a
 //     number happened, on no evidence at all.
-//   * Deleting a character contradicts evidence the input supplied; a gap only
-//     records evidence it never supplied. At equal total cost, fewer DELETIONS.
-//   * At equal cost, the reading that EXPLAINS more of the input wins ([_Way.net]).
+//   * At equal cost, the reading that EXPLAINS more of the input wins
+//     ([_Way.net]), and only then the one that DELETED less. Deleting a
+//     character contradicts evidence the input supplied where a gap only
+//     records evidence it never supplied -- but that is a proxy for keeping the
+//     input, and [_rank] says where the proxy inverts.
 //
 // AND ONE THING NEITHER r1 NOR r2 NEEDED. A chart admits readings PEG does not:
 // `'a'* 'a'` fails in PEG because the star is possessive, and succeeds here
@@ -187,15 +189,21 @@ class Squirrel {
   // -- the ordering ----------------------------------------------------------
 
   /// Fewest edits; PEG's own reading ahead of any other of the same cost; among
-  /// equals fewest DELETIONS, because destroying a character the input supplied
-  /// contradicts evidence where a gap only records its absence; among those,
-  /// the reading that EXPLAINS the most.
+  /// equals the reading that EXPLAINS the most; among those, fewest DELETIONS.
+  ///
+  /// `net` ahead of `del` is measured, and the two disagree exactly where it
+  /// matters. Fewest deletions is only a PROXY for keeping the input, and it
+  /// inverts on the cheapest destructive repair there is: filling one opening
+  /// quote costs a single gap and lets `Chr*` swallow the rest of the document
+  /// through `[^"\]`, which deletes nothing, explains nothing, and loses every
+  /// construct it covers -- while the honest reading spends several deletions
+  /// and keeps everything after them. `net` measures what the proxy stood for.
   static int _rank(_Way a, _Way b) {
     final ea = a.del + a.gap, eb = b.del + b.gap;
     if (ea != eb) return ea - eb;
     if (a.peg != b.peg) return a.peg ? -1 : 1;
-    if (a.del != b.del) return a.del - b.del;
-    return b.net - a.net;
+    if (a.net != b.net) return b.net - a.net;
+    return a.del - b.del;
   }
 
   /// One way per end position -- the best -- and one PEG way in the cell.
@@ -637,9 +645,18 @@ class Squirrel {
         // A way that stops short is charged for the tail it never reached, so
         // a real derivation of a prefix competes on the same terms as a reading
         // of the whole input rather than being preferred for being a parse.
+        //
+        // AND IT LOSES ITS PEG CLAIM WITH THE TAIL. `peg` says "this is the
+        // reading the frozen parser would take" of THE INPUT, and a way that
+        // stops short read a prefix instead; carrying the flag past the charge
+        // let a clean parse of part of the document outrank the honest reading
+        // of all of it, because `peg` outranks everything below total cost. On
+        // `a*` that is exactly the difference between naming the `MulOp` whose
+        // operand the document never supplied and deleting the `*`.
         final tail = s.length - w.end;
         if (w.del + w.gap + tail > _budget) continue;
-        final a = _Way(w.end, w.del + tail, w.gap, w.net, w.peg, w.node);
+        final a =
+            _Way(w.end, w.del + tail, w.gap, w.net, w.peg && tail == 0, w.node);
         if (best == null || _rank(a, best) < 0) best = a;
       }
       if (best != null) break;

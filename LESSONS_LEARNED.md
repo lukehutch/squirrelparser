@@ -11667,3 +11667,112 @@ that r3 does not, because its `_invents` walk asks the question of the tree and
 misses the case where the choice is made a level up. So the count went up and
 the property the count was built to protect got strictly better, in r3's favour
 against both neighbours. Read the breakdown, not the total.
+
+### two one-line ranking fixes were worth more than any new mechanism
+
+Profiling r3 to answer "where does the time go" turned up two ordering defects
+instead, both in `_rank`'s tie-break and both costing score AND latency.
+
+**A way that leaves a tail is not the PEG reading.** `recover` charges the
+uncovered tail as deletions and then re-ranks, but it was passing `w.peg`
+through unchanged -- so a clean parse of a PREFIX still claimed to be the
+reading the frozen parser would take, and `peg` outranks everything below total
+cost. On `a*` the honest answer (`MulOp` read, `Factor` unmet at end of input,
+owing 1) tied at cost 1 with "read `a`, delete `*`", and lost, because the
+loser carried `peg` from the prefix it had read cleanly. The whole `truncate`
+category was paying it. `w.peg && tail == 0` is the fix: `peg` claims a reading
+of the input, and a way that stops short has not read the input.
+
+**A fill that explains nothing was beating a deletion that preserves the
+document.** `_rank` ordered ties by fewer deletions BEFORE more explained
+(`net`), and "fewer deletions" is only a proxy for "keep more of the input"
+whereas `net` measures it. The proxy inverts exactly where it matters: filling
+an opening quote costs one gap and lets `Chr*` swallow the rest of the document
+through `[^"\]`, which explains nothing and destroys every construct in it,
+while the honest repair spends several deletions and keeps everything after
+them. On `x=1; if (x) { y=\; z=3; } w=4;` r3 answered with one `Assign` where
+three statements survive. Comparing `net` before `del` reverses it.
+
+| | battery | perfect | ms |
+|---|---|---|---|
+| r3 as committed | 0.9588 | 70.3 | 2664 |
+| + `peg` needs the whole input | 0.9611 | 71.1 | 2662 |
+| + `net` before `del` | 0.9620 | 70.4 | 2568 |
+| **both** | **0.9642** | **71.2** | **2545** |
+
+Six changed characters, +0.0054 battery, +0.9 perfect, and 4.5% faster --
+better ordering visits fewer wrong readings. `truncate` 0.904 -> 0.918 (m143 is
+0.919), `delim-insert` 0.957 -> 0.969, `transpose` 0.954 -> 0.963. All gates
+held: `_accept` cx2/b1/b2, `_recommit` 12/12, `_missing` 0 holes, `_conf1` `.`,
+`_committed`, `_freespan`, `_charge` 0, 308/308 tests.
+
+### a best-first search cannot help: the ceiling is 3.3%, measured
+
+Iterative deepening's apparent waste is re-derivation -- every round below the
+answer's cost is paid and thrown away -- so a priority queue that visits states
+in cost order and stops at the first complete parse looks like free latency.
+Bound it before building it. Run r3 twice: once to learn the answer's cost `C`,
+once with the deepening loop STARTED at `C`. Round `C` admits every way of cost
+<= `C`, so the answer is identical (checked: 0 mismatches in 1787 cases), and
+the second run pays for no round below it. That oracle is strictly better than
+any real best-first search, because it also knows `C` in advance and so never
+explores a cost it did not need.
+
+| cost | n | deepening | oracle | saving |
+|---|---|---|---|---|
+| 1 | 1095 | 725 us | 757 us | **-4.4%** |
+| 2 | 487 | 1786 | 1734 | 2.9% |
+| 3 | 136 | 4202 | 4010 | 4.6% |
+| 4 | 53 | 5465 | 4910 | 10.2% |
+| 5 | 10 | 7855 | 5439 | 30.8% |
+| 6 | 6 | 7340 | 4664 | 36.5% |
+| **all** | **1787** | **2647 ms** | **2561 ms** | **3.3%** |
+
+**At cost 1 -- 61% of the battery -- the oracle is SLOWER.** The budget-0 pass
+is not waste: it fills the chart with the frozen parser's single-way cells at
+almost no cost, and round 1 re-expands from that seed instead of from nothing.
+Deepening is already paying for its own speedup. A real queue would also have
+to discover `C`, and would add heap operations to a path whose unit of work
+costs ~340 ns, so its realistic budget is below zero. Refuted, and cheaply.
+
+### the unit of work is the memo LOOKUP, not the expansion
+
+Correlation with elapsed time over 1787 warm cases: **lookups 0.984**, pruneIn
+0.982, combos 0.980, expansions 0.905, recomputes 0.951, `maxCell` 0.310, input
+length **0.225**, final cost 0.673. Time is ~340 ns per `_ways` call and that
+ratio is flat across every budget (332-386 ns from cost 1 to cost 6), where
+us/expansion more than doubles (0.39 -> 1.02). So `_expand` is not the unit; the
+lookups a Seq makes per chain are, and any latency work must cut lookups.
+
+Cost dominates what generates them -- mean 718 us at cost 1, 1728 at 2, 4136 at
+3, 7542 at 5 -- and the 205 cases at cost >= 3 are 11% of the battery for 36% of
+the time. By grammar, `expr` is nearly free (5.0% of time for 13.6% of cases)
+because its cells hold 6.1 ways against `json`'s 38.2: chart width, not input
+length, is the multiplier, and `json`'s inverted-charset runs are what open it.
+
+**Warm the JIT before timing individual cases.** A cold run put
+`"a":1,...` in the slowest 20 at 11.3 ms with only 1493 expansions -- 17x the
+median's time per expansion, and it looked like a real anomaly contradicting
+the cost model. Warm it is 2.4 ms and not in the list at all. The aggregate was
+unaffected (2606 ms cold vs 2581 warm); only the per-case tail was fiction.
+
+### a repetition may not delete a whole occurrence -- destruction is still the widest description
+
+The remaining deficit against m143 is junk BETWEEN list items: r3 can discard
+input in front of a `Seq` slot but never between repetition occurrences, so a
+stray `"` inside a block had no cheap deletion and r3 paid two quote fills that
+swallowed the rest of the document. Giving `_rep` the same resynchronization
+`_seq` has -- 14 lines, no new concept -- was the obvious fix and it does not
+pay: 0.9631 battery (**-0.0011**), 71.8 perfect (+0.6), 2380 ms (-8%).
+
+It buys `quote-insert` 0.973 -> 0.985 and sells `literal-damage` 0.954 -> 0.938,
+and the four worst regressions say why in one shape: given `x=; if (x) {...}`,
+r3 keeps the broken `Assign` (`del@2:;` plus two fills) and the repetition
+skip DELETES THE WHOLE STATEMENT (`del@0:x=;`) at the same cost of 3. A
+repaired construct scores; a vanished one does not. Same lesson as m77/I33.
+
+The justification does not transfer either, which is the part worth keeping. A
+`Seq` slot is REQUIRED -- the sequence cannot proceed without it, so the nearest
+clean read really is the cheapest resynchronization. A repetition's next
+occurrence is never required: it may always stop. So this is not the same rule
+extended to a second combinator, it is a new freedom, and it was priced as one.
