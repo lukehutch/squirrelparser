@@ -37,6 +37,14 @@
 // m129 carries it and still fails. I78 does. I77 was withdrawn for scoring, and
 // this is the harder reason it was right to withdraw.
 //
+// The 5 `stmt` cases pass on every engine tested, including the four that fail
+// on JSON. That is a result, not filler: the swallow needs an arm that can
+// absorb ARBITRARY CONTENT, and `Stmt <- Block / If / Assign` has none, while
+// `Value <- ... / String / ...` does. So the exposure is a grammar property --
+// any grammar with a catch-all arm (a quoted string, a comment, a raw-text
+// block) can have its whole document re-read as that arm for the price of two
+// invented delimiters.
+//
 // Second, and this is the structural one: m141 and m145 CARRY I78 and fail
 // anyway. I78 admits a repair-opened alternative only where the input witnesses
 // it -- a condition on the DESCENT, on which alternative may be opened. A chart
@@ -74,8 +82,14 @@ class Probe {
 }
 
 /// The arms of each grammar's top-level choice, verbatim from the grammar.
+///
+/// `expr` is deliberately absent: its choice is `Factor <- Num / '(' Expr ')' /
+/// Name`, and `Num`/`Name` are lexically disjoint, so swapping them needs a
+/// character mutation inside a span that already matched -- which is
+/// `_freespan.dart`'s question, not this one.
 const arms = <String, Set<String>>{
   'json': {'Object', 'Array', 'String', 'Number', 'Boolean', 'Null'},
+  'stmt': {'Block', 'If', 'Assign'},
 };
 
 /// Each input opens with a character only one construct can begin, so the
@@ -88,6 +102,14 @@ const probes = <Probe>[
   Probe('json', '{"a":{"b":', 'Object'),
   Probe('json', '{"p":[1,2,3],"q":[4,5,6],"', 'Object'),
   Probe('json', '[{"x":[1,', 'Array'),
+  // `Stmt <- Block / If / Assign`. The three arms are genuinely confusable
+  // under repair: dropping the `{` reads a block's body as a bare Assign, and
+  // inventing `if (` reads an Assign as the tail of an If.
+  Probe('stmt', '{ a=1; b=2;', 'Block'),
+  Probe('stmt', '{ a=1; { b=2;', 'Block'),
+  Probe('stmt', 'if (a) { b=1;', 'If'),
+  Probe('stmt', 'if (a) { if (b) { c=', 'If'),
+  Probe('stmt', 'x=1; if (a) { b=', 'Assign'),
 ];
 
 void main(List<String> argv) {
