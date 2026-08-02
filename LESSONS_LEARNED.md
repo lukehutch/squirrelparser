@@ -12225,3 +12225,110 @@ and `left-rec` quadratic on **clean** input. Taken because per-case latency on
 the battery is 0.90 ms — 280× under the 250 ms goal — so the constant is
 invisible against the target it exists to protect, while the quadratics it
 removes are unbounded and grow: 740× and 9739× already at n ≈ 2048.
+
+## Occasion 66 — DESIGN: the frontier list already holds both sides of the alignment, and `l` starting at 1 is what hid it
+
+Returning to the original r-series brief with the question it poses: the brief
+describes deletion at TWO levels — deep, a run of unmatchable input characters
+marked as an error and skipped; shallow, a fuller recovery superseding a partial
+one and pruning the whole subtree that could not recover — and asks whether that
+unifies the Levenshtein model.
+
+**It does, and the mechanism is sharper than "one number".**
+
+### What r6 actually does with the two costs
+
+`_Way` carries `del` (characters discarded) and `gap` (obligations unmet). Its
+doc comment says they are *"kept apart rather than summed because they are not
+the same claim: see `Squirrel._rank`."* **That comment is wrong.** `_rank`
+line 496 opens `final ea = a.del + a.gap` and never looks at either again;
+`_afford` sums them; every budget test sums them. They are used separately in
+exactly two places:
+
+* `_first`'s lever H (line 859): `(w.end - pos) - w.del - w.net >= w.net`. This
+  needs `del` only to turn *span* into *consumed*, so it can compare *assumed*
+  against *explained*. `gap` cannot appear, because gap characters were never in
+  the span.
+* the root tail charge (line 1108): `w.del + tail`. Unread tail is denied input,
+  so it belongs to `del`.
+
+So the cost model is *already* one number. What keeps two fields is one span
+computation. **Carrying `raw` (characters consumed by any terminal) instead of
+`del`/`gap` collapses it**: cost becomes `edit = del + gap`, and lever H becomes
+`raw >= 2 * net`, which no longer mentions `pos` or `end` and so stops being a
+span computation at all. Field count is unchanged, but the last place the two
+costs are distinguished disappears.
+
+### The real unification: one primitive, and depth chooses the side
+
+The two operations are the two SIDES of a Levenshtein alignment between the
+input string and the grammar:
+
+| side skipped | cost | where the brief puts it |
+|---|---|---|
+| a run of INPUT characters `[p, p+l)` | `l` | DEEP — the error span |
+| a run of GRAMMAR clauses | `minFill` of them | SHALLOW — the superseded subtree |
+
+They are not one number, because they are the two axes of the edit-distance DP.
+They are one MECHANISM: *skip a run on one side*. r6 already has this at the
+monoid level — `_Way.skip` and `_Way.owe` are two ELEMENTS folded by the same
+product, not two rules. What r6 lacks is the brief's SEARCH: it explores both
+sides everywhere, through a full chart with budget deepening, instead of trying
+input-skips deepest-first and letting grammar-skips fall out of supersession.
+
+### The single line that made r1 deletion-only
+
+`r1.dart:494` — `for (var l = 1; l <= _in.length; l++)`.
+
+**`l = 0` is not a no-op.** The brief says a Seq contributes *all* mismatching
+subclauses after the last matching one, each at the same position. The pure parse
+tried slot `i` at `p` and stopped; it NEVER tried slot `i+1` at `p`. So asking
+the frontier at `l = 0` is a genuinely new question, and answering it is exactly
+the grammar-side skip: `S <- 'a' 'b' 'c'` on `ac` matches `'c'` at `p = 1` with
+slots `[i, i+1)` skipped, cost `minFill('b') = 1`. Starting `l` at 1 skips past
+the entire insertion half of the alignment. (`r1.dart:500`,
+`if (p + l > _in.length) continue;`, is the brief's own restriction and belongs
+to the same blind spot — but it is NOT the fix, see below.)
+
+The grammar-skip must also be allowed to run past the LAST slot, not only to a
+later slot: that is what covers truncation, and it is precisely r6's `_owed`.
+
+### The battery already recorded this, and nobody read it that way
+
+Mutation categories split by which repair they need. r1 scores:
+
+| needs DELETION to repair | r1 | | needs INSERTION to repair | r1 |
+|---|---|---|---|---|
+| junk-insert | 0.919 | | multi-damage | **0.695** |
+| delim-insert | 0.911 | | quote-delete | **0.705** |
+| content-damage | 0.908 | | truncate | **0.716** |
+| quote-insert | 0.892 | | delim-delete | **0.773** |
+
+**0.89–0.92 against 0.70–0.77, split perfectly along the axis.** r1 is an engine
+that can only delete, and the battery says so in ten numbers. r2's fill lifts
+exactly the insertion column — quote-delete 0.705 → 0.841, delim-delete
+0.773 → 0.928, truncate 0.716 → 0.851, multi-damage 0.695 → 0.809 — and leaves
+the deletion column flat: junk-insert 0.919 → 0.931, quote-insert 0.892 → 0.894,
+content-damage 0.908 → 0.908 **unchanged**. The fill was not a new idea; it was
+the missing half of an alignment the frontier list already enumerated.
+
+### What this predicts for r7
+
+Keep the brief's architecture — pure parse, frontier, widen, splice, resume — and
+make the widening two-sided from one loop: `l` from 0, where `l = 0` walks the
+Seq slots after the mismatch (grammar-skip, charged `minFill`) and `l >= 1`
+denies input characters (input-skip, charged `l`). Deepest/earliest-first
+ordering then does what `_rank`'s explicit tie-breaks do in r6, because the
+brief's own claim is that a deep partial recovery is superseded by a shallow
+fuller one — supersession IS the ordering.
+
+Sizes to beat: **r1 410 lines / 0.8018, r3 441 / 0.9642, r6 520 / 0.9683.** The
+target is under 400 at r3's robustness or better. r3 is the current best
+size-to-robustness point in the series and is the honest bar, not r1.
+
+**Risk, named up front:** r1's architecture carries six side maps (`_memo`,
+`_repairs`, `_seen`, `_walked`, `_salvaged`, `_tried`) and re-parses from
+scratch inside the widening loop (`_round` calls `_parse()` per candidate, then
+`_forget()`). That re-parse is a D1 violation in spirit and is where r1's latency
+went. Two-sided widening does not fix it; the splice-and-resume half of the brief
+is what has to be made real.
