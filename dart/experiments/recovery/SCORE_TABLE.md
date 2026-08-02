@@ -2,72 +2,181 @@
 
 ## The result
 
-**`m134.dart` is the engine.** It is standalone (`own` — carries its own parser
+**`m132.dart` is the engine.** It is standalone (`own` — carries its own parser
 and memo table), acceptance-compliant, sound (costs nothing at 0 that the frozen
-parser rejects), and it is the first engine in the project to beat **all three**
-of m78's targets at once — quality, latency and size.
+parser rejects), cost-minimal, and it is the first engine in the project to beat
+**all three** of m78's targets at once — quality, latency and size.
 
-|                | m134 | m121 (the previous standing engine) | m78 (the engine both replace) |
+|                | m132 | m121 (the previous standing engine) | m78 (the engine both replace) |
 |----------------|------:|------:|------:|
-| AST-diff       | **0.9668** | 0.9573 | 0.9444 |
-| perfect%       | **69.4** | 67.0 | 68.4 |
+| AST-diff       | **0.9648** | 0.9573 | 0.9444 |
+| perfect%       | **69.2** | 67.0 | 68.4 |
 | LOC normalised | 612 | **578** | 1,326 |
-| ms             | **1,227** | 4,680 | 2,171 |
+| ms             | **1,166** | 4,680 | 2,171 |
 | acceptance     | ok | ok | ok |
 | conformance    | `.` | `.` | `.` |
+| free-span      | PASS | PASS | — |
 
-Against m78: quality +0.0224, latency **1.77x faster**, size **2.17x smaller**.
-Against m121: quality +0.0095, latency **3.8x faster**, size +34 lines.
+Against m78: quality +0.0204, latency **1.86x faster**, size **2.17x smaller**.
+Against m121: quality +0.0075, latency **4.0x faster**, size +34 lines.
 
 The +34 lines are the one target not improved on, and they are stated here
 rather than buried. They buy I76's positional guard, and §"The collapse that
 does not close" below records the four separate attempts to delete it and get
 the lines back — all four lose more score than the lines are worth.
 
+**m134 scored higher and is withdrawn.** m134 = m132 + I77, and it reads 0.9668
+on the battery. It is not the engine, because I77 buys that 0.0020 by *deleting
+real input that already matched* — see §"Why I77 is withdrawn" below and
+`_freespan.dart`, the control that names it. The battery cannot see this: every
+case in it is a mutant that genuinely needs repair, so it never presents a span
+that is already fine. m132 is also the faster of the two (1,166 vs 1,237 ms on
+one clock) and the same size, so withdrawing I77 costs battery score and nothing
+else.
+
 **Clocks.** The `ms` column throughout is one clock: m121 read 4,711 in the
 original pass and 4,680 re-measured alongside m134, 0.7% apart, so figures from
-the two passes are comparable. m78, m121, m126 and m134 above are medians of
-back-to-back alternating rounds, not single passes.
+the two passes are comparable. m78, m121, m126, m132 and m134 above are medians
+of back-to-back alternating rounds, not single passes.
 
-**Do not read the #1 row of the ranking as the winner.** m77 scores 0.9609 and
-is disqualified: `m77.dart:1141-1143` builds a repaired input string and runs a
-second `Parser` over it, which the brief bans in four separate places. Read the
-`arch` column before the score column. m134 outscores it anyway.
+**Do not read the #1 row of the ranking as the winner.** The ranking is sorted
+by battery score alone, and the five rows above m132 are all disqualified — the
+top four by I77 (they delete real input; `_freespan.dart`), and m77 by `arch`
+(`m77.dart:1141-1143` builds a repaired input string and runs a second `Parser`
+over it, which the brief bans in four separate places). §"Why each row above
+m132 is out" lists every one with its reason. Read the `arch` column, and the
+free-span result, before the score column.
 
 ## What changed since m121: I73–I78
 
-| engine | change | AST-diff | perfect% | ms | LOC |
-|---|---|--:|--:|--:|--:|
-| m121 | (previous standing engine) | 0.9573 | 67.0 | 4,680 | 578 |
-| m124–m126 | I73/I74/I75 — residual-budget memo families rounded up to the deepening ladder | 0.9573 | 67.2 | 2,594 | 602 |
-| m127 | **I76** — I43's evidence test asked at the ENDING, not at the alternative | 0.9629 | 69.1 | 1,221 | 611 |
-| m129 | + **I77** as `cost + got - net` | 0.9649 | 69.7 | 1,271 | 612 |
-| m130 | + **I77** as `cost - net` | 0.9656 | 69.3 | 1,262 | 612 |
-| m132 | I76 + **I78** (`net == 0` refused) | 0.9648 | 69.2 | 1,177 | 612 |
-| m133 | I76 + I77(`c+g-n`) + I78 | 0.9663 | 69.7 | 1,247 | 612 |
-| **m134** | **I76 + I77(`c-n`) + I78** | **0.9668** | 69.4 | **1,227** | 612 |
+| engine | change | AST-diff | perfect% | ms | LOC | free-span |
+|---|---|--:|--:|--:|--:|:-:|
+| m121 | (previous standing engine) | 0.9573 | 67.0 | 4,680 | 578 | PASS |
+| m124–m126 | I73/I74/I75 — residual-budget memo families rounded up to the deepening ladder | 0.9573 | 67.2 | 2,594 | 602 | PASS |
+| m127 | **I76** — I43's evidence test asked at the ENDING, not at the alternative | 0.9629 | 69.1 | 1,192 | 611 | PASS |
+| **m132** | **+ I78** (`net == 0` refused) | **0.9648** | 69.2 | **1,166** | 612 | **PASS** |
+| m129 | I76 + I77 as `cost + got - net` | 0.9649 | 69.7 | 1,271 | 612 | FAIL |
+| m130 | I76 + I77 as `cost - net` | 0.9656 | 69.3 | 1,262 | 612 | FAIL |
+| m133 | I76 + I77(`c+g-n`) + I78 | 0.9663 | 69.7 | 1,247 | 612 | FAIL |
+| m134 | I76 + I77(`c-n`) + I78 — *withdrawn* | 0.9668 | 69.4 | 1,237 | 612 | FAIL |
+
+I76 is worth +0.0056 and 2.3x the speed for 9 lines; I78 is worth +0.0019 for
+**one** line, and it is the line that lifts `truncate` 0.878 → 0.890. Everything
+above m132 in the score column is an I77 engine, and every I77 engine fails the
+free-span control.
 
 Controls, both measured rather than assumed:
 
 | engine | control | AST-diff | what it establishes |
 |---|---|--:|---|
 | m128 | I76 in its strict form | 0.9601 | the weaker widening is worth 0.0028 |
-| m131 | I77 **without** I76 | 0.9589 | I77 alone does not fix the deleted brace — I76 makes the comparison happen, I77 makes it come out right |
+| m131 | I77 **without** I76 | 0.9589 | I77 alone does not fix the deleted brace — I76 is what makes the comparison happen. m131 fails free-span too, so the defect is I77's own and not an interaction with I76 |
 
-By category, m134 against m126: no category regresses, eight improve, two flat.
+By category, m132 against m126: no category regresses, six improve, four flat.
+The withdrawn m134 is shown alongside so the exact size of what I77 bought — and
+what withdrawing it gives back — is on the record rather than asserted.
 
-| category | m126 | m134 |
-|---|--:|--:|
-| delim-delete | 0.945 | **0.976** |
-| quote-insert | 0.967 | **0.985** |
-| transpose | 0.956 | **0.972** |
-| multi-damage | 0.938 | **0.948** |
-| junk-insert | 0.981 | **0.985** |
-| truncate | 0.891 | **0.895** |
-| quote-delete | 0.997 | **0.999** |
-| delim-insert | 0.979 | **0.980** |
-| literal-damage | 0.970 | 0.970 |
-| content-damage | 1.000 | 1.000 |
+| category | m126 | **m132** | m134 (withdrawn) |
+|---|--:|--:|--:|
+| delim-delete | 0.945 | **0.977** | 0.976 |
+| quote-insert | 0.967 | **0.980** | 0.985 |
+| transpose | 0.956 | **0.966** | 0.972 |
+| multi-damage | 0.938 | **0.946** | 0.948 |
+| junk-insert | 0.981 | **0.983** | 0.985 |
+| truncate | 0.891 | 0.890 | 0.895 |
+| quote-delete | 0.997 | **0.999** | 0.999 |
+| delim-insert | 0.979 | **0.979** | 0.980 |
+| literal-damage | 0.970 | 0.970 | 0.970 |
+| content-damage | 1.000 | 1.000 | 1.000 |
+
+I77's 0.0020 is spread thin — six categories, the largest `transpose` +0.006 and
+`quote-insert` +0.005, nothing concentrated. That is what a proxy artifact looks
+like: no single repair class it fixes, just a slight systematic tilt toward the
+more-constrained reading, which is the same tilt that deletes real input in
+`_freespan.dart`.
+
+## Why I77 is withdrawn
+
+I77 made the first comparison key `cost - net` instead of raw `cost`, on the
+argument that an unexplained character should cost what a deleted one costs. It
+was declared a comparison key only, never a cost, so that `cost == 0` still
+meant "pure PEG matched this" and round 0 stayed the frozen parser. Codex's
+critique named the incoherence in that: `_put` discards ways at an ending by the
+comparison key, but `_seq` computes the residual budget a suffix may spend from
+raw `w.cost`. A way that wins its ending on the key but costs more in the only
+currency the budget actually spends evicts a cheaper way that could still have
+afforded the rest of the parse.
+
+Verified on my own probe rather than taken (`_dom.dart`, then `_freespan.dart`):
+
+    grammar  input   m127  m132   m129  m130  m133  m134
+    g4       xxab       3     3      4     4     4     4
+    g5       xxab       4     4      5     5     5     5
+
+Codex's stronger sub-claim did **not** reproduce: it predicted the I77 engines
+would return `-1` where a cost-first engine finds a repair, and on the case it
+named all six engines return `-1`, so that is a property of the grammar and the
+cap, not of I77.
+
+**The extra cost is not paid for by a better tree — it buys a worse one.** The
+witnesses say it outright. `W <- . . . .` matches any four characters, so on
+`xxab` the span is already exactly right and needs no repair at all:
+
+    m132  cost=3  C->W  witness "xxab<q><r><s>"
+    m134  cost=4  C->E  witness  "xab<q><r><s>"   SKIP@1+1 "x"
+
+m134 **deletes the real `x`** to force the more-constrained E reading. On `xyab`
+it deletes the real `y`. Deleting a character does not explain more of the
+input; it explains a larger *fraction* of a smaller input, and `net` measures
+the fraction. So `net` is a good tie-breaker among ways that cost the same — it
+is exactly m132's second key — and a bad objective the moment it may outrank
+cost. Note what follows: restricted to within a cost class, `cost - net` reduces
+to `net` descending, which is already m132's key. **I77 contributes nothing
+except in the cases where it overrides cost**, so its 0.0020 and its defect are
+one phenomenon measured two ways, and they cannot be separated.
+
+**The battery cannot see this, by construction.** `astdiff.dart` keeps a mutant
+only `if (m.isNotEmpty && !parses(m))` — every case in all 1824 is damage that
+genuinely needs repair, so none of them presents a span that is already fine
+beside a costlier reading of the same span. The +0.0020 is therefore not
+evidence that I77 is right; it is evidence that the corpus is blind to where it
+is wrong. `_freespan.dart` is that missing control, and it separates the two
+families exactly:
+
+| | free-span |
+|---|:-:|
+| m121, m126, m127, **m132** — raw `cost` is the first key | **PASS** |
+| m129, m130, m133, m134, m135, m137, m138, m139, m140 — `cost - net` outranks it | FAIL 4/5 |
+
+Every engine in the I79/collapse family is built from m134 or m135, so all of
+them inherit I77 and all of them fail; that is measured above, not assumed. The
+one probe every engine passes (`g6 zzz`, the same trap built from a repetition
+rather than a choice) shows the trap needs a choice between a permissive and a
+constrained reading of one span, which is why it is narrow enough to have been
+missed and sharp enough to be decisive.
+
+**A second finding, not acted on.** Codex also claimed I76 can select a branch
+PEG would not. It reproduces, but it is not I76's doing and not clearly a
+defect. On `Top <- A / B; A <- . 'a' 'b'; B <- 'x' 'a' 'b'` with input `ab`:
+
+    m126  branch=A  cost=1  witness "a<a>b"     `.` eats the real `a`, invents a literal `a`
+    m127+ branch=B  cost=1  witness "<x>ab"     invents the `x`, both real chars read precisely
+
+Both cost 1 and both invent exactly one literal the grammar names, so both are
+sanctioned fills. B wins on `net` (2 vs 1, because A spends its wildcard on a
+real character), in cost-first m132 too — m126 avoided B only because I43
+refused it outright. The objection is that pure PEG on B's own witness `xab`
+picks **A**, so the repair is not a fixed point. But that is because `A <- . 'a'
+'b'` *subsumes* `B`, making B unreachable in this grammar; in any grammar with a
+dead alternative, no repair choosing it can ever be a fixed point, so a
+fixed-point test would forbid B categorically and force the worse reading. Ruled
+out rather than fixed: the check needs either a re-parse (D1 forbids) or a
+static subsumption analysis, and it pays only on degenerate grammars.
+
+Codex's fourth claim, a predicted `truncate`/`x="a` regression in the statement
+corpus, does **not** reproduce — m126, m127, m132 and m134 are byte-identical on
+`x="a`, `x="ab` and `p="q`. Its third, a subsuming single-list formulation, is
+m135, refuted below on measurement.
 
 ## The collapse that does not close
 
@@ -78,12 +187,18 @@ all be deletable, and the ~34 lines they cost come back. Four attempts:
 
 | engine | form | AST-diff | ms | LOC | fails on |
 |---|---|--:|--:|--:|---|
-| **m134** | I78 + I76 guard | **0.9668** | **1,227** | 612 | — |
-| m138 | I79 (`net > cost`) + guard | 0.9662 | 1,205 | 612 | truncate 0.891 |
-| m135 | I78, single list, no guard | 0.9637 | 1,508 | **599** | literal-damage 0.946 |
-| m139 | I79 (`net >= cost` admitted), single list | 0.9634 | 1,418 | 599 | literal-damage 0.945 |
-| m137 | I79 (`net > cost`), single list | 0.9621 | 1,403 | 599 | literal-damage 0.945 |
-| m140 | I79 **ungated** (`cost > 0 && net <= cost`) | 0.9485 | 1,646 | 599 | truncate 0.820 |
+| m134 | I78 + I76 guard — *withdrawn, I77* | 0.9668 | 1,227 | 612 | free-span |
+| m138 | I79 (`net > cost`) + guard | 0.9662 | 1,205 | 612 | truncate 0.891; free-span |
+| **m132** | **I78 + I76 guard, no I77 — the engine** | **0.9648** | **1,166** | 612 | — |
+| m135 | I78, single list, no guard | 0.9637 | 1,508 | **599** | literal-damage 0.946; free-span |
+| m139 | I79 (`net >= cost` admitted), single list | 0.9634 | 1,418 | 599 | literal-damage 0.945; free-span |
+| m137 | I79 (`net > cost`), single list | 0.9621 | 1,403 | 599 | literal-damage 0.945; free-span |
+| m140 | I79 **ungated** (`cost > 0 && net <= cost`) | 0.9485 | 1,646 | 599 | truncate 0.820; free-span |
+
+The collapse loses against m132 too, so withdrawing I77 does not rescue it: the
+best single-list form reads 0.9637 against m132's 0.9648, is 342 ms slower, and
+still fails free-span because every member of the family is built from m134 or
+m135. The 13 lines it saves cost 0.0011 and 29% of the latency.
 
 **Why it does not close.** Both witness tests are gated on `_Way.synth`, which
 records only whether a way OPENS with a repair. The swallow that the guard
@@ -108,16 +223,22 @@ two that is **positional**. It compares at each ending, which is the sole place
 the swallow and the honest reading differ; an aggregate witness test over a
 whole way cannot see a local swallow embedded in an otherwise-correct parse.
 
-Why each row above m134 is out: **none — m134 is #1 outright.** The rows that
-used to sit above the standing engine and had to be disqualified one by one are
-now all below it:
+Why each row above m132 is out — every one of them, for a stated reason:
 
 | engine | AST-diff | out because |
 |---|--:|---|
+| m134 | 0.9668 | I77 — deletes real input from a span that already matched (`_freespan.dart`) |
+| m133 | 0.9663 | I77, same |
+| m138 | 0.9662 | I77, same |
+| m130 | 0.9656 | I77, same |
+| m129 | 0.9649 | I77, same |
 | m77 | 0.9609 | `reparse` — re-parses a modified string (D1) |
 | m114 | 0.9588 | invents a `Value` in `[,2,`, breaking acceptance case B2 |
 | m112, m113 | 0.9575, 0.9573 | fail CX2 |
 | m110, m105, m111 | 0.9573 | fail CX2 **and** cost 0 for all 4 strings the frozen parser rejects — unsound |
+
+Five of the nine are the same defect. Read the `arch` column and the free-span
+column before the score column.
 
 122 engines scored on the 1824-case weighted AST-diff battery; 7 more could not be scored and are listed at the end.
 
@@ -130,27 +251,30 @@ now all below it:
   - `own` -- carries its own parser and memo table; LOC covers parser + recovery, which is what the brief asked for.
   - `probe` -- own parser, but still constructs a library `Parser` over a ONE-CHARACTER synthesized string to ask whether a clause accepts that character. A grammar query, not a parse of the input.
   - `lib` -- no parser of its own; calls the frozen library parser over the ORIGINAL input. LOC is recovery ONLY, so it is not comparable to an `own` row.
-  - **`reparse` -- builds a repaired INPUT STRING and runs a second `Parser` over it.** The brief bans this in four separate places ("Don't ever start a new parse"; "you should not launch whole new parser instances"; "Why do you even need to produce a modified input string...? Just keep parsing, and repairing/flagging in-place"; "the input should not be modified or fixed in-place, ever"). **These rows are solving a different problem and their scores are not comparable.** The top-ranked engine used to be one of them; as of m134 it is not.
+  - **`reparse` -- builds a repaired INPUT STRING and runs a second `Parser` over it.** The brief bans this in four separate places ("Don't ever start a new parse"; "you should not launch whole new parser instances"; "Why do you even need to produce a modified input string...? Just keep parsing, and repairing/flagging in-place"; "the input should not be modified or fixed in-place, ever"). **These rows are solving a different problem and their scores are not comparable.** The top-ranked engine used to be one of them; as of m127 it is not.
 - `ms` is the engine clock summed over all 1824 cases, measured strictly sequentially and alone on the machine. Two caveats, stated rather than smoothed over. **These are single passes**, so small differences are not real: m121 and m113 read 4,711 and 4,433 here, but measured back-to-back over three alternating rounds they are 4,636 and 4,442, so the gap is 4.4% and not the 6% these figures imply. And **m67's 869,454 includes a few seconds of contention** from a probe running alongside it; at 0.3% of its own figure it changes nothing about a disqualified `reparse` engine ranked 70th, so it was not re-run.
 - `brief` is the acceptance probe on the three cases that constrain the design: `,3true` -> `,3,true`; `[,2,` -> `[2,` WITHOUT inventing a Value; and `S <- A 'x' 'a'` on `xa` reaching its own minimum. `-` = not probed. **The battery cannot substitute for this** -- it reads only the tree produced, so an engine can top the ranking while breaking a hard requirement.
 - `free` is the conformance probe: how many of the 4 strings the FROZEN parser rejects the engine nevertheless costed at 0. `.` = none, sound. `-` = not swept (the sweep covers m78 onward).
 
+† fails `_freespan.dart`: deletes real input from a span that already matched
+(I77). Disqualified regardless of score -- see "Why I77 is withdrawn".
+
 | # | engine | AST-diff | perfect% | LOC | arch | ms | brief | free | crash | uncov |
 |--:|---|--:|--:|--:|:-:|--:|:-:|:-:|--:|--:|
-| 1 | m134 | **0.9668** | 69.4 | 612 | own | 1,227 | ok | . | 0 | 0 |
-| 2 | m133 | **0.9663** | 69.7 | 612 | own | 1,247 | ok | . | 0 | 0 |
-| 3 | m138 | **0.9662** | 69.5 | 612 | own | 1,205 | ok | . | 0 | 0 |
-| 4 | m130 | **0.9656** | 69.3 | 611 | own | 1,262 | ok | . | 0 | 0 |
-| 5 | m129 | **0.9649** | 69.7 | 611 | own | 1,271 | ok | . | 0 | 0 |
+| 1 | m134 † | **0.9668** | 69.4 | 612 | own | 1,227 | ok | . | 0 | 0 |
+| 2 | m133 † | **0.9663** | 69.7 | 612 | own | 1,247 | ok | . | 0 | 0 |
+| 3 | m138 † | **0.9662** | 69.5 | 612 | own | 1,205 | ok | . | 0 | 0 |
+| 4 | m130 † | **0.9656** | 69.3 | 611 | own | 1,262 | ok | . | 0 | 0 |
+| 5 | m129 † | **0.9649** | 69.7 | 611 | own | 1,271 | ok | . | 0 | 0 |
 | 6 | m132 | **0.9648** | 69.2 | 612 | own | 1,177 | ok | . | 0 | 0 |
-| 7 | m135 | **0.9637** | 67.8 | 599 | own | 1,508 | ok | . | 0 | 0 |
-| 8 | m139 | **0.9634** | 67.8 | 599 | own | 1,418 | ok | . | 0 | 0 |
+| 7 | m135 † | **0.9637** | 67.8 | 599 | own | 1,508 | ok | . | 0 | 0 |
+| 8 | m139 † | **0.9634** | 67.8 | 599 | own | 1,418 | ok | . | 0 | 0 |
 | 9 | m127 | **0.9629** | 69.1 | 611 | own | 1,221 | ok | . | 0 | 0 |
-| 10 | m137 | **0.9621** | 66.7 | 599 | own | 1,403 | ok | . | 0 | 0 |
+| 10 | m137 † | **0.9621** | 66.7 | 599 | own | 1,403 | ok | . | 0 | 0 |
 | 11 | m77 | **0.9609** | 71.5 | 763 | reparse | 1,386 | ok | - | 0 | 0 |
 | 12 | m136 | **0.9609** | 67.7 | 599 | own | 1,365 | ok | . | 0 | 0 |
 | 13 | m128 | **0.9601** | 67.6 | 611 | own | 2,592 | ok | . | 0 | 0 |
-| 14 | m131 | **0.9589** | 67.3 | 602 | own | 2,630 | ok | . | 0 | 0 |
+| 14 | m131 † | **0.9589** | 67.3 | 602 | own | 2,630 | ok | . | 0 | 0 |
 | 15 | m114 | **0.9588** | 67.7 | 576 <sub>(546)</sub> | own | 4,869 | x:b2 | . | 0 | 0 |
 | 16 | m112 | **0.9575** | 67.2 | 582 <sub>(557)</sub> | own | 4,554 | x:cx2 | . | 0 | 0 |
 | 17 | m113 | **0.9573** | 67.0 | 579 <sub>(555)</sub> | own | 4,433 | x:cx2 | . | 0 | 0 |
@@ -233,7 +357,7 @@ now all below it:
 | 94 | m117 | **0.9509** | 66.9 | 575 | own | 3,846 | ok | . | 0 | 0 |
 | 95 | m119 | **0.9508** | 66.2 | 577 | own | 3,674 | ok | . | 0 | 0 |
 | 96 | m86 | **0.9498** | 65.7 | 512 <sub>(509)</sub> | own | 5,702 | ok | 4/4 | 0 | 0 |
-| 97 | m140 | **0.9485** | 63.7 | 599 | own | 1,646 | ok | . | 0 | 0 |
+| 97 | m140 † | **0.9485** | 63.7 | 599 | own | 1,646 | ok | . | 0 | 0 |
 | 98 | m29 | **0.9484** | 62.2 | 389 <sub>(390)</sub> | lib | 9,288 | x:b1 | - | 0 | 0 |
 | 99 | m27 | **0.9475** | 62.3 | 386 <sub>(387)</sub> | lib | 1,544 | x:b1 | - | 0 | 0 |
 | 100 | m78 | **0.9444** | 68.4 | 1326 <sub>(1296)</sub> | own | 2,182 | ok | . | 0 | 0 |

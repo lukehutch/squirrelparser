@@ -9985,6 +9985,13 @@ on. Every one of these four is a few lines inside the fold.
 
 ## Occasion 56 — the evidence question was being asked in the wrong place, and asking it at the ending beat every target at once (I76, I77, I78)
 
+> **Superseded in part by Occasion 57.** I76 and I78 stand and are in the
+> engine. **I77 is withdrawn**: it wins its 0.0020 by deleting real input from
+> spans that already matched, which the battery cannot detect because every case
+> in it is damage that needs repair. The engine named at the end of this
+> occasion (m134) is not the engine; **m132** is. Everything below about I76 and
+> I78 is unaffected; read every I77 number as measuring a defect.
+
 m126 closed the latency gap to 1.20x by fixing four things inside the fold. The
 next round started by chasing the last of that gap and arrived somewhere else
 entirely: **the six slowest documents in the battery were slow because the engine
@@ -10150,3 +10157,141 @@ filtered by category. It turned m127's opaque `truncate` regression into
 `[1,[2,[3,[4` in one command, and m135's opaque `literal-damage` regression into
 "every case is a damaged value" in another. An aggregate that moves by 0.003 says
 nothing about *what* moved; this says it in one line.
+
+## Occasion 57 — the battery rewarded an engine for deleting input it had no reason to delete (I77 withdrawn; m132 is the engine)
+
+Occasion 56 ended with m134 named as the engine on 0.9668, its best-ever battery
+score, having beaten all three of m78's targets at once. It was committed and
+pushed. Then Codex's critique came back, and the central claim held up: **m134
+was buying its score with a defect the battery is structurally unable to see.**
+
+The engine is now **m132** — m134 with I77 removed. 0.9648, 1,166 ms, 612 LOC.
+It gives up 0.0020 of battery score and gains cost-minimality, 71 ms, and a
+control the battery never had.
+
+### What Codex claimed, and what survived checking
+
+Four claims. Two reproduced, two did not, and one of the two that did was the
+one that mattered. Every one was checked against a probe I wrote myself rather
+than accepted — which is the whole reason to run the comparison.
+
+| # | claim | verdict |
+|---|---|---|
+| 1 | I77 makes the budget incoherent: `_put` discards by the comparison key, `_seq` spends raw `cost`, so a key-winner with higher raw cost evicts a way that could still afford the suffix | **CONFIRMED** — and worse than claimed |
+| 1b | …so an I77 engine returns `-1` where a cost-first engine finds a repair | **did not reproduce** — all six engines return `-1` on the case named, so it is a property of the grammar and the cap |
+| 2 | I76 can select a branch PEG would not | reproduces, but it is not I76's doing and not clearly a defect — see below |
+| 3 | a subsuming single-list formulation deletes `opened`/`_admit`/`synth` | **already refuted** — that is m135, measured in Occasion 56 at 0.9637 and 342 ms slower |
+| 4 | a `truncate`/`x="a` regression in the statement corpus | **did not reproduce** — m126, m127, m132 and m134 are byte-identical on `x="a`, `x="ab`, `p="q` |
+
+### The defect, and why it is worse than a budget bug
+
+I77 replaced the first comparison key, raw `cost`, with `cost - net`, on the
+argument that an unexplained character should cost what a deleted one costs. It
+was carefully declared **a comparison key only, never a cost**, so that
+`cost == 0` still meant "pure PEG matched this" and round 0 stayed the frozen
+parser. That declaration is exactly the incoherence: the deepening loop's
+correctness rests on "cost is non-negative and additive, so a partial way's cost
+is a lower bound on any completion of it", and I77 makes the *retention*
+decision on a quantity the *budget* does not spend.
+
+The probe (`_dom.dart`, then folded into `_freespan.dart`). `C <- E / W` with
+`W <- . . . .` and `E <- . 'a' 'b'`, under a suffix that must be filled whatever
+C does:
+
+    grammar  input   m127  m132   m129  m130  m133  m134
+    g4       xxab       3     3      4     4     4     4
+    g5       xxab       4     4      5     5     5     5
+
+Then the question Codex did not ask, and the one that decided it: **is the
+costlier repair a better tree?** The witnesses answer directly.
+
+    m132  cost=3  C->W  witness "xxab<q><r><s>"
+    m134  cost=4  C->E  witness  "xab<q><r><s>"   SKIP@1+1 "x"
+
+`W <- . . . .` matches any four characters. On `xxab` the span is *already
+exactly right* and needs no repair at all. m134 **deletes the real `x`** to
+force the more-constrained E reading; on `xyab` it deletes the real `y`. It is
+not paying more for a better tree, it is paying more for a worse one, and it is
+doing so by destroying evidence — against "the input should not be modified or
+fixed in-place, ever."
+
+The mechanism in one sentence: **deleting a character does not explain more of
+the input, it explains a larger fraction of a smaller input, and `net` measures
+the fraction.**
+
+### Why the benefit and the defect cannot be separated
+
+The tempting repair is to keep I77 as a tie-breaker. It already is one, and
+that is exactly why it is worthless in that role: restricted to ways of equal
+cost, `cost - net` reduces to `net` descending — **which is already m132's
+second key.** So I77 changes no decision except where it *overrides* cost, and
+those are precisely the decisions that delete real input. Its +0.0020 and its
+defect are one phenomenon measured two ways.
+
+The only coherent way to keep both is to stop keeping one way per ending and
+keep one per *(ending, cost)*, so that a cheaper way is never evicted by a
+dearer one. That is minimality-preserving by construction, but `_rep`'s
+left-to-right sweep (`final w = _at(reach, at)!`) and the three `_at`-based
+pruning tests all assume a single way per ending, so it is ~20 lines and a
+per-ending list in the hot loop — to recover 0.0020 on a metric now known to be
+blind here, in an engine already 4% slower. Ruled out on cost, not overlooked.
+
+### The finding that outlives the engine: a corpus of damaged inputs cannot detect an engine that damages inputs
+
+`astdiff.dart` keeps a mutant only `if (m.isNotEmpty && !parses(m))`. Every one
+of the 1824 cases is damage that genuinely needs repair. **So not one of them
+presents a span that is already fine beside a costlier reading of the same
+span** — the exact situation where I77 is wrong. The battery did not fail to
+notice the defect; it cannot contain the input that exhibits it.
+
+That is why +0.0020 was not evidence I77 was right. A metric's silence is only
+evidence when the metric could have spoken.
+
+`_freespan.dart` is the missing control, and it separates the two families with
+no overlap at all:
+
+| | free-span |
+|---|:-:|
+| m121, m126, m127, **m132**, m136 — raw `cost` is the first key | **PASS** 5/5 |
+| m129, m130, m131, m133, m134, m135, m137, m138, m139, m140 — `cost - net` outranks it | FAIL 4/5 |
+
+m131 (I77 without I76) fails and m136 (I78 without I77) passes, so the defect is
+I77's own and not an interaction. The whole I79/collapse family fails because
+every member is generated from m134 or m135. One probe passes everywhere
+(`g6 zzz`, the same trap built from a repetition instead of a choice), which is
+what makes the trap narrow enough to have been missed for eleven engines.
+
+### Claim 2: reproduced, and ruled out with a reason
+
+On `Top <- A / B; A <- . 'a' 'b'; B <- 'x' 'a' 'b'` with input `ab`:
+
+    m126  branch=A  cost=1  witness "a<a>b"    `.` eats the real `a`, invents a literal `a`
+    m127+ branch=B  cost=1  witness "<x>ab"    invents the `x`, both real chars read precisely
+
+Both cost 1; both invent exactly one literal the grammar names at that position,
+so both are sanctioned fills. B wins on `net` (2 vs 1, because A spends its
+wildcard on a real character) — **in cost-first m132 as well**, so this is not
+I76 and not I77. m126 avoided B only because I43 refused it outright.
+
+The objection is that pure PEG on B's own witness `xab` picks **A**, so the
+repair is not a fixed point of the parser (I5, I31). But that is because
+`A <- . 'a' 'b'` *subsumes* `B`, making B unreachable in this grammar. In any
+grammar containing a dead alternative, no repair choosing it can ever be a fixed
+point, so a fixed-point test would forbid B categorically and force the *worse*
+reading. Enforcing it needs either a re-parse (D1 forbids) or a static
+subsumption analysis, and it pays only on degenerate grammars. Recorded, not
+fixed.
+
+### The lesson
+
+Occasion 56 named an engine on its battery score after the battery had gone
+green, and the battery was the only thing that had ever been asked. The score
+was real; what it measured was narrower than what "best engine" was taken to
+mean. **When a change wins on a metric by a small margin and cannot be explained
+by any single repair class it fixes — m134's 0.0020 was spread over six
+categories, largest +0.006 — that diffuseness is itself the signal.** A real
+improvement concentrates. A systematic tilt against the metric's blind spot
+does not.
+
+Build the control that could refute the change, then adopt it. Not the other way
+round.
