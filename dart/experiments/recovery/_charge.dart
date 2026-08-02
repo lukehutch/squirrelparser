@@ -15,6 +15,7 @@ import 'astdiff.dart';
 import 'r1.dart' as r1;
 import 'r2.dart' as r2;
 import 'r3.dart' as r3;
+import 'r4.dart' as r4;
 
 /// (deleted characters, zero-width marks) recorded in [m].
 (int, int) edits(MatchResult m) {
@@ -60,13 +61,14 @@ void main() {
 
   print('${'engine'.padRight(6)}${'cost 0'.padLeft(10)}'
       '${'mischarged'.padLeft(13)}${'worst gap'.padLeft(11)}   example');
-  for (final name in ['r1', 'r2', 'r3']) {
+  for (final name in ['r1', 'r2', 'r3', 'r4']) {
     final made = <String, dynamic>{};
     for (final c in corpora) {
       made[c.name] = switch (name) {
         'r1' => r1.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
         'r2' => r2.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
-        _ => r3.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
+        'r3' => r3.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
+        _ => r4.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
       };
     }
     var free = 0, mis = 0, worst = 0;

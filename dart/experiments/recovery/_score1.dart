@@ -89,6 +89,7 @@ import 'm145.dart' as g145;
 import 'r1.dart' as r1;
 import 'r2.dart' as r2;
 import 'r3.dart' as r3;
+import 'r4.dart' as r4;
 
 /// A uniform surface over both engine generations: give it a grammar and a top
 /// rule, get back something that turns a damaged string into a tree or throws.
@@ -367,6 +368,7 @@ final Map<String, Build> extra = {
   'r1': (r, t) => r1.Squirrel(rules: r, topRuleName: t).recover,
   'r2': (r, t) => r2.Squirrel(rules: r, topRuleName: t).recover,
   'r3': (r, t) => r3.Squirrel(rules: r, topRuleName: t).recover,
+  'r4': (r, t) => r4.Squirrel(rules: r, topRuleName: t).recover,
 };
 
 Build? resolve(String name) {

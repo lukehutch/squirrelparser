@@ -11776,3 +11776,127 @@ The justification does not transfer either, which is the part worth keeping. A
 clean read really is the cheapest resynchronization. A repetition's next
 occurrence is never required: it may always stop. So this is not the same rule
 extended to a second combinator, it is a new freedom, and it was priced as one.
+
+## Occasion 63 — r4: two exhibits, and the field that let both be stated
+
+r3 lost two named readings. `{"a":[1,[2,` came back as a `String` (`del@0:{`
+then two fills, cost 3) rather than the nested arrays (cost 4) --- **one long
+string**. `x=1; y=2; z=3; { p=4; q=5; " r=6;` came back as two quote fills that
+swallowed the block (cost 2) rather than deleting the stray quote (cost 3) ---
+**junk between list items**. Both are the same shape: a repair that BUYS a
+reading the input never offered, at a discount, because the thing it buys is
+cheap to say and expensive to disprove.
+
+### the ordering key was inert on its own, and that is what made attribution possible
+
+The first addition was a field, not a rule: `_Way.fix` --- where a way's
+EARLIEST repair falls, `_far` if it repairs none --- threaded through every
+construction and minimised along `_seq`/`_rep` chains. Adding it and using it
+NOWHERE (`v1x`) reproduces r3 to four decimal places on the battery and on all
+ten categories. That is the control every later measurement is read against:
+each variant differs from r3 by exactly its named levers, and nothing else.
+
+**This corrected an inherited claim.** I had recorded that the delim-delete
+regression came from `fix` entering the ranking. It does not: `v157tnx`, with
+the key neutralised to `return 0`, still shows delim-delete 0.968. The
+regression is lever 5's, and I had attributed it to the wrong change.
+
+### two rules, each a sentence, each refusing a specific dishonesty
+
+**`f` --- a production that had to move must fit where it moved to, entire.**
+Discarding in front of a `Seq`'s FIRST slot is not resynchronization: nothing of
+the production has been read, so there is no left bracket to be inside of. It
+moves the whole production somewhere else, and the only evidence it belongs
+there is that it fits there --- every slot, read as written. So slot 0 gets its
+own path: probe each position within budget, require the entire production free
+from there, take the nearest that works.
+
+**`H` --- a repair may not take the choice from a clean reading unless it
+explains at least as much as it assumes.** Once an arm of a `First` has read the
+input as it stands, a later arm may still win, but not by supplying a token and
+then charging the input for it. Measured as `raw >= net`, where `raw = (end -
+pos) - del - net` is what the way consumed without a constraining terminal
+accepting it. A `Str` whose quote was supplied and whose body is `[^"\\]`
+accounts for nothing but its own closing quote and would eat three statements to
+say so; an `Array` whose `[` was supplied still accounts for every character
+inside it.
+
+`f` fixes exhibit 1, `H` fixes exhibit 2, and neither fixes the other's. The two
+are independent and both were needed.
+
+### the levers that lost, and why each was the wrong generalisation
+
+| lever | battery | what it said | why it lost |
+|---|---|---|---|
+| **5** | .9644 | a settled `First` arm refuses ANY later repaired arm | removes a reachable END POSITION: on `{"k":{"a":1},{"b":2}]}` the `Object` arm reads free to 12, so the `Array` arm's way ending at 21 is refused and a cost-1 answer becomes cost-3 |
+| **7** | .9629 | a `Seq` may never discard in front of slot 0 | at position 0 every enclosing production shares that slot-0 position, so no parent can absorb the deletion; leading junk becomes undeletable, and `1(2+3*(4-5))` goes from `del@0:1` to a cost-3 answer |
+| **t/u/n** | .9642 | `_rep` discards junk between occurrences | earns nothing once `f` and `H` are present --- `v1hftn` is identical to `v1hf` on all twelve numbers |
+| **6** | .9454 | an occurrence may not open with a repair | far too broad |
+| **q** | .9571 | prefer the EARLIEST first repair | backwards |
+| **e** | .9614 | a repair at end-of-input is not doubt | delim-delete holds but truncate collapses to .908 |
+| **h** | .9671 | `H` with `>` instead of `>=` | strictly weaker; the tie belongs to the clean reading |
+
+Lever 5 and lever 7 are the same error twice: both refuse a repair by WHERE it
+sits rather than by WHAT it claims. `f` and `H` refuse by what is claimed, and
+that is why they cost nothing on the categories the other two damaged.
+
+### a rep-skip that looked fixed and was not
+
+My record said the rep-skip closed exhibit 2. It did not. `v1tnx` and `v17tnx`
+both still produce the bad `fill@12 fill@29`. What actually happened in `v1t` is
+that `WS <- [ \t\n\r]*`, a repetition over a TERMINAL, deleted the junk --- the
+same mechanism that collapsed literal-damage to .938 one occasion earlier.
+Lever `n` correctly forbids a token repetition from deleting between its
+characters, and takes the apparent exhibit-2 fix away with it. The fix was never
+where I recorded it.
+
+### a probe that must not ask the whole question
+
+Lever `f` chains slot by slot at budget 0 and stops at the first slot that
+cannot be read; asking the remaining slots after the chain is already empty is
+pure waste. One `break` --- identical on all twelve battery numbers and every
+gate --- and it costs one memo lookup per candidate position, which is the
+minimum: you cannot know whether a production fits at `k` without asking its
+first slot at `k`.
+
+**Not zeroing the budget during that probe is 17% slower**, not faster. The
+intuition was that `_budget = 0` pins the cell's `at` to 0 and forces a later
+recompute, so asking at full budget would warm the cache instead. Measured:
+median 3050 ms against 2615. Computing every probed cell at full budget to throw
+away all but its free ways costs far more than the recomputes it avoids.
+
+### Where it stands
+
+| | r3 | **r4** | m143 |
+|---|---|---|---|
+| battery | 0.9642 | **0.9683** | 0.9693 |
+| perfect | 71.2% | **73.2%** | 72.1% |
+| ms (median of 10, interleaved) | 2591 | 2648 | 1186 |
+| code lines | **441** | 476 | 628 |
+| delim-delete | 0.971 | 0.971 | |
+| truncate | 0.918 | **0.936** | |
+| quote-delete | 0.999 | 0.999 | |
+| junk-insert | 0.974 | **0.976** | |
+| delim-insert | 0.969 | **0.972** | |
+| literal-damage | 0.954 | **0.955** | |
+| quote-insert | 0.973 | **0.981** | |
+| multi-damage | 0.941 | **0.942** | |
+| transpose | 0.963 | 0.963 | |
+| content-damage | 1.000 | 1.000 | |
+
+`_missing` 0/1792 holes, `_zerowidth` 81 (r3: 83), `_accept` 3/3, `_recommit`
+12/12, `_conf1`/`_committed`/`_freespan`/`_charge` identical to r3, `dart test`
+308/308. No category regressed; seven improved.
+
+**The 2.2% latency is lever `f`'s, and it is a bias inside the noise rather than
+a step outside it.** Ten interleaved rounds put r3 at 2502-2695 (median 2591)
+and r4 at 2582-2772 (median 2648): r4's fastest run beats r3's slowest, and each
+engine's own spread is about 8%, larger than the gap between them, and r4 was
+the faster of the pair in 2 of the 10 rounds. The bias is consistent enough to
+name and too small to separate on any single run. The rule costs one extra memo lookup
+per candidate position at every `Seq` whose first slot cannot be read where it
+stands, and that is irreducible given what the rule asserts.
+
+**476 lines is 76 over the standing goal**, and the goal is still unmet. Of the
+35 lines over r3, roughly 20 are lever `f` and 8 are the `fix` field's threading
+through constructors that already take six positional arguments.
