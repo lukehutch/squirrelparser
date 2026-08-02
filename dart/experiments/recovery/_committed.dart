@@ -14,6 +14,7 @@ import 'r2.dart' as r2;
 import 'r3.dart' as r3;
 import 'r4.dart' as r4;
 import 'r5.dart' as r5;
+import 'r6.dart' as r6;
 
 void collectErrors(MatchResult m, List<SyntaxError> out) {
   if (m is SyntaxError) out.add(m);
@@ -30,6 +31,7 @@ final engines = <String, Run>{
   'r3': (r, t, s) => r3.Squirrel(rules: r, topRuleName: t).recover(s),
   'r4': (r, t, s) => r4.Squirrel(rules: r, topRuleName: t).recover(s),
   'r5': (r, t, s) => r5.Squirrel(rules: r, topRuleName: t).recover(s),
+  'r6': (r, t, s) => r6.Squirrel(rules: r, topRuleName: t).recover(s),
 };
 
 void main() {

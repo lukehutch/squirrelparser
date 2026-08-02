@@ -12097,3 +12097,131 @@ round beats every r4 round, which is the separation r4-vs-r3 never had.
 merge itself saves 5 lines; the three fixes spend 12. The honest reading is that
 this occasion bought conformance, totality and latency, and paid 7 lines for
 them.
+
+## Occasion 65 — r6: 94% of the trees were never looked at, and round 0 was building a chart it could not spend
+
+The brief was profiling: find work that is **wasted** (discarded, unused, redone
+without memoisation) and work that **does not scale linearly**. Two mechanisms
+came out of it, both landed as r6; three more were measured and refuted, and the
+refutations are the more valuable half.
+
+### I88 — a way says what its node WOULD be, not what it is
+
+r5 builds a `MatchResult` at every close, so the chart is a chart of trees. But
+`_rank` **reads no tree**: it orders by `del + gap`, then `peg`, then `net`, then
+`key` — four integers a way already carries. The winner can therefore be chosen
+before anything is built, and everything else never built at all. A way now
+records `cap` (the clause to cap with), `from` (where it started) and
+`link`/`prev` (the chain to walk); `_Way._build` runs once, from the root, on the
+winner.
+
+| | r5 | r6 |
+|---|---|---|
+| `_wrap` calls (nodes built) | 4,248,274 | **244,677 (−94.2%)** |
+| chain steps walked | 8,206,337 (6.27/close) | **416,042 (1.31/build)** |
+| `list` scaling exponent | 1.82 | **1.02** |
+| `rep-first` exponent | 1.91 | **1.06** |
+
+**The discarded trees WERE the quadratic.** A flat list stopped being quadratic
+without the chart getting any narrower — the width was never the problem, the
+construction was. This is the largest single win in the r series: 0.68× on the
+battery, and it moves no gate.
+
+*A correction worth keeping:* an early figure of 5,456,866 was the all-sites
+total including terminals. `_wrap` alone is 4,248,274. **Terminals are still
+built eagerly (~1.2M nodes on the battery)** — the untouched residue of I88.
+
+### I89 — the first round is the frozen parser, so it should hand out what a frozen parser's memo entry holds
+
+A clean way that is not PEG's reading is **already dead when round 0 makes it**.
+`_Way.then` takes the minimum key, so any chain holding one is at most `_far`,
+and `recover` refuses exactly `_far`; buying it back takes a repair, and round 0
+has nothing to spend. So round 0 was building a cross product of readings none
+of which could ever be the answer. `_prune` cuts it to one, and because the next
+cell out expands from *that one*, the narrowing propagates — no cell ever
+materialises the wide set.
+
+**The test is the ROUND, not the budget.** A later round spends down to a
+residual of 0, and the move and resync probes ask at 0 on purpose — but they want
+a slot that reads *cleanly*, not one that reads *as PEG would*, and their chain
+has already paid, so its key is below `_far` and the root takes it. Only in the
+first round are the two questions the same one. **Gating on `_budget == 0`
+instead scored 0.9664 / 72.9 with diff=168** — kept as the refuted control.
+
+### The refutation that matters: the thin seed IS the linear schedule
+
+`_crun.dart` attributed I89's ~6% battery cost to +2.3% fixed-point iterations
+from a thinner left-recursive seed, so the obvious fix was to store the full ways
+and hand out only PEG's — loop keeps its rich seed, downstream sees one way. It
+recovered 1.3 of the 4.3 points **and destroyed the asymptotic win**:
+
+| n = 2047 | r5 | cut on the cell's return | **cut inside the loop (r6)** |
+|---|---|---|---|
+| `left-rec` | 1353.38 ms (exp 2.01) | 503.87 ms (exp **2.02**) | **1.84 ms (exp 1.05)** |
+| `seq-deep` (n=2048) | 5746.02 ms | 1.14 ms | **0.59 ms** |
+
+A fixed point re-seeded from **one** way grows one way per pass — O(n) passes ×
+O(1). Re-seeded from the **full set** it grows O(n) ways per pass, and `left-rec`
+is quadratic again. **The extra passes the thin seed costs are not waste being
+paid off; they are the linear-time schedule.** The mechanism was backwards, and
+only the measurement caught it.
+
+That also re-attributes r6's remaining ~6%: it is the **+3.8% `_ways` calls** —
+round 1 re-deriving from a chart round 0 left narrower — not iteration count.
+
+### Also refuted: cross-round cell reuse has a 4.6% ceiling
+
+`_oracle.dart` gave every cell the answer it would eventually settle on, free.
+2.58 rounds per case, real 1492 ms vs oracle 1423 ms = **×0.954**. Early rounds
+are cheap *because* a small budget clips the chart, so there is almost nothing to
+carry forward. Not worth any code.
+
+### Scaling profile of r6
+
+**Every clean shape is linear**: `list` 1.01, `list-err` 1.06, `rep-seq` 1.06,
+`rep-seq-err` 0.96, `rep-first` 1.07, `left-rec` 1.05, `nest` ~1.2, `seq-deep`
+0.91. Two quadratics remain, both on damaged input: `rep-first-err` 2.08 and
+`left-rec-err` 2.18. **That is the deepening loop itself — budget rounds ×
+chart — not chart width, so no pruning change will reach it.**
+
+### Codex finding #5 is refuted, and the bisect reverses its causal story
+
+Codex ran 400 grammars × 341 inputs = 136,400 cases and found two shapes where
+this stack diverges from r5, invisible to the 1824-case battery. It judged one in
+r5's favour. Asking the frozen parser settles it — on `S <- ((. 'b') / [ab])*`
+with input `abc`, `Parser(...).parse()` reads position 0 as `(. 'b')` spanning
+`ab`, byte for byte what r6 produces; **r5's `[ab]`@0+1 is the non-conformant
+reading.** `_cxiso.dart` bisects it to a single sub-change, `v5-rep-worklist`,
+which *widens* the search — r5's pre-prune discards the way before `_rank` ever
+sees it. Both out-of-battery divergences favour r6.
+
+*Standing lesson:* a subagent's verdict is a hypothesis. The primary source here
+was the frozen parser, and it took one 20-line probe to overturn the verdict.
+
+### Numbers
+
+| | r4 | **r5** | **r6** | m143 |
+|---|---|---|---|---|
+| battery | 0.9683 | 0.9683 | **0.9683** | 0.9693 |
+| perfect | 73.2% | 73.6% | **73.6%** | 72.1% |
+| diff vs r5 | | — | **0 (+0/−0)** | |
+| ms (`_score1`, sequential) | 2470 | 2174 | **1681 (0.77×)** | |
+| ms (median of 7, interleaved) | | 2278 | **1644 (0.72×)** | 1186 |
+| code lines | 476 | 483 | **520** | 628 |
+
+`_accept` `cx2=1 b1=1 b2=1`, `_committed` `errors=[2..2, 2..4] OK`, `_freespan`
+PASS, `_conf1` `0 1 1 0 2 3`, `_charge` `0 0 0`, `dart test` **+308: All tests
+passed!** — every gate matching r5's baseline exactly, and 68/68 probes identical.
+
+**520 lines is 120 over the goal, and this occasion spent 37 of them.** The
+honest reading: profiling bought a 0.72× battery and turned every clean shape
+linear, and paid for it in code size. The under-400 goal now needs a different
+design, not another optimisation.
+
+### The fork, named
+
+r6 concedes ~6% on the battery to the I88-only variant, which keeps `seq-deep`
+and `left-rec` quadratic on **clean** input. Taken because per-case latency on
+the battery is 0.90 ms — 280× under the 250 ms goal — so the constant is
+invisible against the target it exists to protect, while the quadratics it
+removes are unbounded and grow: 740× and 9739× already at n ≈ 2048.

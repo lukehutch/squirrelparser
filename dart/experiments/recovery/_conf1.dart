@@ -82,6 +82,7 @@ import 'r2.dart' as r2;
 import 'r3.dart' as r3;
 import 'r4.dart' as r4;
 import 'r5.dart' as r5;
+import 'r6.dart' as r6;
 
 const negGrammar = '''
 Top <- Item+;
@@ -170,6 +171,7 @@ final engines = <(String, Cost)>[
   ('r3', (r, t) => r3.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('r4', (r, t) => r4.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('r5', (r, t) => r5.Squirrel(rules: r, topRuleName: t).recoverCost),
+  ('r6', (r, t) => r6.Squirrel(rules: r, topRuleName: t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>
