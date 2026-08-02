@@ -12496,3 +12496,153 @@ r8 matches the reference.
 530 lines against the stated 400. The two mechanisms added 10 lines between
 them, so the overage is inherited, not new. r7 shows the frontier architecture
 does not buy the difference back: it is 481 lines for 0.8970.
+
+## Occasion 68 — r9: a reading may not say the document ran out here AND that there is a character here to throw away
+
+r8's weakest category was `truncate` (0.936), and the reason turned out not to
+be the ranking at all. It was that the engine had no rule against a reading
+which contradicts itself, and the contradiction is cheap, so the deepening loop
+answers with it first.
+
+### The diagnosis: no `_rank` change can reach this, and that was measured
+
+On `{ a` — the truncation of `{ a=1; { b=2; } if (c) d=3; }` — the oracle wants
+`Stmt ( Block ( Stmt ( Assign ( Name ( ) ) ) ) )`. r6 and r8 both give
+`Stmt ( Block ( ) )`, and a side-by-side probe confirmed the two engines produce
+**identical trees** here, so this is not something r6 → r8 introduced.
+
+The two readings are:
+
+| reading | what it says | cost |
+|---|---|---|
+| A (what r8 picks) | delete the `a`, then owe the `}` | 2 |
+| B (what the oracle wants) | read `a` as a `Name`, owe `= Cond ;` and the `}` | 4 |
+
+Levenshtein genuinely prefers A. **The deepening loop is the arbiter, not
+`_rank`**: `recover` raises `_budget` by one per round and breaks at the first
+round with any answer, so a cost-2 reading beats a cost-4 reading whatever the
+tiebreaks say — `_rank` only orders ties *within* one round. Two separate
+attempts to fix this by reordering `_rank` were built and measured, and both
+left `truncate` flat at 0.936 while costing elsewhere:
+
+| control | `_rank` change | battery | truncate |
+|---|---|---|---|
+| r8 | — | 0.9711 | 0.936 |
+| w1 | `del` asc then `gap` asc (r1's primal-input rule) | 0.9617 | 0.936 |
+| w2 | sum primary, `del` as first tiebreak | 0.9679 | 0.936 |
+
+**Refuted. A ranking cannot answer a question that is decided before ranking
+runs.** Recording this because it is the third time in the series a tiebreak
+has been proposed for something the budget already settled.
+
+### I92 — an obligation and a trailing discard are two claims about one position
+
+What is wrong with reading A is not its price. An obligation is a claim that
+**the document ran out**; a trailing discard is a claim that **it did not**. A
+way whose last act was to owe, with input still in front of it, asserts both at
+the same position: a character is missing *here*, and then it hands the
+character that *is* here to the discard. It never earned the obligation — it
+should have read what the document offered.
+
+So the test is not a preference between prices but a **coherence test on one
+reading**, applied where `recover` closes the tail. The bit it needs is a
+monoid like every other counter a way carries:
+
+```
+unit    owing = false
+owe     owing = true
+skip    owing = false
+then(v) owing = v.owing || (v.end == end && owing)
+```
+
+Identity holds both sides; associativity holds because positions only ever
+grow, so `p2 == p0` forces `p0 == p1 == p2`. One `bool` suffices because an
+obligation's position is always the way's own `end`.
+
+**The rule may not leave the engine with nothing.** It says which reading is
+better, not which readings exist. `Top <- Chunk 'z'` on `abab` has *no* coherent
+reading at any budget — the repetition cannot resync past the `b` — and the
+first draft, a hard filter, therefore starved the loop, left `best` null, and
+returned the total-failure fallback: **it failed `_committed`** with
+`errors=[0..4] FAILS: deletes committed [0..4]`. The gate caught exactly what it
+exists to catch. The fix is to keep the incoherent best as `fall`, at the *first*
+budget that offers one, and use it only if nothing coherent is ever found.
+
+| variant | rule | battery | exact | gates |
+|---|---|---|---|---|
+| w3 | coarse: `tail > 0 && w.gap > 0`, no `owing` bit | 0.9716 | 73.5 | pass |
+| w4 | `owing` bit, hard filter | 0.9721 | 73.6 | **`_committed` FAILS** |
+| w5 | w4 + fallback | 0.9721 | 73.6 | pass |
+| **w6 → r9** | w5 + the I91 correction below | **0.9721** | **73.6** | pass |
+| w7 | w6 + `owing` as last `_rank` key | 0.9719 | **73.9** | pass |
+
+w3 scores the same on `truncate` but loses the insert categories: it refuses
+obligations a way had already paid for and read past. w7 buys 0.3 exact and
+gives back `multi-damage` 0.949 → 0.947; w6 wins the aggregate and is simpler,
+so w7 is recorded and set aside.
+
+### I91 is corrected here, and the correction is free
+
+r8 argued that a given-up slot owes ONE mark however many characters it stands
+for, because splitting it "would describe a run of separate omissions that
+nothing observed." That is a nice sentence about a tree and it is wrong about an
+engine. The budget is charged `_minFill` characters and **the charge is read
+back off the tree**, so one mark standing for two obligations is a repair the
+tree does not show. On `if (a` the slot costs 2 and one mark reports 1.
+
+Codex reported this independently; it was confirmed with an own probe before
+acting on it. Over the battery, **r8 under-reports its own charge on 14 of 1824
+cases, always by exactly 1, always a truncated `if` where `_minFill(Stmt) = 2`.**
+One mark per obligation: **0 violations, identical score.** An engine may not
+charge the budget for something it then declines to say.
+
+The invariant this rests on: budgets are monotone (a way found under a smaller
+budget is still a way), so the first answering round is the minimum cost, hence
+`lastCost == _round` — and any shortfall is a repair the tree does not show.
+
+### A soundness hypothesis of my own, refuted by reading the code
+
+I suspected `giveUp()` could abandon a `!Keyword` lookahead and let `Name` match
+`if`. It cannot: `_fillOf` returns **0** for `Optional`, `FollowedBy` and
+`NotFollowedBy`, so the `fill > 0` guard already excludes every predicate. The
+guard was there for the cost model and happens to carry the soundness argument.
+
+### r9 against r8, every column
+
+| | r8 | r9 |
+|---|---|---|
+| battery | 0.9711 | **0.9721** |
+| exact | 73.2% | **73.6%** |
+| truncate | 0.936 | **0.946** |
+| every other category | — | equal or better |
+| latency (interleaved, median of 7) | 1531 ms | 1611 ms (**1.052x**) |
+| accounting violations | 14 | **0** |
+| `_accept` | cx2=1 b1=1 b2=1 | same |
+| `_committed` | `[2..2, 2..4] OK` | same |
+| `_freespan` | PASS | same |
+| `_conf1` | `0 1 1 0 2 3` | same |
+| `_charge` | `0 0 0` | same |
+| `_recommit` | 12/12 | 12/12 |
+| `dart test` | +308 | +308 |
+| scaling `rep-first-err` / `left-rec-err` | 2.12 / 2.02 | 2.07 / 2.24 |
+
+### Open, and not fixed by this
+
+**The json extreme truncations.** `[{"x` and `{"a` both give
+`Value ( String ( ) )` under r8 *and* r9: the whole prefix is re-read as one
+`String` whose quotes are both invented and whose content matches an inverted
+charset, so `net = 0` and nothing penalises it. This is a **different mechanism
+from I92** — the reading is coherent, it is just wrong. `_recommit`'s probes
+(`[{"x":[1,`) are long enough that the String reading loses on cost, so the gate
+does not see it: **that is a coverage gap in the gate, not a pass.**
+
+### Where this leaves the size goal
+
+**565 lines against the stated 400, and this occasion made it worse.** Measured
+the same way across the series (code lines from the first `import`, comments and
+blanks stripped): r1 410, r7 481, r5 483, r6 520, r8 530, **r9 565**. So I92 and
+the I91 correction cost **+35 lines**, not the ~15 I had assumed before counting
+— the fallback bookkeeping in `recover` is most of it. The bulk of the overage
+is still inherited from r5/r6, but r9 is now the largest engine in the series
+and the goal is 165 lines away. Honest negative, and the counting was the point:
+the estimate was wrong by more than 2x in the direction that flattered the work.
