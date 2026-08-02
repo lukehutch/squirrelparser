@@ -11900,3 +11900,200 @@ stands, and that is irreducible given what the rule asserts.
 **476 lines is 76 over the standing goal**, and the goal is still unmet. Of the
 35 lines over r3, roughly 20 are lever `f` and 8 are the `fix` field's threading
 through constructors that already take six positional arguments.
+
+## Occasion 64 — r5: the two questions about a reading were one number, and the number could then be enforced
+
+The ask was abstract: step back from r4, find core unifying principles, look at
+how the added fields vary relative to each other, and merge what can be merged.
+The answer turned out to be measurable rather than aesthetic, and it paid in
+three currencies at once — a field deleted, a conformance defect closed in one
+line, and a tenth of the clock.
+
+### I83 — `peg` and `fix` were never two questions
+
+r4 asks two things of every way: is this the reading the frozen parser would
+take (`peg`), and where does it stop taking the document at face value (`fix`)?
+Instrumenting every way the chart stores, over the whole battery — **4,036,236
+ways** — says no way ever answers both. `peg` implies the way repairs nothing,
+and repairing nothing holds exactly when `fix` is `_far`. Disjoint supports, so
+one integer carries both:
+
+```
+  _peg  (= _far + 1)   this is PEG's own reading
+  _far  (= 1 << 30)    read clean, but not the reading PEG would take
+  0 .. length          read clean up to here, and repaired at this position
+```
+
+The propagations merge with the fields, which is the part that makes it a
+unification rather than a packing trick: **conjunction of `peg` and minimum of
+`fix` are the same operation on this key.** Chaining two ways is `min`, losing
+the PEG claim is `min` with `_far`, and charging a way for the tail it never
+reached is `min` with the position it stopped at. Losing the claim and recording
+a repair were always one act, written twice.
+
+`free` then reads off the same field — `free ⟺ key >= _far` — so the three
+questions the engine asks about a reading (is it clean, is it PEG's, where does
+it stop trusting the input) are **three thresholds on one number**.
+
+Verified by tree identity, not by score: r4 and the merged form emit
+byte-identical serialized trees and identical `lastCost` on all 1824 cases.
+Four matching decimals would not have proved it; two engines can differ on a
+case and score the same.
+
+### I84 — what is left is a monoid, and repairs are elements of it
+
+`_Way.unit(p)` is the identity, `_Way.then(v)` the product — three sums and one
+minimum. Because every counter is an aggregate over the tree, that *is* what
+concatenating the trees does to them. A sequence is the product folded over its
+slots and a repetition is it starred. The consequence worth stating: **a
+deletion (`_Way.skip`) and an unmet obligation (`_Way.owe`) become ELEMENTS to
+fold in, not extra rules.** `_seq`'s three repair branches had the chain formula
+written out byte-identically three times; they are one call now.
+
+### I85 — a claim nothing refuses is not a claim
+
+r4's own comment said the round at budget 0 IS the frozen parser. **It was
+false.** `peg` only ordered ways; nothing ever refused one, so any complete free
+reading ended the round. Codex found it and three grammars reproduce it:
+
+| grammar | input | pure PEG | r4 | r5 |
+|---|---|---|---|---|
+| `S <- 'a'* "ab"` | `aab` | REJECT | **0** | 2 |
+| `S <- ('a' / "ab") 'b'` | `abb` | REJECT | **0** | 1 |
+| `S <- A 'c'; A <- 'a' / "ab"` | `abc` | REJECT | **0** | 3 |
+
+Charging 0 for a string the frozen parser rejects is a false claim about the
+grammar whatever tree comes with it. The first row is the **same possessive-star
+defect occasion 31 named in the cgfr line** (`_hang2.dart` case 1), reinherited
+by the whole r series and never noticed because `_charge` and `_conf1` only
+probe the battery and six hand-written cases, and no battery grammar exercises
+it.
+
+The fix is one line in `recover`:
+
+```dart
+if (a.key == _far) continue;
+```
+
+Refuse the single key value BETWEEN the two thresholds — clean, but not PEG's.
+Were such a reading an answer, the frozen parser would have returned it. **That
+value exists to be refused only because the fields merged**, which is what makes
+this a consequence of I83 rather than an unrelated patch.
+
+**Refuted, my own first attempt:** I also made `_rep` demote a run PEG would
+have continued, reasoning that the chart keeps every run length at no charge.
+Then I tested whether it was needed — it was not. `_prune` in `_ways` already
+demotes non-farthest PEG ways across the whole cell; the gap was never in the
+repetition, it was that nothing ever *enforced* the claim at the root. Removing
+it gave identical costs on all three rows and saved 10 lines. **Do not re-add
+it.**
+
+### I86 — a ceiling that cannot be reached is not a ceiling
+
+`S <- S;` has no finite derivation, so `_minFill` leaves it at `_never` and r4
+deepened towards a ceiling near 2³⁰. Measured: the frozen parser returns at
+once, r4 spins past a 25-second kill. A fill tree and a match tree have the same
+shape, so a rule that cannot be filled to anything cannot match anything either:
+there is nothing to deepen towards. Setting the ceiling below the floor lets the
+existing whole-input fallback stand, and costs two lines and no branch.
+
+### I87 — a clause that cannot call itself needs no cell
+
+Everything a memo cell carries — the nested lookup, the two cycle flags, the
+monotone loop, the version stamp — exists for re-entry. A clause with no
+subclauses has nothing to re-enter through, and **a `Ref`'s own cell only
+shadows the rule body's, which is where the cycle is detected and the fixed
+point actually taken.** Both go straight through:
+
+```dart
+if (c is Ref) return _prune(_lift(c, pos, _ways(rules[c.ruleName]!, pos)));
+if (c is! HasOneSubClause && c is! HasMultipleSubClauses) {
+  return _prune(_terminal(c, pos));
+}
+```
+
+With a `Seq` prefix that has already overspent the round no longer asked for
+slots it cannot afford, this is **10.5% of the clock and not one tree changes** —
+verified as tree-identical over all 1824 cases, so it is a cost change, not a
+policy change.
+
+This does not contradict occasion 62's finding that deepening overhead is only
+6.1% and search-order rework is dead. That measured how many times the engine
+looks; this reduces what a look costs. They are orthogonal, and only the second
+was available.
+
+### Measured, and the ones that lost
+
+Battery diffs are against r4's own trees: `diff=N(+better/−worse)`.
+
+| candidate | battery / perfect | trees vs r4 | LOC | verdict |
+|---|---|---|---|---|
+| **r5** (all of the below) | 0.9683 / **73.6** | 64 (+8/−0) | 483 | **adopted** |
+| cell bypass + residual guard | — | 0 vs prior | +5 | adopted, −10.5% |
+| root `key == _far` gate | — | 0 | +1 | adopted, closes I85 |
+| exact merge (I83+I84) | 0.9683 / 73.2 | **0 — tree-identical** | −5 | adopted |
+| drop the `del` tiebreak | 0.9683 / 73.6 | 11 (+8/−0) | −1 | adopted |
+| stop emits one mark per obligation | 0.9683 / 73.6 | 53 (+0/−0) | +2 | adopted |
+| `_never` ceiling | — | 0 | +2 | adopted, closes I86 |
+| `_rep` demotes a continued run | identical | 0 | +10 | **redundant** |
+| predicates asked at budget 0 | 0.9683 / 73.6 | 0 | +3 | identical, 0 ms |
+| lever `H` reads `del + gap` | 0.9683 / 73.5 | 13 (+7/−2) | 0 | **refuted**, 2 regressions |
+| key outranks `net` in `_rank` | **0.9595** / 70.8 | 153 (+45/−83) | 0 | **refuted**, −0.0088 |
+
+The `del` tiebreak's +8/−0 survives a control: reversing `_prune`'s input order
+gives 0.9680/73.0 without it and 0.9681/73.4 with it, so it wins under both
+orders. That control also showed **798 of 1824 cases (44%) have at least one
+order-decided tie reaching the output**, though only about 39 change score.
+
+### The invariant that was not total, and the gate that could not see it
+
+Checking every structural claim on every way the chart stores found one
+violation: **`gap` is not a tree aggregate — 2,419 ways where the way's `gap`
+exceeds its tree's**, by 1 (1879×), 2 (506×) or 3 (34×), never less. `_seq`'s
+stop charged `_owed(c, i)` but emitted a single zero-width mark. Emitting one
+mark per obligation fixes it and changes 53 trees at zero score cost.
+
+**`_charge` reports 0 mischarged for r4 and cannot do otherwise**: it reads
+`lastCost` off the emitted tree, so the search's accounting and the tree's can
+diverge without it noticing. The divergence was invisible to every gate. In r5
+all claims are total over **5,678,178 ways, zero violations**.
+
+### Still open
+
+- **Lever `f` stops at the first clean fit.** `S <- 'a'+ 'z'` on `xazaaaaaz`
+  charges 7; deleting positions 0 and 2 gives `aaaaaaz`, which the frozen parser
+  accepts — distance 2, confirmed by exhaustive deletion search. The missing
+  operation is revoking the early clean `z` commitment so the repetition can
+  continue. Scanning all later whole-production moves finds 3, not 2.
+- **The tree shape depends on whether a `First` is named as the top rule.**
+  `S <- 'a' / 'b'` on empty input fabricates an arm; wrapping it as `T <- S`
+  yields a bare root error. Cost is 1 either way, so no gate catches it.
+- **Closing the free pass exposes an overcharge** on `S <- A 'c'`: 3 where 1
+  suffices. Better than a false 0, and not right.
+- **Codex's claimed −23.8% does not reproduce.** Its four cuts, reimplemented
+  independently, give −10.5%; the fourth (predicates at budget 0) gives nothing
+  and was dropped. Its finding that deleting rules to reach 397 lines costs
+  0.0172 battery and fails `_accept` does reproduce, and is the reason the size
+  goal needs representational compression rather than policy deletion.
+
+### Where it stands
+
+| | r3 | r4 | **r5** | m143 |
+|---|---|---|---|---|
+| battery | 0.9642 | 0.9683 | **0.9683** | 0.9693 |
+| perfect | 71.2% | 73.2% | **73.6%** | 72.1% |
+| ms (median of 7, alternating) | 2591 | 2470 | **2210** | 1186 |
+| code lines | **441** | 476 | 483 | 628 |
+| quote-insert | 0.973 | 0.981 | **0.982** | |
+
+Every other category identical to r4. `_accept` 3/3, `_committed`
+`errors=[2..2, 2..4] OK`, `_freespan` PASS, `_conf1` `0 1 1 0 2 3`, `_charge`
+`0 0 0`, `dart test` 308/308 — all matching r4's baseline exactly.
+
+**The seven timing rounds do not overlap**: r4 2447–2547, r5 2183–2252. Every r5
+round beats every r4 round, which is the separation r4-vs-r3 never had.
+
+**483 lines is 83 over the goal, and the unification did not shrink it.** The
+merge itself saves 5 lines; the three fixes spend 12. The honest reading is that
+this occasion bought conformance, totality and latency, and paid 7 lines for
+them.
