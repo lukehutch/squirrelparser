@@ -76,12 +76,17 @@ bottom-up Earley/SPPF chart expanded by a DP wavefront from the failure point.
 That was built (m141) and it loses. What it *revealed* is I81, which is a clean
 win, and which is a top-down change.
 
-| engine | change | AST-diff | perfect% | ms | LOC | free-span |
-|---|---|--:|--:|--:|--:|:-:|
-| m132 | (previous standing engine) | 0.9648 | 69.2 | 1,168 | 612 | PASS |
-| m141 | **I79** — bottom-up right-to-left sweep over all clauses × positions | 0.9641 | 67.8 | **21,319** | 674 | PASS |
-| m142 | **I80** — drop every hollow node, anywhere | 0.9656 | 67.5 | 1,147 | 617 | PASS |
-| **m143** | **I81** — drop a hollow node only past end of input | **0.9693** | **72.1** | 1,171 | 629 | **PASS** |
+| engine | chart | I81 | AST-diff | perfect% | ms | LOC | free-span |
+|---|:-:|:-:|--:|--:|--:|--:|:-:|
+| m132 | – | – | 0.9648 | 69.2 | 1,168 | 612 | PASS |
+| m141 | **yes** (I79) | – | 0.9641 | 67.8 | **21,319** | 674 | PASS |
+| m142 | – | I80, unrestricted | 0.9656 | 67.5 | 1,147 | 617 | PASS |
+| **m143** | – | **yes (I81)** | **0.9693** | **72.1** | 1,171 | 628 | **PASS** |
+| m145 | **yes** | **yes** | 0.9668 | 70.6 | 21,274 | 690 | PASS |
+
+m145 exists to separate the chart from I81, which the first three rows confound.
+**Holding I81 constant, the chart costs 0.0025 and 1.5 perfect points** — so its
+extra reach is not unprofitable at 18x, it is negative at *zero* latency.
 
 **I79 — the chart costs 17.8x and buys nothing.** m141 is m132 with the memo
 replaced by a genuine chart: every clause node × every position, relaxed to a
@@ -93,6 +98,28 @@ cells. A chart fills 100% of them. Two earlier independent measurements agree �
 the eager chart in `lib/src/recovery/semiring_recovery.dart` measured **11x**,
 and m51's bottom-up agenda measured **14x**. Sparse top-down deepening is not a
 weaker form of chart parsing; on this workload it is the optimisation.
+
+**And the chart is not merely slower — it reaches worse readings.** I predicted
+it would find nothing the search misses, from `calls/cell` = 1.00.
+`_chartcost.dart` refutes that over 1792 cases: **1782 identical, chart cheaper
+on 9, search cheaper on 1.** It does reach readings the search misses, and it is
+not a superset either. What those readings are, on `[1,[2,`:
+
+```
+expect  Value (Array (Value (Number ()) Value (Array (Value (Number ())))))
+m143    cost=3  err= 0   [1,[2,<]><]>     closes both brackets
+m145    cost=2  err=19   <">[1,[2,<">     "the whole document is a string"
+```
+
+Two invented quotes beat three invented brackets, so the globally cost-minimal
+repair of a truncated nested array is to **re-read the entire document as a
+damaged JSON string**. Five of the nine are this pattern. The top-down search's
+parochialism is the feature: it honours the structure the undamaged prefix
+already committed to, and never considers discarding it.
+
+The brief asks recovery to anticipate probable human intent in prioritising
+insertions, deletions and mutations. This is the sharpest statement of that the
+project has produced: **cost-minimality is not human intent.**
 
 Both proposed ways to bound the chart were also refuted by measurement:
 repair sites are **100% at-or-before the frontier and 0% after** it (median 13
