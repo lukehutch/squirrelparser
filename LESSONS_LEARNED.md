@@ -12923,3 +12923,47 @@ occasions. Prefer to re-read the artifact over re-reading your own gloss.
 Fixed in `r8.dart`, `r9.dart`, and above. Two zero-width holes for a two-slot
 obligation is also r6's under-reporting bug in the open — the one r8 fixed by
 emitting one mark per obligation, which is why r8's tree has `ERR @13+0` alone.
+
+### Two audits that came out clean, and one check that could not be run
+
+**The Codex check on Occasion 70 is OUTSTANDING.** It was attempted and failed
+for an account reason, not a technical one: *"You've hit your usage limit …
+try again at Aug 7th, 2026"*. So claims A (`stop` is `give-up` telescoped),
+B (`move` is `resync` + purity), and C (the constraint can only be a filter,
+never a cost term) rest on my own measurements alone. They are reproducible —
+`_stopeoi.dart`, `_movedirty.dart`, `_uni.dart`, `_stopq.dart`, `_cost2.dart` —
+but they have not had an adversarial reading. **Run the Codex check on Occasion
+70 before building on it.**
+
+**Audit 1: does the `stop` error recur?** Finding that a comment asserted a
+precondition its guard never checked is worth generalising, so I re-read the
+other repair sites against their prose. They hold:
+
+- `_first`'s guard (`r9.dart:1050`) — `(w.end - pos) - w.del - w.net >= w.net`
+  is exactly "the unexplained part is at least the explained part", matching
+  *"explains less of what it takes than it helps itself to"*. It rejects the
+  exact tie, which the preceding sentence (*"more evidence than assumption"*)
+  independently requires.
+- `_rep`'s fallback (`r9.dart:1095`) — the comment says *"a `+` … owes exactly
+  ONE"*, and the guard is only `all.isEmpty`. That is not a gap: `*` seeds
+  `best` with `pos: zero` (`r9.dart:1073`), so for `*` the list can never be
+  empty and `all.isEmpty` implies `requireOne`. Enforced structurally.
+
+**Audit 2: the total-failure fallback, which had been flagged as "not priced in
+the same currency as the ways".** Probed with `_nofill.dart`; the flag was
+wrong. The fallback (`r9.dart:1310`) is guarded by `ceiling == -1`, which occurs
+when the top rule's `_minFill` is `_never` — a rule that can never match nothing
+however much is supplied, e.g. unproductive left recursion:
+
+```
+A <- A 'x';        on "xxy"  ->  Repaired @0+3  kids=1  cost=3
+A <- 'x' A / 'x';  on "xxy"  ->  Repaired @0+3  kids=2  cost=1
+A <- 'x'+;         on "xxy"  ->  Repaired @0+3  kids=2  cost=1
+```
+
+It is reachable, it terminates (the round loop never runs, so `_ways` is never
+called on the left-recursive rule), and its cost is read off the tree by
+`_edits` like every other answer — 3 for a 3-character document deleted whole.
+There is no second currency. A bonus fact falls out: **r9 does not hang on a
+left-recursive grammar**, because the only path that would recurse is gated off
+before it is taken.
