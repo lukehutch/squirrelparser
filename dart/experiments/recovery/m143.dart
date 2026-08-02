@@ -35,8 +35,7 @@ bool _asserts(MatchResult m) {
 
 /// APPEND the nodes [w] promised to [out]. The only reader of the promise, and
 /// it runs once, on the way that won.
-void _emit(_Way? w, List<MatchResult> out,
-    bool Function(Clause, int, MatchResult) hollow) {
+void _emit(_Way? w, List<MatchResult> out, bool Function(Clause, int) hollow) {
   if (w == null) return;
   if (w.leaf != null) {
     out.add(w.leaf!);
@@ -58,7 +57,7 @@ void _emit(_Way? w, List<MatchResult> out,
     // `Filled` covers nothing either but ASSERTS something, which is the
     // invention the brief permits -- completing a shape the input witnesses --
     // so a subtree containing one is never hollow.
-    if (node.len == 0 && !_asserts(node) && hollow(w.c!, w.pos, node)) return;
+    if (node.len == 0 && !_asserts(node) && hollow(w.c!, w.pos)) return;
     out.add(node);
   } else {
     _emit(w.a, out, hollow);
@@ -715,7 +714,7 @@ class SuperDot3 {
   /// the frozen parser admits NO zero-length reading there, so the node would
   /// stand for a construct the input never witnessed. Asked only at emit, once
   /// per node of the winning tree.
-  bool _hollow(Clause c, int pos, MatchResult node) {
+  bool _hollow(Clause c, int pos) {
     // I81: DROP IT ONLY WHERE NO EVIDENCE COULD HAVE REACHED IT. Past the end
     // of the input there is nothing the node could ever have covered, so a node
     // covering nothing there is unwitnessed outright. INSIDE the input the same
