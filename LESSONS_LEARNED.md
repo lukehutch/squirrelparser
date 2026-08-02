@@ -12471,9 +12471,20 @@ r6   If @0+25 … If @8+16  ERR @8+0  ERR @9+0  Cond @9+2 (ERR @9+1)  ERR @12+1 
 r8   If @0+25 … If @9+15  ERR @13+0  Block @15+9
 ```
 
-r6 scores **exact** by reading the keyword `if` (positions 9–10) AS the
-condition variable and deleting the `(` after it — which coincidentally
-reproduces the oracle's shape `Cond ( Name ( ) )`. r8 reads the brackets as
+r6 scores **exact** by a reading that is not the one the summary line above
+looks like. Read the tree off it: it supplies the inner `if` keyword and its
+`(` as **zero-width** holes (`ERR @8+0`, `ERR @9+0`), **deletes the `i`** at 9
+(`ERR @9+1`), reads only the `f` at 10 as the condition variable, then deletes
+the real `(` at 12 (`ERR @12+1`). The `Cond` spans `if` only because the
+deleted `i` hangs beneath it. The keyword is **not** read as the variable and
+could not be — `Name <- !Keyword [a-z]+`, and `Keyword` matches `if ` at 9, so
+`!Keyword` fails there; at 10 it succeeds and `[a-z]+` takes the lone `f`. What
+that coincidentally reproduces is the oracle's shape `Cond ( Name ( ) )`.
+(Corrected in Occasion 70. The prose here formerly said r6 read the keyword as
+the variable, contradicting the very tree printed above it; Codex flagged it,
+and `_iftree.dart` settles it. Codex's own phrasing — "reads only `f` as the
+Name" — is right about the text and wrong about the node, which spans `if`.)
+r8 reads the brackets as
 brackets and puts one zero-width mark in the hole between them. **r8 loses the
 point and is the better answer.** The oracle comes from the frozen parser on the
 undamaged document, so it wants a *named node* for a hole that has no text;
@@ -12874,3 +12885,41 @@ paths that looked like four rules.
 **Not reached:** the size goal. `uni` plus deleting `stop` is ≈503 lines, still
 **103 over 400**, and both cost score. The unification is a truth about the
 model, not a route to 400 lines; that still needs a mechanism to leave.
+
+### A correction carried three files: what r6 actually does on the `if` case
+
+Codex flagged that the r6/r8 headers misdescribe the case the perfect-column
+regression turns on. Checked with `_iftree.dart`, which dumps the tree rather
+than restating it — and **both** descriptions were wrong.
+
+The header said r6 "reads the keyword `if` AS the condition variable and deletes
+the `(` after it". Under this grammar that is not merely wrong, it is
+impossible: `Name <- !Keyword [a-z]+` with `Keyword <- ("if" / "else")
+!([a-z])`, and at index 9 the text is `if `, so `Keyword` *succeeds* and
+`!Keyword` fails. `if` can never be a `Name`. What r6 really does:
+
+```
+If @8+16
+  Str  @8+0   ERR @8+0     <- inner `if` keyword supplied, ZERO width
+  Char @9+0   ERR @9+0     <- its `(` supplied, ZERO width
+  Cond @9+2  "if"
+    Name @9+2
+      ERR         @9+1  "i"   <- the `i` DELETED
+      OneOrMore  @10+1  "f"   <- only this is the variable
+  ERR @12+1  "("             <- the real `(` deleted
+```
+
+The `Cond` spans `if` only because the deleted `i` hangs beneath it. Codex's
+correction — "reads only `f` at 10 as the Name" — is right about the *text* and
+wrong about the *node*, which does span both characters. The two zero-width
+holes, the larger part of what r6 does, were missing from both accounts.
+
+The tree summary printed in the r6/r8 comparison above was correct all along;
+only the prose under it disagreed with it. **A record that contains both its
+evidence and a summary of that evidence will drift, and the summary is what
+drifts** — the tree was right and the sentence beneath it was wrong for two
+occasions. Prefer to re-read the artifact over re-reading your own gloss.
+
+Fixed in `r8.dart`, `r9.dart`, and above. Two zero-width holes for a two-slot
+obligation is also r6's under-reporting bug in the open — the one r8 fixed by
+emitting one mark per obligation, which is why r8's tree has `ERR @13+0` alone.

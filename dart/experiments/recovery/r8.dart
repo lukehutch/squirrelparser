@@ -38,11 +38,16 @@
 //
 // Battery 0.9711 / 73.2% perfect / 1587 ms, against r6's 0.9683 / 73.6 / 1714.
 // Every category is equal or better. THE PERFECT COLUMN IS DOWN AND THE REASON
-// IS WORTH RECORDING: on `if (a) { if () { c=1; } }` r6 scores exact by reading
-// the keyword `if` AS the condition variable and deleting the `(` after it,
-// which happens to produce the oracle's SHAPE. r8 reads the brackets as
-// brackets and marks the hole between them. It loses the point and it is the
-// better answer; ten cases turn on this and three turn the other way.
+// IS WORTH RECORDING: on `if (a) { if () { c=1; } }` r6 scores exact by a
+// reading that is not the one it looks like. It supplies the inner `if` keyword
+// and its `(` as ZERO-WIDTH holes (ERR @8+0, ERR @9+0), DELETES the `i` at 9
+// (ERR @9+1), reads only the `f` at 10 as the condition variable, then deletes
+// the real `(` at 12. The Cond spans `if` only because the deleted `i` hangs
+// beneath it -- the keyword is not read as the variable, and could not be:
+// `Name <- !Keyword [a-z]+` and `Keyword` matches `if ` at 9. What that
+// happens to produce is the oracle's SHAPE. r8 reads the brackets as brackets
+// and marks the hole between them. It loses the point and it is the better
+// answer; ten cases turn on this and three turn the other way.
 //
 // WHAT THIS COST TO FIND, AND WHAT IT DID NOT BUY. r7 implements the original
 // brief's own architecture -- pure parse, frontier list, widen, splice, resume
