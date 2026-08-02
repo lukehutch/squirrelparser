@@ -12332,3 +12332,167 @@ scratch inside the widening loop (`_round` calls `_parse()` per candidate, then
 `_forget()`). That re-parse is a D1 violation in spirit and is where r1's latency
 went. Two-sided widening does not fix it; the splice-and-resume half of the brief
 is what has to be made real.
+
+## Occasion 67 — r7 and r8: the brief's two OPERATIONS were right and its ARCHITECTURE was the ceiling
+
+Occasion 66 predicted that starting the widening loop at `l = 0` would give the
+brief's frontier architecture both sides of the alignment. Built, measured, and
+then carried into the chart. Both halves of that produced an engine; only one of
+them is worth keeping as the engine.
+
+### r7 — the brief's architecture, implemented faithfully, and what it costs
+
+Built from r1 (410 lines, 0.8018), changing only the search:
+
+| step | what changed | battery | exact | ms |
+|---|---|---|---|---|
+| r1 | — | 0.8018 | 23.3 | 663 |
+| +`l = 0` give-up, `_cheaper` lexicographic | grammar side added | 0.8691 | 45.4 | 6267 |
+| +cost-ordered loop, `del + gap` summed | **both fixes below** | 0.8867 | 49.1 | 5413 |
+| +ancestor is a site too | shallow give-up | 0.8977 | 51.9 | 7200 |
+| final r7 (+admissible floor) | 481 lines | **0.8970** | 51.4 | 7180 |
+
+**Three findings, each measured.**
+
+**`k` IS A PRICE, NOT A SPAN.** The first attempt kept r1's loop shape and simply
+started `l` at 0, so every give-up was reached before any deletion was tried and
+committed first. That alone cost `junk-insert` 0.919 → 0.878 and `delim-insert`
+0.911 → 0.853 — the two categories r1 was *best* at. Rewriting the loop to widen
+over the **edit cost**, offering the input side (`deny k characters`) and the
+grammar side (`give up a clause whose `_minFill` is k`) at the same `k`, is what
+makes the two sides comparable. Both regressions reversed and then exceeded
+(0.942 / 0.910).
+
+**AND THE TWO COSTS ADD.** r1's `_cheaper` orders `del` ahead of `gap` on the
+argument that the input is primal, so no number of gaps justifies destroying one
+real character. That argument is sound while a gap is what the *emit* falls back
+to, and wrong the moment a gap is a repair the *search* can choose: under it
+every give-up has `del = 0` and beats every deletion outright, at any price. The
+tie it was protecting survives as the second key — `{ a=1; b=2;` read as a
+`Block` missing its `}` (2 gaps) against the statements with the `{` denied
+(2 deletions) — so summing loses nothing and fixes the ordering.
+
+**THE ANCESTOR IS A SITE TOO.** r1's `_leaf` is `_walk(c, pos) || _add(c, pos)`:
+an interior node becomes a candidate only when nothing deeper is one. Calling
+both — so a clause is offered for give-up even while something inside it is
+stuck — is the brief's *"a more full recovery at a shallower node … an entire
+subtree of grammar has been skipped."* Worth `literal-damage` 0.845 → 0.930 and
+`multi-damage` 0.810 → 0.834. The cost-ordered loop is what makes it safe:
+giving up a large subtree costs its whole `_minFill`, so it is never reached
+while anything cheaper works. Restricting shallow sites to the grammar side only
+(r7d) scored the same 0.8971 and ran 4% faster — a real tie, so the simpler code
+(no fourth tuple field) won.
+
+**REFUTED — the brief's own stopping rule.** The brief says *"the FIRST time you
+find a new match of clause C at p+l … stop iteratively expanding."* Taking the
+first improving site in postorder instead of the best scored **0.8394 against
+0.8977**, and saved **6%** of the latency. Best-of-round is worth far more than
+it costs, and the brief's rule is a heuristic where the loop already has a sound
+order.
+
+**REFUTED — the admissible floor.** Both sides pay exactly `k`, so no repair
+offered at price `k` can bring the total below `_paid + k`; a site reaching that
+bound is optimal outright and the rest of the scan can be skipped. Sound, and it
+almost never fires: 7200 → 7180 ms. Kept, because it costs two lines and is a
+bound rather than a guess, but it is not a latency answer.
+
+**WHY r7 IS A CONTROL AND NOT THE ENGINE.** 481 lines, 0.8970, 7180 ms — against
+r3's 441 lines, 0.9642, 2571 ms. Dominated on every axis. Instrumented over the
+battery:
+
+```
+rounds       2861   (1.57/case)      frontier   81.6 sites/round
+k steps      11473  (4.01/round)     maxK 51
+site visits  1205871                 _match  100794  (input-side probes)
+_parse       208566  <-- FULL COLD RE-PARSES   (114 per case)
+```
+
+The input side has a cheap pre-test — `_match(c, p+k)` must succeed before the
+repair is offered — and contributes almost none of those parses. **The grammar
+side has no pre-test at all**, so essentially all 208,566 cold re-parses are
+give-ups being priced by re-running the whole parse. `_forget()` wipes the memo
+after each, so none of them is warm. That is the architecture, not the model:
+commit one repair per round and re-score by re-parsing. The chart re-parses zero
+times. **The operations were the brief's; only the architecture had to change.**
+
+### r8 — the same two operations, in the chart
+
+r6 + exactly two changes inside `_seq`. 530 code lines (+10).
+
+| engine | battery | exact | ms (interleaved) | lines |
+|---|---|---|---|---|
+| r6 | 0.9683 | 73.6 | 1574 | 520 |
+| v26 — mid-input stop | 0.9687 | 73.7 | — | 520 |
+| v28 — +per-slot give-up, `i > 0` | 0.9702 | 73.0 | — | — |
+| v29 — +per-slot give-up, any `i` | 0.9708 | 73.0 | — | — |
+| v30 — +last resort | 0.9711 | 73.2 | — | — |
+| **r8** = v31, one mark not `fill` | **0.9711** | 73.2 | **1512 (0.961×)** | 530 |
+
+**I90 — DENYING INPUT AND GIVING UP GRAMMAR ARE THE SAME SKIP AT TWO DEPTHS.**
+r6's `_seq` had two repairs for a slot it could not read — move the whole
+production (`i == 0`), or resynchronize past characters it does not want — and
+**both work by discarding input**. Neither answers *"there is nothing here and
+something should be."* r6 could say that, but only under `w.end == _in.length`,
+guarded on the argument that a document which STOPPED is evidence for nothing
+whereas one that carries on is evidence against. True of a production's tail,
+false of a hole inside one: `if ()` supplies the bracket on *both* sides, so the
+production was entered, was left, and the part between was never written.
+**Deleting the guard is the whole change** and it is strictly positive —
+0.9683 → 0.9687, all five gates unchanged. The budget and `_rank` were already
+doing the work the guard was arguing for.
+
+**I91 — SO A PRODUCTION MAY GIVE UP ONE SLOT AND CARRY ON.** Owing the *tail*
+stops a sequence; owing *one slot* does not — the next slot is asked at the same
+position and the production finishes. Priced at `_minFill(sub)`, so it is the
+same currency as a discard and `_rank` compares them with no rule about which to
+prefer. This is r7's mechanism, and it subsumes the brief's "enumerate the later
+slots of a Seq at this position" rule, which r1 had refused as *inventing
+structure by deleting*: giving slot `i` up lets the ordinary parse reach slot
+`i+1` by itself, it composes across slots, and unlike the brief's rule it also
+reaches past the END of a sequence.
+
+Two sub-findings, both measured:
+
+* **LAST RESORT.** A move and a resync EXPLAIN what they take, using characters
+  the document really supplied; a give-up assumes. Offering the give-up only
+  where neither reached the slot is worth **73.0 → 73.2** exact. Not a
+  preference — it is the rule `_first`'s lever H already applies to a damaged
+  arm.
+* **ONE MARK, NOT `fill` MARKS.** The slot is a single part that was not
+  supplied; splitting the claim into one mark per character describes a run of
+  separate omissions that nothing observed. Identical score, **1642 → 1587 ms**,
+  and five lines become one.
+
+**THE EXACT COLUMN IS DOWN AND THE REASON IS WORTH RECORDING.** 10 cases lost,
+3 won (`quote-delete`), net −7 of 1824. On `if (a) { if () { c=1; } }`:
+
+```
+r6   If @0+25 … If @8+16  ERR @8+0  ERR @9+0  Cond @9+2 (ERR @9+1)  ERR @12+1  Block @15+9
+r8   If @0+25 … If @9+15  ERR @13+0  Block @15+9
+```
+
+r6 scores **exact** by reading the keyword `if` (positions 9–10) AS the
+condition variable and deleting the `(` after it — which coincidentally
+reproduces the oracle's shape `Cond ( Name ( ) )`. r8 reads the brackets as
+brackets and puts one zero-width mark in the hole between them. **r8 loses the
+point and is the better answer.** The oracle comes from the frozen parser on the
+undamaged document, so it wants a *named node* for a hole that has no text;
+naming it `Cond ( )` without synthesising `Name ( )` inside would only halve the
+distance and would still assert a node for absent input, so it was not built —
+*never invent terminals of a class that are not there* outranks the column.
+
+**Gates, all identical to r6:** `_accept` cx2=1 b1=1 b2=1 · `_committed`
+errors=[2..2, 2..4] OK · `_freespan` PASS · `_conf1` 0 1 1 0 2 3 · `_charge`
+0 0 0 · `dart test` +308 all pass. Scaling: every clean shape linear;
+`rep-first-err` 1.83 (r6 1.97), `left-rec-err` 2.11 (r6 2.07) — same exponents,
+no new quadratic, and those two remain the deepening loop itself.
+
+**r7's `_conf1` is `0 1 1 0 3 6` against the reference `0 1 1 0 2 3`** — it
+overcharges the last two probes. Recorded as an honest negative on the control;
+r8 matches the reference.
+
+### Where this leaves the size goal
+
+530 lines against the stated 400. The two mechanisms added 10 lines between
+them, so the overage is inherited, not new. r7 shows the frontier architecture
+does not buy the difference back: it is 481 lines for 0.8970.

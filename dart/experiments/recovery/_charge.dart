@@ -18,6 +18,8 @@ import 'r3.dart' as r3;
 import 'r4.dart' as r4;
 import 'r5.dart' as r5;
 import 'r6.dart' as r6;
+import 'r7.dart' as r7;
+import 'r8.dart' as r8;
 
 /// (deleted characters, zero-width marks) recorded in [m].
 (int, int) edits(MatchResult m) {
@@ -63,7 +65,7 @@ void main() {
 
   print('${'engine'.padRight(6)}${'cost 0'.padLeft(10)}'
       '${'mischarged'.padLeft(13)}${'worst gap'.padLeft(11)}   example');
-  for (final name in ['r1', 'r2', 'r3', 'r4', 'r5', 'r6']) {
+  for (final name in ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8']) {
     final made = <String, dynamic>{};
     for (final c in corpora) {
       made[c.name] = switch (name) {
@@ -72,7 +74,9 @@ void main() {
         'r3' => r3.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
         'r4' => r4.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
         'r5' => r5.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
-        _ => r6.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
+        'r6' => r6.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
+        'r7' => r7.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
+        _ => r8.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top),
       };
     }
     var free = 0, mis = 0, worst = 0;
