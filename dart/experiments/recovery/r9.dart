@@ -931,16 +931,26 @@ class Squirrel {
             break;
           }
         } else {
-          // THE INPUT RAN OUT. A slot left unmet here is not a construct
-          // claimed on no evidence -- there is no evidence either way, because
-          // the document stopped. So the production STOPS, owing what the rest
-          // of it would have cost, and contributes NO NODE for any of it.
-          // Stopping is the whole of the claim: carrying on to fill a closing
-          // bracket whose body never arrived would assert a part that was
-          // never reached, and it is the difference between saying "the
-          // document ended here" and saying "an object was here". Being at the
-          // end of the input is what makes it honest; `w.end > pos` is what
-          // keeps it from inventing a production that was never entered.
+          // THE PRODUCTION STOPS, owing what the rest of it would have cost,
+          // and contributes NO NODE for any of it. Stopping is the whole of the
+          // claim: carrying on to fill a closing bracket whose body never
+          // arrived would assert a part that was never reached, and it is the
+          // difference between saying "this ended here" and saying "an object
+          // was here". `w.end > pos` keeps it from inventing a production that
+          // was never entered.
+          //
+          // THIS IS A SHORTCUT, NOT A RULE. [_owed] is by construction the sum
+          // of [_minFill] over the remaining slots, so a stop costs exactly
+          // what the give-up chain below costs over the same slots -- it is
+          // that chain telescoped. And it is NOT confined to the end of the
+          // input, which is what the shape of the argument suggests it should
+          // be: guarding it with `w.end == _in.length` was measured to produce
+          // identical trees AND costs to deleting it outright, on all 1824
+          // cases. Where the document really does stop, the chain reaches the
+          // same end at the same price. So everything this branch does, it does
+          // MID-DOCUMENT -- letting a production abandon its tail while input
+          // remains -- and that is worth 48 differing trees and 0.0002 of
+          // score. Occasion 70 has the measurements.
           final owed = w.end > pos ? _owed(c, i) : 0;
           if (owed > 0 && owed < _never && w.del + w.gap + owed <= _budget) {
             var x = w;

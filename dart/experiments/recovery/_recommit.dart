@@ -115,7 +115,10 @@ const probes = <Probe>[
 void main(List<String> argv) {
   final engines = argv.isNotEmpty
       ? argv
-      : const ['m121', 'm126', 'm127', 'm132', 'm136', 'm141', 'm143', 'm145'];
+      : const [
+          'm121', 'm126', 'm127', 'm132', 'm136', 'm141', 'm143', 'm145',
+          'r9', // the shipped r-engine; without it a bare run checks no r
+        ];
   final rulesOf = {
     for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)
   };

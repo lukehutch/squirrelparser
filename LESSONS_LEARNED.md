@@ -12734,3 +12734,143 @@ mechanism to leave, not a tidier way to write the ones that are there.
 parser that reimplements terminal matching can silently disagree with the parser
 it recovers for. It did not disagree here — I checked all five subclasses — but
 the only way not to disagree is not to have an opinion.
+
+## Occasion 70 — the Levenshtein model unifies to two rules, and the fourth was never doing what it says
+
+This closes the question the r-series brief asked last: *"Does this help unify
+the Levenshtein model in the r series?"* The answer is **yes, and further than
+expected** — the four repair offers in `_seq` are two edit rules, one shortcut,
+and one filter. Both of those last two are now measured, not argued.
+
+### The 2x2 that was supposed to be there
+
+Every repair `_seq` can offer is a point on the Levenshtein edit graph, with
+input positions on one axis and grammar slots on the other:
+
+| | delete INPUT (`del`) | delete GRAMMAR (`gap`) |
+|---|---|---|
+| **one slot** | `resync` — discard in front of slot `i` | `give-up` — `_minFill(sub)` marks, carry on |
+| **whole production** | `move` — discard in front of slot 0 | `stop` — `_owed(c, i)` marks, production ends |
+
+The brief predicted exactly this shape: *"the first case is deletion of input
+characters, the second case is deletion of grammar clauses."* What the brief did
+not predict, and what the measurements show, is that **the second column is not
+an axis at all** and the second row is not an edit.
+
+### The four offers, ablated one at a time
+
+| ablation | score | perfect% | Δscore | latency |
+|---|---|---|---|---|
+| r9, all four | 0.9721 | 73.6 | — | 1630 |
+| −`move` | 0.9705 | 72.7 | −0.0016 | 1653 |
+| −`resync` | 0.9549 | 65.1 | **−0.0172** | **2424** |
+| −`stop` | 0.9719 | 73.6 | −0.0002 | 1687 |
+| −`give-up` | 0.9698 | **74.1** | −0.0023 | 1812 |
+
+**`resync` IS the engine.** Deep input deletion — the brief's own "skipping input
+characters would happen deeper in the AST" — is worth 8.5 perfect points and 38%
+of the latency. Nothing else is worth more than one point. Removing `give-up`
+*raises* perfect% by half a point while lowering aggregate score, so it buys
+partial credit on hard cases at the price of exactness on easy ones.
+
+### `stop` is `give-up` telescoped, and it never fires where its comment says
+
+Read first: `_owed(c, i)` is literally `Σ_{j≥i} _minFill(c.subClauses[j])`
+(`r9.dart:1007`). So a stop and the give-up chain over the same slots cost the
+**same by construction**. `stop` is a shortcut through a chain, not an
+independent claim.
+
+Then measured. `stop`'s comment justifies it by a precondition —
+
+> *"Being at the end of the input is what makes it honest"*
+
+— that **the code never checks**. The guard is `w.end > pos`, which is "this
+production was entered", not "the document stopped". So I added the missing
+guard (`w.end > pos && w.end == _in.length`) and scored it:
+
+```
+stopeoi   0.9719  73.6   truncate .946  transpose .967
+abstop    0.9719  73.6   truncate .946  transpose .967
+identical tree AND cost: 1824    differ: 0
+```
+
+**`stop` restricted to end-of-input is byte-identical to deleting `stop`, on
+every one of the 1824 cases.** It never fires at end of input — because when the
+document stops, the give-up chain reaches the same end at the same price and
+builds the same tree. Every observable effect `stop` has (48 differing trees,
+net −0.307 points) is in the mid-document case its own comment disclaims.
+
+The category means corroborate the mechanism independently: `truncate` — the one
+category where end-of-input is the whole story — is **unmoved** at .946, while
+`transpose` shifts .968 → .967. If `stop` did anything at end of input, truncate
+is where it would show.
+
+**Position:** the comment is wrong and must be fixed regardless of the design
+call. Whether `stop` itself stays is a real trade — it buys 0.0002 of score for
+~10 lines and 4% latency — and it changes 48 trees, so it is not mine to delete
+silently.
+
+### `move` is `resync` at slot 0 plus a purity requirement — and purity is the part that matters
+
+`move` (`r9.dart:912`) re-reads the **entire** production at `k` with
+`_budget = 0`; `resync` (`r9.dart:957`) reads only the one slot and lets the
+tail repair. Three variants separate the two ideas:
+
+| variant | score | perfect% | latency | what it is |
+|---|---|---|---|---|
+| r9 | 0.9721 | 73.6 | 1630 | resync@0 + purity |
+| `movedirty` | 0.9710 | 73.4 | **2537** | slot-0 branch kept, purity dropped |
+| `uni` | 0.9702 | 73.2 | ~1640 | move branch deleted; resync everywhere |
+
+**Purity carries 0.0011 of the 0.0019**, so most of what `move` buys is *"the
+whole production must fit where it moved to"*, not *"the skip happens at slot
+0"*. And purity is also what makes `move` affordable: dropping it costs **+49%
+latency**, because the branch then explores repairs at every candidate `k`.
+`truncate` falls .946 → .940 without it.
+
+`uni` is real: 22 lines smaller, ~4% faster, and it **passes both `_recommit`
+(12/12) and `_accept` (`cx2=1 b1=1 b2=1`)**. My prediction that it would fail
+`_recommit` was wrong; something else carries that gate.
+
+### Why the constraint cannot be priced, only filtered
+
+`uni` loses 3.714 points over 53 cases, and the three worst are one failure:
+
+```
+{"p":[1,2,3],"q     r9:  Value(Object(Member(String, Value(Array(Num,Num,Num))), Member(String)))
+                    uni: Value ( String ( ) )
+```
+
+`_cost2` settles it: **uni's collapsed reading is strictly CHEAPER** — cost 3 vs
+r9's 4 on `{"p":[1,2,3],"q`, 2 vs 3 on `{"n":[0,-7,1.5,2e3],"`, 3 vs 4 on
+`{"a":1,`. Since `recover()` raises `_budget` one per round and **breaks at the
+first answering round**, a cheaper reading wins before `_rank` is ever consulted.
+No tie-break key can recover r9's answer.
+
+So *"a production that had to move must fit where it moved to"* is a **coherence
+filter on what a reading may say**, not a term in what it costs — the same class
+as I92. This is the general rule the deepening loop imposes: *any property the
+engine must enforce is either a budget term or a filter; a `_rank` key can only
+break ties inside one round.*
+
+And this is precisely the failure the brief predicted:
+
+> *"if partial recovery was possible deeper in the AST, but then a more full
+> recovery were possible at a shallower node in the AST, then effectively an
+> entire subtree of grammar has been skipped"*
+
+Deleting `{` costs one edit and lets `String`'s inverted charset swallow the rest
+of the document — shallower, cheaper, and wrong. `net > 0` does not stop it,
+because both quotes are real input. Purity does.
+
+### Where this leaves the brief
+
+**Unified:** two edit rules, `resync` (input) and `give-up` (grammar), are the
+whole Levenshtein model. `stop` is a shortcut through the give-up chain; `move`
+is `resync` under a filter. The brief's two-sided view of deletion is correct and
+is what the engine already implements — it was just spread across four code
+paths that looked like four rules.
+
+**Not reached:** the size goal. `uni` plus deleting `stop` is ≈503 lines, still
+**103 over 400**, and both cost score. The unification is a truth about the
+model, not a route to 400 lines; that still needs a mechanism to leave.
