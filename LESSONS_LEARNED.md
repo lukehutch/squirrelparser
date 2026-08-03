@@ -541,6 +541,58 @@ double duty as "no match" and as "shorter than everything":
 1. The fixed-point comparison above.
 2. The left-recursive seed, which was still an undifferentiated tombstone.
 
+### What the change cost and what it has bought, measured
+
+**Scope.** `dart/lib/src/parser` is byte-identical between `6a8a173` and
+`1c88415`, and `1c88415..HEAD` over `dart/lib` + `dart/test` is *exactly* this
+change: six parser files (153 insertions, 32 deletions) plus the 160-line
+`test/parser/frontier_test.dart` (12 tests). So a lib swap between those two
+revisions isolates it perfectly.
+
+**Cost: it is paid per mismatch, and only there.** Pure parser, no recovery
+imported, JIT-warmed, min of 25 rounds, three alternating process pairs. Two
+grammars over the same 32,000-character input, one in which nothing ever
+mismatches and one in which every token is reached through nine failing `First`
+arms:
+
+| grammar | before | after | ratio |
+|---|--:|--:|--:|
+| nothing mismatches | 1.263 ms | 1.287 ms | **1.019** |
+| everything mismatches | 5.895 ms | 6.742 ms | **1.144** |
+
+On four realistic mixed cases (clean JSON, broken JSON, left-recursive
+arithmetic, miss-heavy `First`) it is **5.6–8.8% slower** on min. Peak RSS is flat
+to ~1.3%, so the cost is the *frequency* of short-lived allocations — one fresh
+object and one child list per failure where there used to be one shared tombstone
+— not heap growth.
+
+**Benefit so far: zero on every scored column.** r1–r9, m132 and m143 each score
+bit-identically against the old and the new lib. The tracked gate is unmoved:
+519/519 cost-1 and 490/519 (94.4%) shape at *both* revisions; the suite goes 308 →
+320 tests and the delta is exactly the 12 new frontier tests.
+
+**Nothing consumes the new information yet.** `.frontier` appears only in
+`frontier_test.dart` and one scratch gate. `m143` never names `Mismatch` at all.
+r9's only contact with it is the one-line repair the change *forced* — the
+`m.len >= 0` → `!m.isMismatch` fix in `_terminal` (§4.7). And r13, the engine that
+actually measured what an exact frontier is worth, runs on its own `_core2.dart`,
+not on `dart/lib`.
+
+**And as shipped, the tree's frontier is numerically *behind* the scan it was
+meant to replace.** On four broken JSON documents, walking the returned mismatch
+tree gives 6 / 6 / 4 / 1 where the pre-existing `Parser.syntaxErrorPosition()`
+gives 16 / 11 / 5 / 1. The new tree gives a frontier that is **located** — a
+clause, reachable in 23–48 nodes, instead of a bare integer — but on 3 of 4 it is
+a *shallower* number. That is the same 27.9% fidelity gap the port check reports
+below, seen from the user's side, and it is the whole content of the open `reach`
+fork.
+
+**What it did fix is real, and it is a correctness bug, not a metric.** Before
+`6b81302` a left-recursive rule's failure kept the *seed* — childless,
+zero-length — so every such failure was structureless. `E <- E '+' N / N` on `+1`
+collapsed to one node while the same language written without left recursion
+reported six. FRONT-11 pins it.
+
 **Port fidelity, measured** (`_portcheck.dart`, tracked). The experiment
 `_core2.dart` also carried `reach`: a watermark on **every** node including
 matched ones, so it keeps what a *successful* clause tried and threw away (an `X?`
@@ -1195,21 +1247,46 @@ reached it.**
 ## 4.7 r1–r9 — the `r` series, and the standing engine
 
 The brief's five stages, built and then progressively re-derived. **r9 is the
-standing `r`-engine and the best engine in the project: 0.9721 / 73.6% / 1,630 ms
-/ 536 LOC** (re-measured after the 2026-08 core change: **0.9748 / 74.0% / 2,003
-ms** — the score moved because r9 imports the library parser and the left-recursive
-seed fix reached it; `ms` is not comparable across sessions).
+standing `r`-engine and the best engine in the project: 0.9748 / 74.0% / 536 LOC.**
 
-| engine | score | perfect% | LOC | what it added |
-|---|---:|---:|---:|---|
-| r1 | 0.8018 | 23.3 | 410 | pure parser + frontier widening |
-| r2 | 0.8822 | 46.3 | 454 | the fill |
-| r3 | 0.9588 | 70.3 | — | the cell holds every reading; the frontier disappears |
-| r4 | 0.9683 | 73.6 | 476 | `_Way.fix`; a repair may not buy a reading the input never offered |
-| r5 | 0.9683 | 73.6 | 483 | the merged key: `peg` and `fix` were never two questions |
-| r6 | 0.9683 | 73.6 | 520 | — (round 0 was building a chart it could not spend) |
-| r8 | 0.9711 | 73.2 | 530 | one mark not `fill` |
-| **r9** | **0.9721** | **73.6** | **536** | the whole-document swallow, priced twice |
+All rows below were **re-measured in one session** against the current `dart/lib`,
+with `astdiff.dart` and `final_table.dart` confirmed byte-identical to the
+revisions the original numbers were taken at. Three rows had drifted from what was
+previously recorded here (r3 0.9588 → 0.9642, r4 perfect 73.6 → 73.2, r9 0.9721 →
+0.9748) and the measured values are the ones kept.
+
+| engine | score | perfect% | ms | LOC | what it added |
+|---|---:|---:|---:|---:|---|
+| r1 | 0.8018 | 23.3 | 647 | 410 | pure parser + frontier widening |
+| r2 | 0.8822 | 46.3 | 2,037 | 454 | the fill |
+| r3 | 0.9642 | 71.2 | 2,510 | — | the cell holds every reading; the frontier disappears |
+| r4 | 0.9683 | 73.2 | 2,575 | 476 | `_Way.fix`; a repair may not buy a reading the input never offered |
+| r5 | 0.9683 | 73.6 | 2,288 | 483 | the merged key: `peg` and `fix` were never two questions |
+| r6 | 0.9683 | 73.6 | 1,666 | 520 | — (round 0 was building a chart it could not spend) |
+| r7 | 0.8970 | 51.4 | 6,959 | 492 | re-derived frontier, cold re-parse per candidate |
+| r8 | 0.9711 | 73.2 | 1,638 | 530 | one mark not `fill` |
+| **r9** | **0.9748** | **74.0** | **2,038** | **536** | the whole-document swallow, priced twice |
+
+**The 0.9721 → 0.9748 step was NOT the 2026-08 core change, and an earlier note
+here said it was.** That note claimed the score moved "because r9 imports the
+library parser and the left-recursive seed fix reached it". A controlled
+comparison refutes it. Holding the scorer and battery pinned, r9 reads **0.9748 /
+74.0** in every measurable cell:
+
+| | old lib (`1c88415`) | new lib (`HEAD`) |
+|---|---|---|
+| **old r9** | 0.9748 / 74.0 / 2,025 ms | not a valid build — see below |
+| **new r9** | 0.9748 / 74.0 / 2,026 ms | 0.9748 / 74.0 / 2,056 ms |
+
+The core change moves r9 by **zero**. The +0.0027 came from `1c88415` itself,
+which rewrote 144 lines of `r9.dart`. The fourth cell does not exist as a correct
+configuration: old r9 tested `m.len >= 0` for "did it match", which was only sound
+while a mismatch carried `len == -1`, so on the new lib it would read `fun` as a
+match of `"function"`. The seven-line repair to `!m.isMismatch` ships *inside*
+commit `46bd136` for exactly that reason (§2.5).
+
+**The same control run across the whole series**: r1–r8, m132 and m143 each score
+bit-identically on both libs. **No recovery engine's accuracy moved at all.**
 
 **What each step actually taught:**
 
@@ -1273,7 +1350,7 @@ memoization is at RULE granularity.
 | r12 | 0.8661 | 44.1 | 290 | + a scored commit instead of first-match-wins |
 | **r13** | **0.9008** | **51.9** | **327** | + the shallow side of the frontier, + three cost fixes |
 | r7 | 0.8970 | 51.4 | 492 | same architecture, re-derived frontier, cold re-parse per candidate |
-| r9 | 0.9721 | 73.6 | 536 | chart + deepening budget — **still the standing engine** |
+| r9 | 0.9748 | 74.0 | 536 | chart + deepening budget — **still the standing engine** |
 
 **The core asymmetry, which is one fact showing up twice.** r13 offers two
 operations per frontier site:
@@ -1328,7 +1405,7 @@ the denial filter's 12.5% pass rate. Not built.
 **Verdict on #18.** Yes, the two-sided reading unifies the model — I90/I91 are
 exactly it, and r13 implements it directly. But it does **not** produce a simpler,
 faster, conforming engine: r13 is 327 lines against r9's 536 on the brief's own
-architecture, and it is 0.9008 against 0.9721 at 4x the latency, and it fails
+architecture, and it is 0.9008 against 0.9748 at 4x the latency, and it fails
 acceptance case b2. **What r13 settles is that the brief's architecture, given an
 exact frontier, is worth 0.90 and 327 lines** — and what it costs is the candidate
 enumeration the architecture is built on. No amount of frontier precision removes
@@ -1564,7 +1641,7 @@ refuted** — re-derivation is only 29% of the time. The time is in budget-1 and
    budget-1 and a 25-case tail; the semi-naive chart both analyses proposed is
    refuted (§6.4).
 3. **The `<400` LOC question.** r13 is 327 recovery lines but 0.9008; r9 is 536 at
-   0.9721. No engine has been both. Read §6.5 first.
+   0.9748. No engine has been both. Read §6.5 first.
 4. **The Codex check on the current `r` engine** — blocked on account usage limit,
    retry after 2026-08-07.
 5. **The give-up pre-filter (from #18).** A parent link on frontier entries would
@@ -1603,11 +1680,62 @@ refuted** — re-derivation is only 29% of the time. The time is in budget-1 and
 
 # APPENDIX — WHERE THINGS STAND
 
-| | engine | score | perfect% | LOC (recovery) | notes |
-|---|---|---:|---:|---:|---|
-| standing `r`-engine, and best overall | **r9** | 0.9721 | 73.6 | 536 | 0.9748 / 74.0 after the 2026-08 core change |
-| standing `m`-engine | **m143** | 0.9693 | 72.1 | 628 | I81 + I82 |
-| smallest engine that works | **r13** | 0.9008 | 51.9 | 327 | the brief's own architecture, exact frontier |
+| | engine | score | perfect% | ms | LOC (recovery) | notes |
+|---|---|---:|---:|---:|---:|---|
+| standing `r`-engine, and best overall | **r9** | 0.9748 | 74.0 | 2,038 | 536 | unchanged by the 2026-08 core change |
+| standing `m`-engine | **m143** | 0.9693 | 72.1 | 1,131 | 628 | I81 + I82 |
+| smallest engine that works | **r13** | 0.9008 | 51.9 | 6,692 | 327 | the brief's own architecture, exact frontier |
+
+### The standing-engine lineage, all on one battery
+
+Every engine that was at some point the standard, **re-measured in one session on
+the era-2 AST-diff battery** — including the era-1 engines, which `_score1.dart`
+adapts losslessly (§3.2). This is the only table in the record where `dot` and r9
+are directly comparable, and it is worth reading for one reason: **fourteen
+engines from `dot` to m74 are a single accuracy plateau.**
+
+| engine | score | perfect% | ms | what moved |
+|---|---:|---:|---:|---|
+| dot | 0.9549 | 67.3 | 15,705 | the origin |
+| m26 | 0.9551 | 67.2 | 1,479 | **10.6x latency**, accuracy flat |
+| m41 | 0.9550 | 67.2 | 1,144 | the parser plus three insertions |
+| m50 | 0.9550 | 67.2 | 3,061 | worklist over cells |
+| m51 | 0.9550 | 67.2 | 1,837 | the fixed point is the write |
+| m53 | 0.9550 | 67.2 | 1,664 | the reverse edge is the transpose |
+| m62 | 0.9550 | 67.2 | 1,354 | entry = fact, pass = frame |
+| m69 | — | — | >700,000 | did not complete |
+| m70 | — | — | >240,000 | did not complete |
+| m71 | 0.9550 | 67.2 | 1,472 | conformance without a tape |
+| m72 | 0.9548 | 67.1 | 1,518 | the write knows its own reason |
+| m74 | 0.9548 | 67.1 | 1,356 | the repaired string is the witness |
+| m75 | 0.9528 | 70.8 | 1,275 | **DISQUALIFIED (re-parses, D1)** |
+| m77 | 0.9609 | 71.5 | 1,389 | **DISQUALIFIED (re-parses, D1)** |
+| m112 | 0.9575 | 67.2 | 4,395 | a fill of no characters is not a repair |
+| m113 | 0.9573 | 67.0 | 4,439 | a prefix carries only where doubt started |
+| m121 | 0.9573 | 67.0 | 4,743 | I72, the invention fee |
+| m132 | 0.9648 | 69.2 | 1,098 | I76 + I78 |
+| m143 | 0.9693 | 72.1 | 1,131 | I81 + I82 — standing `m`-engine |
+| r13 | 0.9008 | 51.9 | 6,692 | the brief's architecture, 327 LOC |
+| **r9** | **0.9748** | **74.0** | **2,038** | **standing engine, best overall** |
+
+**What this table says that no era-1 table could.** From `dot` to m74 the AST-diff
+score never leaves 0.9548–0.9551 and perfect% never leaves 67.1–67.3. Fourteen
+engines, an enormous amount of re-derivation, and **the accuracy is a straight
+line** — what those engines bought was latency (15,705 → 1,144 ms, **13.7x**),
+code size, conformance, and the deletion of tuning parameters. The whole of the
+project's accuracy gain, 0.9550 → 0.9748, arrives after the objective was
+re-framed from the CFG to the PEG (§4.1's closing note), and it is worth **+0.0198
+AST-diff and +6.8 perfect points**.
+
+The two blanks are not noise. m69 and m70 are precisely the two engines that fold
+their own copy of the parser rather than importing it (§3.5); neither finishes the
+era-2 battery, m69 at >700 s and m70 at >240 s, where the engine on either side of
+them runs in ~1.5 s.
+
+Note also that m75 and m77 — both **disqualified for re-parsing** — are the first
+engines to break the perfect% plateau (70.8 and 71.5 against 67.2). Their ranking
+is exactly why D1 has to be a stated constraint rather than something the score is
+trusted to enforce.
 
 **Files.** Engines live in `dart/experiments/recovery/<name>.dart`. Tracked gates
 and controls are the `_*.dart` files listed by `git ls-files`; untracked `_*.dart`
