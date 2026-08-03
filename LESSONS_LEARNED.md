@@ -968,7 +968,51 @@ is the parser's headline feature; (ii) clean input hid it completely, because `b
 engine's own recursion at `b ≥ 1` was broken; (iii) **the entire 519-mutant
 battery was structurally unable to see it**, because the JSON grammar is not
 left-recursive. At n ≥ 512 the pre-A5 engines return `-1, no repair found` —
-total failure at scale, not mild suboptimality. Fixed by A5.
+total failure at scale, not mild suboptimality. **Fixed by A5 in m23**, and the
+Ref re-entry guard fixed the related `null` at m24.
+
+**The shipped `dot` is not affected, and "every engine up to m22" means the
+sd/m line only.** `dot` scores 44/44 on the brute-force truth column, like m23
+onward and unlike every sd/m engine before m23. A tag asserting otherwise was
+once written from this narrative and removed when the measurement contradicted
+it. The bug was introduced *after* `dot` and lived exactly from sd3 to m22.
+
+**Re-confirmed in 2026-08 on the other battery, by a different instrument.** The
+era-2 AST-diff battery has a left-recursive corpus (`astdiff.dart:228` —
+`Expr <- Expr WS AddOp WS Term / Term`), which is precisely what the 519-mutant
+JSON battery lacked, so it can see this bug where the era-1 gate could not. Run
+cold over that battery, the engine either returns `null`/throws or it does not,
+and the boundary lands in exactly the same place:
+
+| engine | dot | sd3 | sd5 | v6 | m12 | m15/16 | m17–m21 | m22 | **m23 →** |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| crashed cases (of 1,824) | **0** | 4 | 90 | 55 | 113 | 66 | 61 | 63 | **0** |
+
+Two independent gates, over different corpora and scoring by different rules,
+both put `dot` clean, sd3–m22 broken, and m23 onward clean.
+
+**Split by corpus, the bug is perfectly contained and the aggregate is a lie.**
+`_crashwho.dart` attributes each case, and **all 63 of m22's crashes are in
+`expr`; none in `json`, none in `stmt`**:
+
+| mean score by corpus | `dot` | m22 | m23 |
+|---|---:|---:|---:|
+| json (896 weighted cases) | 0.9633 | 0.9632 | 0.9637 |
+| stmt (676) | 0.9630 | 0.9629 | 0.9629 |
+| **expr (252, left-recursive)** | **0.9038** | **0.4766** | **0.9037** |
+| expr, *non-crashed cases only* | 0.9038 | **0.6355** | 0.9037 |
+
+Three things follow, all measured rather than argued. **(i)** Outside the
+left-recursive corpus m22 and m23 are the same engine to within 5e-4 — the
+whole 0.8959 → 0.9551 step is `expr` and nothing else. **(ii)** `dot` at 0.9038
+and m23 at 0.9037 agree to 1e-4, which is the "`dot` is not LR-broken" claim
+restated as a number. **(iii)** The last row is the important one: **restricting
+to cases that returned a tree at all, m22 still scores 0.6355 against 0.9037.**
+So the crashes are not the whole damage — the milder form, non-minimal repairs
+at cost 2–3 where truth is 1, is real and costs another 0.27 on that corpus.
+"Total failure at scale" understates it: below the scale where the engine gives
+up outright, it quietly answers worse, and only a left-recursive corpus can see
+either half.
 
 **Two smaller results worth keeping.** *Witness tie-break: prefer the shortest
 head.* Among Δ-tied decompositions, take the smallest head end. Worth +6 shape
@@ -1696,8 +1740,11 @@ engines from `dot` to m74 are a single accuracy plateau.**
 
 | engine | score | perfect% | ms | what moved |
 |---|---:|---:|---:|---|
-| dot | 0.9549 | 67.3 | 15,705 | the origin |
-| m26 | 0.9551 | 67.2 | 1,479 | **10.6x latency**, accuracy flat |
+| dot | 0.9549 | 67.3 | 15,705 | the origin — and already LR-correct |
+| sd3 | 0.9247 | 63.0 | 2,446 | **6.4x of the 10.6x, in one step**; but LR now broken |
+| m22 | 0.8959 | 63.2 | 1,977 | the end of the broken run — `expr` at 0.4766 |
+| m23 | 0.9551 | 67.2 | 2,142 | **A5. LR fixed, and the plateau starts here** |
+| m26 | 0.9551 | 67.2 | 1,479 | the plateau at 382 LOC — size, not accuracy |
 | m41 | 0.9550 | 67.2 | 1,144 | the parser plus three insertions |
 | m50 | 0.9550 | 67.2 | 3,061 | worklist over cells |
 | m51 | 0.9550 | 67.2 | 1,837 | the fixed point is the write |
@@ -1718,14 +1765,31 @@ engines from `dot` to m74 are a single accuracy plateau.**
 | r13 | 0.9008 | 51.9 | 6,692 | the brief's architecture, 327 LOC |
 | **r9** | **0.9748** | **74.0** | **2,038** | **standing engine, best overall** |
 
-**What this table says that no era-1 table could.** From `dot` to m74 the AST-diff
-score never leaves 0.9548–0.9551 and perfect% never leaves 67.1–67.3. Fourteen
+**What this table says that no era-1 table could.** From m23 to m74 the AST-diff
+score never leaves 0.9548–0.9551 and perfect% never leaves 67.1–67.2. Twelve
 engines, an enormous amount of re-derivation, and **the accuracy is a straight
 line** — what those engines bought was latency (15,705 → 1,144 ms, **13.7x**),
 code size, conformance, and the deletion of tuning parameters. The whole of the
 project's accuracy gain, 0.9550 → 0.9748, arrives after the objective was
 re-framed from the CFG to the PEG (§4.1's closing note), and it is worth **+0.0198
 AST-diff and +6.8 perfect points**.
+
+**The `dot` → m26 latency drop is a cliff, not a slope, and an earlier version of
+this table mis-attributed it.** sd3, the engine immediately after `dot`, is
+already at 2,446 ms: **6.4x of the 10.6x arrives in a single step**, and twenty
+engines then share the remaining 1.65x. m26's own contribution was size — 382 LOC,
+the era's high-water mark on compactness — not speed and not accuracy. Every one
+of m23, m24, m25, m26, m28 and m30 scores an identical 0.9551 / 67.2.
+
+**And the dip between them is not a weaker repair strategy — it is the LR bug.**
+sd3 through m22 all crash on part of the left-recursive corpus (§4.1), which is
+what drags 0.9247 down to 0.8810 and back. m23 is A5. Reading the table without
+that, the project looks like it lost accuracy for twenty engines and then
+recovered it; what actually happened is that `dot` was right, a regression was
+introduced immediately after it, and m23 undid the regression. **The plateau is
+therefore `dot` → m74 in value and m23 → m74 in continuous membership**, and the
+lesson is the same one §4.1 draws: the only gate that could see any of this is a
+corpus with left recursion in it.
 
 The two blanks are not noise. m69 and m70 are precisely the two engines that fold
 their own copy of the parser rather than importing it (§3.5); neither finishes the
@@ -1736,6 +1800,104 @@ Note also that m75 and m77 — both **disqualified for re-parsing** — are the 
 engines to break the perfect% plateau (70.8 and 71.5 against 67.2). Their ranking
 is exactly why D1 has to be a stated constraint rather than something the score is
 trusted to enforce.
+
+### The 51 engines that were never the standard, swept onto the same battery
+
+The lineage table only lists engines that were at some point the standard, which
+invites the obvious question: is the frontier hiding in one that never was? So 51
+of them were run on the era-2 battery, one process each, in the same session:
+sd3, sd5, v6, m12, m15–m25, m27–m40, m42–m49, m52, m57–m61, m63, m64, m66–m68,
+m73, m76, m78. (Not swept: m65, which era-1 already recorded as non-viable; the
+`cgfr` line; and the `m26c`/`m42e`-style ablation rows, which are re-measurements
+of an engine already listed, not engines.) **The answer is no on both axes, and
+the sweep is worth keeping precisely because it is a negative result.**
+
+**Latency.** The three fastest engines in the whole study are m132 (1,098 ms),
+m143 (1,131) and m41 (1,144) — all three already in the lineage table. The
+fastest engine that was never the standard is m42 at 1,264, a further 10.5%
+behind m41, and m42/m44/m43/m73/m38 then fill 1,264–1,296 with nothing new in
+them. **The lineage table already contains the latency frontier of every era.**
+
+**A cross-battery disagreement worth recording.** Era-1's fastest engine was m64
+(195.1 latms, 0.42x v6, tagged "fastest latency"). On the era-2 battery m64 is
+1,359 ms — *behind* m62's 1,354 and 19% behind m41. Its era-1 advantage does not
+survive a wider corpus, which retroactively strengthens the era-1 note that m64
+cost "+124 LOC over m62 for no measured gain": on this battery it is +124 LOC for
+no gain at all.
+
+**The whole tape line fails to finish.** m63, m66, m67 and m68 each exceed a 180 s
+cap — verified as *slow, not erroring*: all four are still running at 20 s — and
+m69/m70 are at >700 s and >240 s. m65 was not re-run, but era-1 already had it at
+18.5x m62's battery with latency killed at that era's 120 s cap, so the whole
+contiguous run m63–m70 is out. That is >130x the ~1.3 s their neighbours take on
+either side. The tape/interval substrate is not a constant-factor
+cost, and no era-1 column priced it, because era-1 measured a single-edit JSON
+battery a tenth the size.
+
+**One engine in the sweep has a genuinely distinct profile: m78.** It is the only
+engine before m132 that breaks the perfect% ceiling *without* being disqualified —
+68.4% against the plateau's 67.2 — while scoring **below** the plateau in
+aggregate, 0.9444 vs 0.9551. Split by corpus that resolves cleanly:
+
+| mean score by corpus | plateau (m23–m26) | **m78** | m132 |
+|---|---:|---:|---:|
+| json | 0.9637 | **0.9741** | 0.9754 |
+| expr | 0.9037 | 0.8561 | 0.9309 |
+| stmt | 0.9629 | 0.9381 | 0.9635 |
+
+**m78 already had almost all of m132's json gain, 54 engines early, and paid for
+it out of the other two corpora.** m132's json is only +0.0013 over m78's; what
+m132 adds is that it stops paying — it is above the plateau on all three. The
+record files m78 as a negative result (I34, "an obligation you cannot write down
+constrains nothing"), and as an *engine* that verdict stands. But the json column
+says the mechanism was doing something real, and 30-odd engines went by before
+anything banked it. An aggregate score hid that for the whole interval.
+
+**And one engine is simply dead: m76 crashes on 252 of 252 `expr` cases** — the
+entire left-recursive corpus, mean score 0.0000 — while its json (0.9741) and
+stmt (0.9381) are identical to m78's. Same engine, left recursion removed. It is
+the cleanest illustration in the record of why the aggregate needs a corpus split:
+m76 still scores 0.8262, which reads like a mediocre engine rather than one that
+cannot parse a whole grammar class.
+
+**The sweep, in full.** `crash` is cases where the engine threw or returned null.
+Rows in the LR-broken run sd3–m22 are marked ✗; those scores are not comparable
+with the rest.
+
+| engine | score | perfect% | crash | ms | | engine | score | perfect% | crash | ms |
+|---|---:|---:|---:|---:|---|---|---:|---:|---:|---:|
+| sd3 ✗ | 0.9247 | 63.0 | 4 | 2,446 | | m35 | 0.8948 | 64.9 | 0 | 1,776 |
+| sd5 ✗ | 0.8906 | 62.9 | 90 | 2,782 | | m36 | 0.8948 | 64.9 | 0 | 1,628 |
+| v6 ✗ | 0.9023 | 62.9 | 55 | 2,271 | | m37 | 0.9551 | 67.2 | 0 | 1,426 |
+| m12 ✗ | 0.8810 | 62.9 | 113 | 2,192 | | m38 | 0.9551 | 67.2 | 0 | 1,296 |
+| m15 ✗ | 0.8958 | 63.2 | 66 | 2,460 | | m39 | 0.9551 | 67.2 | 0 | 1,332 |
+| m16 ✗ | 0.8958 | 63.2 | 66 | 2,167 | | m40 | 0.9551 | 67.2 | 0 | 1,390 |
+| m17 ✗ | 0.8974 | 63.2 | 61 | 1,963 | | m42 | 0.9550 | 67.2 | 0 | **1,264** |
+| m18 ✗ | 0.8962 | 63.2 | 61 | 1,801 | | m43 | 0.9550 | 67.2 | 0 | 1,290 |
+| m19 ✗ | 0.8962 | 63.2 | 61 | 1,863 | | m44 | 0.9550 | 67.2 | 0 | 1,271 |
+| m20 ✗ | 0.8962 | 63.2 | 61 | 3,778 | | m45 | 0.9550 | 67.2 | 0 | 1,317 |
+| m21 ✗ | 0.8962 | 63.2 | 61 | 3,456 | | m46 | 0.9550 | 67.2 | 0 | 1,312 |
+| m22 ✗ | 0.8959 | 63.2 | 63 | 1,977 | | m47 | 0.9550 | 67.2 | 0 | 1,440 |
+| m23 | 0.9551 | 67.2 | 0 | 2,142 | | m48 | 0.9550 | 67.2 | 0 | 1,394 |
+| m24 | 0.9551 | 67.2 | 0 | 2,129 | | m49 | 0.9550 | 67.2 | 0 | 1,362 |
+| m25 | 0.9551 | 67.2 | 0 | 1,576 | | m52 | 0.9550 | 67.2 | 0 | 1,760 |
+| m27 | 0.9475 | 62.3 | 0 | 1,721 | | m57 | 0.9548 | 67.1 | 0 | 3,370 |
+| m28 | 0.9551 | 67.2 | 0 | 1,634 | | m58 | 0.9549 | 67.2 | 0 | 3,602 |
+| m29 | 0.9484 | 62.2 | 0 | 9,964 | | m59 | 0.9550 | 67.2 | 0 | 13,602 |
+| m30 | 0.9551 | 67.2 | 0 | 10,690 | | m60 | 0.9550 | 67.2 | 0 | 1,338 |
+| m31 | 0.9550 | 67.2 | 0 | 12,006 | | m61 | 0.9550 | 67.2 | 0 | 1,729 |
+| m32 | 0.9550 | 67.2 | 0 | 1,721 | | m64 | 0.9550 | 67.2 | 0 | 1,359 |
+| m33 | 0.9550 | 67.2 | 0 | 1,694 | | m73 | 0.9550 | 67.2 | 0 | 1,293 |
+| m34 | 0.9551 | 67.1 | 0 | 2,911 | | m76 | 0.8262 | 66.8 | **252** | 2,137 |
+| m63/66/67/68 | — | — | — | **>180,000** | | **m78** | 0.9444 | **68.4** | 0 | 2,135 |
+
+Three shapes in that data besides the ones already named. The `pegfix` pair m27
+(0.9475 / 62.3) and m29 (0.9484 / 62.2) are the only *accuracy* regressions in the
+m23–m78 range, which reproduces era-1's "dead ends, m27 → m40" classification on a
+corpus it was never tuned against. The `stack` engines m30 and m31 (10,690 and
+12,006 ms) plus m59 (13,602) are the latency outliers, at 8–10x their neighbours.
+And m35/m36 at 0.8948 are the deepest non-LR accuracy hole in the study — m36 is
+the engine era-1 recorded as not doing what it was built for at all.
 
 **Files.** Engines live in `dart/experiments/recovery/<name>.dart`. Tracked gates
 and controls are the `_*.dart` files listed by `git ls-files`; untracked `_*.dart`
@@ -1753,4 +1915,5 @@ class of self-deception:
 | `_portcheck.dart` | how much of an experiment a library port actually got |
 | `_tree75.dart` | whether the tree really is over the input (**untracked scratch** — it machine-checked I32 on the now-disqualified m75; rebuild it if needed) |
 | `_cmp.dart` | which category a regression lives in, on real failing cases |
+| `_crashwho.dart` | an aggregate score hiding a **whole-corpus** failure — it splits score and crash count per grammar. This is what showed m22's deficit is entirely `expr` and that m76 scores 0.0000 on it while still aggregating to 0.8262 |
 | m144 / m145 | the chart's contribution, separated from I81's |
