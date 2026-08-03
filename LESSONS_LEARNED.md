@@ -13684,6 +13684,64 @@ first failing slot so it is always last).
 before and after, `_charge` 22.79 s → 23.11 s. Recovery time is dominated by the
 search, not by the pure parse.
 
+## What the port got, measured against the experiment it came from
+
+`_core2.dart` is the experiment this change was ported from, and it carries a
+second mechanism the instruction did not name: `reach`, a watermark on **every**
+node, matched ones included, so it also keeps what a *successful* clause tried
+and threw away. The library keeps no such record — a discarded subtree is
+discarded — so its frontier can only be a lower bound.
+
+`_portcheck.dart` measures the gap directly: per battery case, the deepest
+`pos + len` over the whole library tree against `_core2`'s root `reach`.
+
+```
+battery cases                       13605
+library frontier == _core2 reach     3789   27.9%
+library SHORT of it                  9816   mean 8.6ch, worst 48ch
+library AHEAD of it                     0
+```
+
+**The shipped design finds 27.9% of the frontier the experiment found**, and it
+is never ahead. The widest gaps are all one shape — an unterminated string
+literal:
+
+```
+  48ch  json  {"a":{"b":{"c":[1,2,{"d":[3,4]}]},"e":[[1],[2,...
+  47ch  stmt  { a="1; b=2; { c=3; if (d) { e=4; } f=5; } g=6...
+  37ch  stmt  { a=1; b=2; { c=3; if ("d) { e=4; } f=5; } g=6...
+```
+
+The `String` rule reads to the end of the document hunting a closing quote,
+fails, and an enclosing ordered choice then *succeeds* by taking a shorter arm —
+so the longest thing the parse ever learned about the input is thrown away with
+the losing arm. `Optional` is the same story: JSON's `(Member ...)?` on
+`{"a:1,...` parses a whole `String`, fails at the missing `:`, matches empty, and
+the `Object` above it reports a frontier of 1 instead of 7.
+
+**Adding `reach` to the library closes the gap exactly and costs about half the
+parse.** Implemented faithfully (a `reach` field folded in both constructors,
+`droppedReach` passed by `First`, `Repetition`, `Optional` and both predicates,
+`raise` at the left recursion fixed point), then measured back to back on one
+machine, `_memfront.dart` at n=1600:
+
+| variant | clean | broken | frontier found |
+|---|--:|--:|--:|
+| tombstone (before all of this) | 404 ms | 413 ms | — |
+| **shipped: mismatch nodes only** | **421 ms** | **431 ms** | 27.9% |
+| + `reach` | 617 ms | 676 ms | **100.0%, all 13605 cases** |
+
+`dart test` 320 passing either way. The cost is inherent to what `reach` is: a
+max over children, so every node pays a fold its constructor did not previously
+do, on the successful path as much as the failing one — and the successful path
+is the whole parse.
+
+So this is a real fork, not an oversight: **the instruction's mechanism and
+`_core2`'s mechanism are not the same mechanism**, the difference is 72% of the
+frontier against 1.5x the parse time, and the shipped library takes the cheap
+half. Nothing currently in `lib` needs the other half; r10–r13 do, and they run
+on `_core2`.
+
 ## Verification
 
 `dart analyze lib test` clean; `dart test` 308 → **318** passed (the 10 new
