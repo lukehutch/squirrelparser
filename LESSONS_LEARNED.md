@@ -13408,3 +13408,100 @@ too broad on its own — `WS` matches empty everywhere, so the resync would offe
 to skip any character for the price of a deletion, which is precisely what the
 give-up guard exists to prevent. It needs the paired restriction that the resync
 point must itself consume (`!v.free || v.end == k → skip`). Untested.
+
+# The reachability hypothesis is refuted; the swallow was losing inside `_prune`
+
+**Tested, and wrong.** Narrowing `clean` to `v.free && (i == 0 || v.end > w.end)`
+with the paired resync guard leaves `"1,[2,[3,[4]]],5]` at cost 1 and unchanged:
+**0 score, +546 ms.** Reverted.
+
+And the paired guard is not merely useless, it is **dead code**. A nullable slot
+matches empty *for free at `w.end`*, which sets `clean` and `continue`s before
+the resync branch is ever entered — so `v.end == k` can never fire. Ablated to
+confirm: byte-identical results, six gates, same swallows. Removed.
+
+## The real cause: a price the pruning cannot see is not a price
+
+`_prune` keeps **one way per end position**, ranked by `del + gap` first. On the
+leading-quote shape the swallow and the honest `Array` **both end at 17**, the
+swallow costs 1 and the `Array` 2 — so the `Array` is destroyed *inside the
+chart*, and a charge levied at the document never gets to speak. Correct
+diagnosis, and it invalidates the previous section's "the toll does fire here and
+changes nothing": it fires on a reading whose rival no longer exists.
+
+## `_Way.toll` — the same judgement, made where the pruning can see it
+
+A per-node counter, recorded in `_lift` where a **repaired** rule node absorbs
+more than it pins (`(end−pos) − del − net > net`), summed along the chain, added
+to `_rank`'s first key beside `del + gap`, and **not spent from the budget**.
+
+Three findings, each measured:
+
+- **It must rank.** See above.
+- **It must not be spent.** Folding it into `gap` costs **2.94x** total latency,
+  **p99 7.83x**, and its worst single case is a *truncation* —
+  `{"alpha":"beta gamma","delta":["epsilon","zet` went 9.8 ms → 104 ms. A
+  `String` pins two quotes and absorbs its body, so every truncation trips it and
+  pays a deepening round to re-decide a question it was never going to lose.
+- **Sum, not saturate.** `max` instead of `+` leaves the same swallows but costs
+  0.0004 battery, and it is `transpose` (0.974→0.968) and `junk-insert`
+  (0.983→0.979) that pay — so counting *places* does work beyond this case.
+
+## Neither price replaces the other — the budget buys the round, the rank keeps the rival
+
+This is the part I got wrong twice before measuring the cross. json's worst
+swallow as a share of the document:
+
+| | json worst | swallows @50% | `_recommit` | battery | perfect% |
+|---|--:|--:|:--|--:|--:|
+| neither | 94% | 7 | — | 0.9721 | 73.6 |
+| document charge only (`3016ea2`) | 94% | 7 | PASS | 0.9728 | 73.8 |
+| `toll` ranking only | 94% | 6 | **FAIL** | 0.9745 | 74.0 |
+| **both** | **42%** | **2** | **PASS** | **0.9748** | **74.0** |
+
+**Ranking alone fixes neither json shape.** In round 1 the honest `Array` costs 2
+and is never built, while the swallow costs 1 and is accepted before any deeper
+round runs — ranking can only separate readings that exist *at the same time*.
+The budget charge is what defers the swallow to round 2 and makes its rival
+exist; the ranking counter is what stops `_prune` deleting that rival on cost
+once it does. Deferral and ranking are not two attempts at one mechanism.
+
+## The two truthful multi-character-literal prices: one free, one negative
+
+The user's prediction was that with the missing absorption term in place these
+"should then be free or positive". One is; the other is not.
+
+**Variant B — `_terminal`, `k >= 1` → `k >= 0`** (supply the literal entirely at
+`text.length` obligations instead of a flat 1, with the old flat fallback kept
+only for single-character terminals). **ADOPTED.** Score, swallows and all six
+gates identical; `_align` already emits one mark per obligation so `_charge`
+stays at 0. It removes a real discount — inventing `function` used to cost what
+inventing `{` costs. It is free because the corpus's multi-character literals
+(`true`, `false`, `null`, `if`) are rarely invented wholesale; the value is that
+the price is no longer a lie.
+
+**Variant A — `_fillOf`, `if (c is Str) return c.text.length`** for a slot the
+production never reached. **REJECTED.** 0.9748 → **0.9745**, reproduced over
+three runs each, and **two swallows become four** (stmt worst 92% → 94%).
+Latency is unchanged: medians 1998 ms vs 1954 ms inside a ~140 ms spread.
+
+The reason is the mechanism above. The stop *is* the honest reading of a
+truncated document, and every obligation added to it is a discount for the
+swallow it competes against. The two are not the same claim: the terminal says
+the literal is **here** with characters missing; the stop says the production
+**ended**. Pricing them alike is symmetry, not truth.
+
+## Result
+
+**r9 = 0.9748 / 74.0% / ~2.0 s / 562 LOC**, `_swallow` 2 cases at the 50%
+threshold (from 7), json worst 94% → 42%, six gates green, `dart test` 308
+passed, conformance row `0 1 1 0 2 3` unchanged.
+
+What is left is not a pricing problem. `i"f (a) { b=1; } if (c) { d=2; } e=3;`
+gives the swallow cost 2 and the honest reading cost 4, so no charge that leaves
+round 2 affordable can reach it — it needs a deeper search.
+
+**Measurement note.** Battery score and swallow counts are deterministic here
+(0.9748 three times, 0.9745 three times); the `ms` column is **not** — repeat
+runs of one binary spread ~140 ms, about 7%. Latency claims below that are noise,
+and two in the first draft of this section were.

@@ -435,7 +435,8 @@ int _min(int a, int b) => a < b ? a : b;
 /// children are collected once, for the few chains that survive.
 class _Way {
   const _Way(this.end, this.del, this.gap, this.net, this.key,
-      {this.leaf,
+      {this.toll = 0,
+      this.leaf,
       this.cap,
       this.from = 0,
       this.link,
@@ -484,6 +485,52 @@ class _Way {
   /// what stops a damaged document being re-read as one long string.
   final int net;
 
+  /// How many of this reading's repaired rule nodes ABSORBED MORE THAN THEY
+  /// PINNED -- how many places it swallowed. A sum, because a reading that
+  /// swallows twice is worse than one that swallows once; saturating it at one
+  /// leaves the same swallows but costs 0.0004 of battery, and it is `transpose`
+  /// and `junk-insert` that pay, so the count is doing work beyond this case.
+  ///
+  /// IT RANKS ALONGSIDE [del] AND [gap], AND IT IS NOT SPENT FROM THE BUDGET.
+  ///
+  /// It must rank, because [Squirrel._prune] keeps one way per end position by
+  /// cost alone: on `"1,[2,[3,[4]]],5]` the swallow and the honest `Array` both
+  /// end at 17, the swallow costs 1 and the `Array` 2, so the honest reading is
+  /// destroyed inside the chart and a price charged at the top never gets to
+  /// speak. A PRICE THE PRUNING CANNOT SEE IS NOT A PRICE.
+  ///
+  /// It must not be spent, because spending it buys a whole deepening round for
+  /// every repaired string there is -- a `String` pins two quotes and absorbs
+  /// its entire body, so every truncation trips it. Measured, that costs 2.94x
+  /// the latency, p99 7.83x, and its worst single case is a TRUNCATION:
+  /// `{"alpha":"beta gamma","delta":["epsilon","zet` went from 9.8 ms to 104 ms
+  /// to re-decide a question it was never going to lose.
+  ///
+  /// SO THIS DOES NOT REPLACE THE BUDGET CHARGE LEVIED ONCE AT THE WHOLE
+  /// DOCUMENT in [Squirrel.recover]. They do different jobs, and the four
+  /// measurements say so plainly -- json's worst swallow, as a share of the
+  /// document:
+  ///
+  ///     neither        94%   `[1,..,5"` and `"1,..,5]` both swallowed
+  ///     document only  94%   the trailing shape fixed, the leading one not
+  ///     this only      94%   NEITHER shape fixed
+  ///     both           42%
+  ///
+  /// The budget charge BUYS THE ROUND and this counter KEEPS THE RIVAL ALIVE
+  /// INSIDE IT. Ranking can only separate readings that exist at the same time,
+  /// and in round 1 the honest `Array` costs 2 and is never built, while the
+  /// swallow costs 1 and is accepted before any deeper round runs -- so ranking
+  /// alone fixes nothing here. Deferring the swallow to round 2 is what makes
+  /// its rival exist; and where the two then end at the SAME position, as they
+  /// do on `"1,[2,[3,[4]]],5]`, [_prune] would delete the rival on cost before
+  /// the document is ever reached, which is what this stops.
+  ///
+  /// Together they catch every swallow whose honest rival is affordable at the
+  /// same budget, and no others. `i"f (a) { b=1; } ...` is what is left: the
+  /// swallow costs 2 there and the honest reading 4, so it needs a deeper
+  /// search, not a price.
+  final int toll;
+
   /// A NODE IS A PROMISE UNTIL SOMETHING ACCEPTS THE WAY. [leaf] is a finished
   /// node -- a terminal's, which is the evidence itself and is one object with
   /// no children to collect. Every other way records only WHAT its node would
@@ -531,6 +578,7 @@ class _Way {
   /// fold in, not two more rules.
   _Way then(_Way v) =>
       _Way(v.end, del + v.del, gap + v.gap, net + v.net, _min(key, v.key),
+          toll: toll + v.toll,
           link: v,
           prev: this,
           mark: v.mark,
@@ -540,16 +588,17 @@ class _Way {
   /// -- taking the document at face value no further than [k], which defaults
   /// to no further than it already did.
   _Way over(MatchResult n, [int k = _peg]) =>
-      _Way(end, del, gap, net, _min(key, k), leaf: n, owing: owing);
+      _Way(end, del, gap, net, _min(key, k), toll: toll, leaf: n, owing: owing);
 
   /// The same way wearing [c]'s node over `[pos, end)`, the chain behind it
   /// KEPT rather than collected -- what the node will be, not the node.
-  _Way capped(Clause c, int pos, [int k = _peg]) =>
+  _Way capped(Clause c, int pos, [int k = _peg, int ate = 0]) =>
       _Way(end, del, gap, net, _min(key, k),
-          cap: c, from: pos, link: this, owing: owing);
+          toll: toll + ate, cap: c, from: pos, link: this, owing: owing);
 
   /// No longer PEG's reading -- but still whatever else it was.
   _Way get demoted => _Way(end, del, gap, net, _min(key, _far),
+      toll: toll,
       leaf: leaf,
       cap: cap,
       from: from,
@@ -643,7 +692,7 @@ class Squirrel {
   /// construct it covers -- while the honest reading spends several deletions
   /// and keeps everything after them. `net` measures what the proxy stood for.
   static int _rank(_Way a, _Way b) {
-    final ea = a.del + a.gap, eb = b.del + b.gap;
+    final ea = a.del + a.gap + a.toll, eb = b.del + b.gap + b.toll;
     if (ea != eb) return ea - eb;
     if (a.peg != b.peg) return a.peg ? -1 : 1;
     if (a.net != b.net) return b.net - a.net;
@@ -852,9 +901,22 @@ class Squirrel {
   /// It is honest where the grammar FIXES what the construct would have looked
   /// like -- `'}'`, or an `A <- [ab]` that is one leaf either way -- because
   /// then the mark claims nothing the grammar had not already said.
+  ///
+  /// AND WHETHER IT SWALLOWED IS DECIDED HERE, because this is where a rule's
+  /// node goes on and the span it covers is known. `net > 0` above is a floor,
+  /// not a comparison: one real quote is enough to buy sixteen characters of
+  /// `[^"\]`. The comparison is what that floor cannot make -- did this node
+  /// take more than it pinned -- and its answer goes into [_Way.toll], which
+  /// ranks. Levying it here rather than at the document is the whole point:
+  /// [_prune] resolves the swallow against its honest rival long before the
+  /// document is reached.
+  ///
+  /// Only for a repaired node, so round 0 stays the frozen parser.
   List<_Way> _lift(Ref c, int pos, List<_Way> ways) => [
         for (final w in ways)
-          if (w.net > 0 || w.free || _determined(c)) w.capped(c, pos)
+          if (w.net > 0 || w.free || _determined(c))
+            w.capped(c, pos, _peg,
+                !w.free && (w.end - pos) - w.del - w.net > w.net ? 1 : 0)
       ];
 
   /// A sequence: carry the chains forward slot by slot, and where a slot cannot
@@ -888,6 +950,15 @@ class Squirrel {
         // sequence buy length by throwing the input away. The question is
         // answered while the readings are carried forward, since that walk is
         // over the same list.
+        //
+        // A NULLABLE SLOT COUNTS AS REACHED, and that is correct even though it
+        // looks like the swallow's door. `Array <- '[' WS (Value (',' WS
+        // Value)*)? WS ']'` on `"1,[2,[3,[4]]],5]` never gets offered the resync
+        // that would discard the leading quote, because the optional body
+        // matches empty at 0 and an empty match is free. Requiring the slot to
+        // consume before it counts opens that resync -- and measured, it changes
+        // no swallow and costs 546 ms, because the swallow was never losing on
+        // reachability. It was losing on price, inside [_prune]. See [_Way.toll].
         var clean = false;
         for (final v in here) {
           next.add(w.then(v));
@@ -978,6 +1049,12 @@ class Squirrel {
             if (at.isEmpty) continue;
             final past = w.then(_Way.skip(w.end, k));
             for (final v in at) {
+              // The slot must read CLEANLY where it resumes: the discarded run
+              // is the whole price of the resynchronization, so a slot that
+              // still needs repairing there has not resynchronized. (Requiring
+              // it to CONSUME as well is dead code, not a missing guard -- a
+              // nullable slot matches empty for free at `w.end`, which sets
+              // `clean` above and never reaches here.)
               if (!v.free) continue;
               next.add(past.then(v));
               reached = true;
@@ -1127,12 +1204,18 @@ class Squirrel {
     // A MULTI-CHARACTER LITERAL IS A SEQUENCE OF SINGLE-CHARACTER OBLIGATIONS,
     // so the slot-by-slot repair the rest of the engine already uses applies
     // inside it: read the characters the input does supply, in order, and
-    // supply the rest at one obligation each. `k >= 1` is the same honesty rule
-    // as `net > 0` one level up -- a literal supplied ENTIRELY is an invention,
-    // a literal with a character restored is a repair the input witnessed.
+    // supply the rest at one obligation each.
+    //
+    // DOWN TO AND INCLUDING `k == 0`, which supplies the literal ENTIRELY. That
+    // used to be excluded and then re-offered below at a flat price of one, so
+    // inventing `function` cost exactly what inventing `{` costs -- a discount
+    // of six obligations for the longest keyword in the grammar, and the engine
+    // would rather invent a whole keyword than close a brace. Here it costs
+    // `text.length`, and [_align] emits one mark per obligation, so the charge
+    // read back off the tree still matches what was spent.
     final out = <_Way>[];
     if (c is Str) {
-      for (var k = c.text.length - 1; k >= 1; k--) {
+      for (var k = c.text.length - 1; k >= 0; k--) {
         if (pos + k > _in.length || c.text.length - k > _budget) continue;
         final n = _align(c.text, pos, k);
         if (n == null) continue;
@@ -1140,10 +1223,12 @@ class Squirrel {
             leaf: Repaired(c, pos, k, n.$1, n.$2),
             owing: n.$2.last.pos >= pos + k));
       }
+    } else {
+      // A single-character terminal owes one either way.
+      out.add(_Way(pos, 0, 1, 0, pos,
+          leaf: Repaired(c, pos, 0, const [], [SyntaxError(pos: pos, len: 0)]),
+          owing: true));
     }
-    out.add(_Way(pos, 0, 1, 0, pos,
-        leaf: Repaired(c, pos, 0, const [], [SyntaxError(pos: pos, len: 0)]),
-        owing: true));
     return out;
   }
 
@@ -1306,9 +1391,19 @@ class Squirrel {
         // Not charged where the reading is the parser's own, since round 0 must
         // stay the frozen parser: a document that IS one long string absorbs
         // more than it pins and owes nothing for it.
+        //
+        // AND IT IS NOT ENOUGH ON ITS OWN, because it is levied HERE, and by
+        // the time a reading arrives here its honest rival may already be gone:
+        // [_prune] keeps ONE way per end position ranked by cost, and on
+        // `"1,[2,[3,[4]]],5]` the swallow and the honest `Array` both end at 17
+        // with the swallow cheaper, so the `Array` is destroyed inside the chart
+        // and a price charged at the top never gets to speak. A PRICE THE
+        // PRUNING CANNOT SEE IS NOT A PRICE. [_Way.toll] is the same judgement
+        // made where the pruning can see it, and the two together take the
+        // worst json swallow from 94% of the document to 42%.
         final loose = s.length - w.del - tail - w.net;
-        final toll = !w.free && loose > w.net ? 1 : 0;
-        if (w.del + w.gap + tail + toll > _budget) continue;
+        final swallowed = !w.free && loose > w.net ? 1 : 0;
+        if (w.del + w.gap + tail + swallowed > _budget) continue;
         // AN OBLIGATION IS A CLAIM THAT THE DOCUMENT RAN OUT, AND A TAIL IS A
         // CLAIM THAT IT DID NOT. A way whose last act was to owe, with input
         // still in front of it, makes both claims at the same position: it says
@@ -1316,8 +1411,9 @@ class Squirrel {
         // to the discard. It has not earned the obligation -- it should have
         // read what the document offered.
         final incoherent = tail > 0 && w.owing;
-        final a = _Way(w.end, w.del + tail, w.gap + toll, w.net,
+        final a = _Way(w.end, w.del + tail, w.gap + swallowed, w.net,
             tail == 0 ? w.key : _min(w.key, w.end),
+            toll: w.toll,
             leaf: w.leaf,
             cap: w.cap,
             from: w.from,
@@ -1361,7 +1457,10 @@ class Squirrel {
         final c = best;
         var b = c;
         for (final f in owed) {
-          if (f.del + f.gap <= c.del + c.gap && f.net > b.net) b = f;
+          if (f.del + f.gap + f.toll <= c.del + c.gap + c.toll &&
+              f.net > b.net) {
+            b = f;
+          }
         }
         best = b;
         break;
@@ -1453,6 +1552,17 @@ class Squirrel {
     if (c is Repetition) return c.requireOne ? _fill[c.subClause]! : 0;
     // An optional and a predicate are both satisfied by nothing at all.
     if (c is Optional || c is FollowedBy || c is NotFollowedBy) return 0;
+    // A SLOT THAT WAS NEVER REACHED OWES ONE WHATEVER IT IS, even a
+    // multi-character literal that [_terminal] would charge `text.length` to
+    // supply in place. The two look like the same obligation priced two ways,
+    // and making them agree -- `if (c is Str) return c.text.length` here -- is
+    // MEASURABLY WRONG: 0.9748 -> 0.9745 over three runs each, and two
+    // swallows become four. (Latency is unchanged; the medians are 1998 ms
+    // against 1954 ms, inside a spread of ~140 ms.) The stop is the honest
+    // reading of a truncated document, and every obligation added to it is a
+    // discount for the swallow it competes against. They are not the same
+    // claim: the terminal says the literal is HERE with characters missing,
+    // the stop says the production ENDED.
     return c is Nothing ? 0 : 1;
   }
 
