@@ -117,7 +117,7 @@ These are enforced by `_accept.dart` as cases `cx2`, `b1`, `b2`.
 - **Recovery lives OUTSIDE the pure parser** — the parser is an *oracle only*,
   reached via `Parser.match(Clause, int pos)` and `Parser.parse()`. No recovery
   concept (spans, budgets, costs) may leak into the parsing core. (One deliberate
-  exception was later granted: §2.4.)
+  exception was later granted: §2.5.)
 - **Zero tuning parameters.** A recovery method with a knob is a regression, not a
   trade-off. Every constant in a winning design must be *derived*.
 - **Dart is the reference implementation.** The Java, Python and TypeScript trees
@@ -246,7 +246,7 @@ superseded target.
 | 7 | *"this should NOT have resulted in higher latency or more lines of code, at all"* | Any successor that buys quality with latency. (The specific 3.9x this was aimed at turned out not to exist — it was a cross-battery comparison; see §3.6.) |
 | 8 | Two modes: standard top-down squirrel parsing in O(n); on incomplete parse switch to bottom-up Earley-like parsing in O(n³), replicate PEG semantics exactly, choose SPPF or DAG over the malformed stream, expand with a DP wavefront from the failure point until the previous partial span bridges to the next. | Nothing — it was built faithfully as m141 and **lost by 17.8x**, then lost again at equal latency (§4.6). The refutation is structural, not an implementation failure. |
 | 9 | Anticipate *"probable human intent in how insertions/deletions/mutations are relatively prioritized."* | Cost-minimality as the sole objective. Sharpest statement the project produced: **cost-minimality is not human intent.** |
-| 10 | *"right now a mismatch object is stored in a memo entry, and it could even be the same undifferentiated mismatch object for all mismatches, because it's just a tombstone, and it has no length information... Instead, make a new mismatch object for each new mismatch, and inside the mismatch object, encode the length that was consumed by subclause matches (or subclause mismatches) before this clause was found to not match -- and also store the subclause match or mismatch nodes inside the mismatch object."* | The "the parser core is frozen" assumption held for the entire project up to that point. This is the **first change to `dart/lib/src/parser`** in the whole line of work (§2.4). |
+| 10 | *"right now a mismatch object is stored in a memo entry, and it could even be the same undifferentiated mismatch object for all mismatches, because it's just a tombstone, and it has no length information... Instead, make a new mismatch object for each new mismatch, and inside the mismatch object, encode the length that was consumed by subclause matches (or subclause mismatches) before this clause was found to not match -- and also store the subclause match or mismatch nodes inside the mismatch object."* | The "the parser core is frozen" assumption held for the entire project up to that point. This is the **first change to `dart/lib/src/parser`** in the whole line of work (§2.5). |
 | 11 | *"Does this help unify the Levenshtein model in the r series?"* — the observation that the brief already described deletion at two depths: skipping input characters deep in the AST, and skipping an entire grammar subtree shallower. | The framing of insertion and deletion as separate mechanisms. Answered in §4.8. |
 
 ## 1.6 How to work here (process rules paid for in wrong numbers)
@@ -281,6 +281,20 @@ superseded target.
   failures (§3.6).
 - **Use n ≥ 21 for latency medians.** Smaller samples produced "regressions" that
   were noise.
+- **A refutation of one form of an idea is not a refutation of the idea.** Check
+  which form you disproved before you close the file on it — one idea was written
+  off on its strong form while the short-circuit form was still sound.
+- **One symptom can be two bugs.** m77's wrong answers split cleanly: a possessive
+  star whose follower begins with the star's body accounted for **all 390** too-low
+  answers and nothing else, while a multi-character lookahead body (either
+  polarity) accounted for **321** too-high-or-false-`-1` answers and contributed no
+  unsound answer at all. Two mechanisms, one symptom. Partition the failures by
+  cause before fixing any of them.
+- **One run can close a hypothesis, so run it.** "Some damage is undetectable —
+  deleting the comma from `[1,2]` gives `[12]`, a perfectly good array" would have
+  meant the table was measuring an impossibility. `_undetect.dart` counted them:
+  **0 of 1,824**, because the generator already keeps only mutants that fail to
+  parse. One run, hypothesis closed, no code changed.
 - **Always run the Codex check** on a new engine against the verbatim brief. It
   has found real defects (§4.9) and it has also been wrong; treat its findings as
   hypotheses until confirmed by an own probe.
@@ -307,6 +321,28 @@ match_result,clause,tree}.dart` — 4,706 lines including the tree utilities;
 This is the mechanism the owner asked to be written down, because it is what the
 entire recovery line is built on. It lives in `MemoEntry.match`
 (`dart/lib/src/parser/memo_entry.dart`).
+
+**State it first, because everything else in this file is a consequence of it.**
+
+> A frame at arbitrary depth tells an arbitrarily distant ancestor *"you are the
+> frame that entered this cycle — expand it"* by **writing one field into the memo
+> entry that ancestor already owns**. The message crosses the whole parse tree in
+> **O(1)**, because the destination is addressable **by content** — `(rule, pos)` —
+> rather than by walking to it. Not one intermediate combinator learns the message
+> exists.
+
+The two frames are not exchanging a value. They are looking at **the same
+`MemoEntry` object**: the ancestor obtained it by `(rule, pos)`, the descendant
+re-derived the identical key and got the identical object back from the table.
+Closing a cycle is therefore one field write (`foundLeftRec = true`,
+`memo_entry.dart:43`), which the entering frame reads at the bottom of its own
+loop (`memo_entry.dart:82`). **No stack unwinding, no exception, no sentinel
+threaded back through N returns, no visited set, and no cost that grows with the
+distance between the two frames.** Depth 3 and depth 300 cost the same.
+
+That is the property the rest of the project kept re-using (§2.3), and it is
+*also* the property that failed when the project tried to invent a second signal
+of the same shape (end of §2.3).
 
 A memo entry holds four fields beyond the result:
 
@@ -354,12 +390,113 @@ Two properties measured, not assumed:
 - **The multiplier grows slowly.** Direct left recursion is 2.6–3.1x at n ≤ 256
   and 4.2–4.8x at n = 512–1024. Not flat, but not explosive.
 
-## 2.3 The fixed-point test, and the two places it is subtle
+## 2.3 The same trick, reused — every engine that inherited it
+
+The O(1) upward message was never re-derived for recovery. **Every standing engine
+in this project carries the frozen parser's three fields, renamed at most**, and
+each new engine found the message could carry one more meaning. This is the single
+strongest continuity in the record.
+
+| Where | The fields | What the one write came to mean |
+|---|---|---|
+| Frozen parser | `inRecPath` / `foundLeftRec` / `memoVersion[pos]` | "You are a cycle — iterate." |
+| **A5** (m41 →) | adopted **verbatim, field for field**, over a wider value | Same message, over "a map from end position to minimum Δ" instead of one match |
+| **m60 / I16** | `running` / `parent` / `foundCycle` | *"…generalized from cycles to **all waits**"* — also carries "your operand is ready" |
+| **m61 / I17** | the library's own `MemoEntry`, hosting the recurrence | The **sticky** bit is what makes re-widening correct *across passes* |
+| **m62 / I18** | bit moves to the ancestral **frame**, addressed by stack index | *"the same O(1) descendant-to-ancestor message"* — content-addressing by index rather than object |
+| **m121 / m132 / m143** | `_Cell.inPath` / `foundLR` / `gen` | Third consumer: the bit is the only record that the cell *was* left-recursive |
+| **r3 → r9** (standing) | `_Cell.inPath` / `foundLR` / `gen`, **unchanged** | The loop the trick drives serves **repair** as well as left recursion |
+
+Confirmed present in live source, not just in the record: `m143.dart:385, 744–785`;
+`r9.dart:613–618, 806–833`; `m62.dart:112–114, 604`; `m121.dart:359, 666–707`.
+
+**A5 — recovery inherits left recursion instead of re-solving it.** The fixed-point
+test *"the match did not get longer"* becomes *"no end is new and no Δ got
+smaller"*; the seed `mismatch` becomes the empty ends map. There is no second
+mechanism and no recovery-specific reasoning about cycles anywhere in the project.
+A5 was **not optional politeness**: without it, engines at n ≥ 512 return `-1, no
+repair found` — total failure at scale, and a correctness bug the entire JSON
+battery was structurally unable to see (§4.1).
+
+**m60 — the generalization that made the coroutine possible.** A request reaching a
+RUNNING entry can only be reaching an ancestor of the single running chain — which
+is exactly what `inRecPath` detects — so the same bit that says "you are a cycle"
+can equally say "the child you parked on has settled". The continuation lives in
+the memo entry, so **the coroutine *is* the memo**. m62 then split it: the pass in
+flight is a frame, the entry keeps only facts, and the bit is set on the ancestral
+frame *by stack index*. m62 is still the LATENCY reference (1,312 ms).
+
+**m121/m132/m143 — the bit acquired a third job.** Left recursion **is** a
+repetition (`E <- E op T / T` ≡ `T (op T)*`), so I41 applies to it unchanged: PEG
+resolves a repetition possessively. `foundLR` is the only surviving record that
+this cell was left-recursive, and that is what licenses the collapse —
+`if (cell.foundLR && _budget == 0) cell.ways = _possessive(cell.ways);`
+(`m143.dart:781`). **That one line is what keeps round 0 exactly the frozen
+parser.**
+
+**r3 → r9 — the loop, not just the signal.** The reuse that mattered most was not
+the message but the *loop it drives*: "re-run this cell while the answer improves,
+retiring the memo at this position with one integer bump." That loop does not care
+*why* the answer improved — a left-recursive expansion and a repair the first pass
+could not afford are the same monotone improvement. So one mechanism serves both,
+and `_version[pos]++` retires every stale cell at that position **without touching
+any of them**.
+
+What that bought, beyond the score: **there is no second parse.** No `_forget`, no
+`_repairs` side table, no frontier walk, no widening loop, no advancement test, no
+salvage pass, no re-parse to find out what a repair did — r2 needed all of it to
+ask "what would happen if", and r3 computes the answer where the question arises.
+This is also how the line satisfies **D1** ("never start a new parse").
+
+**The one thing that had to change** was the improvement test. r1's `_improved`
+compared **reach alone**, so an iteration that improved *cost* at the same reach
+was discarded — and clean `expr` came back at cost 8. **Reach OR rank** fixes it,
+and accumulating across iterations makes termination monotone.
+
+### The generalization the trick was reaching for (I6/I7)
+
+> `MemoEntry.foundLeftRec` is **one bit from a descendant frame to an ancestor** —
+> "you are a cycle, iterate" — and it is the whole of left recursion. An obligation
+> is **one integer from a frame to its right sibling** — "the next character you
+> emit is one of these" — and it is the whole of lookahead. Neither fact can be
+> computed by one frame alone; both are O(1); neither needs a rule of its own once
+> something carries it.
+>
+> **DOWN THE TREE IS THE ARGUMENT. ACROSS THE TREE IS THE VALUE. UP THE TREE IS THE
+> MEMO.**
+
+*Any fact a frame cannot compute alone, but a neighbour can, belongs in whichever
+of those three channels connects them.*
+
+### REFUTED: the trick does not generalize to the budget — do not re-litigate
+
+The obvious analogue was a **budget-exactness bit**: mark an entry exact iff
+nothing below it was discarded for exceeding the budget, propagated by a monotone
+global counter *exactly as `memoVersion` propagates*. An exact entry could then be
+reused at every budget instead of only at budgets it was computed at or above. Its
+stronger form stores the minimum dropped cost `d`, making the entry valid at every
+budget `< d`.
+
+**Both degenerate to nothing, by construction.** FAB is available at price 1 at
+every position, so candidates exist at *every* cost: at budget `b`, a head costing
+1 composed with a tail costing `b` always produces a dropped candidate at cost
+`b+1`, giving `d = b+1` and validity only up to `b` — which is exactly what the
+entry already records. **No entry is ever budget-exact.** This also explains m30,
+which computed a complete level 0 to avoid precisely this recomputation and
+measured **14x slower**. The budget stays a filter on Δ (A3), not a memo key.
+
+The distinction that makes the difference: `foundLeftRec` reports a fact that is
+**monotone and terminal** — a cycle either was closed or was not, and the answer
+never changes once the pass ends. Budget-exactness is a claim about *everything
+that did not happen below*, and under an always-available repair primitive, that
+claim is never true.
+
+## 2.4 The fixed-point test, and the two places it is subtle
 
 The loop's termination condition used to read `newResult.len <= result!.len`.
 That was correct **only because a mismatch was a shared tombstone with `len ==
 -1`**: no match could lose to one, and a mismatch could never replace a match.
-Once a mismatch carries the input it consumed (§2.4), its `len` is `>= 0` and that
+Once a mismatch carries the input it consumed (§2.5), its `len` is `>= 0` and that
 arithmetic would let a far-reading mismatch overwrite a short match. Both
 directions are now stated outright:
 
@@ -376,7 +513,18 @@ rule's failure structureless, which is not a small effect: on `E <- E '+' N / N`
 the whole tree collapsed to a single node, while the same grammar written without
 left recursion reported six.
 
-## 2.4 What a `Mismatch` now carries (the one core change, 2026-08)
+**And a third place, found only when the test was lifted to a set.** m143 merges
+the re-derived result into the cell instead of replacing it. The frozen parser can
+replace, because it keeps a re-derived left-recursive result only while it is
+strictly *longer*, so the seed is monotone by construction. Lifted to a **list of
+endings**, monotone means *merge*: replacing lets the cell **shrink**, and then the
+growth test fires forever on an ending the cell already had. Measured symptom:
+`1+2` against `Expr <- Expr WS AddOp WS Term / Term` oscillated between `{1}` and
+`{3}` and **never returned** (`m143.dart:758–765`). Merging also supplies the
+termination proof — every pass either lowers a cost or raises a count at some
+ending, and both are bounded.
+
+## 2.5 What a `Mismatch` now carries (the one core change, 2026-08)
 
 Steer #10 (§1.5). Every mismatch is now a fresh object carrying:
 
@@ -420,14 +568,29 @@ insertions drawn from `Q z } " , 5`) of
 {"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}
 ```
 
-that the pure parser rejects. **Four metrics, always reported together:**
+that the pure parser rejects. **The columns, always reported together** (a row is
+only meaningful whole — a good `shape` bought with a bad `cost` is not progress):
 
-| metric | meaning | why it matters |
+| column | meaning | why it matters |
 |---|---|---|
-| **shape** | recovered tree's nesting of structural `Ref` nodes equals the original's | the real accuracy score; "it produced a tree" is not success |
+| **shape** | recovered tree's nesting of structural `Ref` nodes equals the *unmutated base document's* | the real accuracy score; "it produced a tree" is not success |
 | **cover** | terminals + error spans tile `[0, len)` exactly | catches trees that silently drop input |
-| **cost** | edit-distance histogram of the chosen repair; must be `{1: 503, 2: 16}` | a better shape score at higher cost is cheating |
-| **valid** | the 7 well-formed documents returned untouched | recovery must be inert on correct input |
+| **crsh** | mutants on which the engine threw | any nonzero value is a hard defect |
+| **cost hist** | histogram of reported repair cost; must be `{1: 503, 2: 16}` | a single-character mutation *should* cost 1, so mass at 2 is over-charging — a minimality regression shows here before `cost` catches it |
+| **valid** | the 7 well-formed documents returned untouched, cost 0, no error spans | recovery must be inert on correct input |
+| **cost** / **tree** | 44 cases over 5 grammars vs brute-force minimum. **Deliberately two columns**: `cost` is only that the *price* is minimal, `tree` that the witness can be *rebuilt and covers the input* | "m23 passes the first and diverges on the second" |
+| **pred** | exact agreement with brute force on **lookahead** corner cases | JSON has no lookahead, so the whole battery is otherwise blind to this class of defect |
+| **unsnd** | cases priced **below** the true minimum — repairs claimed that *do not exist* | **the one number that disqualifies outright** |
+| **eleg** | 0–10 | **a judgment, not a measurement** — see §3.6 |
+| **bugs** | defect tags | `PEG`, `RR`, `d13`, `K40` are *inherited* flaws, not per-engine choices |
+| **LRmax** / **RRmax** | largest 1-error input completing without `StackOverflowError`, left/right-recursive | `>=4096` means it never overflowed at the tested ceiling |
+| **battms** / **latms** / **/v6** | wall clock: 519-mutant battery; sum over 12 latency cases; latency normalised against v6 | see §3.6 — `latms` is not what it looks like |
+
+**Why `pred` and `unsnd` exist at all is the lesson.** They were added because
+**m47 was unsound while every other column of its row was clean.** A battery
+cannot report a defect in a class its corpus does not contain. This is §3.4's
+lesson from the other direction: there, self-consistent engines shared an error;
+here, a complete-looking table had no column that could hold one.
 
 Latency measured separately on 12 synthetic cases (DEL/INS/SCRAM at 4/16/64 chars,
 plus one typo at n=145/530/2114), min-of-N, **all engines alternating in a single
@@ -442,16 +605,99 @@ parser's `Parser(...).parse().hasSyntaxErrors`. Current size: **13,605 cases /
 a library change *can* move the case set, so re-measure it before trusting any
 cross-run comparison).
 
-The score is an AST-diff against the known-correct tree, weighted by category.
-`_score1.dart` prints:
+The score is an AST-diff against the known-correct tree. **The critical property:
+the expected tree is derived from the original document, which the engine never
+sees.** It is not the engine's own output re-examined, and no engine can be tuned
+toward it without actually recovering the shape a human would expect. `_score1.dart`
+prints:
 
 ```
 name  score  perfect%  crashed  uncovered  ms  cat=mean...
 ```
 
-Categories carry different weights; `truncate` and `delim-delete` are weight 3.0
-and are the hardest. `truncate` is the largest single quality opportunity in the
-table and **no engine has ever done well on it**.
+Ten categories: `delim-delete` 3.0, `truncate` 3.0, `quote-delete` 2.5,
+`junk-insert` 2.0, `delim-insert` 2.0, `literal-damage` 1.5, `quote-insert` 1.5,
+`multi-damage` 1.5, `transpose` 1.0, `content-damage` 1.0.
+
+**WEIGHTS ARE COVERAGE, NOT MULTIPLIERS.** A category's weight is how many cases it
+*contributes*, not a factor applied to its mean; the aggregate is a plain
+**unweighted mean over cases**. A multiplier would let a well-supplied easy
+category buy points; coverage makes an important category *be tested more*.
+
+**And that has a consequence that went unnoticed until it was audited.** The
+per-category case count is `weight * u`, where the unit is derived from supply:
+
+    u = min over categories of floor(n_raw / weight)
+
+So **the scarcest category sets the resolution of the entire battery**, and every
+other category is truncated to match it. Measured: `u = 37`, set by `delim-delete`
+— 113 raw cases at weight 3.0. **The most important category was starving the
+battery.** The waste was severe and invisible: **705 weighted cases out of 5,610
+generated, discarding 4,906**, with per-category utilisation from `delim-delete`
+98.2% down to `delim-insert` **3.9%**. A category could be 96% unused and nothing
+in the output said so. The fix was the one the code's own comment prescribed — *if
+a category is short, GENERATE MORE OF IT*:
+
+| | before | after |
+|---|---|---|
+| documents | 11 | **23** |
+| raw cases | 5,610 | **13,605** |
+| weighted cases | 705 | **1,824** |
+| unit `u` | 37 | **96** |
+| grammars spanned by `quote-delete` | 1 | **2** |
+
+**The general lesson, for any weighted-sampling gate: when the sample size per
+stratum is derived from supply, the least-supplied stratum silently caps every
+other one. Audit utilisation per stratum, not just the totals.**
+
+### `truncate` was not the weak category — the column was broken
+
+For a generation of engines `truncate` read as the weakest area and the obvious
+place to improve. **It was not.** A truncate case is `doc.substring(0, k)`, and it
+was scored against the skeleton of the **undamaged whole document** — so every
+named node lying entirely past `k` covers characters that are *not in the input*.
+Producing them means inventing content, which D7 forbids in as many words; not
+producing them was charged as a structural error. **Every engine was being
+penalised for obeying the rule.** `_ceilcat.dart` priced the real ceiling:
+
+| truncate cases | 288 |
+|---|---|
+| mean reachable ceiling | **0.5662** |
+| mean m92 score | 0.5614 |
+| cases already at or above the ceiling | **216 (75.0%)** |
+| real headroom | **0.0047** |
+
+**43% of the column's range was unreachable by construction**, in the category
+carrying the heaviest weight. The fix was in the brief the whole time — the
+evaluator is specified to build the correct repaired AST **for the expected
+damage**, and truncation is the one category where the tail is *absent* rather
+than corrupted. `expectedFor` in `astdiff.dart` now owns that distinction and
+every scorer calls it: keep named nodes with `pos < k`, **including the one
+straddling the cut** (that node is precisely the unterminated construct a reader
+does expect reported). No named node in any corpus is zero-width (**0 of 667**,
+checked), so `pos < k` needs no boundary argument.
+
+**Verified surgical.** m62's nine other columns were byte-identical before and
+after; only truncate moved, 0.490 → 0.816. Because only 288 of 1,824 cases change,
+the correction is predictable in closed form —
+`new = old + (new_truncate − old_truncate) × 288/1824` — which is what made the
+re-run auditable: any engine not satisfying it had something *else* change.
+Predicted/measured: m62 0.9550/**0.9550**, m92 0.9558/**0.9559**.
+
+It also changed a ranking. m92's entire aggregate lead over m62 had been truncate;
+corrected, m62 wins 7 of 10 categories and produces more exactly-correct trees.
+**The defective column had been flattering m92.**
+
+**Current position (r9): `truncate` is 0.947 — mid-pack, not the floor.** The real
+weak cluster is `truncate` 0.947 / `multi-damage` 0.949 / `literal-damage` 0.957 /
+`transpose` 0.968, against `content-damage` 1.000 and `quote-delete` 0.999.
+
+At the other end, `content-damage` was audited
+separately because **a flat 1.000 is normally the signature of a vacuous test**. It
+is not vacuous and not tunable: the insert alphabet is `z Q " , } 5 ; ) \`, and
+inside a JSON string every one except `\` matches `[^"\\]` and still parses, so the
+`!parses` filter drops them all. Every case is a stray backslash *by construction*,
+and all 96 were inspected individually. Solved, and genuinely narrow.
 
 ## 3.3 The gate set
 
@@ -466,6 +712,18 @@ Every one of these must pass before an engine is a candidate:
 | `_score1.dart` | the battery score |
 | `_coregate.dart` | the pure core is unchanged where it must be |
 | `dart test` | the library suite — **320 passing** as of 2026-08-02 |
+
+A `_conf1` pass is **0 free passes with costs `0 1 1 0 2 3`** — that literal
+signature is what to compare against; `0 1 1 0 2 2` is a *different* answer, not a
+rounding difference.
+
+**But conformance is a trade, and the record settles which way it goes.** For a
+grammar like `S <- 'a'* "ab"` the **PEG language is empty**, so a fully sound
+possessive-repetition veto would make the engine report *unrepairable*. **Reporting
+"no repair exists" is PEG-correct and useless.** Repairing toward the CFG reading
+is the better answer there. The rule the line actually follows: **take the PEG side
+of the trade only where it costs nothing** (this is what I3 does). Do not chase
+total conformance into the empty-language cases.
 
 ## 3.4 Ground truth: the only gate that can catch a *shared* error
 
@@ -518,6 +776,17 @@ Current recovery-only counts: **m143 = 628** (of 1,320 total file lines), **r9 =
   the carried parser rather than the engine (the `RRmax` ladder column in
   particular).
 - **A count of cells is not a measure of time.**
+- **Warm the JIT before timing individual cases.** A cold run put one case in the
+  slowest 20 at 11.3 ms with only 1,493 expansions — 17x the median's time per
+  expansion, and it looked like a real anomaly contradicting the cost model. Warm,
+  it is 2.4 ms and not in the list at all. **The aggregate was unaffected** (2,606
+  ms cold vs 2,581 warm); only the *per-case tail* was fiction.
+- **A metric no engine can saturate is partly measuring its own construction, so
+  price the best possible answer before you trust the column.** Build the best
+  skeleton the rules permit and score *that*. Run it on every column of a new
+  evaluator *before* the evaluator ranks anything. Doing it once here turned the
+  weakest-looking category into an almost-solved one and moved every aggregate in
+  the table by about **+0.05** (§3.2).
 - **The battery contains duplicate strings** — deleting either of two identical
   adjacent characters yields the same mutant — so `battery.indexOf(s)` labels the
   second occurrence with the first one's edit. Carry the mutation record
@@ -527,6 +796,30 @@ Current recovery-only counts: **m143 = 628** (of 1,320 total file lines), **r9 =
   outside the repository entirely.
 - **A "regression" reported by a ladder can be a 6x-overstated artifact.** One
   RRmax regression was exactly that.
+- **Timings are only comparable within an adjacent engine/`dup` pair.** A single
+  process warms as it runs. Measured directly: **the *same* m26 scored 377 and 314
+  `battms` depending on where it sat in the registry.** A cross-era timing
+  comparison is invalid unless a `dup` row bridges it. (A `dup` is not an engine —
+  it is an earlier engine re-registered *last* in the same process, so the pair can
+  be compared without the warming bias.)
+
+**Three era-1 columns are not what their names say**, and each one misled a
+decision before it was pinned down:
+
+1. **`eleg` is a judgment, by its own legend** — mechanism count, derived-vs-chosen
+   constants, adopted-vs-invented machinery, compactness, "can it be stated in one
+   true sentence". It is not data and **must not be averaged with the columns that
+   are.**
+2. **`latms` is a K-axis metric wearing a latency costume.** The 12 cases cost
+   `2,2,1,1,2,4,2,2,10,1,1,0`, and **case 8 alone — the 64-char shuffle, cost 10, 11
+   deepening rounds — is 308.6 ms of m53's 341.1 ms, 90% of the column.** So `latms`
+   mostly measures behaviour at *large repair cost*, not on a *large document*; on
+   the battery, where damage costs 1–2, m53 is within 14% of the descent engines.
+   **Any "engine X is 1.7x slower" claim resting on `latms` is an argument about the
+   ladder, not about the per-step constant** — which matters directly to §7's open
+   latency item.
+3. **`RRmax` overstates and moves** — a ~6x-overstated ladder artifact that depends
+   on registry position, not only on the engine. Bisect, do not ladder.
 
 ## 3.7 Complexity, measured
 
@@ -1199,6 +1492,13 @@ universal rule. The refutation was withdrawn.
 | I45 — a `HOLE` primitive weaker than `FILL` | dropped: a node representing a forbidden claim re-admits the invented terminal wearing a different label |
 | letting the cost choose without gating | fixes one deadlock and immediately gives up `Stmt+` at 0 — the entire program for the price of the cheapest statement, scoring the whole stmt corpus **0.000**. At every price SOMETHING is always on offer; the gate is what stops the recovery buying it |
 | r7's flat terminal pricing (`_fillOf` charges every terminal 1) | prices giving up `"false"` the same as one comma. r11–r13 charge `Str` its own length |
+| charging absorption **per slot** | **refuted — a price charged at a slot is evadable by moving the slot** (re-pairing dodges it); per *node* charges the same span again at every `Ref` above it |
+
+**Where a charge goes is a correctness question, not a bookkeeping one.**
+Absorption is priced at the **whole document**, because that is the only place the
+charge cannot be dodged, and it needs no new field: `absorbed = len − del − net`.
+Every character is either denied (`del`), pinned by a terminal that constrains what
+it accepts (`net`), or absorbed by one that does not.
 
 ## 6.2 Architecture
 
@@ -1280,9 +1580,12 @@ refuted** — re-derivation is only 29% of the time. The time is in budget-1 and
      reading requires exploring the recursive alternative WITH a repair, which I43
      forbids. **I43 and the cost objective disagree on this input, and one of them
      is wrong.**
-7. **`truncate` is the largest single quality opportunity in the table** — weight
-   3.0, and no engine has ever done well on it. `delim-delete` (also weight 3.0)
-   and `literal-damage` are next.
+7. **The weak-category cluster is `truncate` 0.947 / `multi-damage` 0.949 /
+   `literal-damage` 0.957** (r9). *Do not restate the old "truncate is the biggest
+   opportunity" claim* — that reading came from a column that was broken by
+   construction and has been fixed (§3.2). Before treating any of these as
+   headroom, **price the reachable ceiling first**; the last time that was skipped,
+   the "weakest" category turned out to be 99.2% saturated.
 8. **Ports.** Java, Python, TypeScript are contaminated by an earlier attempt and
    deliberately uncommitted. Port the pure core plus the chosen recovery module
    once the Dart core is settled.
