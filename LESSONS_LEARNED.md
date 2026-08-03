@@ -11,6 +11,18 @@ estimated. A claim marked *refuted* was **built and measured**, not reasoned
 away. A refutation is only valid against the engine it was measured on (§6.0) —
 when a primitive changes, the refuted list is back on the table.
 
+**Where things stand, in four lines (2026-08-03).** The standing engine is **r9**
+(0.9748 AST-diff, 74.0% perfect, 536 lines); the standing `m`-engine is **m143**.
+Of ~150 engines built, **eight are still worth considering** — everything else is
+beaten on every scored axis at once, including eleven engines that were the
+standard in their day (Appendix, "The frontier"). **r9 passes every gate** — all
+re-run 2026-08-03: acceptance 3/3, free-span, recommit 16/16, zero conformance
+free passes, core gate pass, library suite 320/320 — **and m143 does not**,
+failing one recommit case (§3.3). **Latency is the one unmet goal** at 2.16x
+target, and "under 400 lines"
+has never been met at the same time as the accuracy goal — the gap is 0.0197 of
+score for 136 lines, and it is a cliff, not a slope (Part VII, items 2–3).
+
 **Provenance.** This is a pointed rewrite (2026-08-02) of a 13,903-line
 accumulated record. Nothing here is new work; it is the same findings, compacted
 by roughly 10x, restructured so the instructions come first and the findings are
@@ -763,11 +775,72 @@ Every one of these must pass before an engine is a candidate:
 | `_recommit.dart` | the descent-phrased guards actually bind (this is the gate that showed I77 never worked) |
 | `_score1.dart` | the battery score |
 | `_coregate.dart` | the pure core is unchanged where it must be |
-| `dart test` | the library suite — **320 passing** as of 2026-08-02 |
+| `dart test` | the library suite — **320 passing**, re-confirmed 2026-08-03 |
 
-A `_conf1` pass is **0 free passes with costs `0 1 1 0 2 3`** — that literal
-signature is what to compare against; `0 1 1 0 2 2` is a *different* answer, not a
-rounding difference.
+**Measured gate state, re-run 2026-08-03 — and the standing `m`-engine does not
+pass all of them.**
+
+| gate | r9 | m143 | m132 |
+|---|---|---|---|
+| `_accept` | **PASS** `cx2=1 b1=1 b2=1` | **PASS** `cx2=1 b1=1 b2=1` | **PASS** `cx2=1 b1=1 b2=1` |
+| `_freespan` | **PASS** | **PASS** | **PASS** |
+| `_recommit` | **PASS** 16/16 | **FAIL** 15/16 | **FAIL** 15/16 |
+| `_conf1` free passes | **0** | **0** | **0** |
+
+The single failing case is the same one for m143 and m132: `[1,[2,[3,[4]]],5"` is
+answered as a **String** where the committed construct is an **Array** — the
+healthy prefix `[1,[2,[3,[4]]],5` establishes an array, and the trailing quote is
+allowed to retype the whole thing. Of the nine engines the gate covers, six fail:
+m121 and m126 pass 16/16, m132/m136/m143 fail this one case, and m127/m141/m145
+fail four cases each. r9 is the only `r` engine in the gate and it is clean.
+**So the `m`-line acquired this at m127, partly repaired it, and m143 still
+carries one instance.** It is not recorded anywhere else in this document, and it
+qualifies the whole `m`-column: on the gate that exists specifically to catch a
+guard that does not bind, the standing `m`-engine binds 15 times out of 16. It
+does not change which engine is the standard — r9 already is — but any future work
+starting from m143 inherits a known open failure, and **"every one of these must
+pass before an engine is a candidate" is a rule the `m`-line has been violating
+since m127.**
+
+The two gates that are not per-engine both pass on the same re-run: `_coregate` is
+**PASS** (2,996/2,996 frozen-lib equivalence, 3,252/3,252 reuse == fresh parse, no
+core drift, no engine importing another) and `dart test` is **320/320**.
+
+For `_freespan` the same re-run puts m121, m126, m127, m132, m136, m141, m143 and
+all of r1–r9 clean — **10 of the 26 engines it covers still repair what was not
+broken**: m129, m130, m131, m133, m134, m135 and m137–m140 each delete real input
+from an already-matched span on 4 of 5 probes. Those ten interleave with the
+passing engines by number, so the failing set is a branch and not a stretch of the
+lineage; do not read `m129–m140` as an interval.
+
+**What `_conf1` actually gates is the free-pass column, not the cost row.** A pass
+is **0 free passes** — no engine reporting cost 0 for a string the frozen parser
+rejects. The cost row `0 1 1 0 2 3` was once written down as the pass signature,
+and that is too strong: re-run 2026-08-03, **every engine from m112 to m143 reads
+`0 1 1 0 2 2`, the standing `m`-engine included**, while r1–r6, r8 and r9 read
+`0 1 1 0 2 3`. All of them take 0 free passes. Two families, two answers, both
+gated as passes for their whole lifetimes. (r7 is the one true outlier at
+`0 1 1 0 3 6`.)
+
+**What the gate does catch, it catches emphatically.** The thirty-one engines
+m79–m111 all read `4/4  0 0 0 0 0 0` — cost 0 on every probe, including the four
+strings the frozen parser *rejects*. That is not a near miss; it is the whole
+free-pass hole I68 closed at m112, and it is why the free-pass column, not the
+cost row, is the pass criterion.
+
+**And the digit they differ on is a pricing choice, not a conformance failure.**
+Only probe 6 splits them: `Top <- Item+; Item <- &Kw Word WS; Kw <- "if"` on input
+`ab if`. `_conf6.dart` asks the frozen parser which repairs are in the language,
+and **cost 2 is genuinely reachable** — both `ifab if` (insert `if`) and `if if`
+(substitute `ab` → `if`) are accepted, and **both invent the characters `i` and
+`f`**. The cheapest repair that invents nothing is `if`, by deleting `ab `, at
+cost 3. So the `m`-line pays 2 and the `r`-line pays 3 because **D7 and I72 forbid
+inventing a terminal the input never offered** — the r-line is deliberately
+overcharging by one against pure edit distance. That the two numbers were being
+compared as if one were a conformance defect is the mistake; the r-line is obeying
+a directive the m-line predates. *(The reachability of cost 2 and the invention
+content of each repair are measured; that r9 reaches 3 specifically by refusing
+the invention is inferred from I72, not read off its trace.)*
 
 **But conformance is a trade, and the record settles which way it goes.** For a
 grammar like `S <- 'a'* "ab"` the **PEG language is empty**, so a fully sound
@@ -814,6 +887,28 @@ row that includes it is not comparable to a row that does not.
 Current recovery-only counts: **m143 = 628** (of 1,320 total file lines), **r9 =
 536** (of 1,597), **r13 = 327** (of 591).
 
+**`wc -l` is not this column, and cannot be converted into it.** Three different
+numbers exist per engine: total file lines (`wc -l`), the committed count of
+non-blank non-`//` lines, and that same count after `dart format
+--language-version=3.0`. Only the third is the LOC column. The ratio between the
+first and the third is **not** a constant — 1,597 → 536 for r9 but 1,320 → 628 for
+m143 — so a raw count cannot be scaled into a comparable one, and a table mixing
+the two silently ranks by comment density.
+
+**The measure is implemented, not remembered.** `dart/experiments/recovery/loc.py`
+is the authority: it copies every engine to a scratch directory, formats the
+copies at language version 3.0, counts, and caches `{name: (committed,
+normalised)}` to `loc.json` — **the second element of that pair is the number this
+document quotes.** It sweeps every non-`_` file in the directory in one run, so
+the cache is complete for all ~200 engines; there is no reason to hand-count one.
+Two engines are not files in that directory and are aliased: **`dot` →
+`dart/lib/src/recovery/dot_recovery.dart`** and **`v6` → `sd6.dart`**. Formatting
+happens on copies, so the repository is never touched — but note that a copy alone
+does not reproduce the figure, because the language version resolves through
+`.dart_tool/package_config.json`, which a copy cannot reach; the explicit
+`--language-version=3.0` is what makes it exact (`loc.py`'s own docstring records
+the m113 = 682-vs-579 case that proved it).
+
 ## 3.6 Measurement rules, each bought with a wrong number
 
 - **Absolute milliseconds are not portable across occasions.** Always run a
@@ -854,6 +949,23 @@ Current recovery-only counts: **m143 = 628** (of 1,320 total file lines), **r9 =
   comparison is invalid unless a `dup` row bridges it. (A `dup` is not an engine —
   it is an earlier engine re-registered *last* in the same process, so the pair can
   be compared without the warming bias.)
+- **One strong column is not a reason to keep an engine. Check domination on every
+  axis, and compute it — do not read it off the table.** This rule cost two wrong
+  recommendations in a single occasion, both of the same shape. m78 was put forward
+  because its 68.4 perfect% was the only number above the plateau; m132 beats it on
+  score, perfect%, latency *and* size simultaneously. Then a frontier built by eye
+  placed m112 and m121 on it; r9 dominates both — it is smaller than either, and
+  nobody had compared 536 against 578. **Both errors survived exactly as long as the
+  comparison was done by looking.** A twenty-line script over the four columns
+  found them immediately, and cut a hand-built "worth considering" list from a
+  vaguely-bounded set to eight engines of 52. Where the axes are all recorded,
+  domination is arithmetic; treating it as judgment is how a superseded engine keeps
+  its reputation.
+- **State the tie tolerance before ranking, or the frontier is fiction.** 0.0001 of
+  AST-diff score is 0.18 of one case out of 1,824, and the `ms` column carries ~7%
+  spread — so three engines join or leave the frontier depending only on which
+  decimal place is trusted. Rank with the tolerance stated and the borderline
+  members named (Appendix), not with raw floats.
 
 **Three era-1 columns are not what their names say**, and each one misled a
 decision before it was pinned down:
@@ -1248,7 +1360,11 @@ to the round), I75 (round the residual to the ladder that is already there).
 
 ## 4.6 m133–m143 — the two-mode refutation, and the standing `m`-engine
 
-**m143 is the standing `m`-engine: 0.9693 / 72.1% / 1,171 ms / 628 LOC.**
+**m143 is the standing `m`-engine: 0.9693 / 72.1% / 1,171 ms / 628 LOC.** It is
+also the first engine to make D1 free — it dominates both re-parsing engines,
+m75 and m77, on all four scored axes (Appendix). **It does not pass the whole gate
+set**: `_recommit` is 15/16, an open defect inherited from m127 (§3.3, Part VII
+item 13).
 
 The requested two-mode architecture (steer #8) was built faithfully as **m141**:
 m132 with the memo replaced by a real chart — every clause node × every position,
@@ -1683,9 +1799,19 @@ refuted** — re-derivation is only 29% of the time. The time is in budget-1 and
    owner's call. Measured by `_portcheck.dart` (tracked).
 2. **Latency is the only unmet goal.** 2.16x against target. The time is in
    budget-1 and a 25-case tail; the semi-naive chart both analyses proposed is
-   refuted (§6.4).
-3. **The `<400` LOC question.** r13 is 327 recovery lines but 0.9008; r9 is 536 at
-   0.9748. No engine has been both. Read §6.5 first.
+   refuted (§6.4). **And the two instruments have never been bridged**: the `ms`
+   column everywhere in this document is *whole-battery* time for 1,824 weighted
+   cases, while the "sub-250 ms" goal is *per-parse* latency on one document.
+   Ranking engines by battery ms is sound — it is the same instrument for all of
+   them — but no arithmetic converts it into the goal's units, and none is
+   attempted here. Any claim that a given engine "meets" or "misses" 250 ms has to
+   come from the per-parse harness, not from the tables.
+3. **The `<400` LOC question, now with a measured boundary.** Twenty engines are
+   under 400 normalised lines and **none exceeds 0.9551**; nothing between 407 and
+   535 lines beats it either; the best score jumps to r9's 0.9748 exactly at 536.
+   So the open question is worth **0.0197 of score for 136 lines**, and it is a
+   cliff, not a slope — 51 swept engines do not narrow it. r13 is 327 lines at
+   0.9008; r9 is 536 at 0.9748. No engine has been both. Read §6.5 first.
 4. **The Codex check on the current `r` engine** — blocked on account usage limit,
    retry after 2026-08-07.
 5. **The give-up pre-filter (from #18).** A parent link on frontier entries would
@@ -1719,6 +1845,26 @@ refuted** — re-derivation is only 29% of the time. The time is in budget-1 and
 11. **Right-recursion depth** (§3.7) is a real ceiling inherited from the core, not
     from recovery. The fix is an explicit worklist in place of native recursion; it
     costs lines and is not built.
+12. **The conformance gate does not cover the engines the size question depends
+    on.** `_conf1.dart` has a fixed import list covering **m78–m143 and r1–r9**,
+    so m23, m26, m32, m41 and r13 — **five of the eight engines on the frontier,
+    and every one of the twenty engines under 400 lines** — have **no true-PEG
+    conformance measurement at all** (nor does `dot`). The
+    stated goal is "under 400 LOC *without losing* true-PEG conformance", so the
+    open `<400` question (item 3) is currently being argued on three of its four
+    terms: those engines' score, latency and size are known and their conformance
+    is not. It is entirely possible they are small partly *because* they are not
+    conformant, and nothing in the record decides it. Adding five imports to
+    `_conf1.dart` would settle it; the engines are old enough that their build
+    signature may need adapting, which is why it has not been done.
+13. **m143 fails `_recommit` on one case, and has since m127** (§3.3). Input
+    `[1,[2,[3,[4]]],5"` is answered as a String although the healthy prefix has
+    already committed an Array. m121 and m126 pass 16/16, so the regression is
+    locatable — it entered with m127, was mostly repaired by m132/m136/m143, and
+    one instance survives. r9 is the only `r` engine the gate covers and it passes
+    16/16, so this does not touch the standing engine; it is an open defect in the
+    `m`-line that anyone building on m143 inherits, and it was not in the record
+    before 2026-08-03.
 
 ---
 
@@ -1799,7 +1945,10 @@ them runs in ~1.5 s.
 Note also that m75 and m77 — both **disqualified for re-parsing** — are the first
 engines to break the perfect% plateau (70.8 and 71.5 against 67.2). Their ranking
 is exactly why D1 has to be a stated constraint rather than something the score is
-trusted to enforce.
+trusted to enforce. **That constraint is no longer expensive: m143 now beats both
+of them on score, perfect%, latency and size simultaneously** — see the frontier
+section below. For most of the project's life, obeying D1 cost real accuracy; as
+of m143 it costs nothing.
 
 ### The 51 engines that were never the standard, swept onto the same battery
 
@@ -1899,10 +2048,97 @@ corpus it was never tuned against. The `stack` engines m30 and m31 (10,690 and
 And m35/m36 at 0.8948 are the deepest non-LR accuracy hole in the study — m36 is
 the engine era-1 recorded as not doing what it was built for at all.
 
+### The frontier: which engines are still worth considering
+
+With the lineage and the sweep on one battery, and normalised LOC for all of them
+(§3.5), the question "which engines are worth keeping in mind" stops being a
+judgment and becomes arithmetic. Four axes, all scored: **AST-diff score** (up),
+**perfect%** (up), **era-2 battery ms** (down), **normalised recovery LOC**
+(down). An engine is worth considering if nothing beats it on every axis at once.
+
+**Tie tolerance matters, so it is stated.** 0.0001 of AST-diff score over 1,824
+weighted cases is **0.18 of one case** — 0.9550 and 0.9551 cannot separate two
+engines, so score is compared at 3 decimals. And the `ms` column has ~7% spread
+within a session (§3.6), so a sub-7% latency gap is not a real difference either;
+no domination listed below rests on one. Engines in the LR-broken run sd3–m22 are
+excluded (they are broken, not slower), as are the six tape engines that never
+finished. m75 and m77 are held out because D1 disqualifies them, and reported
+separately.
+
+**Eight engines survive, of 52 compared.**
+
+| engine | score | perfect% | ms | LOC | dominates | why it is on the frontier |
+|---|---:|---:|---:|---:|---:|---|
+| **r9** | 0.9748 | 74.0 | 2,038 | 536 | 10 | best score and best perfect% in the study, and the smallest engine above 0.96 |
+| **m143** | 0.9693 | 72.1 | 1,131 | 628 | 20 | second-best accuracy at near-best latency |
+| **m132** | 0.9648 | 69.2 | **1,098** | 612 | 21 | **fastest engine in the study** |
+| m26 | 0.9551 | 67.2 | 1,479 | 381 | 19 | survives on one line under m41 |
+| m23 | 0.9551 | 67.2 | 2,142 | **370** | 8 | **smallest engine at plateau accuracy** |
+| m32 | 0.9550 | 67.2 | 1,721 | 377 | 15 | survives on 4 lines under m26 |
+| m41 | 0.9550 | 67.2 | 1,144 | 382 | **36** | plateau accuracy at near-best latency, in 382 lines |
+| r13 | 0.9008 | 51.9 | 6,692 | **327** | 0 | **smallest engine that works at all** |
+
+`dominates` is how many of the other 51 that engine beats on all four axes at
+once. The whole table is reproduced by `dart/experiments/recovery/pareto.py`,
+which takes LOC from `loc.py` rather than restating it; `--exact` switches the
+tolerance.
+
+**Forty-four are dominated outright** — beaten on all four axes simultaneously by
+at least one of the eight: `dot`, m24, m25, m27, m28, m29, m30, m31, m33, m34,
+m35, m36, m37, m38, m39, m40, m42, m43, m44, m45, m46, m47, m48, m49, m50, m51,
+m52, m53, m57, m58, m59, m60, m61, m62, m64, m71, m72, m73, m74, m76, m78, m112,
+m113, m121. **Eleven of those were once the standard** — `dot`, m50, m51, m53,
+m62, m71, m72, m74, m112, m113, m121 — which is half the lineage table.
+
+Four things follow, and three of them are new to the record.
+
+1. **m41 dominates 36 of the 51 other engines** — more than any other engine in
+   the study, including the standing ones (m132 dominates 21, m143 20, r9 10).
+   **Twenty-three of them are the contiguous run m42 → m74** — the entire
+   relocation series and most of the witness era, beaten on all four axes at once
+   by a 382-line engine that predates every one of them. Those engines were bought
+   with *conformance* and *derivation*, which this table does not score; on the
+   four axes it does score, they are a straight loss.
+2. **The 0.957 band is gone, and one engine took all of it.** m112, m113 and m121
+   (0.9573–0.9575, 578–582 LOC) are each dominated **by r9 alone** — nothing else
+   on the frontier beats any of them. r9 is higher on both accuracy axes,
+   2.2–2.3x faster, *and* 42–46 lines smaller. The whole
+   `m112 → m121` tree-era refinement is superseded by a single later engine, on
+   every axis at the same time.
+3. **Obeying D1 now costs nothing, and this is the first time that has been
+   true.** m75 (0.9528 / 70.8 / 1,275 / 746) and m77 (0.9609 / 71.5 / 1,389 /
+   763) were disqualified for re-parsing, and for a long stretch they were the
+   only engines above the perfect% plateau — the disqualification was expensive
+   and had to be enforced by a rule rather than by the score. **m143 now dominates
+   both on all four axes**: better score, better perfect%, faster, smaller. The
+   constraint is no longer a trade-off; the best legal engine simply beats the
+   best illegal ones.
+4. **The `<400` LOC goal and the accuracy goal have still never been met
+   together, and the boundary is sharp.** Twenty engines come in under 400 lines
+   and **not one of them exceeds 0.9551**; nothing between 407 and 535 lines does
+   either. The best score jumps to 0.9748 exactly at r9's 536. So the gap is
+   **0.0197 of AST-diff score for 136 lines**, it is a cliff rather than a slope,
+   and 51 swept engines do not narrow it. Anything trying to close it should start
+   from what r9 spends its 536 lines on, not from a smaller engine's structure.
+
+**Sensitivity.** Comparing score at 4 decimals instead of 3 admits m37, m38 and
+m39 to the frontier — all at 0.9551, surviving only on 0.0001 over m41 and m32,
+i.e. on 0.18 of a case. The 3-decimal frontier is the honest one; the 4-decimal
+one is recorded here so nobody re-derives it and thinks the table is wrong.
+
+**This table was wrong twice before it was computed rather than read.** The first
+version recommended m78 on its perfect% alone; m132 beats it on all four axes. The
+second put m112 and m121 on the frontier and described m121 as "surviving by 4
+LOC over m112" — both are dominated by r9, whose 536 lines nobody had compared
+against their 578–582. Both errors are the same error, and §3.6 records the rule
+that came out of it.
+
 **Files.** Engines live in `dart/experiments/recovery/<name>.dart`. Tracked gates
 and controls are the `_*.dart` files listed by `git ls-files`; untracked `_*.dart`
 are session scratch and may vanish. `final_table.dart` and `_score1.dart` hold the
-engine registries. The pure parser is `dart/lib/src/parser/`.
+engine registries. The pure parser is `dart/lib/src/parser/`. Two measurement
+scripts are Python rather than Dart and are easy to miss: **`loc.py`** (the LOC
+authority, §3.5) and **`pareto.py`** (the frontier, above).
 
 **Controls worth knowing about**, because each one exists to catch a specific
 class of self-deception:
@@ -1916,4 +2152,5 @@ class of self-deception:
 | `_tree75.dart` | whether the tree really is over the input (**untracked scratch** — it machine-checked I32 on the now-disqualified m75; rebuild it if needed) |
 | `_cmp.dart` | which category a regression lives in, on real failing cases |
 | `_crashwho.dart` | an aggregate score hiding a **whole-corpus** failure — it splits score and crash count per grammar. This is what showed m22's deficit is entirely `expr` and that m76 scores 0.0000 on it while still aggregating to 0.8262 |
+| `_conf6.dart` | a *pricing* disagreement being read as a *conformance* defect — it asks the frozen parser which repairs of `_conf1`'s only contested probe are in the language, and shows the m-line's cost 2 is reachable only by inventing characters (§3.3) |
 | m144 / m145 | the chart's contribution, separated from I81's |
