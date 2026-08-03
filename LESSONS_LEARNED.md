@@ -13505,3 +13505,139 @@ round 2 affordable can reach it — it needs a deeper search.
 (0.9748 three times, 0.9745 three times); the `ms` column is **not** — repeat
 runs of one binary spread ~140 ms, about 7%. Latency claims below that are noise,
 and two in the first draft of this section were.
+
+---
+
+# The mismatch carries its own frontier (core parser change)
+
+The instruction: *"right now a mismatch object is stored in a memo entry, and it
+could even be the same undifferentiated mismatch object for all mismatches,
+because it's just a tombstone, and it has no length information... Instead, make
+a new mismatch object for each new mismatch, and inside the mismatch object,
+encode the length that was consumed by subclause matches (or subclause
+mismatches) before this clause was found to not match -- and also store the
+subclause match or mismatch nodes inside the mismatch object."*
+
+This is the first change to `dart/lib/src/parser` in this whole line of work.
+Everything before it treated the pure parser as fixed and built recovery on top.
+
+## What the tombstone cost
+
+`final mismatch = _Mismatch._()` was one shared object with `len == -1`, and
+`_Mismatch extends Match`. Two things followed from that, both load-bearing and
+both accidental:
+
+1. **"An empty match beats a mismatch" was true by arithmetic.** `MemoEntry`'s
+   left-recursion fixed point read `newResult.len <= result!.len`, and its own
+   comment said this was safe *because* MISMATCH has sentinel len −1.
+2. **The end of the validly-parsed input could only be approximated.**
+   `Parser.syntaxErrorPosition()` scans the entire memo table for the largest
+   position at which anything failed. That yields a position, not a place in the
+   tree — you cannot descend to it, and it is an upper bound over all rules, not
+   the frontier of any particular subtree.
+
+## The shape now
+
+`Mismatch extends MatchResult` (no longer `extends Match`), one per failure:
+
+- `len` is the input **consumed before the failure**, so `pos + len` is the exact
+  frontier of that subtree. It is not a match length.
+- `subClauseMatches` holds what the clause had accumulated, matches and
+  mismatches alike.
+
+Per clause:
+
+| clause | len | children |
+|---|---|---|
+| `Seq` | `curr - pos`, the slots that did match | matched prefix **+ the one failing slot** (always last) |
+| `First` | furthest any arm read | **every** arm, in order |
+| `Repetition` (`+`, zero reps) | 0 | the body mismatch that stopped it |
+| `Str` | length of the prefix the input did supply | none |
+| `Char` / `CharSet` / `AnyChar` | 0 | none |
+| `FollowedBy` / `NotFollowedBy` | **0** | **none** |
+| `Ref` | — | **passed through unwrapped** |
+
+**`First` keeps every arm, not the furthest one.** A choice whose arms all failed
+is not itself a place to repair; the repair belongs in whichever arm got
+furthest, and picking that here would be exactly the arbitrary heuristic the
+brief forbids. Report the furthest read, hand on all the arms, let the caller
+decide.
+
+**The predicates are the special case the instruction asked about.** A predicate
+reads nothing, so its frontier is its own position, and it carries no children.
+`NotFollowedBy` fails because its body *succeeded* — that success is the reason
+for the failure, not input this clause accepted, and reporting its length would
+claim a frontier past input the enclosing sequence never consumed. `FollowedBy`
+fails because its body genuinely failed, which *looks* like a frontier and is
+not one: satisfying `&Foo` needs input this clause would then not consume, so a
+syntax error span placed under it would be spanned by a node of width 0.
+
+## The sentinel, which is where this bites
+
+The instruction warned that −1 is used as a sentinel somewhere and that the fix
+must test for mismatch objects, not compare lengths. It is used in **two** places,
+and only one of them is in the parser.
+
+**In the parser** — `MemoEntry.match`. With mismatch lengths now ≥ 0, a mismatch
+that read far would overwrite a shorter match and the LR expansion would
+collapse. Both directions are now stated outright rather than left to arithmetic:
+
+```dart
+if (result != null &&
+    (newResult.isMismatch || (!result!.isMismatch && newResult.len <= result!.len))) break;
+```
+
+**In r9** — `_terminal` read `if (m.len >= 0)` as "did it match". A grep for
+`len == -1` / `len < 0` finds nothing; the sentinel test was written as `>= 0`.
+Under the new `Str`, `fun` of `function` returns a mismatch with `len == 3`,
+which that line accepts as a 3-character keyword match. The damage was total and
+silent-looking: `_conf1` 5/5 → 2/4, `_freespan` PASS → FAIL, `_recommit` PASS →
+FAIL on 8 cases, and `_charge` went from 23 s to not finishing in 10 minutes.
+Fixed to `if (!m.isMismatch)`; all six gates returned to baseline exactly.
+
+**The rule this earns:** ask whether it matched, never how long it is.
+
+## What it costs, measured
+
+Pure-parser benchmark (`_memfront.dart`): JSON documents of 9 k–78 k characters,
+clean and broken, four parses held live so retention is measured.
+
+| variant | n=1600 clean | n=1600 broken |
+|---|--:|--:|
+| tombstone (HEAD) | 404 ms | 413 ms |
+| mismatch nodes, `Ref` wrapping | 552 ms | 511 ms |
+| **mismatch nodes, `Ref` passthrough (shipped)** | **421 ms** | **418 ms** |
+
+Scaling stays linear in all three. RSS is ~11% higher and GC-noisy.
+
+**Wrapping the `Ref` cost 15–19% of parse time on its own** — more than every
+other allocation combined. The reason is that `Ref.match` allocated a fresh node
+and a one-element list on every *memo hit* for a failing rule, and a packrat hit
+is supposed to be free. It bought nothing: the rule's own mismatch already has
+the same position, the same consumed length, and — in its `clause` — the memo key
+that says which cell to re-attempt, which is what a frontier walk actually needs.
+A `Ref` node on top would only repeat the rule name. So a failed reference is
+passed through; the success path still wraps, because `buildAST` reads the rule
+name off that node.
+
+Two things that looked like they should matter and did not: `First` allocating
+its failed-arm list eagerly (inside noise once measured on its own), and `Seq`
+copying `[...children, result]` (replaced by an append, since PEG stops at the
+first failing slot so it is always last).
+
+**On the recovery battery the change is invisible:** r9 scores 0.9748 / 74.0%
+before and after, `_charge` 22.79 s → 23.11 s. Recovery time is dominated by the
+search, not by the pure parse.
+
+## Verification
+
+`dart analyze lib test` clean; `dart test` 308 → **318** passed (the 10 new
+`test/parser/frontier_test.dart` cases); `_accept r9` ok cx2=1 b1=1 b2=1;
+`_conf1` r9 `0 1 1 0 2 3`; `_recommit` r9 PASS 16/16 (6 of 9 engines fail, as
+before); `_freespan` r9 PASS (10 of 26 fail, as before); `_charge` 0 free passes
+/ 0 mischarges for all nine r-engines; `_score1 r9` 0.9748 / 74.0.
+
+The 126 analyzer errors under `experiments/` are all pre-existing
+`undefined_getter` in stale scratch probes (`_dbg72`, `_restart72`, `_w*run`,
+`_why76`, `scratch.dart`) naming fields deleted from engines long ago. None
+mentions `Match`, `Mismatch`, or `len`.

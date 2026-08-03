@@ -41,17 +41,25 @@ class MemoEntry {
       // Signal the ancestral frame to expand the cycle, and seed the cycle
       // with a mismatch.
       foundLeftRec = true;
-      result = mismatch;
+      // Positioned, so that a seed which escapes into a tree still reports the
+      // right frontier: the cycle has read nothing here.
+      result = Mismatch(clause, pos, 0);
       return result!;
     }
     inRecPath = true;
     do {
       parserStats?.recordMatch();
       final newResult = clause.match(parser, pos);
-      if (result != null && newResult.len <= result!.len) {
-        // The match did not increase in length: fixed point reached.
-        // (A match is never overwritten by a mismatch, since MISMATCH has
-        // sentinel len -1, and a shorter match never overwrites a longer one.)
+      // THE FIXED POINT IS TESTED ON isMismatch, NOT ON LENGTH. This used to
+      // read `newResult.len <= result!.len`, which was correct only because a
+      // mismatch was a shared tombstone with `len == -1`: no match could lose
+      // to one, and a mismatch could never replace a match. A mismatch now
+      // carries the input it consumed before failing, so its `len` is >= 0 and
+      // that arithmetic would let a mismatch that read far overwrite a short
+      // match. Both directions are now stated outright.
+      if (result != null && (newResult.isMismatch || (!result!.isMismatch && newResult.len <= result!.len))) {
+        // Either the new attempt failed -- a match is never replaced by a
+        // mismatch -- or it did not grow. Fixed point reached.
         break;
       }
       result = newResult;

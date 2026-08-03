@@ -27,13 +27,19 @@ class Str extends Terminal {
 
   @override
   MatchResult match(Parser parser, int pos) {
-    if (pos + text.length > parser.input.length) return mismatch;
-    for (int i = 0; i < text.length; i++) {
-      if (parser.input.codeUnitAt(pos + i) != text.codeUnitAt(i)) {
-        return mismatch;
-      }
+    // HOW MUCH OF THE LITERAL THE INPUT DID SUPPLY is frontier information the
+    // old tombstone threw away: `fun` of `function` puts the error three
+    // characters in, not at the keyword's start. Running off the end of the
+    // input is the same question with a shorter answer, so both are counted
+    // by one loop.
+    final room = parser.input.length - pos;
+    final limit = text.length < room ? text.length : room;
+    var i = 0;
+    while (i < limit && parser.input.codeUnitAt(pos + i) == text.codeUnitAt(i)) {
+      i++;
     }
-    return Match(this, pos, text.length);
+    if (i == text.length) return Match(this, pos, text.length);
+    return Mismatch(this, pos, i);
   }
 
   @override
@@ -49,10 +55,10 @@ class Char extends Terminal {
 
   @override
   MatchResult match(Parser parser, int pos) {
-    if (pos + char.length > parser.input.length) return mismatch;
+    if (pos + char.length > parser.input.length) return Mismatch(this, pos, 0);
     for (int i = 0; i < char.length; i++) {
       if (parser.input.codeUnitAt(pos + i) != char.codeUnitAt(i)) {
-        return mismatch;
+        return Mismatch(this, pos, 0);
       }
     }
     return Match(this, pos, char.length);
@@ -95,7 +101,7 @@ class CharSet extends Terminal {
 
   @override
   MatchResult match(Parser parser, int pos) {
-    if (pos >= parser.input.length) return mismatch;
+    if (pos >= parser.input.length) return Mismatch(this, pos, 0);
     final c = parser.input.codeUnitAt(pos);
 
     bool inSet = false;
@@ -109,7 +115,7 @@ class CharSet extends Terminal {
     if (inverted ? !inSet : inSet) {
       return Match(this, pos, 1);
     }
-    return mismatch;
+    return Mismatch(this, pos, 0);
   }
 
   @override
@@ -138,7 +144,7 @@ class AnyChar extends Terminal {
 
   @override
   MatchResult match(Parser parser, int pos) {
-    if (pos >= parser.input.length) return mismatch;
+    if (pos >= parser.input.length) return Mismatch(this, pos, 0);
     return Match(this, pos, 1);
   }
 

@@ -39,7 +39,7 @@ class Parser {
   /// only reached via [Ref.match] or the top-level [parse] call); clauses
   /// within a rule's clause tree recurse directly without memoization.
   MatchResult match(Clause clause, int pos) {
-    if (pos > input.length) return mismatch;
+    if (pos > input.length) return Mismatch(clause, pos, 0);
 
     var memoEntry = _memoTable.putIfAbsent(clause, () => {}).putIfAbsent(pos, MemoEntry.new);
     return memoEntry.match(this, clause, pos);

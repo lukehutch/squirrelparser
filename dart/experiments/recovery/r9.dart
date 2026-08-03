@@ -1195,7 +1195,12 @@ class Squirrel {
   /// so no character of an absent class is ever invented.
   List<_Way> _terminal(Clause c, int pos) {
     final m = (c as Terminal).match(_ref, pos);
-    if (m.len >= 0) {
+    // ASK WHETHER IT MATCHED, NOT HOW LONG IT IS. This read `m.len >= 0` back
+    // when a mismatch was one shared tombstone with `len == -1`. A mismatch now
+    // reports the input it consumed before failing, so `Str` returning the
+    // length of the prefix the input did supply would be taken here for a match
+    // of that length -- `fun` of `function` would be accepted as a keyword.
+    if (!m.isMismatch) {
       final n =
           c is Str || c is Char || (c is CharSet && !c.inverted) ? m.len : 0;
       return [_Way(pos + m.len, 0, 0, n, _peg, leaf: m)];

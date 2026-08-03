@@ -156,7 +156,11 @@ void _collectChildASTNodes({
   required Set<String> transparentRules,
 }) {
   if (matchResult.isMismatch) {
-    return; // Mismatches don't have child matches so cannot create an AST node
+    // A mismatch does now carry the results it accumulated before failing, but
+    // they describe why the parse stopped, not a construct the input contains.
+    // A finished tree holds matches and SyntaxErrors; recovery is what turns
+    // the one into the other, and it has to run before this does.
+    return;
   }
   if (matchResult is SyntaxError) {
     collectedAstNodes.add(ASTNode._syntaxError(matchResult));
