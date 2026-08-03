@@ -1258,9 +1258,9 @@ class Squirrel {
     // no coherent reading at any budget, and a filter that refuses them all
     // answers by deleting the whole document.
     _Way? best, fall;
-    var fallAt = -1;
     for (_round = 0; _round <= ceiling; _round++) {
       _budget = _round;
+      final owed = <_Way>[];
       for (final w in _ways(rules[topRuleName]!, 0)) {
         // A way that stops short is charged for the tail it never reached, so
         // a real derivation of a prefix competes on the same terms as a reading
@@ -1274,7 +1274,41 @@ class Squirrel {
         // `a*` that is exactly the difference between naming the `MulOp` whose
         // operand the document never supplied and deleting the `*`.
         final tail = s.length - w.end;
-        if (w.del + w.gap + tail > _budget) continue;
+        // AND FOR THE INPUT IT KEEPS WITHOUT SAYING ANYTHING ABOUT IT. Every
+        // character is denied, PINNED by a terminal that constrains what it
+        // accepts, or taken by one that does not -- `.` or an inverted set --
+        // so what is left over here is what the reading absorbed. `String <-
+        // '"' Chr* '"'` with one quote supplied lets `[^"\]` take the whole
+        // document for a single obligation, and no repair whose price grows
+        // with the damage can outbid that: on `[1,[2,[3,[4]]],5"` the swallow
+        // costs 1 where the honest Array costs 2.
+        //
+        // It is ONE, not one per character. The reading absorbs or it does not,
+        // and that is all this has to say, because a difference in price was
+        // the only thing keeping [_rank] from reaching [_Way.net] -- the test
+        // written for exactly this reading and unreachable while the swallow
+        // was strictly cheaper. Levelling the price hands the question to it.
+        //
+        // Measured at the WHOLE DOCUMENT, which is the only place it cannot be
+        // dodged. Charged per slot instead, `"a` closing early so the real
+        // quote opens the swallow pays nothing, and the honest repair pays: on
+        // `{"k":[{"a":1},{,b":2}]}` that moved the supplied quote from 15 to 9.
+        // Charged per node, a span is charged again by every Ref above it.
+        //
+        // Charged where the reading takes MORE than it explains, which is the
+        // comparison [_first] already makes about an arm and [_lift] about a
+        // node, asked here about a whole document. Charging every reading that
+        // absorbs anything at all scores the same to four places and costs 2x
+        // the latency: a document with a short string in it pins far more than
+        // it absorbs, and paying a round to re-decide a question it was never
+        // going to lose is the entire difference.
+        //
+        // Not charged where the reading is the parser's own, since round 0 must
+        // stay the frozen parser: a document that IS one long string absorbs
+        // more than it pins and owes nothing for it.
+        final loose = s.length - w.del - tail - w.net;
+        final toll = !w.free && loose > w.net ? 1 : 0;
+        if (w.del + w.gap + tail + toll > _budget) continue;
         // AN OBLIGATION IS A CLAIM THAT THE DOCUMENT RAN OUT, AND A TAIL IS A
         // CLAIM THAT IT DID NOT. A way whose last act was to owe, with input
         // still in front of it, makes both claims at the same position: it says
@@ -1282,7 +1316,7 @@ class Squirrel {
         // to the discard. It has not earned the obligation -- it should have
         // read what the document offered.
         final incoherent = tail > 0 && w.owing;
-        final a = _Way(w.end, w.del + tail, w.gap, w.net,
+        final a = _Way(w.end, w.del + tail, w.gap + toll, w.net,
             tail == 0 ? w.key : _min(w.key, w.end),
             leaf: w.leaf,
             cap: w.cap,
@@ -1297,13 +1331,54 @@ class Squirrel {
         // round at budget 0 the frozen parser rather than merely resemble it.
         if (a.key == _far) continue;
         if (incoherent) {
-          if (fallAt < 0) fallAt = _round;
-          if (fallAt == _round && (fall == null || _rank(a, fall) < 0)) fall = a;
+          owed.add(a);
           continue;
         }
         if (best == null || _rank(a, best) < 0) best = a;
       }
-      if (best != null) break;
+      // AND IT MAY NOT BE PAID FOR BEING CHEAP. Refused outright, an incoherent
+      // reading loses to any coherent one at any price -- and the cheapest
+      // coherent reading of a damaged document is often the swallow. On
+      // `[1,[2,[3,[4]]],5"` the honest Array owes its `]` at 16 and hands the
+      // `"` to the discard, so the veto threw it away and returned the whole
+      // document read as one String.
+      //
+      // WHAT SEPARATES THE TWO CASES IS COVERAGE, AND PRICE SAYS NOTHING ABOUT
+      // IT. On `{ a` the incoherent reading -- discard the `a`, owe the `}` --
+      // costs 2 where the reading a human wants costs 4, and it explains TWO
+      // characters where that one explains three. On
+      // `{ a=1; { b=2; } if (c) d=3; "` the incoherent reading also costs 2 --
+      // owe the `}`, discard the stray quote -- and it explains twenty-seven
+      // characters where the coherent swallow explains one. Cheaper in both, so
+      // no rule about price can tell them apart; more of the document in the
+      // second only, which is exactly the question [_Way.net] answers.
+      //
+      // So an incoherent reading is admitted only where it EXPLAINS MORE, and
+      // never where it also costs more: it must beat the coherent reading at
+      // its own claim, not outbid it. Ties go to the coherent one, which is the
+      // veto wherever the veto had anything to say.
+      if (best != null) {
+        final c = best;
+        var b = c;
+        for (final f in owed) {
+          if (f.del + f.gap <= c.del + c.gap && f.net > b.net) b = f;
+        }
+        best = b;
+        break;
+      }
+      // The rule says which reading is better, not which readings exist, so it
+      // may not leave the engine with nothing -- so the best incoherent reading
+      // at the FIRST budget that offers one is kept, and used if no coherent
+      // reading is ever found. `Top <- Chunk 'z'` on `abab` has none at any
+      // budget, and an engine that refuses them all answers by deleting the
+      // whole document.
+      if (fall == null && owed.isNotEmpty) {
+        var f = owed.first;
+        for (final g in owed) {
+          if (_rank(g, f) < 0) f = g;
+        }
+        fall = f;
+      }
     }
     best ??= fall;
 

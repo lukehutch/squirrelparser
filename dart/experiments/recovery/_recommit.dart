@@ -110,6 +110,22 @@ const probes = <Probe>[
   Probe('stmt', 'if (a) { b=1;', 'If'),
   Probe('stmt', 'if (a) { if (b) { c=', 'If'),
   Probe('stmt', 'x=1; if (a) { b=', 'Assign'),
+  // EVERY PROBE ABOVE IS A TRUNCATION, AND THAT IS WHY THIS GATE PASSED r9
+  // WHILE r9 SWALLOWED WHOLE DOCUMENTS. A truncation has nothing after the
+  // damage, so the reading that owes a closing delimiter has no leftover input
+  // to explain and is never in trouble. Put ONE stray character at the end and
+  // the arithmetic inverts: the honest reading owes the delimiter AND must
+  // discard the stray, while a catch-all arm buys the entire document for the
+  // single quote it invents. `[1,[2,[3,[4]]],5"` cost the honest Array 2 and
+  // the String swallow 1, and 1 wins.
+  //
+  // The stray is a quote in three of these and a backslash in the fourth, so
+  // passing cannot mean "the engine special-cases an unpaired quote": the
+  // backslash opens the swallow through `Chr <- [^"\] / ('\' Esc)` instead.
+  Probe('json', '[1,[2,[3,[4]]],5"', 'Array'),
+  Probe('stmt', '{ a=1; { b=2; } if (c) d=3; "', 'Block'),
+  Probe('stmt', '{ a=1; b=2; { c=3; if (d) { e=4; } f=5; } g=6; "', 'Block'),
+  Probe('stmt', '{ a=1; b=2; { c=3; if (d) { e=4; } f=5; } g=6; \\', 'Block'),
 ];
 
 void main(List<String> argv) {

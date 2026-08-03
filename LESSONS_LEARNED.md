@@ -13200,3 +13200,211 @@ What r13 settles is the question the brief posed: **the brief's architecture,
 given an exact frontier, is worth 0.90 and 327 lines.** What it costs is the
 candidate enumeration the architecture is built on, and no amount of frontier
 precision removes that — only not enumerating does, which is what r9 does.
+
+# The flat literal price — a defect in r9 found by r13, and what adopting it exposes
+
+r13's `_fillOf` charges a `Str` its own length; r9's charges every terminal 1.
+Chasing that one-line disagreement between the two engines found the same flat
+price in a **second** place in r9, and measured what fixing either one costs.
+
+## Two places, and only one of them is self-contradictory
+
+**`_terminal` (r9.dart:1119).** Its own comment states the rule — "A
+multi-character literal is a sequence of single-character obligations … supply
+the rest at one obligation each" — and the `k >= 1` loop obeys it, charging
+`n.$2.length` gaps for the characters it could not read. But the add-all case
+sat *outside* that loop and charged a flat 1, so **restoring one character of
+`"if"` and inventing both cost the same.** By I92's own rule the engine charged
+the budget for an obligation it then declined to say.
+
+The fix is not an addition: `k == 0` is the loop's own last iteration, and
+`_align(text, pos, 0)` already returns `([], every character as a fill)`. So the
+special case folds away — `k >= 1` becomes `k >= 0`, the add-all `out.add` moves
+into an `else` for the non-`Str` terminals, and the two forms were checked to
+produce **identical trees on all 1824 cases**. Net +1 line.
+
+Measured: **0.9721 → 0.9721**, every category identical, 9 of 1824 trees change.
+All 9 are damaged `if` keywords (`izf`, `zf`, `)f`, `i,f`, …), and **all 9 score
+exactly the same**. Gates all clean: `_accept` ok cx2=1 b1=1 b2=1, `_conf1` pass,
+`_freespan` PASS, `_recommit` PASS 12/12, `dart test` 308.
+
+**`_minFill` (r9.dart:1360).** Its docstring says "the fewest characters any
+derivation of [c] can consume", and for `Str("false")` that is 5, not 1. Adding
+`if (c is Str) return c.text.length;` changes real values — json `Boolean` 1→4,
+`Null` 1→4, stmt `Keyword` 1→2, six clauses in each — and costs **0.9721 →
+0.9718**, quote-insert 0.982 → 0.976, delim-insert 0.975 → 0.976.
+
+## A MEASUREMENT TRAP: `skeleton` cannot see a mark
+
+The first comparison of both variants reported **0 of 1824 trees changed**, and
+it was wrong. `skeleton` (astdiff.dart:47) is the *scoring projection* — the
+pre-order sequence of named-rule labels — and it drops `SyntaxError` nodes
+outright. A change to what the engine *admits* is invisible to it by
+construction. Comparing `toPrettyString` instead turned 0 into 9. **Never diff
+two engines through the scorer's own projection when the thing under test is
+what the scorer ignores.**
+
+## What the `_minFill` fix actually costs, and why
+
+Over the 9 differing cases it wins one outright and loses two badly:
+
+| case | flat | by length |
+|---|--:|--:|
+| `if (a) { i,f (b) { c=1; } }` | 0.7727 | **1.0000** |
+| `{ a=1; { b=2; } "f (c) d=3; }` | 0.9855 | 0.8116 |
+| `x=1; "f (x) { y=2; z=3; } w=4;` | 0.9872 | **0.3718** |
+
+The 0.6 drop is not a preference, and it is not the fix's own doing. With `if`
+priced at 2, the `If` reading costs 3 (invent `if`, invent `(`) while an
+`Assign` reading costs 2 — invent a `Name`, invent an `=` — and its condition is
+a `Str` whose `Chr*` **swallows `f (x) { y=2; z=3; } w=4;` entire**. The model is
+applied correctly; it is the model that is short a term.
+
+**THE REAL FINDING, AND IT IS INDEPENDENT OF THE PRICE.** Nothing in the cost
+tuple charges for *how much input a single leaf absorbs without structure*. An
+unbounded repetition inside a string literal will explain an arbitrary span for
+two obligations, so it is always cheap and gets cheaper relative to everything
+else the moment any honest price rises. This is the same "one long string"
+reading the `_recommit` probes are too short to catch. Any fix that makes the
+model more truthful will keep running into it until a cost key answers it.
+
+## Status
+
+Neither fix is adopted; r9 is unchanged at 0.9721 / 73.6 / 1689 ms, verified
+after reverting. Adopting `_terminal` alone is free on every measured column but
+leaves r9 quoting 1 in `_minFill` for what `_terminal` bills 2 — the two prices
+would disagree, observably, since that disagreement is exactly what changed the
+9 trees. So the two fixes go together or not at all.
+
+They are blocked on the missing cost term above, which is now fixed for the
+trailing-stray shape; see the next section.
+
+# The absorption price — closing the whole-document swallow (r9, +16 LOC)
+
+The defect above, stated as an instruction: *a whole document could be swallowed
+as a single unterminated string*. Measured on committed r9 across all 13,605
+battery cases — a character counts as absorbed when its leaf is an inverted
+`CharSet` or an `AnyChar`, which is grammar-independent, and the undamaged
+document's own parse is the control — **166 cases absorb ≥25% more than the
+truth, worst 98%**. `expr`, which has no string rule, is 0%: the measure is real,
+not an artifact of the metric.
+
+## The two dead ends, and why each died
+
+**A veto on repaired absorption (`_bare`/`owing`), 0.9629 / 68.6.** Narrowed to
+`v.net == 0` it recovers to 0.9653 / 70.1, but the per-category split shows the
+loss is 100% concentrated in **quote-delete: 0.999 → 0.954**. Filling a deleted
+opening quote and then absorbing the string body *is* the quote-delete repair. It
+is the same shape as the swallow, so no veto phrased over the shape can separate
+them. Refuted.
+
+**A toll at the junction (P1), 0.9669 / 70.4.** Charge the absorption where the
+invented delimiter meets the absorbing repetition. `_swdiff quote-delete` showed
+49 cases moved, every one worse, and **`lastCost` unchanged at 1 → 1**: the price
+was not paid, it was *dodged*. `_swpair` showed how — the engine re-pairs the
+quotes, moving the invented one from 15 to 9, so the invented quote precedes a
+short absorption and the big absorption follows a real quote and pays nothing.
+**A price charged at a slot is evadable by moving the slot.** Refuted.
+
+## The fix, in three parts, each forced by a measurement
+
+**1. Price absorption at the WHOLE DOCUMENT.** `absorbed = len − del − net` needs
+no new field: every character is denied (`del`), pinned by a terminal that
+constrains what it accepts (`net`), or absorbed by one that does not. The
+document is the only place the charge cannot be dodged — per slot is evadable by
+re-pairing (above), and per node charges a span again at every `Ref` above it.
+
+**2. Charge ONE, and only where the reading takes more than it pins**
+(`loose > w.net`). Charging any absorption at all scores identically to four
+places and costs **2x latency** (1689 → 3422 ms), because it forces an extra
+deepening round on every absorbing document. And not charged when the reading is
+the parser's own (`w.free`), since round 0 must stay the frozen parser: a
+document that genuinely *is* one long string absorbs more than it pins and owes
+nothing for it.
+
+**3. Coherence stops being a veto and becomes a coverage comparison.** This is
+the part that actually moved the numbers, and the pricing alone does not work
+without it. `incoherent` — an obligation is a claim the document ran out, a tail
+is a claim it did not — was an absolute veto. It is what rejected the honest
+reading in **both** corpora: on `[1,[2,[3,[4]]],5"` the honest `Array` owes `]`
+at 16 with the `"` still ahead, so it was vetoed and the coherent swallow won by
+default at cost 1. (An earlier note in this file claimed json failed by cost and
+stmt by coherence; measurement refutes it — both are coherence.)
+
+The two cases the veto has to tell apart are cheap in *both* directions, so no
+rule about price can do it:
+
+| input | incoherent reading | coherent rival |
+|---|---|---|
+| `{ a` | cost 2, explains 2 chars | cost 4, explains 3 chars |
+| `{ a=1; { b=2; } if (c) d=3; "` | cost 2, explains 27 chars | cost 4, explains 1 char |
+
+What separates them is **coverage**, which is exactly what `net` already
+measures. So an incoherent reading is admitted only where it costs no more *and*
+explains strictly more — it must beat the coherent reading at its own claim, not
+outbid it. Ties go to the coherent reading, which keeps the veto wherever the
+veto had anything to say. The best incoherent reading at the first budget that
+offers one is still kept as a fallback, because the rule says which reading is
+better, not which readings exist: `Top <- Chunk 'z'` on `abab` has no coherent
+reading at any budget, and an engine that refuses them all answers by deleting
+the whole document.
+
+## Measured
+
+| variant | battery | perfect% | ms | swallows |
+|---|--:|--:|--:|--:|
+| r9 as committed | 0.9721 | 73.6 | 1689 | 166 |
+| `_bare` veto (broad) | 0.9629 | 68.6 | 1901 | — |
+| `_bare` veto (`net==0`) | 0.9653 | 70.1 | 1753 | — |
+| junction toll (P1) | 0.9669 | 70.4 | 1880 | not fixed |
+| toll on any absorption | 0.9721 | 73.5 | 3422 | not fixed |
+| + coherence as a rank key | 0.9711 | 73.2 | 3335 | json only |
+| + equal-price rule | 0.9722 | 73.5 | 3459 | 162 |
+| + toll narrowed to `loose > net` | 0.9722 | 73.6 | 1787 | — |
+| **+ coverage rule (adopted)** | **0.9728** | **73.8** | **1738** | **150** |
+
+**Every category equal or better**, none worse: truncate 0.946→0.947,
+junk-insert 0.977→0.979, delim-insert 0.975→0.976, quote-insert 0.982→0.984, and
+delim-delete 0.977, quote-delete 0.999, literal-damage 0.957, multi-damage 0.949,
+transpose 0.968, content-damage 1.000 all unchanged. All six gates green,
+`dart test` 308 passed, conformance row `0 1 1 0 2 3` unchanged. 536 → 551 LOC.
+
+## `_recommit` was blind by construction, and now is not
+
+All 12 original probes are **truncations**. A truncation has nothing after the
+damage, so the reading that owes a closing delimiter has no leftover input to
+explain and is never in trouble. One trailing stray character inverts the
+arithmetic — the honest reading owes the delimiter *and* must discard the stray,
+while a catch-all arm buys the whole document for one invented quote. Four probes
+added. They are discriminating, not passengers: **m132, m136 and m143 passed
+12/12 and fail 16** on `[1,[2,[3,[4]]],5"`, and baseline r9 answers it with a
+`String` whose opening quote is invented at position 0. One probe ends in `\`
+rather than `"`, so passing cannot mean the engine special-cases an unpaired
+quote — the backslash opens the swallow through `Chr <- [^"\] / ('\' Esc)`.
+
+## What is still open: the leading quote
+
+150 cases remain, worst json 94% / stmt 92%, and they are a **different shape** —
+the stray quote is at or near the *start* and there is no closing quote at all,
+so the invented one lands at EOF, `tail == 0`, the reading is *coherent*, and the
+coverage rule never engages.
+
+```
+94%  json  ""1,[2,[3,[4]]],5]"        absorbs 16 of 17 (truth 0)
+92%  stmt  "i"f (a) { b=1; } ..."     absorbs 34 of 37 (truth 0)
+```
+
+The toll does fire here (`loose` 16 > `net` 1, price 1 → 2) and changes nothing,
+because **the honest cost-2 reading is never generated**. Traced: fill `[` at 0
+(gap 1), then the `Optional(Value …)` slot should discard the `"` and read `1`
+(del 1) — cost 2, `net` 16, which would beat the tolled swallow on `_rank`. It is
+not offered because `_seq` treats a slot as *reached* when any free reading
+exists, and an `Optional` **matching empty is free**, so the resync branch never
+runs; the way then hits `']'` at 0 and pays 16 to resync there.
+
+So the next question is not pricing but reachability: *a slot that matched
+nothing has not been reached*. The obvious edit (`v.free && v.end > w.end`) is
+too broad on its own — `WS` matches empty everywhere, so the resync would offer
+to skip any character for the price of a deletion, which is precisely what the
+give-up guard exists to prevent. It needs the paired restriction that the resync
+point must itself consume (`!v.free || v.end == k → skip`). Untested.
