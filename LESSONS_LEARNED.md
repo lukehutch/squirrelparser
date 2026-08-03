@@ -13088,11 +13088,19 @@ re-derived, it beats r7 on every column.
 | engine | AST-diff | perfect % | ms | recovery LOC | what it adds |
 |---|--:|--:|--:|--:|---|
 | r10 | 0.6440 | 9.7 | 423 | 176 | the brief taken literally: exact frontier, deletion only, first match wins |
-| r11 | 0.3143 | 4.9 | 4692 | ~200 | r10 + the grammar side, still first-match-wins — **refuted** |
+| r11 | 0.3218 | 4.7 | 4692 | ~200 | r10 + the grammar side, still first-match-wins — **refuted** |
 | r12 | 0.8661 | 44.1 | 3496 | 290 | r11 + best-scored commit |
 | r13 | **0.9008** | **51.9** | 6829 | **327** | r12 + the shallow side, + three cost fixes, + the LR fix below |
 | r7 | 0.8970 | 51.4 | 7116 | 492 | same architecture, re-derived frontier, cold re-parse per candidate |
 | r9 | 0.9721 | 73.6 | 1630 | 536 | chart + deepening budget — still the standing r-engine |
+
+Two rows above were re-measured on the current tree and moved, both for the same
+reason — the left-recursive seed fix of item 5 below, applied to `_core2.dart`
+here and later to the library. **r9 0.9721 → 0.9748** (it imports the library
+parser, so the library fix reached it) and **r11 0.3143 → 0.3218 / 4.9 → 4.7**
+(its row was written before `_core2` got the fix and was never re-measured — note
+that r11 is missing from item 5's list of engines re-measured after it). Neither
+changes any conclusion. `ms` is not comparable across sessions at all.
 
 LOC is the recovery only. r7 and r9 import the frozen library parser and are not
 charged for it; r10–r13 import `_core2.dart`, which is 616 normalised lines
@@ -13744,7 +13752,7 @@ on `_core2`.
 
 ## Verification
 
-`dart analyze lib test` clean; `dart test` 308 → **318** passed (the 10 new
+`dart analyze lib test` clean; `dart test` 308 → **320** passed (the 12 new
 `test/parser/frontier_test.dart` cases); `_accept r9` ok cx2=1 b1=1 b2=1;
 `_conf1` r9 `0 1 1 0 2 3`; `_recommit` r9 PASS 16/16 (6 of 9 engines fail, as
 before); `_freespan` r9 PASS (10 of 26 fail, as before); `_charge` 0 free passes
@@ -13754,3 +13762,142 @@ The 126 analyzer errors under `experiments/` are all pre-existing
 `undefined_getter` in stale scratch probes (`_dbg72`, `_restart72`, `_w*run`,
 `_why76`, `scratch.dart`) naming fields deleted from engines long ago. None
 mentions `Match`, `Mismatch`, or `len`.
+
+# Task #18 — "Does this help unify the Levenshtein model in the r series?"
+
+The question, verbatim:
+
+> however, if partial recovery was possible deeper in the AST, but then a more
+> full recovery were possible at a shallower node in the AST, then effectively an
+> entire subtree of grammar has been skipped (so the first case is deletion of
+> input characters, the second case is deletion of grammar clauses, or vice
+> versa, depending on what point of view you are viewing insertions and deletions
+> from). Does this help unify the Levenshtein model in the r series?
+
+**Yes — the two-sided reading is what makes the grammar side expressible at all,
+and r13 is built on it. But depth is not the thing that unifies them. A shared
+PRICE is.** The distinction "deep = delete characters, shallow = delete grammar"
+is a true description of where each operation lands in the tree; it is not a rule
+for choosing between them, and taking it as one is measurably worse than not
+having the second operation at all.
+
+## What the two-sided reading bought
+
+r13's widening loop is the direct implementation. The brief's `l` had been a
+span — "try matching the frontier clause `l` characters along". Under the
+two-sided reading `l` is a **price**, and at every frontier site two operations
+are offered at that price:
+
+- **deny `l` characters** the grammar did not want (a `SyntaxError` of length
+  `l`, then match the clause after it) — the deep side, deletion of input;
+- **give up a clause that wanted `l` characters** the input never supplied (`l`
+  zero-width `SyntaxError`s, and the clause is satisfied having read nothing) —
+  the shallow side, deletion of grammar.
+
+Same unit, one loop, no tuning constant. The price of the second is `_minFill(c)`
+— the least fixed point over the grammar of "cheapest way to satisfy this clause
+with no input at all". That is the unification, and it is real: it is why a
+truncated document is recoverable at all, because at the end of the input the
+deep side has nothing to work with — there are no characters left to deny.
+
+## What it did not buy, measured
+
+| engine | AST-diff | perfect % | what it is |
+|---|--:|--:|---|
+| r10 | 0.6440 | 9.7 | the brief taken literally: exact frontier, **deletion only**, first match wins |
+| r11 | 0.3218 | 4.7 | + the grammar side, chosen **by depth**, first match wins |
+| r12 | 0.8661 | 44.1 | + a scored commit instead of first-match-wins |
+| r13 | **0.9008** | **51.9** | + the shallow side of the frontier, + three cost fixes |
+
+**r11 is the depth rule implemented literally, and it scores half of
+deletion-only r10.** The reason is structural, not a bug: a deletion is
+self-selecting, because it counts only if a real match follows it, so offering
+one is already a test. A give-up **cannot fail** — it needs no input — so under
+first-match-wins the earliest frontier site priced `l` is taken every single
+time and nothing is ever compared. Depth tells you where the two operations
+live; it does not tell you which is better here, and there is no order of
+traversal that does. The two operations are not comparable without a score.
+
+What makes them comparable is the 4-key lexicographic cost
+`(whole, del, gap + owed, owed)`: does the tree derive the top rule over the
+whole input; then characters denied; then obligations left open; then, at equal
+price, prefer the tree that has DECIDED more of what it owes. Denials dominate
+obligations because the input is primal — no number of missing tokens justifies
+throwing away one character the document really contains. That ordering is the
+user's own "input is primal" constraint restated as a comparison, and it is what
+turns the two-sided model from a description into an algorithm (r11 0.3218 →
+r12 0.8661).
+
+## The other half of #18: is a simpler, faster, conforming engine reachable?
+
+Simpler: **yes.** r13 is 327 lines of recovery against r9's 536, on the brief's
+own architecture, and it needs no chart and no deepening budget.
+
+Faster: **no**, and the reason is now measured rather than asserted. The earlier
+note here said the architecture's cost is the candidate count and "only not
+enumerating" removes it. That was right about the conclusion and wrong about the
+shape of the slack, which had never been broken down. Instrumenting a copy of
+r13 (`Prof` counters around `_try`, `matchSub`, and each widening round; scratch
+`_r13p.dart` / `_r13score.dart`, harness reproduces `_score1 r13` exactly at
+0.9008 / 51.9%):
+
+| | per case |
+|---|--:|
+| widening rounds | 6.0 |
+| `matchSub` pre-filter calls (denial side) | 73.6 |
+| …of which pass and become a trial | **12.5%** |
+| trials — **give-up** | **119.3** |
+| trials — denial | 9.2 |
+| trials — total | 128.4 |
+
+**93% of the work is the give-up side, and the give-up side has no pre-filter.**
+The denial side gets one for free: `matchSub(c, p + l)` must actually succeed, and
+that rejects 87.5% of offers for the price of one sub-match. The operation that
+cannot fail is exactly the operation that cannot be cheaply filtered — the same
+property that broke first-match-wins in r11 reappears as the latency bill. That
+is not a coincidence to be engineered around; it is one fact about give-ups
+showing up twice.
+
+## The redundancy is real, and it is not removable by any cheap key
+
+Within a single widening round, 62.8% of all trials produce a cost tuple another
+candidate at the same position and price already produced — by outcome the
+enumeration is about 4x redundant. But "same tuple" is only knowable *after* the
+trial. Keyed on what IS computable in advance — `(kind, position, price)` —
+59,282 groups cover all 234,292 trials (25.3%), but **only 62.9% of those groups
+are unanimous**. Taking one member per group:
+
+| | AST-diff | perfect % | ms | trials/case |
+|---|--:|--:|--:|--:|
+| r13 as shipped | **0.9008** | **51.9** | 7115 | 128.4 |
+| + collapse give-ups by (position, price) | 0.8196 | 23.5 | 3140 | 51.0 |
+
+2.3x faster for −0.081 aggregate and **less than half the exact recoveries**. So
+the redundancy cannot be spent: which clause carries the give-up is what decides
+the tree, and any representative chosen without trying the others is an arbitrary
+heuristic of exactly the kind the constraints forbid. Stated sharply, and this is
+the correction to the earlier note: **the candidate count is not the
+enumeration's cost, it is the enumeration's information.** An exact frontier
+makes each candidate cheaper (r7's cold re-parse → an 18 µs memo-hit
+continuation) and cannot make fewer of them matter.
+
+**The one lever left, not built.** The give-up side lacks the denial side's
+`matchSub`. Its analogue would be a local test — after giving `c` up at `p`,
+can the PARENT advance? — which the frontier cannot ask today because it holds
+`(Clause, int)` pairs with no parent link. Adding one is a frontier-representation
+change, not a new pricing rule, so it stays inside the brief. Its ceiling is
+bounded by what the denial filter achieves: at the denial side's 12.5% pass rate
+it would leave ≈24 trials/case, ~5x fewer, and no filter can do better than
+rejecting every give-up that changes nothing. Whether give-ups are that filterable
+is unmeasured.
+
+## Verdict on #18
+
+The two-sided model unifies the r series' Levenshtein accounting, and r13
+carries it: 0.9008 at 327 lines, on the brief's architecture, with one price and
+no tuning constant. It does not replace r9 (0.9748 on this tree, ~4x faster, and
+r13 still fails acceptance case b2). Conformance to the original brief and the
+latency target
+are, on this evidence, in tension for a reason internal to the design — the
+brief's stage 3 is an enumeration, enumerations pay per candidate, and the
+cheaper operation the two-sided model adds is the one that cannot be filtered.
