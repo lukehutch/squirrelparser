@@ -23,6 +23,17 @@ target, and "under 400 lines"
 has never been met at the same time as the accuracy goal — the gap is 0.0197 of
 score for 136 lines, and it is a cliff, not a slope (Part VII, items 2–3).
 
+**The largest unexplored lever, and the priority for the next rounds of engines.**
+The parser core now hands back, for every failure, a mismatch node carrying **the
+maximum length it validly consumed, an exact frontier, and its subclause matches
+and mismatches as children** — so the frontier is a place in the tree rather than a
+number scanned out of the memo table. **No `m`-series engine had this**, and every
+one of them re-derives the frontier instead. Nothing built so far consumes it: the
+one engine that ran on an exact frontier (r13) sits on a separate experiment core
+and was aimed at a different question. **Start here** — §1.7 for the instruction
+verbatim, §2.5 for what was built and what was not, and the starred TODO at the
+head of Part VII for the threads.
+
 **Provenance.** This is a pointed rewrite (2026-08-02) of a 13,903-line
 accumulated record. Nothing here is new work; it is the same findings, compacted
 by roughly 10x, restructured so the instructions come first and the findings are
@@ -258,7 +269,7 @@ superseded target.
 | 7 | *"this should NOT have resulted in higher latency or more lines of code, at all"* | Any successor that buys quality with latency. (The specific 3.9x this was aimed at turned out not to exist — it was a cross-battery comparison; see §3.6.) |
 | 8 | Two modes: standard top-down squirrel parsing in O(n); on incomplete parse switch to bottom-up Earley-like parsing in O(n³), replicate PEG semantics exactly, choose SPPF or DAG over the malformed stream, expand with a DP wavefront from the failure point until the previous partial span bridges to the next. | Nothing — it was built faithfully as m141 and **lost by 17.8x**, then lost again at equal latency (§4.6). The refutation is structural, not an implementation failure. |
 | 9 | Anticipate *"probable human intent in how insertions/deletions/mutations are relatively prioritized."* | Cost-minimality as the sole objective. Sharpest statement the project produced: **cost-minimality is not human intent.** |
-| 10 | *"right now a mismatch object is stored in a memo entry, and it could even be the same undifferentiated mismatch object for all mismatches, because it's just a tombstone, and it has no length information... Instead, make a new mismatch object for each new mismatch, and inside the mismatch object, encode the length that was consumed by subclause matches (or subclause mismatches) before this clause was found to not match -- and also store the subclause match or mismatch nodes inside the mismatch object."* | The "the parser core is frozen" assumption held for the entire project up to that point. This is the **first change to `dart/lib/src/parser`** in the whole line of work (§2.5). |
+| 10 | *"right now a mismatch object is stored in a memo entry, and it could even be the same undifferentiated mismatch object for all mismatches, because it's just a tombstone, and it has no length information... Instead, make a new mismatch object for each new mismatch, and inside the mismatch object, encode the length that was consumed by subclause matches (or subclause mismatches) before this clause was found to not match -- and also store the subclause match or mismatch nodes inside the mismatch object."* | The "the parser core is frozen" assumption held for the entire project up to that point. This is the **first change to `dart/lib/src/parser`** in the whole line of work. **Verbatim in §1.7**; what was built in §2.5; what it is still worth in the starred TODO at the head of Part VII. |
 | 11 | *"Does this help unify the Levenshtein model in the r series?"* — the observation that the brief already described deletion at two depths: skipping input characters deep in the AST, and skipping an entire grammar subtree shallower. | The framing of insertion and deletion as separate mechanisms. Answered in §4.8. |
 
 ## 1.6 How to work here (process rules paid for in wrong numbers)
@@ -310,6 +321,41 @@ superseded target.
 - **Always run the Codex check** on a new engine against the verbatim brief. It
   has found real defects (§4.9) and it has also been wrong; treat its findings as
   hypotheses until confirmed by an own probe.
+
+## 1.7 Steer #10, verbatim — the richer mismatch node
+
+The only instruction in the project that changed the parser core, and the only one
+still substantially unimplemented. Quoted in full because §2.5 is an account of how
+much of it was built, and the TODO at the head of Part VII is an account of what
+was not.
+
+> When you have finished, I had a new idea for the next generation -- put this on
+> your TODO list: right now a mismatch object is stored in a memo entry, and it
+> could even be the same undifferentiated mismatch object for all mismatches,
+> because it's just a tombstone, and it has no length information, other than -1
+> that is used to indicate that it is a mismatch (be careful, the -1 sentinel value
+> is used as a sentinel somewhere in the squirrel parser algorithm, so if you need
+> to start encoding the actual length of consumed input before the span was found
+> to not match, as described below, then you need to find where this sentinel is
+> used and manually check for mismatch objects, not just check against length).
+> Instead, make a new mismatch object for each new mismatch, and inside the
+> mismatch object, encode the length that was consumed by subclause matches (or
+> subclause mismatches) before this clause was found to not match -- and also store
+> the subclause match or mismatch nodes inside the mismatch object (currently
+> mismatch nodes do not store the clause's subclause matches at this position as
+> children, which is much more memory efficient, but it probably creates
+> duplication of work if we need to recurse through mismatch nodes, and anyway, the
+> subclause matches are probably separately memoized, at least if new rules are
+> reached). Now these mismatch objects that actually contain length information can
+> be used to determine the exact position of the frontier (the end of valid parsed
+> input) for any AST subtree (although check for special-case handling across
+> FollowedBy and NotFollowedBy nodes). Now the iterative widening that I asked for
+> in my r-series original request can work with a much more precise frontier, and
+> the frontier is more fully connected as an AST. At the end of parsing, however,
+> you should not have any mismatch nodes in the returned AST, you should have only
+> valid parse nodes and syntax error nodes -- so when the recovery process is able
+> to find some new rule match beyond the end of a garbage span, you should replace
+> any mismatch nodes with a syntax error node, and continue the parsing from there.
 
 ---
 
@@ -538,20 +584,98 @@ ending, and both are bounded.
 
 ## 2.5 What a `Mismatch` now carries (the one core change, 2026-08)
 
-Steer #10 (§1.5). Every mismatch is now a fresh object carrying:
+Steer #10, quoted in full in §1.7. This is the **first and only change to
+`dart/lib/src/parser` in the whole line of work** — the core had been frozen until
+here — and it is the richest piece of unexploited information the project has.
+**No `m`-series engine had any of it.** The TODO at the head of Part VII is the
+open question of what a recovery engine built on it could do.
 
-- the **length consumed** by subclause matches (or subclause mismatches) before
-  this clause was found not to match, and
-- the **subclause match or mismatch nodes** underneath it.
+### Where it was built, in order
 
-This is what makes the `r`-series brief's iterative widening implementable: an
-*exact* frontier can be read off the mismatch tree instead of re-derived.
+| commit | when | what | where |
+|---|---|---|---|
+| `38422a3` | 2026-08-02 17:50 | prototype: mismatch-as-node **plus `reach`** | `_core2.dart` (a standalone core), gated by `_core2gate.dart` |
+| `46026dd` | 2026-08-02 18:38 | the first engines to consume it: **r10, r11, r12, r13** | `r10.dart`–`r13.dart`, all built on `_core2.dart` |
+| `46bd136` | 2026-08-02 22:22 | **ported into the shipped core** — the mismatch tree only, without `reach` | six files in `dart/lib/src/parser`, + 12 tests |
+| `6b81302` | 2026-08-02 22:34 | a left-recursive failure keeps its evidence, not the seed | `memo_entry.dart` |
+
+So "which engine" has two answers, and they are different things. **r13 is the
+engine that ran on an exact frontier and measured what it is worth** (§4.8: 0.9008
+/ 51.9% / 327 lines — the smallest engine in the project that works at all), and it
+runs on `_core2.dart`, *not* on the library. **The library port is what every
+future engine inherits for free**, and nothing has consumed it yet.
+
+### What is stored
+
+`Mismatch` (`dart/lib/src/parser/match_result.dart:91`) is no longer a shared
+tombstone. Each failure allocates its own node:
+
+- **`len` is the maximum length of input this clause validly consumed before it
+  was found not to match** — the longest valid matching prefix at this site. It is
+  **not** a match length, and nothing may compare it against one without testing
+  `isMismatch` first. That is exactly the `-1` sentinel trap the instruction
+  warned about, and it bit at two sites (below).
+- **`frontier` (`match_result.dart:104`) is `pos + len`** — the exact end of the
+  input this subtree read and accepted.
+- **`subClauseMatches` holds the results the clause had accumulated when it
+  failed — matches and mismatches alike.** This is what makes the frontier
+  *connected*: it is reached by descending from the root, not by searching a table.
+
+Per clause type, which is the whole of the mechanism:
+
+| clause | its `len` is | its children are |
+|---|---|---|
+| `Str` (`terminals.dart:42`) | **`i`** — how many characters of the literal the input did supply before the first disagreement; `fun` of `function` puts the error three characters in, not at the keyword's start | none (a terminal) |
+| `Char` / `CharSet` / `AnyChar` | 0 | none |
+| `Seq` (`combinators.dart:51`) | `curr - pos` — the span of the slots that **did** match | the matched prefix **plus the failing slot's own mismatch node**, always last: PEG stops at the first failing slot, so there is exactly one |
+| `First` (`combinators.dart:93`) | the **max over the arms** of each arm's own `len` — the furthest any arm read | **every** failed arm, because a choice whose arms all failed is not itself a place to repair, and which arm is cannot be known from there |
+| `OneOrMore` (`combinators.dart:130`) | 0 — nothing repeated even once, so nothing was read | the body's own mismatch, the whole account of why |
+| `Ref` (`combinators.dart:201`) | the referenced rule's own mismatch, **passed through unwrapped** | none of its own: a failed reference is not a second failure, and the rule's mismatch already carries the position, the length and the memo key. Wrapping it cost 15% of parse time, because it allocated on every memo **hit** for a failing rule |
+| `FollowedBy` / `NotFollowedBy` (`combinators.dart:252`, `:231`) | **0, and the body's extent is discarded** | **none** — see below |
+
+**The lookahead case is a deliberate answer to the instruction's own question**
+("although check for special-case handling across FollowedBy and NotFollowedBy
+nodes"). A predicate reads nothing, so its frontier is its own position; reporting
+the body's length would claim a frontier past input the enclosing sequence never
+consumed, and a repair placed inside a zero-width assertion would consume input the
+assertion does not. It is a decision, not an oversight — **but it is still evidence
+thrown away**, and it is one of the open threads in the TODO.
+
+**What the `m` series had instead: nothing.** *Confirmed:* before this change a
+mismatch was a shared tombstone with `len == -1`, so there was **nothing in the
+tree to read a frontier off**; the only frontier the library offered was
+`Parser.syntaxErrorPosition()` (`parser.dart:67`), which scans the whole memo table
+for the largest position at which anything failed and returns a **bare integer,
+with no clause and no path**. Anything more precise had to be re-derived by
+re-matching candidate clauses at candidate positions and seeing how far each got —
+which is what the brief's iterative widening is, and what §4.8 measures the price
+of. *Confirmed:* `m143.dart`, the standing `m`-engine, contains **zero**
+occurrences of `Mismatch` and never asks for a frontier under any name; it searches
+repairs directly instead. So the `m` line did not solve this problem cheaply — it
+worked around not having the information at all.
 
 **Two sentinel sites bit during the change**, both because `-1` had been doing
 double duty as "no match" and as "shorter than everything":
 
 1. The fixed-point comparison above.
 2. The left-recursive seed, which was still an undifferentiated tombstone.
+
+### The three parts of the instruction that are NOT implemented
+
+1. **The `reach` half.** The library keeps only what *failing* clauses learned. A
+   clause that **succeeds** still discards the attempts it made along the way:
+   `Repetition` drops `stoppedBy` at `combinators.dart:135` whenever it matched at
+   least once, and `Optional` drops its failed body at `combinators.dart:165`.
+   Those discards are frequently the only record of where the input really
+   stopped — measured below at a 27.9% fidelity gap.
+2. **Lookahead evidence**, as above.
+3. **"…you should replace any mismatch nodes with a syntax error node, and
+   continue the parsing from there."** The *invariant* the instruction asked for
+   holds — `buildAST` drops mismatches (`tree.dart:158`), so a finished tree
+   carries only matches and `SyntaxError`s — but it holds by **discarding**, not by
+   **substituting**. Nothing converts a mismatch node into a syntax-error node and
+   resumes the parse from it. That conversion is the mechanism the instruction
+   actually described, and it is not built.
 
 ### What the change cost and what it has bought, measured
 
@@ -615,6 +739,11 @@ would give 100% frontier fidelity for about **1.5x pure-parse time**.
 
 **This is a real fork, still open** (§7, item 1): the instruction's mechanism and
 `reach` are different mechanisms, and only the first was requested.
+
+**None of this is a reason to discount the change — it is the reason to
+investigate it.** Everything measured above is the cost of *producing* the
+information; the benefit column is zero because **nothing has been built that
+consumes it**. See the TODO at the head of Part VII.
 
 ---
 
@@ -1503,6 +1632,12 @@ frontier make the brief's iterative widening work?** It requires one core change
 (`matchSub`) because the brief says to memoize a match of C at position p+l and
 memoization is at RULE granularity.
 
+**These four are the only engines that have ever run on an exact frontier**, and
+they run on `_core2.dart` — the prototype of the richer mismatch node (§2.5),
+which the shipped library later took half of. They test the *brief's* architecture
+on it, not the best architecture for it; see the starred TODO at the head of
+Part VII for what that leaves open.
+
 | engine | score | perfect% | LOC | what it is |
 |---|---:|---:|---:|---|
 | r10 | 0.6440 | 9.7 | 176 | the brief taken literally: exact frontier, **deletion only**, first match wins |
@@ -1790,6 +1925,78 @@ refuted** — re-derivation is only 29% of the time. The time is in budget-1 and
 ---
 
 # PART VII — OPEN ITEMS
+
+## ★ THE TODO FOR THE NEXT ROUNDS OF ENGINES — build a recovery engine on the richer mismatch node
+
+**This is the single largest unexplored lever in the project, and it is the one
+item here that is a research direction rather than a defect.** Read §1.7 (the
+instruction, verbatim) and §2.5 (what was built, and what was not) first.
+
+**What exists.** Since `46bd136`/`6b81302` the shipped parser core returns, for
+every failure, a **fresh mismatch node carrying the maximum length of input it
+validly consumed before failing (`len`), an exact frontier (`pos + len`), and the
+subclause matches *and* subclause mismatches underneath it**. The frontier is
+therefore a **place in the tree** — a clause, with a path to it — and not the bare
+integer that `Parser.syntaxErrorPosition()` scans the memo table for. The failing
+`Seq` slot is the last child of its parent; every failed `First` arm is kept
+because which arm holds the repair cannot be known locally; a `Str` reports how
+much of the literal the input did supply.
+
+**Why this matters more than any number currently in this document.** No engine
+before `46bd136` could read a frontier off the tree, because there was nothing in
+the tree to read: a mismatch was a shared tombstone. The only alternatives were a
+memo-table scan returning a bare integer, or re-matching candidate clauses at
+candidate positions to find out how far each got — and that re-derivation is what
+the brief's iterative widening *is*, priced at 128.4 trials per case in §4.8. The
+information is now computed by the parse itself, on the path it already walks, and
+handed back.
+
+**Why it is not yet a result.** Nothing consumes it. The measured benefit is
+**zero on every scored column**, because the only engine that ever ran on an exact
+frontier — **r13** — runs on `_core2.dart`, a separate experiment core, and r13
+was aimed at the brief's *enumeration* architecture, where the frontier is not the
+bottleneck (§4.8: 93% of its trials are give-ups, which no frontier precision can
+pre-filter). **r13 answers "what is the brief's architecture worth on an exact
+frontier?" — it does not answer "what is the best architecture given an exact
+frontier?", and nobody has asked that question yet.** That is the whole of this
+TODO.
+
+**And do not oversell it while investigating.** As shipped — without `reach` —
+walking the mismatch tree on four broken JSON documents gives a frontier of
+6 / 6 / 4 / 1 where the old memo-table scan gives 16 / 11 / 5 / 1 (§2.5). The tree
+gives a frontier that is *located*; on 3 of those 4 it is also a *shallower
+number*. Thread 2 is what closes that, and any engine built on thread 1 before
+thread 2 should be measured against the scan, not assumed to beat it.
+
+**Concrete threads, in the order they look most promising:**
+
+1. **A recovery engine whose widening walks the mismatch tree** instead of
+   re-probing positions. The sites arrive in grammar order, each already carrying
+   the clause that failed there — and a top-down walk knows every site's ancestors
+   by construction, so the unbuilt give-up pre-filter of item 5 below ("can the
+   parent advance?") needs no parent field added: the walk already holds the
+   parent. Note the nodes carry children, not parent pointers, so this is a
+   property of walking down from the root, not of an isolated node.
+2. **Adopt `reach`** (item 1 below) — the same idea extended to clauses that
+   *succeed* while discarding evidence. 27.9% → 100% frontier fidelity for about
+   1.5x pure-parse time. The trade is measured; the call has not been made.
+3. **Implement the substitution the instruction actually described** — convert a
+   mismatch node into a `SyntaxError` node and *continue the parse from there*,
+   rather than discarding mismatches at AST-build time (§2.5). This is in-place
+   repair of the existing tree, which is what D1 has demanded all along, and the
+   mismatch tree is the first structure that makes it expressible.
+4. **Decide the lookahead question with a measurement** rather than by argument.
+   The zero-width reasoning for dropping a predicate's body is sound for *where a
+   repair may be placed*; it does not follow that the body's extent is worthless as
+   *evidence about where the input stopped*. Those are two different uses of the
+   same number, and only the first was considered.
+
+**Status: not fully explored, and probably holds a great deal of promise.** The
+cost is paid and the plumbing is in the shipped core; what is missing is an engine
+designed around it from the start, instead of an engine designed without it and
+then handed it.
+
+---
 
 1. **The `reach` fork (from steer #10).** `dart/lib` currently keeps the cheap
    half of the mismatch-frontier change: its mismatch tree reproduces `_core2`'s
