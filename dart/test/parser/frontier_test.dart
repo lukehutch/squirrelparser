@@ -118,6 +118,33 @@ void main() {
       expect(m.len, 4);
     });
 
+    test('FRONT-11-a-left-recursive-failure-keeps-its-evidence', () {
+      // The left recursion fixed point seeds the cycle with a childless
+      // zero-length mismatch, then breaks as soon as the next attempt also
+      // fails -- and used to break while still holding the SEED, so every
+      // left recursive rule reported a failure with no structure under it.
+      // The two grammars here accept the same language and differ only in
+      // which one is left recursive, so their failures must carry the same
+      // evidence.
+      final lr = matchOf("E <- E '+' N / N; N <- [0-9]+;", 'E', '+1');
+      final notLr = matchOf("E <- N '+' E / N; N <- [0-9]+;", 'E', '+1');
+      expect(lr.isMismatch, isTrue);
+      expect(notLr.isMismatch, isTrue);
+      // Both arms are reported, not a bare seed.
+      expect(lr.subClauseMatches.length, notLr.subClauseMatches.length);
+      expect(lr.subClauseMatches.length, 2);
+    });
+
+    test('FRONT-12-a-left-recursive-frontier-is-a-place-in-the-tree', () {
+      // `(a` is the case the recovery experiments named: with the seed kept,
+      // the whole grammar offered one site and nothing could be repaired.
+      final m = matchOf("E <- E '+' T / T; T <- '(' E ')' / N; N <- [0-9]+;", 'E', '(a');
+      expect(m.isMismatch, isTrue);
+      // The '(' was read and accepted before anything failed.
+      expect(deepestFrontier(m), 1);
+      expect(m.subClauseMatches, isNotEmpty);
+    });
+
     test('FRONT-10-mismatches-never-reach-the-AST', () {
       // The returned tree holds matches and SyntaxErrors; a mismatch is a
       // statement about why the parse stopped, not a construct in the input.

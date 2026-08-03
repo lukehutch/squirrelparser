@@ -13597,6 +13597,61 @@ Fixed to `if (!m.isMismatch)`; all six gates returned to baseline exactly.
 
 **The rule this earns:** ask whether it matched, never how long it is.
 
+## The second sentinel site: the left recursive seed was still a tombstone
+
+The change above was shipped with the defect the r11–r13 notes had already
+named in `_core2.dart`, and shipping it anyway is the lesson. `MemoEntry.match`
+seeds a left recursive cycle with `Mismatch(clause, pos, 0)` — childless, zero
+length, the exact undifferentiated object this whole change exists to delete.
+When the next attempt also fails, the fixed point is reached and the code
+breaks. It broke **while still holding the seed**, throwing away `newResult`,
+which is the real failure with its consumed length and its subclause results.
+
+Under the old core this was invisible, because both were the same singleton. It
+is not invisible now, and the two grammars that make it plain accept the same
+language and differ only in which is left recursive:
+
+```
+                                   input '+1'
+E <- E '+' N / N   (left rec.)     kids=0  nodes in tree=1   <-- the seed
+E <- N '+' E / N   (not)           kids=2  nodes in tree=6
+```
+
+One node. **Every left recursive rule that failed reported a failure with no
+structure under it**, so on the corpus's `expr` grammar — the only left
+recursive one — the change bought nothing at all. `(a` went from a 1-node tree
+to a 16-node tree with the fix, and its frontier from 0 to 1 (the `(` really was
+read and accepted).
+
+The fix is two lines, and the reason it is free is worth stating: the fixed
+point is genuinely reached, but WHICH of the two failures is stored is not
+determined by it — nothing in the parse reads a mismatch's shape, only whether
+it is one. So take the one that read furthest, and on a tie take the new one,
+because a tie is the seed's case and the seed is the one with nothing in it.
+
+```dart
+if (newResult.isMismatch && result!.isMismatch && newResult.len >= result!.len) {
+  result = newResult;
+}
+break;
+```
+
+`_core2.dart` reaches the same place by a different route: it keeps `newResult`
+unconditionally and preserves the frontier with `raise(result.reach)`. The
+library has no `reach`, so it compares lengths instead — same position, so the
+longer length is the further frontier.
+
+**How it got shipped:** the port took the parts of `_core2.dart` the
+instruction named — a fresh mismatch per failure, with length and children —
+and left behind a correction that lived in `MemoEntry`, one method away, in a
+file the instruction did not mention. The gates could not catch it: `_conf1`,
+`_freespan`, `_recommit`, `_charge`, `_accept` and `_score1 r9` are all at
+baseline before and after the fix, to the digit, because r9 does not read
+mismatch structure. Only a direct probe of the new capability found it, which is
+the general point: **a gate set tuned to the old capability cannot measure the
+new one.** `FRONT-11` and `FRONT-12` in `test/parser/frontier_test.dart` are the
+regression tests; both fail without the fix and pass with it.
+
 ## What it costs, measured
 
 Pure-parser benchmark (`_memfront.dart`): JSON documents of 9 k–78 k characters,

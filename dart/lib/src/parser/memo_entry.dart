@@ -60,6 +60,22 @@ class MemoEntry {
       if (result != null && (newResult.isMismatch || (!result!.isMismatch && newResult.len <= result!.len))) {
         // Either the new attempt failed -- a match is never replaced by a
         // mismatch -- or it did not grow. Fixed point reached.
+        //
+        // WHEN BOTH ARE MISMATCHES, KEEP THE ONE THAT READ FURTHEST. The
+        // fixed point is reached here, but WHICH failure is stored is still
+        // free: nothing in the parse reads a mismatch's shape, only whether it
+        // is one. And [result] is usually the seed written above -- zero
+        // length, no children, the undifferentiated tombstone this class no
+        // longer produces anywhere else. Keeping it made every left recursive
+        // rule's failure structureless, which is not a small effect: on
+        // `E <- E '+' N / N` the whole tree collapsed to a single node, while
+        // the same grammar written without left recursion reported six.
+        // Frontiers are a maximum over what was read, so take the longer, and
+        // on a tie take the new one -- that is the seed's case, and the real
+        // failure carries the subclause results the seed has none of.
+        if (newResult.isMismatch && result!.isMismatch && newResult.len >= result!.len) {
+          result = newResult;
+        }
         break;
       }
       result = newResult;
