@@ -212,6 +212,26 @@ class Mismatch extends MatchResult {
 /// about the tree rather than as an attribute of a node.
 int frontier(MatchResult m) => m.reach;
 
+/// A repaired answer for one `(clause, pos)`, installed by recovery and read by
+/// [Parser.matchSub].
+///
+/// WHY THE CORE HAS TO KNOW. Memoization is at RULE granularity: every other
+/// combinator matches its subclause by calling `subClause.match(parser, pos)`
+/// directly, with no table in between. A frontier clause is almost always an
+/// inner one -- a sequence slot, a repetition body, a terminal -- so a repair
+/// installed there and nowhere else would simply never be read. One indirection
+/// at every subclause call is the whole of the change, and while [Parser.repairs]
+/// is null it is a null check.
+///
+/// [readEnd] is the largest input index the repaired match depended on, kept so
+/// that installing a SECOND repair can invalidate on the same rule every memo
+/// entry obeys: an entry survives a change at `e` exactly when `readEnd < e`.
+class Repair {
+  final MatchResult node;
+  final int readEnd;
+  Repair(this.node, this.readEnd);
+}
+
 /// A span of input that could not be matched.
 class SyntaxError extends Match {
   SyntaxError({required int pos, required int len}) : super(null, pos, len);
@@ -230,7 +250,7 @@ class Seq extends HasMultipleSubClauses {
     final children = <MatchResult>[];
     int curr = pos;
     for (int i = 0; i < subClauses.length; i++) {
-      final result = subClauses[i].match(parser, curr);
+      final result = parser.matchSub(subClauses[i], curr);
       if (result.isMismatch) {
         // The satisfied prefix is [pos, curr) and it is real: those slots each
         // matched. The failing slot goes in as the last child, carrying its own
@@ -259,7 +279,7 @@ class First extends HasMultipleSubClauses {
     List<MatchResult>? failed;
     var failedReach = -1;
     for (int i = 0; i < subClauses.length; i++) {
-      final result = subClauses[i].match(parser, pos);
+      final result = parser.matchSub(subClauses[i], pos);
       if (!result.isMismatch) {
         // The arms that lost still read the input, and one of them may have
         // agreed further than the arm that won -- `("abcd" / "ab") 'z'` on
@@ -292,7 +312,7 @@ class Repetition extends HasOneSubClause {
     MatchResult? last;
     int curr = pos;
     while (curr <= parser.input.length) {
-      final result = subClause.match(parser, curr);
+      final result = parser.matchSub(subClause, curr);
       last = result;
       if (result.isMismatch) break;
       // Never consume more than one zero-length subclause match, to prevent an
@@ -336,7 +356,7 @@ class Optional extends HasOneSubClause {
 
   @override
   MatchResult match(Parser parser, int pos) {
-    final result = subClause.match(parser, pos);
+    final result = parser.matchSub(subClause, pos);
     // Matching empty is not the same as learning nothing. This is the single
     // biggest source of a lost frontier: JSON's `(Member ...)?` on `{"a:1,...`
     // parses a whole String and fails at the missing `:`, and without the reach
@@ -379,7 +399,7 @@ class NotFollowedBy extends HasOneSubClause {
 
   @override
   MatchResult match(Parser parser, int pos) {
-    final result = subClause.match(parser, pos);
+    final result = parser.matchSub(subClause, pos);
     // Failing means the body MATCHED: the child of this mismatch is a Match, and
     // it spans the forbidden text. Kept, because "what was here instead" is the
     // most specific thing a `!` failure knows.
@@ -403,7 +423,7 @@ class FollowedBy extends HasOneSubClause {
 
   @override
   MatchResult match(Parser parser, int pos) {
-    final result = subClause.match(parser, pos);
+    final result = parser.matchSub(subClause, pos);
     // Succeeding consumes nothing but proves the body's whole span agreed, so
     // the match it throws away is exactly a reach it should keep.
     return result.isMismatch
@@ -626,7 +646,23 @@ class MemoEntry {
         // `E <- E '+' T / T` over `1+a22` it is the ONLY thing that ever looked
         // at index 2 -- the kept result is the bare `1` from the round before.
         // Its frontier comes along even though its tree does not.
-        result!.raise(newResult.reach);
+        //
+        // WHEN BOTH ARE MISMATCHES, KEEP THE ONE WITH THE EVIDENCE. `result` is
+        // then the seed written at the top of this method -- `Mismatch(clause,
+        // pos, 0)`, childless, the tombstone this file exists to abolish -- and
+        // `newResult` is the real failure, with the consumed length and the
+        // subclause results under it. Keeping the seed made every left recursive
+        // rule's failure structureless: on `(a` the whole expr grammar offered a
+        // one-site frontier and salvaged nothing, so the recovery deleted the
+        // `(` instead of supplying the `)`. Which mismatch is stored is free --
+        // both are failures with the same reach, and nothing in the parse reads
+        // a mismatch's shape -- so store the informative one.
+        if (newResult.isMismatch && result!.isMismatch) {
+          newResult.raise(result!.reach);
+          result = newResult;
+        } else {
+          result!.raise(newResult.reach);
+        }
         break;
       }
       if (result != null) newResult.raise(result!.reach);
@@ -713,8 +749,32 @@ class Parser {
     reach = -1;
   }
 
+  /// Repaired answers, keyed by the `(clause, pos)` the repair was installed at.
+  /// Null while nothing is installed, which is the whole of a pure parse; see
+  /// [Repair] for why an inner clause needs this at all.
+  Map<Clause, Map<int, Repair>>? repairs;
+
+  /// Match a SUBCLAUSE. The only difference from calling `c.match(this, pos)` is
+  /// that an installed repair answers first -- and the repair is charged as a
+  /// read out to its own extent, so an enclosing memo entry's `readEnd` covers
+  /// it and a later repair invalidates that entry by the ordinary rule.
+  MatchResult matchSub(Clause c, int pos) {
+    final fix = repairs?[c]?[pos];
+    if (fix == null) return c.match(this, pos);
+    read(fix.readEnd);
+    return fix.node;
+  }
+
   /// Match a rule's top clause at a position, using memoization.
   MatchResult match(Clause clause, int pos) {
+    // A rule body reached through [matchRule] never passes [matchSub], so the
+    // check is repeated here rather than left as a hole at the one position --
+    // the top rule at 0 -- that every parse starts from.
+    final fix = repairs?[clause]?[pos];
+    if (fix != null) {
+      read(fix.readEnd);
+      return fix.node;
+    }
     if (pos > input.length) return Mismatch(clause, pos, 0);
     final memoEntry =
         memoTable.putIfAbsent(clause, () => {}).putIfAbsent(pos, MemoEntry.new);

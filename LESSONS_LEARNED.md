@@ -12967,3 +12967,236 @@ called on the left-recursive rule), and its cost is read off the tree by
 There is no second currency. A bonus fact falls out: **r9 does not hang on a
 left-recursive grammar**, because the only path that would recurse is gated off
 before it is taken.
+
+---
+
+# r10 — the brief's own architecture, on a core that keeps its mismatches
+
+Design written before implementation, as the brief's required order of work
+demands. r10 exists to answer one question the owner asked directly: **does an
+exact frontier make the brief's iterative widening work?**
+
+## Why r7 could not answer it
+
+r7 is the brief's architecture — pure parse, frontier list, widen, splice,
+resume — and it caps at 0.8970 / 481 lines / 7180 ms. Its own header names the
+cause: it commits one repair per round and re-scores it with a full cold
+re-parse, 114 re-parses per case. But r7's design note names an earlier cause
+that is the real one:
+
+> **`Seq.match` discards its partial children on failure** — it returns the bare
+> `mismatch` singleton. **There is therefore no partial AST to traverse.** Any
+> design that says "traverse the partial AST" must either store partial children
+> or re-derive the descent. r1 re-derives.
+
+Every r-engine up to r9 re-derives. r7's `_walk`/`_descend`/`_stops` are 100
+lines that re-run the failed descent by calling `_match` again, and `_stops`
+re-matches the body of **every** repetition and option inside **every** matched
+subtree, because a match that stopped early is invisible from the outside.
+
+`_core2.dart` deletes both problems at the source. A mismatch is a node with a
+position, a real consumed length and its subclause results, so the partial AST
+*is* there. And every node carries `reach`, the end of the input its subtree
+found consistent with the grammar, including what a *successful* clause tried
+and threw away — so "did anything inside this match stop early?" is `reach >
+pos + len`, one integer compare, instead of a re-match.
+
+## The one change the brief forces on the core: `matchSub`
+
+The brief says to "memoize a match of C at position p+l". Memoization is at RULE
+granularity; a frontier clause is almost always inner, and a repair installed
+there would never be read. So every combinator's `subClause.match(parser, pos)`
+becomes `parser.matchSub(subClause, pos)`, which consults `Parser.repairs` and
+otherwise calls straight through. `Parser.match` repeats the check, because a
+rule body reached from `matchRule` never passes `matchSub` and the top rule at 0
+is exactly such a body.
+
+Measured cost of the indirection, `_core2gate.dart`: 1.353x -> 1.355x over
+`_core.dart`. Inside the noise; all five claims still pass (A 3990/3990, B
+4271/4271, C clean, D 3990/3990, E behind on 0).
+
+`Repair` carries `readEnd` beside the node, so an enclosing memo entry's
+`readEnd` covers a repair it read, and the next repair invalidates that entry by
+the same rule every other entry obeys.
+
+## The five stages
+
+**1. Parse.** One `Parser`, one memo table, the unmodified input. `root =
+matchRule(top, 0)`.
+
+**2. Frontier, by reading the tree.** No re-derivation on the failing path at
+all. On a mismatch node: `Ref` recurse; `First` recurse into every arm and never
+add itself (the brief's rule); `Seq` recurse into its one failing slot; `+` with
+zero iterations recurse into the failed body; a predicate or terminal is a leaf.
+A node is added only if nothing was added beneath it — the brief's leaf rule.
+
+On a *matched* node the walk enters only when `reach > pos + len`, and then asks
+what this node discarded: an option that matched empty tried its body at `pos`;
+a repetition that stopped tried its body at `pos + len`; a `First` tried every
+arm before the winner at `pos`. Those subtrees were folded to an int and
+dropped, so they are re-derived — but only where `reach` says there is something
+to find, and a predicate that matched is never entered, because a repair beneath
+one is invisible to the enclosing parse.
+
+**3. Widen.** For `l = 1, 2, ...`, walk the postorder list and take the FIRST
+`(C, p)` that matches at `p + l`. The brief's rule verbatim. Two guards: never
+delete a character the current tree already explained, and never accept a
+zero-length match from a clause that could already match nothing.
+
+**4. Advance.** Install `repairs[C][p] = SyntaxError(p, l) + the match`, then
+invalidate every memo entry with `pos >= p || readEnd >= p` and re-descend from
+the top. **This is not a re-parse.** Everything strictly before the repair that
+never read past it is a memo hit; that is exactly the soundness rule
+`_core2.dart` already carries for incremental re-parse, and it is what r7 threw
+away with `_forget()`.
+
+Soundness of the invalidation: matching `C` at `p` mismatched, and every way for
+a clause to mismatch at `p` reads index `p` or later — terminals read `p`, a
+repetition reads its loop bound, a `First` reads through every failed arm, a
+`Ref` propagates its entry's `readEnd`. So any entry whose descent reached
+`(C, p)` has `readEnd >= p`, and the entries kept cannot have seen it.
+
+**5. Repeat**, until the root matches the whole input or no `(C, p, l)` is found.
+
+**Emit.** Every remaining mismatch is rewritten to its matched prefix plus a
+`SyntaxError` over the rest, so the returned tree holds matches and syntax
+errors and nothing else — task #20's item 7. `toLib` throws if one survives.
+
+## What the brief asks for and r10 refuses, with the reason
+
+> For Seq nodes, add ALL mismatching subclauses after the last matching
+> subclause to the list (in increasing order), each with the same start position
+> at the end of the last subclause match.
+
+**Unimplementable in the brief's own framework, and the reason is sharper than
+r1's "it invents structure by deleting".** A repair is keyed by `(clause, pos)`.
+Install one on slot `i+1` at `curr` and the sequence still re-runs slot `i`
+first, slot `i` still mismatches, and the sequence still fails — the repair is
+never reached. Making it reachable needs a second operation, "give slot `i` up",
+which is the grammar side of the edit and which the brief's deletion-only design
+does not have. r7 has it, and its note is right that giving slot `i` up lets the
+ordinary parse reach slot `i+1` by itself. r10 offers only the failing slot.
+
+
+# r11–r13 — the exact frontier, and what it takes to make the brief's widening work
+
+Task #20's item 6 asked whether an exact frontier makes the iterative widening
+of the original r-brief work. The answer is **yes, and r13 is the proof**: on the
+same architecture as r7, with the frontier READ off the tree instead of
+re-derived, it beats r7 on every column.
+
+| engine | AST-diff | perfect % | ms | recovery LOC | what it adds |
+|---|--:|--:|--:|--:|---|
+| r10 | 0.6440 | 9.7 | 423 | 176 | the brief taken literally: exact frontier, deletion only, first match wins |
+| r11 | 0.3143 | 4.9 | 4692 | ~200 | r10 + the grammar side, still first-match-wins — **refuted** |
+| r12 | 0.8661 | 44.1 | 3496 | 290 | r11 + best-scored commit |
+| r13 | **0.9008** | **51.9** | 6829 | **327** | r12 + the shallow side, + three cost fixes, + the LR fix below |
+| r7 | 0.8970 | 51.4 | 7116 | 492 | same architecture, re-derived frontier, cold re-parse per candidate |
+| r9 | 0.9721 | 73.6 | 1630 | 536 | chart + deepening budget — still the standing r-engine |
+
+LOC is the recovery only. r7 and r9 import the frozen library parser and are not
+charged for it; r10–r13 import `_core2.dart`, which is 616 normalised lines
+against `_core.dart`'s 509 — so the exact frontier costs **107 lines of parser**
+and pays back **165 lines of recovery** against r7.
+
+## Five things had to be true, and four of them were wrong first
+
+**1. First-match-wins is incompatible with the grammar side.** The brief says
+commit on the first frontier clause that matches. That rule works only while
+every offer can *fail*: a deletion is self-selecting, because it counts only if
+a real match follows it. A give-up cannot fail — it needs no input — so the
+earliest frontier leaf priced 1 is taken every single time and nothing is ever
+compared. Measured, adding the grammar side under first-match-wins: **0.6440 →
+0.3143**, and 11x slower. This is the deeper form of r7's own note that ordering
+by span rather than price lets give-ups pre-empt deletions; it is not an ordering
+bug, it is that the two operations are not comparable without a score.
+
+**2. The cost must lead with completeness.** Costing a tree by denied characters
+and open obligations alone reads a partial derivation that happens to reach the
+end of the input as FREE. On the one-character document `{` the salvaged object
+covers its one character with no syntax error, costs (0, 0), no repair can be
+strictly cheaper, and the recovery gives up. That case scored **0.000 against
+r7's 1.000**. A tree that does not derive the top rule over the whole input is
+not a candidate answer at all, so `whole` leads the order — this is the task's
+definition, not a tuning knob.
+
+**3. An abandoned obligation must cost what a given-up one costs.** The salvage
+walks away from unmet obligations for free while an explicit give-up is charged,
+so *deciding always costs more than not deciding* and the round can never take
+the step that makes a failure explicit. On `(` the only useful move is to give
+up `Expr`, and it can never be an improvement. Both sides are now charged the
+same `_minFill`, and the last key of the cost separates them at equal price: of
+two trees that owe the same, the one that has DECIDED more of it wins.
+
+**4. An ordered choice leaves its evidence in the arm that got furthest.**
+Salvaging a `First` by breaking at slot 0 the way a `Seq` does throws away every
+later arm's derivation. On `(`, arm `Num` derives nothing, so `Factor` salvaged
+to null and the `'('` that the second arm really did match was discarded with
+it. truncate **0.784 → 0.836** from this alone.
+
+**5. THE LEFT-RECURSIVE FIXED POINT WAS STILL WRITING A TOMBSTONE.** This is the
+one that mattered most, and it is a defect in `_core2.dart` itself — the file
+whose entire purpose was to abolish tombstones. `MemoEntry.match` seeds a left
+recursive cycle with `Mismatch(clause, pos, 0)`: childless, zero length, the
+undifferentiated mismatch object task #20 set out to delete. When the fixed point
+then breaks with both old and new results mismatching, the code kept `result` —
+the *seed* — and threw away `newResult`, which holds the real failure with its
+consumed length and its subclause results. Under `_core.dart` this was invisible,
+because both were the same singleton.
+
+The consequence was total on the only left-recursive corpus. On `(a` the whole
+`expr` grammar offered a **one-site** frontier and salvaged nothing, so recovery
+deleted the `(` instead of supplying the `)`. With the informative mismatch kept
+instead, the same input offers **35 sites**, `')' @2` among them, and the give-up
+that completes the parse is found and committed. Which mismatch is stored is
+free — both are failures with the same reach, and nothing in the parse reads a
+mismatch's shape.
+
+Battery effect of the one-line change, measured across every engine on the core:
+r10 0.6316 → 0.6440, r12 0.8395 → 0.8661, r13 0.8794 → **0.9008**. `_core2gate`
+unchanged: A 3990/3990, B 4271/4271, C clean, D 3990/3990, E ahead 2680 by 7081
+chars / behind 0, cost 1.363x.
+
+## What the exact frontier does and does not buy
+
+**Does:** stage 2 becomes a tree walk — r7's `_walk`/`_descend`/`_stops`, about
+60 lines of re-derivation, delete outright. Stage 4 becomes a memo-hit
+continuation instead of r7's `_forget()` + cold re-parse, so a candidate costs
+**18 µs instead of a whole parse**. Together that is r13's 165-line and ~2x
+latency advantage over r7 at a higher score.
+
+**Does not:** reduce the NUMBER of candidates. Profiled, r13 evaluates **123.7
+trials per case** — the same order as r7's 114 cold re-parses — and 4121 of its
+5966 ms is those re-descents; memo invalidation is only 955 ms (16%). *The
+architecture's cost is the candidate count, and an exact frontier makes each
+candidate cheaper without making fewer of them.* That is the whole reason r13 is
+0.90 at 6.8 s while r9 is 0.97 at 1.6 s: r9's chart evaluates repairs implicitly
+in one pass, and never enumerates them.
+
+## Refuted along the way
+
+- **The floor short-circuit.** `_paid + l` looks like a lower bound on a
+  candidate's cost and is not one: a committed repair that lands inside a subtree
+  the parse later discards never appears in the emitted tree, so a candidate can
+  read as cheaper than everything paid for it and break the scan on a false
+  optimum. Measured 0.8571 → 0.8541 for 13% of the latency. Removed.
+- **Letting the cost choose without gating.** Dropping the "must beat the current
+  tree" requirement fixes the `(` deadlock and immediately gives up `Stmt+` at 0
+   — the entire program, for the price of the cheapest statement — scoring the
+  whole stmt corpus 0.000. At every price SOMETHING is always on offer, so the
+  gate is what stops the recovery buying it.
+- **r7's terminal pricing.** `_fillOf` charges every terminal 1, which prices
+  giving up `"false"` the same as giving up one comma. r11–r13 charge `Str` its
+  own length. Kept.
+
+## Where r13 stands against the standing engine
+
+It does not replace r9: 0.9008 against 0.9721, 6829 ms against 1630. It also
+fails acceptance case b2 (`[,2,` → `[2,`); r9 passes all three. `dart test` 308
+passing, `_coregate` PASS, `_conf1`/`_freespan`/`_recommit` unchanged (their
+engine lists are fixed and do not include r10–r13).
+
+What r13 settles is the question the brief posed: **the brief's architecture,
+given an exact frontier, is worth 0.90 and 327 lines.** What it costs is the
+candidate enumeration the architecture is built on, and no amount of frontier
+precision removes that — only not enumerating does, which is what r9 does.
