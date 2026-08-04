@@ -30,9 +30,15 @@ and mismatches as children** — so the frontier is a place in the tree rather t
 number scanned out of the memo table. **No `m`-series engine had this**, and every
 one of them re-derives the frontier instead. Nothing built so far consumes it: the
 one engine that ran on an exact frontier (r13) sits on a separate experiment core
-and was aimed at a different question. **Start here** — §1.7 for the instruction
-verbatim, §2.5 for what was built and what was not, and the starred TODO at the
-head of Part VII for the threads.
+and was aimed at a different question. **Its other half is the oldest open steer
+in the project** (§1.8, given on six occasions since 2026-07-25): reuse the O(1)
+memo signal that solves left recursion (§2.2) to collapse recovery into a tiny
+core. That has
+been tried only *vertically*, where it succeeded everywhere; *sideways* it failed
+twice, both times for want of an address that names the recipient — **which is
+what the mismatch tree now supplies**. **Start here** — §1.7 and §1.8 for the
+instructions verbatim, §2.3 and §2.5 for what was built and what was not, and the
+starred TODO at the head of Part VII for the threads.
 
 **Provenance.** This is a pointed rewrite (2026-08-02) of a 13,903-line
 accumulated record. Nothing here is new work; it is the same findings, compacted
@@ -258,6 +264,11 @@ Each of these is a real pivot: it invalidated work that was correct under the
 previous framing. They are listed so a future session does not re-derive a
 superseded target.
 
+**One standing instruction is deliberately not in this table: §1.8, "reuse the
+O(1) signal for recovery."** It belongs to no single pivot — it has been repeated
+on six occasions since 2026-07-25 and is still open. Do not read its absence here
+as its having been settled.
+
 | # | The steer | What it invalidated |
 |---|---|---|
 | 1 | *"87x battery is terrible (does A* help?), and shape 467/519 is a robustness regression the previous report undersold."* | The tape (m65) as shipped. Conceded on both. A* itself does not apply: an admissible heuristic must lower-bound true-PEG remaining cost from a tape state, the available floors are CFG-side and cannot be evaluated per-state without mapping back into grammar coordinates — the representation the tape exists to avoid — so `h` degenerates to 0 and A* collapses to Dijkstra. |
@@ -356,6 +367,77 @@ was not.
 > valid parse nodes and syntax error nodes -- so when the recovery process is able
 > to find some new rule match beyond the end of a garbage span, you should replace
 > any mismatch nodes with a syntax error node, and continue the parsing from there.
+
+## 1.8 The standing steer, given on six occasions: reuse the O(1) signal for recovery
+
+**This is the most-repeated instruction in the project and it does not appear in
+the steer table above, because it never invalidated work — it is a standing
+direction that has been open since 2026-07-25.** The mechanism is §2.2; what was
+built on it is §2.3; the assessment of how far it has actually been carried is
+§2.3's "The third channel". All quotes verbatim, including typos.
+
+**2026-07-25 22:34** (sent three times, the last with `in O(1)` added):
+
+> The left recursion innovation is also described in paper/squirrel_parser.tex
+> (although the recovery algorithm described there is old)
+> And in fact a similar trick to the LR innovation (communicating an arbitrary
+> distance back up the recursion tree in O(1) by setting a bit in the memotable
+> entry corresponding to a higher recursion frame) may also aid in collapsing down
+> the recovery algorithm into a tiny pure core
+
+**2026-07-25 23:24** — the scope correction, and the sharpest statement of it:
+
+> Also generalize the O(1)-bit hint futher, to frame it as a communication
+> mechanism between recursion frames, or equivalently between different parts of
+> the parse tree -- **you interpreted my suggestion too narrowly**, and I don't
+> think you have found every possible way to use this O(1) communication hack to
+> dramatically simplify and optimize a wide range of structural parsing rules and
+> heuristics. There is still far more that could collapse down into a simpler
+> design.
+
+**2026-07-29 22:40**, naming what the signal would decide:
+
+> Probably the LR parsing trick can be re-applied in a completely different way for
+> error recovery, enabling O(1) communication between different recursion frames
+> (equivalently, between different parts of the parse tree) via the memo table, **to
+> decide how different grammar clauses affect each other's application during error
+> recovery** -- but this may not help, and you must simply brainstorm extremely
+> deeply and thoroughly and cleverly to discover the true essence of the problem to
+> be solved, and to find the most creative, beautiful, and elegant solution
+> possible.
+
+**2026-08-02 08:24**, aimed at r3:
+
+> You may also be able to apply the squirrel parser trick somewhere, of
+> communicating an arbitrary distance withing the parse pree in O(1) by signalling
+> through the memo table. I really feel that this trick can be used somewhere to
+> dramatically simplify the parser and end up with a much more elegant solution,
+> just like how the squirrel parser handles left recursion elegantly with this
+> trick.
+
+**2026-08-03 05:25** — the instruction that produced §2.2 and §2.3:
+
+> make sure you document the squirrel parsing algorithm (signaling an arbitrary
+> distance back up the parse tree in O(1) by communicating through a memo entry
+> when LR cycles are closed) and how you reused that idea in any later engines.
+
+**2026-08-03 23:53** — the instruction that produced this section:
+
+> I have repeatedly said (see the chat history) that I think that the same
+> signaling mechanism could be used to find a powerful way to optimize the error
+> recovery algorithm, and to make the code much smaller. I think you said you used
+> it somewhere during recovery for "horizontal signalling" in the memo table. This
+> needs to be fully documented along with the TODO that you just added.
+
+**On "horizontal signalling."** *Confirmed by searching the whole surviving
+transcript:* the word "horizontal" appears **nowhere before the message above** —
+the phrase is the owner's, not mine, and I had never used it. The concept it
+names is real, and is **I6/I7's third channel, "ACROSS THE TREE IS THE
+VALUE"** (§2.3): where the LR bit runs
+*vertically*, descendant to ancestor, an **obligation** was to run *horizontally*,
+frame to right sibling. It was built, measured, and deleted; §2.3's "The third
+channel" is the full account, and it is the honest answer to the steer — **the
+vertical channel was reused everywhere, and the horizontal one has failed twice.**
 
 ---
 
@@ -525,6 +607,59 @@ and accumulating across iterations makes termination monotone.
 
 *Any fact a frame cannot compute alone, but a neighbour can, belongs in whichever
 of those three channels connects them.*
+
+### The third channel — across the tree, and what happened to it
+
+This is the honest answer to the standing steer of §1.8, and it needs stating
+plainly because the record scatters it across five places.
+
+**The LR bit is VERTICAL: descendant → ancestor, addressed by `(rule, pos)`.**
+Every reuse in the table above is vertical. That channel has been an unbroken
+success — it is in every standing engine, unchanged, and it is what lets r9 have
+no second parse at all.
+
+**The HORIZONTAL channel — frame → right sibling — is the one the owner keeps
+asking about, and it has been attempted twice and failed twice.**
+
+| | what it was | verdict |
+|---|---|---|
+| **I6/I7 (m47–m49)** | an **obligation**: one integer saying "the next character you emit is one of these", travelling out inside the value. Proposed as the exact analogue of `foundLeftRec` — "neither fact can be computed by one frame alone; both are O(1)" | **Measured inert on every real input**, and deleted by I24 (m68): under a certificate the fast engine need only be a floor, so the bookkeeping bought nothing |
+| **I34 (m78)** | the second attempt, with the lattice gone | **"An obligation you cannot write down constrains nothing."** A constraint that cannot be represented in the value cannot be propagated in it either |
+| **the budget-exactness bit** | not sibling-to-sibling but the same instinct — one more monotone bit riding the memo table | **Refuted by construction** (below). Listed here because it is the third failure of "add another bit like `foundLeftRec`" |
+
+**Why the vertical channel works and the horizontal one has not, stated as one
+rule.** `foundLeftRec` reports a fact that is **monotone and terminal**: a cycle
+either was closed or was not, the answer never changes once the pass ends, and the
+recipient is uniquely identified by content — `(rule, pos)` names exactly one
+entry. An obligation has neither property. It is a claim about what a *sibling
+that has not run yet* will do, so it is not terminal; and "the right sibling" is
+not a content address — there is no key that names it, which is precisely what
+I34 says when it says you cannot write it down.
+
+**What survives, and it is not nothing.** Two live mechanisms are horizontal in
+effect while staying vertical in address:
+
+- **The per-position generation bump.** One integer bump **retires every stale
+  cell at that position without touching any of them** — a broadcast to an
+  unbounded set of siblings, in O(1), addressed by position. Live as
+  `_version[pos]` in r9 (`r9.dart:830, 833`) and as `gen[pos]` in m143
+  (`m143.dart:776`, one array per memo family, `_pg` / `_rg[_budget]`). This is
+  the closest thing in the project to the horizontal channel actually working, and
+  it is doing real work in the standing engine.
+- **I92 (r9)**: *an obligation and a trailing discard are two claims about one
+  position.* The obligation idea survives here, but **collapsed into the value at a
+  position** rather than sent to a sibling — which is the shape I34 predicted was
+  the only viable one.
+
+**So the steer is not answered, and it is not refuted either.** What is refuted is
+one specific reading: *adding a second `foundLeftRec`-shaped bit for a
+sibling-to-sibling fact.* What has never been tried is the reading the owner
+actually gave on 2026-07-25 — *"a communication mechanism between recursion
+frames, or equivalently between different parts of the parse tree… to decide how
+different grammar clauses affect each other's application during error recovery"*
+— with a **content address that exists**. The richer mismatch node (§2.5) supplies
+exactly that missing address for the first time, which is why the two topics are
+now one TODO (Part VII, head).
 
 ### REFUTED: the trick does not generalize to the budget — do not re-litigate
 
@@ -1926,11 +2061,14 @@ refuted** — re-derivation is only 29% of the time. The time is in budget-1 and
 
 # PART VII — OPEN ITEMS
 
-## ★ THE TODO FOR THE NEXT ROUNDS OF ENGINES — build a recovery engine on the richer mismatch node
+## ★ THE TODO FOR THE NEXT ROUNDS OF ENGINES — the richer mismatch node, and the O(1) signal carried sideways
 
 **This is the single largest unexplored lever in the project, and it is the one
-item here that is a research direction rather than a defect.** Read §1.7 (the
-instruction, verbatim) and §2.5 (what was built, and what was not) first.
+item here that is a research direction rather than a defect.** It has two halves
+that turn out to be one thing: **the richer mismatch node** (steer #10, §1.7,
+2026-08-02) and **reusing the O(1) memo signal for recovery** (§1.8, asked six
+times since 2026-07-25). Read §1.7, §1.8, §2.2, §2.3 and §2.5 first — the second
+block below is the argument that they are the same TODO.
 
 **What exists.** Since `46bd136`/`6b81302` the shipped parser core returns, for
 every failure, a **fresh mismatch node carrying the maximum length of input it
@@ -1990,11 +2128,65 @@ thread 2 should be measured against the scan, not assumed to beat it.
    repair may be placed*; it does not follow that the body's extent is worthless as
    *evidence about where the input stopped*. Those are two different uses of the
    same number, and only the first was considered.
+5. **The one the owner has asked for on six occasions: carry the O(1) memo signal
+   sideways** — see the next block, which is the same TODO from the other end.
 
 **Status: not fully explored, and probably holds a great deal of promise.** The
 cost is paid and the plumbing is in the shipped core; what is missing is an engine
 designed around it from the start, instead of an engine designed without it and
 then handed it.
+
+### …and the half of this TODO that is six months older: the O(1) signal, sideways
+
+**The steer (§1.8, quoted verbatim there, repeated on six occasions since
+2026-07-25):** the same trick that makes left recursion work — *communicating an
+arbitrary distance through the parse tree in O(1) by writing one field into a memo
+entry addressed by content* — should be able to **collapse the recovery algorithm
+into a tiny pure core**, deciding *"how different grammar clauses affect each
+other's application during error recovery."* The owner has said explicitly that
+earlier readings of it were **too narrow**.
+
+**Where that stands, precisely (§2.2, §2.3).** The *vertical* channel —
+descendant to ancestor, keyed `(rule, pos)` — was never re-derived and is in every
+standing engine unchanged; r9 inherits `inPath` / `foundLR` / `gen` field for
+field, and the loop it drives is why r9 needs no second parse. The *horizontal*
+channel — frame to right sibling — was attempted twice, as the I6/I7 obligation
+and again at m78, and **failed both times for one reason: there is no content
+address that names a sibling.** I34 states it exactly — *an obligation you cannot
+write down constrains nothing.*
+
+**Why the two halves of this TODO are one TODO.** A signal needs three things: a
+fact that is monotone and terminal, a recipient named by content, and a place to
+write it. The horizontal channel always had the first and the third — a memo entry
+— and never the second. **The mismatch tree is the first structure in the project
+that supplies it.** A failing `Seq` node holds its matched prefix *and* the failing
+slot, in order, in one object; a failing `First` holds every arm that lost. So
+"the slot to my left", "the arm that got furthest", "the sibling that would have
+had to supply what I am missing" are, for the first time, **things a frontier walk
+can name and address** rather than things a frame would have to shout at.
+
+**Two concrete shapes to try, in order:**
+
+1. **Sibling repair obligations on the mismatch node.** When a `Seq` fails at slot
+   *j*, the repair that fixes slot *j* changes what slots *j+1…J* may do. Today
+   every engine rediscovers that by re-running them. The mismatch node already
+   holds slots `0…j` and the failure at `j`; writing what the repair owes into the
+   node the walk is standing on is the horizontal message with an address that
+   exists.
+2. **Generalise `_version[pos]++`, which already works.** It is the one live
+   mechanism that is horizontal in effect — one integer retiring every stale cell
+   at a position, unbounded siblings, O(1), addressed by *position*. The
+   unexamined question is whether the same broadcast keyed on a **frontier site**
+   rather than a raw position would let a repair invalidate exactly the cells it
+   affects. That is the "much smaller code" the steer predicts: it deletes
+   bookkeeping rather than adding a table.
+
+**And the falsifiable version, so this cannot run forever.** The claim to test is
+*"a recovery engine with the mismatch tree plus one sideways memo signal is
+strictly smaller than r9's 536 lines at no worse than 0.9748."* r9 is the bar on
+both axes at once. If two honest attempts land above 536 lines or below 0.9748,
+that is a result worth recording as such — §6.0's rule applies, and a refutation
+of one form of this idea is not a refutation of the idea.
 
 ---
 
