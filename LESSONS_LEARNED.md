@@ -11,17 +11,19 @@ estimated. A claim marked *refuted* was **built and measured**, not reasoned
 away. A refutation is only valid against the engine it was measured on (§6.0) —
 when a primitive changes, the refuted list is back on the table.
 
-**Where things stand, in four lines (2026-08-03).** The standing engine is **r9**
-(0.9748 AST-diff, 74.0% perfect, 536 lines); the standing `m`-engine is **m143**.
-Of ~150 engines built, **eight are still worth considering** — everything else is
-beaten on every scored axis at once, including eleven engines that were the
-standard in their day (Appendix, "The frontier"). **r9 passes every gate** — all
-re-run 2026-08-03: acceptance 3/3, free-span, recommit 16/16, zero conformance
-free passes, core gate pass, library suite 320/320 — **and m143 does not**,
-failing one recommit case (§3.3). **Latency is the one unmet goal** at 2.16x
-target, and "under 400 lines"
-has never been met at the same time as the accuracy goal — the gap is 0.0197 of
-score for 136 lines, and it is a cliff, not a slope (Part VII, items 2–3).
+**Where things stand, in four lines (2026-08-05).** The standing engine is **s1**
+(0.9841 AST-diff, 77.0% perfect, 1,686 ms, 697 lines — §4.9), the first engine
+above the r9+m143 ensemble ceiling of 0.9805; **r9** (0.9748 / 74.0 / 562 lines)
+survives on the frontier only by being smaller, and **m143** stays the standing
+`m`-engine. Of ~160 engines, **nine are still worth considering** (Appendix).
+**s1 and r9 pass every gate** — all re-run 2026-08-05: acceptance 3/3, free-span,
+recommit 16/16, conformance `0 1 1 0 2 3` with zero free passes, core gate pass,
+library suite 320/320 — **and m143 does not**, failing one recommit case (§3.3).
+On clean input s1's latency IS the library parser's own parse (round 0 is the
+library, §4.9); on the battery it is 1,686 ms against m132's 1,098. "Under 400
+lines" has still never been met at the same time as the accuracy goal — twenty
+engines under 400 lines all sit at 0.9551, and the score now jumps at 562 (r9)
+and again at 697 (s1) (Part VII, items 2–3).
 
 **The largest unexplored lever, and the priority for the next rounds of engines.**
 The parser core now hands back, for every failure, a mismatch node carrying **the
@@ -36,9 +38,13 @@ memo signal that solves left recursion (§2.2) to collapse recovery into a tiny
 core. That has
 been tried only *vertically*, where it succeeded everywhere; *sideways* it failed
 twice, both times for want of an address that names the recipient — **which is
-what the mismatch tree now supplies**. **Start here** — §1.7 and §1.8 for the
-instructions verbatim, §2.3 and §2.5 for what was built and what was not, and the
-starred TODO at the head of Part VII for the threads.
+what the mismatch tree now supplies**. **s1 (§4.9) consumed part of this**: its
+round 0 is the library parse, and the residual method it was designed by (I93)
+read the failures the tree describes — but its rounds still re-derive the chart
+rather than walking the tree, so the collapse the steer predicts (smaller
+BECAUSE the tree already holds what the chart re-derives) is attempt-two work.
+**Start here** — §1.7 and §1.8 for the instructions verbatim, §2.3 and §2.5 for
+what was built and what was not, and the starred TODO at the head of Part VII.
 
 **Provenance.** This is a pointed rewrite (2026-08-02) of a 13,903-line
 accumulated record. Nothing here is new work; it is the same findings, compacted
@@ -330,7 +336,7 @@ as its having been settled.
   **0 of 1,824**, because the generator already keeps only mutants that fail to
   parse. One run, hypothesis closed, no code changed.
 - **Always run the Codex check** on a new engine against the verbatim brief. It
-  has found real defects (§4.9) and it has also been wrong; treat its findings as
+  has found real defects (§4.10) and it has also been wrong; treat its findings as
   hypotheses until confirmed by an own probe.
 
 ## 1.7 Steer #10, verbatim — the richer mismatch node
@@ -1044,12 +1050,15 @@ Every one of these must pass before an engine is a candidate:
 **Measured gate state, re-run 2026-08-03 — and the standing `m`-engine does not
 pass all of them.**
 
-| gate | r9 | m143 | m132 |
-|---|---|---|---|
-| `_accept` | **PASS** `cx2=1 b1=1 b2=1` | **PASS** `cx2=1 b1=1 b2=1` | **PASS** `cx2=1 b1=1 b2=1` |
-| `_freespan` | **PASS** | **PASS** | **PASS** |
-| `_recommit` | **PASS** 16/16 | **FAIL** 15/16 | **FAIL** 15/16 |
-| `_conf1` free passes | **0** | **0** | **0** |
+| gate | s1 | r9 | m143 | m132 |
+|---|---|---|---|---|
+| `_accept` | **PASS** `cx2=1 b1=1 b2=1` | **PASS** `cx2=1 b1=1 b2=1` | **PASS** `cx2=1 b1=1 b2=1` | **PASS** `cx2=1 b1=1 b2=1` |
+| `_freespan` | **PASS** | **PASS** | **PASS** | **PASS** |
+| `_recommit` | **PASS** 16/16 | **PASS** 16/16 | **FAIL** 15/16 | **FAIL** 15/16 |
+| `_conf1` free passes | **0** (`0 1 1 0 2 3`) | **0** | **0** | **0** |
+
+(s1 column measured 2026-08-05 on the tracked gate files, same session as its
+battery row.)
 
 The single failing case is the same one for m143 and m132: `[1,[2,[3,[4]]],5"` is
 answered as a **String** where the committed construct is an **Array** — the
@@ -1841,7 +1850,63 @@ exact frontier, is worth 0.90 and 327 lines** — and what it costs is the candi
 enumeration the architecture is built on. No amount of frontier precision removes
 that; only not enumerating does, which is what r9 does.
 
-## 4.9 What the Codex checks found
+## 4.9 The s1 engine — the residual read at last, and what it was worth
+
+**s1 is the standing engine: 0.9841 / 77.0% perfect / 1,686 ms / 697 lines,
+every gate green — the first engine above the r9+m143 ensemble ceiling.** It is
+r9's architecture and ranking, changed in exactly four places, and every change
+was found the same way: **itemize the imperfect cases and read them.** The
+residual dump (`_res1.dart`-style, r9 vs m143 per case) took half an hour and
+immediately yielded three failure classes nobody had named; no engine from m79
+to r9 was designed from a case list. The ensemble number bounded the reachable
+gain before any code was written: max(r9, m143) per case = 0.9805, so at least
++0.0057 was known to be engine-reachable, and s1 lands +0.0093.
+
+**The principle the four changes share (I93–I97):** a failing parse already
+writes the honest description of the damage into the mismatch tree — a `Str`
+records how much of its literal the input supplied, a `Seq` records the slot
+that broke, a `First` records every arm — and recovery's job is to **price that
+description (I33) and never trade it for a cheaper reading that says less.**
+Each change is one place r9 could not afford, or could not express, the
+description the failure had already written down.
+
+| change | class it fixes | mechanism | measured |
+|---|---|---|---|
+| **I94 — "the document stopped" is one claim** | short truncations: `{"a`, `if (`, both r9 and m143 at 0.500 | obligations at `input.length` charge the budget ONCE however many marks they stand for (`_Way.eof`); per-character charges made "keep the construct and owe its tail" lose to "close it empty and deny what the writer wrote" | truncate 0.954 → 0.986; truncations answer in round 1; ranking the mark count REFUTED both directions (0.9762 / 0.9760 vs 0.9770) |
+| **I95 — a literal's interior can be denied** | damaged keywords: `fa"se`, `falzse`, `i,f`, `unll` | `_align` is a full three-op alignment (match / owe / deny) via one edit-distance table per failing `Str`; D7-safe because the literal is determined (I36/I78) | junk-insert 0.978 → 0.987, delim-insert → 0.986, transpose → 0.979; conformance signature unchanged |
+| **I96 — an owed slot is still a place in the tree** | deleted constructs: `if ()`, `[1,[,` — m143 scored 1.000 here and r9 could not | a mid-document give-up emits the named spine the grammar FORCES: through Refs, `+` bodies, a Seq's single nonzero-fill slot, and a `First` only where a UNIQUE arm is cheapest (one step further is choosing — I36's line); withheld at end of input (I81) | literal-damage 0.957 → 0.977, multi-damage → 0.958; prices unchanged, so every ranking decision is r9's |
+| **I97 — a span is judged once** | honest completions tolled to death: `{"alpha"` lost to deny-`{` | r9's swallow toll re-judged the same absorbed span at every Ref above it; `_Way.vouch` records absorption already accounted for — by a FREE subtree (the frozen parser's own reading) or by a toll below — and a cap judges only what is fresh | quote-delete back to 0.999, truncate 0.983 → 0.986; the swallow still tolls once, recommit 16/16 stands |
+
+**And round 0 is the library.** `recover` first runs the frozen parser's own
+`parse()`; a clean document is answered by the library's memo table and the
+chart never opens (I89 by construction, and D1's "the CURRENT memo table"
+satisfied literally). The chart's rounds start at 1 — round 0 finds nothing on
+damaged input by definition — and `_prune`'s round-0 branch is deleted. On the
+all-damaged battery this costs ~200 ms (the extra pure parse); on clean input,
+which is what the per-parse latency goal is about, s1's latency IS the
+library's.
+
+**Refuted while building it, so nobody retries them (§6.2/§6.3):** budget
+doubling on this chart (1.39x SLOWER — the accumulate-and-merge cells make unit
+rounds cheap, unlike the m-line's budget-indexed tables, so "doubling is
+fastest" does not transfer); the earliest-first-repair key flip (0.9799/73.7 —
+r4's later-wins rule holds); I59's finality bit imported to the r-line (bought
+2%, leaked a staleness bug through a missed cut site — the recomputation it
+deletes was never the cost); deleting the markless stop (−0.0002 — with I96
+emitting spine nodes, the stop is the only way left to say "it just ended").
+
+**Still open, found by the same residual read and deliberately not knobbed: the
+deleted-opener placement class**, ~7 case-equivalents across expr and stmt
+delim-delete and multi-damage. Both readings are pure-gap cost-1 with equal
+net, and `key` (longest trusted prefix) places the owed opener as late as
+possible: `a+b*2-3+c)*4` gets `(c)*4` where the document meant `(3+c)*4`, and
+`if (a)  if (b) { c=1; } }` gets a trailing empty Block where the document
+meant the brace wrapped the statements. The evidence genuinely cannot decide
+placement; the global key flip loses more than it wins; a scoped rule needs a
+discriminator nobody has found. Probes: `_s0probe.dart`-style on those two
+inputs. Part VII, item 14.
+
+## 4.10 What the Codex checks found
 
 Run at the owner's standing instruction. Codex has been genuinely useful and
 genuinely wrong, in that order of frequency:
@@ -1964,6 +2029,11 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I90 | DENYING INPUT AND GIVING UP GRAMMAR ARE THE SAME SKIP AT TWO DEPTHS | r9 | LIVE — this is the answer to #18 |
 | I91 | SO A PRODUCTION MAY GIVE UP ONE SLOT AND CARRY ON | r9 | LIVE |
 | I92 | An obligation and a trailing discard are two claims about one position | r9 | LIVE |
+| I93 | THE RESIDUAL IS THE DESIGN INPUT — itemize the imperfect cases and read them; every s1 change came from the case list, none from a proposed mechanism | s1 | LIVE — the method that broke the plateau |
+| I94 | "THE DOCUMENT STOPPED" IS ONE CLAIM — obligations at end of input charge once, however many marks they stand for; ranking the mark count refuted both ways | s1 | LIVE |
+| I95 | A LITERAL'S INTERIOR CAN BE DENIED — the alignment is match/owe/deny, and D7-safe because the literal is determined | s1 | LIVE |
+| I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
+| I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 
 ---
 
@@ -1999,7 +2069,9 @@ universal rule. The refutation was withdrawn.
 | I45 — a `HOLE` primitive weaker than `FILL` | dropped: a node representing a forbidden claim re-admits the invented terminal wearing a different label |
 | letting the cost choose without gating | fixes one deadlock and immediately gives up `Stmt+` at 0 — the entire program for the price of the cheapest statement, scoring the whole stmt corpus **0.000**. At every price SOMETHING is always on offer; the gate is what stops the recovery buying it |
 | r7's flat terminal pricing (`_fillOf` charges every terminal 1) | prices giving up `"false"` the same as one comma. r11–r13 charge `Str` its own length |
-| charging absorption **per slot** | **refuted — a price charged at a slot is evadable by moving the slot** (re-pairing dodges it); per *node* charges the same span again at every `Ref` above it |
+| charging absorption **per slot** | **refuted — a price charged at a slot is evadable by moving the slot** (re-pairing dodges it); per *node* charges the same span again at every `Ref` above it — and that re-charging was itself the I97 defect, fixed by vouching in s1 |
+| ranking the end-of-input mark count (either direction) | fewer-marks-first 0.9762, sign-only 0.9760, unranked 0.9770 — how much a stopped reading says was under way is a bet on a continuation the evidence cannot decide (s1) |
+| the earliest-first-repair key flip | 0.9799 / 73.7 against 0.9841 / 77.0 — r4's later-wins rule holds; the deleted-opener class it was aimed at needs a scoped discriminator nobody has found (Part VII item 14) |
 
 **Where a charge goes is a correctness question, not a bookkeeping one.**
 Absorption is priced at the **whole document**, because that is the only place the
@@ -2035,7 +2107,8 @@ it accepts (`net`), or absorbed by one that does not.
 | eager axioms | slower |
 | frontier sweep without key ordering | wrong |
 | the floor short-circuit (`_paid + l` as a lower bound) | **not** a lower bound: a committed repair landing inside a subtree the parse later discards never appears in the emitted tree, so a candidate can read as cheaper than everything paid for it and break the scan on a false optimum. 0.8571 → 0.8541 for 13% of the latency |
-| stepping the budget by 1, or to 4 before doubling | 1049 / 880 ms vs doubling's 895 — the simplest schedule is already the fastest measured |
+| stepping the budget by 1, or to 4 before doubling | 1049 / 880 ms vs doubling's 895 — the simplest schedule is already the fastest measured **in the m-line's budget-indexed tables. It does NOT transfer**: on the r-chart's accumulate-and-merge cells, doubling is 1.39x SLOWER (2,831 vs 2,037 ms), because a doubled round explores several cost frontiers fresh at every cell while unit rounds re-derive only the new frontier (s1) |
+| I59's finality bit imported to the r-line | a cell that never consulted the cap skips higher rounds: bought 2% latency and moved the score 0.9841 → 0.9839 through a missed cut site — the recomputation it deletes was never the cost (s1) |
 | I12 / I13 (budget-completeness shortcuts) | both refuted; the ladder's rounds cannot be skipped and cannot be widened |
 
 ## 6.4 Hypotheses about where the time goes — five refuted at once
@@ -2188,6 +2261,18 @@ both axes at once. If two honest attempts land above 536 lines or below 0.9748,
 that is a result worth recording as such — §6.0's rule applies, and a refutation
 of one form of this idea is not a refutation of the idea.
 
+**Attempt one is recorded (2026-08-05, §4.9): the score half is exceeded and the
+size half failed.** s1 lands 0.9841 — +0.0093 over the bar — at 697 normalised
+lines against r9's 562 (the 536 above was the previous cache's figure; both
+numbers here are from one `loc.py` run). What s1 consumed of this TODO: round 0
+is now the library parse (the tree is produced and the memo table is D1's own),
+and the residual method (I93) is how its fixes were found — but its rounds
+still re-derive the chart rather than walking the tree, and the engine grew by
+three cost-model mechanisms rather than shrinking by deleted bookkeeping. **The
+engine this TODO describes — built AROUND the tree, smaller because the tree
+already holds what the chart re-derives — has still not been attempted.** The
+claim stands open on the size half.
+
 ---
 
 1. **The `reach` fork (from steer #10).** `dart/lib` currently keeps the cheap
@@ -2196,15 +2281,17 @@ of one form of this idea is not a refutation of the idea.
    node, including matched ones — gives **100% frontier fidelity for about 1.5x
    pure-parse time**. This is a genuine trade, not an oversight, and it is the
    owner's call. Measured by `_portcheck.dart` (tracked).
-2. **Latency is the only unmet goal.** 2.16x against target. The time is in
-   budget-1 and a 25-case tail; the semi-naive chart both analyses proposed is
-   refuted (§6.4). **And the two instruments have never been bridged**: the `ms`
-   column everywhere in this document is *whole-battery* time for 1,824 weighted
-   cases, while the "sub-250 ms" goal is *per-parse* latency on one document.
-   Ranking engines by battery ms is sound — it is the same instrument for all of
-   them — but no arithmetic converts it into the goal's units, and none is
-   attempted here. Any claim that a given engine "meets" or "misses" 250 ms has to
-   come from the per-parse harness, not from the tables.
+2. **Latency.** On clean input the question is now closed by construction: s1's
+   round 0 IS the library parse, so a clean document costs exactly what the pure
+   parser costs (§4.9). On damaged input the battery instrument puts s1 at 1,686
+   ms against m132's 1,098 — the m-line's budget-indexed tables (I74/I75) are
+   still the faster substrate, and importing their schedule (doubling) or their
+   finality shortcut (I59) into the r-chart is REFUTED, not unexplored (§6.3).
+   **The two instruments have still never been bridged**: the `ms` column is
+   *whole-battery* time for 1,824 weighted cases, while the "sub-250 ms" goal is
+   *per-parse* latency on one document; no arithmetic converts one into the
+   other. Any claim that an engine "meets" or "misses" 250 ms has to come from a
+   per-parse harness, and for damaged documents none is attempted here.
 3. **The `<400` LOC question, now with a measured boundary.** Twenty engines are
    under 400 normalised lines and **none exceeds 0.9551**; nothing between 407 and
    535 lines beats it either; the best score jumps to r9's 0.9748 exactly at 536.
@@ -2260,10 +2347,18 @@ of one form of this idea is not a refutation of the idea.
     `[1,[2,[3,[4]]],5"` is answered as a String although the healthy prefix has
     already committed an Array. m121 and m126 pass 16/16, so the regression is
     locatable — it entered with m127, was mostly repaired by m132/m136/m143, and
-    one instance survives. r9 is the only `r` engine the gate covers and it passes
-    16/16, so this does not touch the standing engine; it is an open defect in the
-    `m`-line that anyone building on m143 inherits, and it was not in the record
-    before 2026-08-03.
+    one instance survives. s1 and r9 both pass 16/16, so this does not touch the
+    standing engines; it is an open defect in the `m`-line that anyone building
+    on m143 inherits, and it was not in the record before 2026-08-03.
+14. **The deleted-opener placement class** (~7 case-equivalents; found by the
+    s1 residual read, §4.9). Both readings of a deleted `(` or `{` are pure-gap
+    cost-1 with equal net, and `key` (longest trusted prefix) places the owed
+    opener as late as possible: `a+b*2-3+c)*4` gets `(c)*4` where the document
+    meant `(3+c)*4`; `if (a)  if (b) { c=1; } }` gets a trailing empty Block
+    where the document meant the brace wrapped the statements. The global key
+    flip is refuted (§6.1); what is missing is a principled discriminator for
+    owed OPENERS specifically, and m143 fails these cases identically, so no
+    existing mechanism holds the answer.
 
 ---
 
@@ -2271,8 +2366,9 @@ of one form of this idea is not a refutation of the idea.
 
 | | engine | score | perfect% | ms | LOC (recovery) | notes |
 |---|---|---:|---:|---:|---:|---|
-| standing `r`-engine, and best overall | **r9** | 0.9748 | 74.0 | 2,038 | 536 | unchanged by the 2026-08 core change |
-| standing `m`-engine | **m143** | 0.9693 | 72.1 | 1,131 | 628 | I81 + I82 |
+| standing engine, and best overall | **s1** | 0.9841 | 77.0 | 1,686 | 697 | §4.9 — the residual-driven generation |
+| best under 600 lines | **r9** | 0.9748 | 74.0 | 2,038 | 562 | unchanged by the 2026-08 core change |
+| standing `m`-engine | **m143** | 0.9693 | 72.1 | 1,131 | 628 | I81 + I82; fails one recommit case |
 | smallest engine that works | **r13** | 0.9008 | 51.9 | 6,692 | 327 | the brief's own architecture, exact frontier |
 
 ### The standing-engine lineage, all on one battery
@@ -2308,7 +2404,8 @@ engines from `dot` to m74 are a single accuracy plateau.**
 | m132 | 0.9648 | 69.2 | 1,098 | I76 + I78 |
 | m143 | 0.9693 | 72.1 | 1,131 | I81 + I82 — standing `m`-engine |
 | r13 | 0.9008 | 51.9 | 6,692 | the brief's architecture, 327 LOC |
-| **r9** | **0.9748** | **74.0** | **2,038** | **standing engine, best overall** |
+| r9 | 0.9748 | 74.0 | 2,038 | the r-line's peak: swallow priced twice |
+| **s1** | **0.9841** | **77.0** | **1,686** | **standing engine — the residual read (I93–I97)** |
 
 **What this table says that no era-1 table could.** From m23 to m74 the AST-diff
 score never leaves 0.9548–0.9551 and perfect% never leaves 67.1–67.2. Twelve
@@ -2464,11 +2561,14 @@ excluded (they are broken, not slower), as are the six tape engines that never
 finished. m75 and m77 are held out because D1 disqualifies them, and reported
 separately.
 
-**Eight engines survive, of 52 compared.**
+**Nine engines survive, of 53 compared** (re-computed 2026-08-05 with s1's row;
+the LOC cache was regenerated in the same run, which moved r9's normalised count
+from 536 to 562 — every number below is from that one cache).
 
 | engine | score | perfect% | ms | LOC | dominates | why it is on the frontier |
 |---|---:|---:|---:|---:|---:|---|
-| **r9** | 0.9748 | 74.0 | 2,038 | 536 | 10 | best score and best perfect% in the study, and the smallest engine above 0.96 |
+| **s1** | 0.9841 | 77.0 | 1,686 | 697 | 9 | best score and best perfect% in the study; §4.9 |
+| **r9** | 0.9748 | 74.0 | 2,038 | 562 | 10 | best score under 600 lines |
 | **m143** | 0.9693 | 72.1 | 1,131 | 628 | 20 | second-best accuracy at near-best latency |
 | **m132** | 0.9648 | 69.2 | **1,098** | 612 | 21 | **fastest engine in the study** |
 | m26 | 0.9551 | 67.2 | 1,479 | 381 | 19 | survives on one line under m41 |
@@ -2483,7 +2583,7 @@ which takes LOC from `loc.py` rather than restating it; `--exact` switches the
 tolerance.
 
 **Forty-four are dominated outright** — beaten on all four axes simultaneously by
-at least one of the eight: `dot`, m24, m25, m27, m28, m29, m30, m31, m33, m34,
+at least one of the nine: `dot`, m24, m25, m27, m28, m29, m30, m31, m33, m34,
 m35, m36, m37, m38, m39, m40, m42, m43, m44, m45, m46, m47, m48, m49, m50, m51,
 m52, m53, m57, m58, m59, m60, m61, m62, m64, m71, m72, m73, m74, m76, m78, m112,
 m113, m121. **Eleven of those were once the standard** — `dot`, m50, m51, m53,
@@ -2491,8 +2591,10 @@ m62, m71, m72, m74, m112, m113, m121 — which is half the lineage table.
 
 Four things follow, and three of them are new to the record.
 
-1. **m41 dominates 36 of the 51 other engines** — more than any other engine in
-   the study, including the standing ones (m132 dominates 21, m143 20, r9 10).
+1. **m41 dominates 36 of the other engines** — more than any other engine in
+   the study, including the standing ones (m132 dominates 21, m143 20, r9 10,
+   s1 9 — a later engine dominates fewer because the survivors it would have to
+   beat are on the frontier with it).
    **Twenty-three of them are the contiguous run m42 → m74** — the entire
    relocation series and most of the witness era, beaten on all four axes at once
    by a 382-line engine that predates every one of them. Those engines were bought
