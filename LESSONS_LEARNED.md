@@ -36,19 +36,16 @@ and mismatches as children** — so the frontier is a place in the tree rather t
 number scanned out of the memo table. **No `m`-series engine had this**, and every
 one of them re-derives the frontier instead. Nothing built so far consumes it: the
 one engine that ran on an exact frontier (r13) sits on a separate experiment core
-and was aimed at a different question. **Its other half is the oldest open steer
-in the project** (§1.8, given on six occasions since 2026-07-25): reuse the O(1)
-memo signal that solves left recursion (§2.2) to collapse recovery into a tiny
-core. That has
-been tried only *vertically*, where it succeeded everywhere; *sideways* it failed
-twice, both times for want of an address that names the recipient — **which is
-what the mismatch tree now supplies**. **s1 (§4.9) consumed part of this**: its
-round 0 is the library parse, and the residual method it was designed by (I93)
-read the failures the tree describes — but its rounds still re-derive the chart
-rather than walking the tree, so the collapse the steer predicts (smaller
-BECAUSE the tree already holds what the chart re-derives) is attempt-two work.
-**Start here** — §1.7 and §1.8 for the instructions verbatim, §2.3 and §2.5 for
-what was built and what was not, and the starred TODO at the head of Part VII.
+and was aimed at a different question. **Its other half — the steer given on
+six occasions since 2026-07-25 (reuse the O(1) memo signal that solves left
+recursion to collapse recovery into a tiny core) — is ANSWERED: I100, ★ the
+pivotal insight of the recovery line, owner-confirmed** (§1.8's close, §4.9).
+A mismatch and a left-recursion seed are the same object — a suspended
+reading — and the memo entry's grow-loop is already the whole recovery
+engine; made structural in s3, that identity halved the mechanism, broke the
+size cliff, and dominated r9. **Start here** — §1.7 and §1.8 for the
+instructions verbatim, §4.9 for I100 and the engines it produced, §2.5 for
+the mismatch-tree half and the still-open `reach` fork.
 
 **Provenance.** This is a pointed rewrite (2026-08-02) of a 13,903-line
 accumulated record. Nothing here is new work; it is the same findings, compacted
@@ -275,9 +272,10 @@ previous framing. They are listed so a future session does not re-derive a
 superseded target.
 
 **One standing instruction is deliberately not in this table: §1.8, "reuse the
-O(1) signal for recovery."** It belongs to no single pivot — it has been repeated
-on six occasions since 2026-07-25 and is still open. Do not read its absence here
-as its having been settled.
+O(1) signal for recovery."** It belongs to no single pivot — it was repeated on
+six occasions from 2026-07-25 and was **ANSWERED on 2026-08-05 by I100, the
+pivotal insight of the recovery line** (§1.8's close, §4.9, s3): the LR loop IS
+the recovery loop, and left recursion is recovery at cost zero.
 
 | # | The steer | What it invalidated |
 |---|---|---|
@@ -448,6 +446,21 @@ VALUE"** (§2.3): where the LR bit runs
 frame to right sibling. It was built, measured, and deleted; §2.3's "The third
 channel" is the full account, and it is the honest answer to the steer — **the
 vertical channel was reused everywhere, and the horizontal one has failed twice.**
+
+**THE STEER IS ANSWERED (2026-08-05), and the answer is I100 — the pivotal
+insight of the recovery line (§4.9).** The collapse the steer predicted
+("may also aid in collapsing down the recovery algorithm into a tiny pure
+core") arrived exactly where the steer said to look, once the reading was no
+longer too narrow: not a second signal shaped like `foundLeftRec`, but the
+identity that **a mismatch and a left-recursion seed are the same object — a
+suspended reading — and the memo entry's grow-loop is already the whole
+recovery engine; left recursion is recovery at cost zero.** Made structural
+in s3, that identity deleted half of s2's mechanism (706 → 484 lines at
+0.9819 / 78.8% perfect, every gate green) and produced the first engine ever
+to dominate r9 on all four axes. Owner's confirmation, verbatim: *"finally --
+this is the biggest breakthrough you have made so far in the recovery
+algorithm."* The chain, for the record: the six steers above → I100 stated
+(commit `9057a96`) → made structural in s3 (`8a6d0d9`).
 
 ---
 
@@ -1953,6 +1966,26 @@ the previous pass's own result, free. The chart is that loop's history
 materialized eagerly; the tree is its address book; the parser already
 contains the machine.**
 
+**★ THE PIVOTAL INSIGHT OF THE RECOVERY LINE — OWNER-CONFIRMED.** I100
+stopped being an interpretation and became STRUCTURE in s3 (below): **the LR
+loop is the recovery loop verbatim — one grow-loop in one memo entry serves
+left recursion and repair, and there is no second mechanism anywhere in the
+engine.** The cell is the frozen parser's entry (ways / inPath / foundLR /
+gen) plus one field, the budget; "re-descend while the reading improves" is
+the whole of both jobs; and the collapse that followed (s3: 484 lines, r9
+dominated on all four axes, the size cliff broken) is what the six-occasion
+steer of §1.8 predicted that identity would buy. The owner's confirmation,
+verbatim (2026-08-05):
+
+> finally -- this is the biggest breakthrough you have made so far in the
+> recovery algorithm
+
+Every earlier reading of the steer implemented the signal and missed the
+identity: A5 copied the memo's fields, m60 generalized the bit to all waits,
+r3–r9 reused the loop per cell — each kept recovery as a second thing built
+BESIDE left recursion. I100's content is that there was never a second
+thing. §1.8's standing steer is answered by this insight and closed there.
+
 **What the reversal does NOT yet deliver, measured honestly.** If t1's gap
 were information, completing reach should close it; three schedule/gate ports
 of the chart's local rules were then tried and ALL LOST in the iterated
@@ -2193,7 +2226,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
-| I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it. The iterated form's residual gap to the chart is rival SIMULTANEITY, not information | t1 | LIVE — the corrected verdict |
+| I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it | t1 → s3 | **LIVE — ★ THE PIVOTAL INSIGHT OF THE RECOVERY LINE, owner-confirmed 2026-08-05** ("the biggest breakthrough you have made so far"). Made STRUCTURAL in s3: one grow-loop, one entry, no second mechanism — the collapse that broke the size cliff and dominated r9. Answers §1.8's six-occasion steer |
 | I99 | AN ARM THAT READ NOTHING MAY NOT INVENT — I43/I78 as a property of the mismatch tree, with I53 as its fallback pass; one structural rule standing in for toll, net-rank and the whole-document charge | t1 | LIVE |
 
 ---
