@@ -2192,13 +2192,38 @@ itself (cost 4 where s4 pays 1).
 owner's architecture; in pareto's frame s4 still holds the frontier point
 (smaller and a hair faster), so the c-line's contribution is structural:
 the two modes are real, they interleave per clause rather than per round,
-and the memo is the substrate both share. What remains unclaimed is the
-latency the substrate promises — the freeze fires only before the FIRST
-damage, so multi-error documents and everything downstream still
-re-enumerate per round; freezing the clean middles needs the boundary of
-the NEXT damage region, which only the full parse→repair→commit→parse
-iteration (or a per-region clean map) can supply. That, and the m-line's
-growing cells (budget families in one table), are the recorded next moves.
+and the memo is the substrate both share. The latency the substrate
+promises was then claimed in the same session (below): the clean-suffix
+problem needed no boundary at all.
+
+**PARSING MODE IS BUDGET ZERO (the latency completion, same session).**
+Profiling first (per-case ms, winning round, cell-recompute counters):
+no case tail — the top 25 cases are 8% of the time (the 12.9 ms outlier
+was JIT warmup: median 961 µs when run alone); rounds 1+2 are 87%; and
+only 32.7% of cell recomputations are identical, which caps growing
+cells/semi-naive evaluation well under the target and matches the
+r-chart's refuted 29%. The profile's real finding: damage at position 0
+means `clean = 0` and NOTHING freezes — the pristine 46 of 47 characters
+re-enumerate every round. The suffix boundary problem then solves itself:
+**with no edits left, the way-descent IS the pure parser** — PEG choice,
+greedy repetition, left recursion, all of it — so at `_budget == 0` the
+frozen memo's answer is exactly equivalent, unconditionally: no LR
+exemption, no length condition, no `clean` window. Every fold
+continuation that has spent its edits collapses to O(1) from there to the
+end of the document; the budget itself marks where repair can no longer
+reach, which is the damage boundary the design was missing. One
+equivalence hole found by the battery (quote-delete 0.999 → 0.971) and
+closed: **a frozen way must CARRY ITS VOUCH** — a pure reading vouches
+what it absorbed (`span − net`, identical at every lift of the same
+span), or outer judgments re-charge already-vouched string content; the
+prefix freeze had the same latent bug. Result: **0.9823 / 79.1% / 1566 ms
+— −20% latency at identical score, every gate green, still case-wise ≥ s4
+on all 2000 documents** — c1 joins the frontier in its own right (beats
+s4 and s1 on ms; s4 keeps LOC; neither dominates), dominating 16 engines,
+the most on the table. Remaining and accepted: rounds 1–2 are now the
+whole cost, and it is the way-algebra's rival multiplicity — the judgment
+itself, not waste; the m-line's ~1,100 ms remains cheaper by exactly the
+readings it does not weigh.
 
 ### s2 — the exclusion closed, and what a wash teaches
 
@@ -2385,7 +2410,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
-| I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round: parsing mode is the frozen memo answering first, repair mode is the way-descent opening only where a span touches damage, and greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet) | b2 → c1 | **LIVE** — c1 0.9823/79.1/16-16, case-wise ≥ s4 everywhere; freeze conditions: non-LR rules only, spans > 1 char, `pos+len+budget < clean`, `clean` = first error capped at the pure parse's stop |
+| I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round: parsing mode is the frozen memo answering first, repair mode is the way-descent opening only where a span touches damage, and greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet). Completed by PARSING MODE IS BUDGET ZERO: with no edits left the way-descent IS the pure parser, so the memo answers unconditionally — the budget itself is the damage boundary, and the clean suffix is free | b2 → c1 | **LIVE** — c1 0.9823/79.1/**1566 ms**/16-16, case-wise ≥ s4 everywhere, on the frontier dominating 16; prefix-freeze conditions: non-LR rules only, spans > 1 char, `pos+len+budget < clean`, `clean` = first error capped at the pure parse's stop; frozen ways carry `vouch = span − net` or swallow pricing breaks |
 | I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it | t1 → s3 | **LIVE — ★ THE PIVOTAL INSIGHT OF THE RECOVERY LINE, owner-confirmed 2026-08-05** ("the biggest breakthrough you have made so far"). Made STRUCTURAL in s3: one grow-loop, one entry, no second mechanism — the collapse that broke the size cliff and dominated r9. Answers §1.8's six-occasion steer |
 | I99 | AN ARM THAT READ NOTHING MAY NOT INVENT — I43/I78 as a property of the mismatch tree, with I53 as its fallback pass; one structural rule standing in for toll, net-rank and the whole-document charge | t1 | LIVE |
 
@@ -2450,6 +2475,8 @@ it accepts (`net`), or absorbed by one that does not.
 | any single rung-rule for greedy commit (class-first 0.8528 / price-first 0.8230 / net-arbiter 0.8816) | the b-line's ceiling: each fixes the regime it was traced on and breaks the other; the choice needs the repairs AFTER it, which only simultaneous judgment (c1) sees |
 | freezing LR rules' clean spans (c1) | −8.89 confined to expr: each spine extent is a distinct reading; the memo's one answer collapses them |
 | freeze window from the REMAINING budget (c1) | the fold spends it to zero mid-descent and the window closes against the damage, freezing the swallow at the frontier; the entry budget is the honest horizon |
+| growing cells / semi-naive rounds as c1's major latency lever | profiled: only 32.7% of cell recomputations are identical (the r-chart's refuted 29% again); the round-over-round waste is real but capped far under the 2x target — the budget-0 collapse (−20%) was the honest lever |
+| frozen ways with vouch 0 | quote-delete 0.999 → 0.971: outer judgments re-charge already-vouched string content; a pure reading vouches span − net at every lift |
 | "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); what failed is stated by I100 — the SHIPPED tree lacks `reach`'s five discard sites, and the iterated form still lacks rival simultaneity |
 | the chart's local guards ported into the iterated engine | all three lost: strict cheapest-first ladder 0.9258 (cx2 broke) and 0.9223; I36 determined-gate on owes 0.9287; r9's reached-exclusion 0.8997 (b1 broke) — the whole-document trial subsumes them, and suppression only removes information (t1) |
 | I62's `blind` as an unscoped rank key before `net` (the "cleanest" form of D8's reason) | **0.9776 vs 0.9841** — decides b2 and then flips its same-evidence opposite-truth twin (`[1,[,`, I54) plus every honest-completion tie; the fee's scoping is I72's content, not a wart (s2) |

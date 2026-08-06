@@ -155,7 +155,8 @@ class Squirrel {
   static bool debug = false;
   static bool noFreeze = false;
   int _round = 0, _budget = 0;
-  int _clean = 0; // positions before this parsed clean: parsing mode's span
+  int _clean = 0;
+  int lastRound = 0, cellsComputed = 0, cellsSame = 0; // positions before this parsed clean: parsing mode's span
   final Map<MatchResult, int> _nets = HashMap.identity();
   int lastCost = 0;
 
@@ -186,6 +187,25 @@ class Squirrel {
   List<_Way> _ways(Clause c, int pos) {
     if (pos > _in.length) return const [];
     if (c is Ref) {
+      // PARSING MODE IS BUDGET ZERO: with no edits left, the way-descent is
+      // the pure parser -- PEG choice, greedy repetition, left recursion and
+      // all -- so the memo's answer is exactly equivalent, unconditionally.
+      // Every continuation that has spent its edits collapses to O(1) here,
+      // which is what makes the clean SUFFIX free: the budget itself marks
+      // where repair can no longer reach.
+      if (_budget == 0) {
+        final r = _ref.match(rules[c.ruleName]!, pos);
+        if (r.isMismatch) return const [];
+        final net = _nets[r] ??= _netOf(r);
+        // a pure reading vouches what it absorbed (span - net is the same
+        // at every lift of the same span), or outer judgments re-charge
+        // already-vouched content
+        return [
+          _Way(pos + r.len, 0, 0, net, _peg,
+              vouch: r.len - net,
+              leaf: Match(c, 0, 0, subClauseMatches: [r]))
+        ];
+      }
       // PARSING MODE, per clause: the memo already read this rule here; a
       // clean span that ends before the damage is settled work. A
       // left-recursive rule is exempt: each spine extent is a distinct
@@ -194,8 +214,10 @@ class Squirrel {
       final r = _lr(c) ? mismatch : _ref.match(rules[c.ruleName]!, pos);
       if (!noFreeze && !r.isMismatch && r.len > 1 && pos + r.len + _budget < _clean) {
         if (debug) print('freeze $c@$pos len=${r.len} budget=$_budget');
+        final net = _nets[r] ??= _netOf(r);
         return [
-          _Way(pos + r.len, 0, 0, _nets[r] ??= _netOf(r), _peg,
+          _Way(pos + r.len, 0, 0, net, _peg,
+              vouch: r.len - net,
               leaf: Match(c, 0, 0, subClauseMatches: [r]))
         ];
       }
@@ -229,6 +251,8 @@ class Squirrel {
     while (true) {
       final got = _prune([..._expand(c, pos), ..._afford(e.ways ?? const [])]);
       final done = e.ways != null && !_improved(got, e.ways!);
+      cellsComputed++;
+      if (done) cellsSame++;
       e.ways = got;
       e.at = _budget;
       if (done || !e.foundLR) break;
@@ -624,6 +648,7 @@ class Squirrel {
           if (f.edits + f.toll <= c.edits + c.toll && f.net > b.net) b = f;
         }
         best = b;
+        lastRound = _round;
         break;
       }
       if (fall == null && owed.isNotEmpty) {
