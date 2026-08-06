@@ -1965,6 +1965,33 @@ trial scores contaminated by a second damage the round has not yet repaired.
 That — not information — is the remaining 0.04, and it is the precise open
 question for attempt three.
 
+### s2 — the exclusion closed, and what a wash teaches
+
+**s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
+0.9841 / 77.0 / ~1,600 ms / 706 lines, every gate green, and DOMINATED by s1
+(+9 lines at a tied score) — landed because the defect class it closes is real
+even though the battery prices it at a wash (+0.18 / −0.24 case-equivalents).**
+r9 and s1 offer a slot's give-up only where move and resync REACHED nothing,
+and "reached" is not "useful": on `...2e],t":...` the resync probe finds the
+quote after `t`, goes nowhere downstream, and the suppressed fill — owe the
+OPENING quote, a determined character — was the honest reading. s2 lets fills
+always compete, guarded by **I72 scoped by I36 — m143's fee formula ported to
+the r-line at last**: a fill the grammar SPELLS invents no content and rides
+free; only an UNSPELLABLE fill pays one rank-visible toll where a no-dearer
+denial offered to read instead. b2 then passes by pricing, not by suppression.
+
+**The escape-conjure swallow is the named resistant class** (~2.5 c-e, e.g.
+`{"n":[0,-7,1.5,2e],t":[...]}` at cost 1): an owed `\` reclassifies a real
+quote as string content through `Chr <- [^"\] / ('\' Esc)`. Three principled
+attacks were measured against it in one session and all refuted: the I72∩I36
+fee (the fill is *determined*, so it rides free), the I97 refinement "only a
+judged cap vouches" (−0.67 — it un-shielded `{"alpha"`'s honest completion; no
+expressible rule separates a free CONSTITUENT from free leaf caps inside a
+swallow's own run), and the I43-style prohibition (m143 carries it and fails
+the same case through I53's fallback). m143, r9, s1 and s2 all answer it
+identically wrongly. It joins the opener-placement class (item 14) and the
+EOF-stack truncations as the third measured-resistant residual class.
+
 **Still open, found by the same residual read and deliberately not knobbed: the
 deleted-opener placement class**, ~7 case-equivalents across expr and stmt
 delim-delete and multi-damage. Both readings are pure-gap cost-1 with equal
@@ -2646,7 +2673,9 @@ separately.
 t1's rows; the LOC cache was regenerated in the same run, which moved r9's
 normalised count from 536 to 562 — every number below is from that one cache).
 t1 survives on latency alone (1,035 ms, the study's record) and dominates
-nothing; r13 survives on size alone.
+nothing; r13 survives on size alone. **s2 (0.9841 / 77.0 / ~1,600 / 706) is
+dominated by s1 at a tied score and is on the record for the defect class it
+closes, not for a column** (§4.9).
 
 | engine | score | perfect% | ms | LOC | dominates | why it is on the frontier |
 |---|---:|---:|---:|---:|---:|---|

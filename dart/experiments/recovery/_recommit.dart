@@ -136,6 +136,7 @@ void main(List<String> argv) {
           'r9', // the shipped r-engine; without it a bare run checks no r
           's1',
           't1',
+          's2',
         ];
   final rulesOf = {
     for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)
