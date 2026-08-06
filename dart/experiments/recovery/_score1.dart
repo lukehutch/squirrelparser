@@ -106,6 +106,7 @@ import 's3.dart' as s3;
 import 'b1.dart' as b1;
 import 'b2.dart' as b2;
 import 'c1.dart' as c1;
+import 'c2.dart' as c2;
 import 's4.dart' as s4;
 
 /// A uniform surface over both engine generations: give it a grammar and a top
@@ -403,6 +404,7 @@ final Map<String, Build> extra = {
   'b1': (r, t) => b1.Squirrel(rules: r, topRuleName: t).recover,
   'b2': (r, t) => b2.Squirrel(rules: r, topRuleName: t).recover,
   'c1': (r, t) => c1.Squirrel(rules: r, topRuleName: t).recover,
+  'c2': (r, t) => c2.Squirrel(rules: r, topRuleName: t).recover,
 };
 
 Build? resolve(String name) {

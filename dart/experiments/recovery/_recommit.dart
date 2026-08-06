@@ -141,6 +141,7 @@ void main(List<String> argv) {
           's4',
           'b2',
           'c1',
+          'c2',
         ];
   final rulesOf = {
     for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)

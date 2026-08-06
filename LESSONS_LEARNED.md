@@ -2245,6 +2245,58 @@ judgment penalty that deliberately never consumes budget (`_afford` and
 the fold's break filter on bare `edits`) — spend and penalty are different
 things, and merging them would change which ways a round can afford.
 
+### c2 — the axiom: four forms, one fixpoint, no root (I102)
+
+**The instruction: ablate, collapse, unify — find the pure core.** c2 answers
+with a normalization instead of an engine change: X* IS left recursion
+(`X* ← X* X / ε`), X? IS choice (`X / ε`), a literal IS a sequence of
+characters, and the end of input IS a grammar slot (`#T ← B ¬any`). The
+grammar is rewritten at load until only Terminal / Seq / First / Ref (plus
+predicates) remain; rules coined by the rewrite are anonymous (`#`) and cap
+without judgment. What remains in the engine: ONE fixpoint — the grow-loop
+that already served left recursion and budget-zero parsing — and no root
+protocol at all (the tail charge is an ordinary denial at the ¬any slot;
+the root swallow is a named boundary rule's judgment; truncation's
+obligations are ordinary owes). `_rep`, `_opt`, the Str fast path, the
+char-fold cache, and recover's 40-line root block stop existing.
+**0.9818 / 78.7% / ~1,950 ms / 454 LOC — the smallest engine ever above
+0.98 (s3 held it at 484) — every gate green, recommit 16/16.**
+
+**What ubiquitous growth forced, each found by a failing case.**
+(1) **Warth's involved-set replaces the per-position version bump**: with
+repetition growing at every position, the blunt bump cold-started whole
+positions' memos and the battery TIMED OUT; the precise rule — only rules
+that read a growing seed, at that position, during that growth, are ever
+recomputed — deletes `_version`, `gen`, and the bump for a transient heads
+map. (2) **The prune needs a TOTAL order**: the grow-loop's improvement
+test compares sorted lists position-wise, Dart's sort is unstable, and
+rank-ties swapping order read as improvement forever — one stmt transpose
+hung the battery; tiebreak by end. (3) **The boundary law**: the top body
+is a named rule B — the FINAL judgment: admit every reading (the lift's
+net-gate would drop the correct free-span reading), judge every reading,
+VOUCH-BLIND (nothing shields absorption from the last judge) — and levy it
+BEFORE the end-of-input fold, because the prune's per-end selection
+assumes no claim is pending when ways meet: with the charge deferred to
+the root, a 1-edit whole-document String swallow beat the 2-edit honest
+Array at the fold prune and recommit broke. (4) **Vouch symmetry**: a
+frozen span vouches exactly what its enumerated form would have
+(span − net — the named judges inside it, one per Character). Stripping
+vouch from anonymous frozen spans tolled the HONEST reading's frozen
+content while the escape-conjure's enumerated content stayed shielded, and
+price decided against honesty — 25 json quote-delete cases fell to the
+recorded third resistant class through that asymmetry alone; symmetry
+restored, they came back.
+
+**Paid for and kept out**: the owing-skip fee ("a denial while owing pays
+one") was invented on theory and killed the owe-then-deny truncation
+pattern recommit needs (c1 prices it zero and lets net decide);
+provisional-cells-during-growth (staleness theory, wrong: same tree, +50%
+latency); the round admits by TOTAL price (edits+toll) — kept, a claim is
+a claim. **Residual vs c1**: −0.0005 score over 19 scattered cases (mostly
+expr, the true-LR grammar under rep-as-LR), +25% latency — the grow-loop
+per repetition costs real iterations; c1 keeps the speed point (1,576),
+c2 takes the size point (454). Both on the frontier.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2430,6 +2482,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I102 | ITERATION, LEFT RECURSION, AND REPAIR ARE ONE MECHANISM — a memo entry growing to its fixed point. Normalize the grammar (X* ← X* X / ε; X? ← X / ε; literal ← char sequence; EOI ← a slot) until the engine speaks four forms and one fixpoint; anonymous rules cap without judgment; the boundary rule B is the final judgment (admit all, vouch-blind, before the EOI fold); a frozen span vouches span − net (the enumerated equivalence) | c2 | **LIVE** — 0.9818/78.7/454 LOC, all gates, smallest ≥0.98 engine; needs Warth's involved-set (the version bump cold-starts everything once growth is ubiquitous) and a total prune order (unstable sort ties read as improvement forever) |
 | I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round, and the whole mode split is ONE RULE: parsing mode IS budget zero (with no edits left the way-descent is definitionally the pure parser, so the frozen memo answers unconditionally — the budget itself is the damage boundary, and the clean suffix is free); greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet) | b2 → c1 | **LIVE** — c1 0.9823/79.1/**~1,580 ms**/**493 LOC**/16-16, bit-identical to s4 on all 2,000 docs at 16% less latency, 13 lines over s4; the conditioned prefix-freeze was DELETED (its consult cost ≈ its savings); frozen ways carry `vouch = span − net` or swallow pricing breaks; `eof` is a bool, making I94's charge-once structural |
 | I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it | t1 → s3 | **LIVE — ★ THE PIVOTAL INSIGHT OF THE RECOVERY LINE, owner-confirmed 2026-08-05** ("the biggest breakthrough you have made so far"). Made STRUCTURAL in s3: one grow-loop, one entry, no second mechanism — the collapse that broke the size cliff and dominated r9. Answers §1.8's six-occasion steer |
 | I99 | AN ARM THAT READ NOTHING MAY NOT INVENT — I43/I78 as a property of the mismatch tree, with I53 as its fallback pass; one structural rule standing in for toll, net-rank and the whole-document charge | t1 | LIVE |
@@ -2498,6 +2551,10 @@ it accepts (`net`), or absorbed by one that does not.
 | growing cells / semi-naive rounds as c1's major latency lever | profiled: only 32.7% of cell recomputations are identical (the r-chart's refuted 29% again); the round-over-round waste is real but capped far under the 2x target — the budget-0 collapse (−20%) was the honest lever |
 | frozen ways with vouch 0 | quote-delete 0.999 → 0.971: outer judgments re-charge already-vouched string content; a pure reading vouches span − net at every lift |
 | the conditioned prefix-freeze, kept alongside budget-zero | deleting it ran FASTER than keeping it (~1580 vs ~1598 median): its per-visit memo consult cost what its freezing saved, and its four conditions (non-LR, span > 1, window, clean-boundary) each carried a trap already paid for once |
+| the owing-skip fee (c2: "a denial issued while owing pays one") | invented on theory, never measured on its own; it prices the owe-]-then-deny-" truncation pattern to 3 where the honest rank (net at the tie) wants it at 2 — recommit broke; c1 charges the pattern zero |
+| vouch 0 for anonymous frozen spans (c2) | asymmetric: the honest reading's frozen content got tolled while the rival's enumerated content stayed vouch-shielded; the escape-conjure swallow took 25 quote-delete cases; a frozen span vouches span − net, period |
+| the per-position version bump once growth is everywhere (c2) | rep-as-LR makes every position a grow site; the bump cold-starts whole positions and the battery times out; Warth's involved-set is the precise staleness rule |
+| provisional cells during growth (c2) | staleness-during-growth theory: same wrong tree, +50% latency — the stale-cell mechanism was not the cause (the missing toll was) |
 | "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); what failed is stated by I100 — the SHIPPED tree lacks `reach`'s five discard sites, and the iterated form still lacks rival simultaneity |
 | the chart's local guards ported into the iterated engine | all three lost: strict cheapest-first ladder 0.9258 (cx2 broke) and 0.9223; I36 determined-gate on owes 0.9287; r9's reached-exclusion 0.8997 (b1 broke) — the whole-document trial subsumes them, and suppression only removes information (t1) |
 | I62's `blind` as an unscoped rank key before `net` (the "cleanest" form of D8's reason) | **0.9776 vs 0.9841** — decides b2 and then flips its same-evidence opposite-truth twin (`[1,[,`, I54) plus every honest-completion tie; the fee's scoping is I72's content, not a wart (s2) |
