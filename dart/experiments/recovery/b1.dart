@@ -17,35 +17,32 @@
 // reached only through a choice arm whose mismatch read nothing may not act
 // unless no evidenced site advances at the same price -- without it the
 // swallow completes first (an owed quote at position 0 buys the document).
-// STATUS (2026-08-06, honest): 0.8375 / 41.5% / ~6 s battery; accept 3/3,
-// freespan PASS, conf1 `0 1 1 0 2 3` (0 free passes), recommit 9/16. The
-// architecture is now COMPLETE as specified -- two modes; the EOI rule (a
-// failing child at end-of-input is not descended: everything beneath is at
-// the end too, and the site at this level, completed as a unit with its
-// partial work kept, says everything the deeper ones would); completions
-// that REUSE matched children instead of re-filling from scratch; extent
-// measured over the side maps too (the parse's real frontier includes what
-// success threw away -- without this a destructive denial "advanced"
-// against a false baseline); per-site interleave of denial-then-completion
-// so the deepest site speaks first even for held shape-changers; and the
-// class order complete > advance > shape-change, shape-changers committing
-// only when nothing anywhere can move forward.
+// STATUS (2026-08-06, second session): 0.8435 / 42.9% / ~6 s; accept 3/3,
+// freespan PASS, conf1 `0 1 1 0 2 3` (0 free passes), recommit 10/16 in this
+// configuration (13/16 with reach-denials banned, at 0.6765 aggregate -- the
+// live fork below). Three defects were found by trace and fixed this
+// session, each a truth-violation, not a design hole:
+//   1. extent measured only the tree; the parse's real frontier includes the
+//      side maps (a destructive denial "advanced" against a false baseline);
+//   2. the EOI descent-cut removed the deepest sites -- exactly the ones
+//      whose SHARED grammar clauses close every enclosing level with one
+//      zero-width fact ((']', 11) closes four arrays, class 2, one commit);
+//   3. all-denials-then-all-completions broke the deepest-first discipline
+//      for held shape-changers (now interleaved per site).
+// Also confirmed: junk fills self-filter (a '.' filled inside a finished
+// Number does not survive its own re-parse -- class -1), so the memo itself
+// is the honesty gate for fills.
 //
-// THE RESULT WORTH KEEPING ALREADY: the class system decides BOTH of D8's
-// acceptance cases with zero pricing machinery. b2's denial COMPLETES and
-// wins by being attempted first; cx2's fill COMPLETES where its denial
-// merely advances. The fee, the net rank, the toll -- every engine's D8
-// apparatus -- were compensations for judging repairs by score instead of
-// by the parser's own progress.
-//
-// LIVE FORK, both measured: the First-completion arm chooser. Furthest-
-// read arm (I27, r13's salvage rule; this file): 0.8375 aggregate but
-// recommit 9/16. Cheapest arm: 0.8325 but recommit 12/16 -- each flips a
-// different set of committed-construct cases, so the chooser needs the
-// commitment measured through the side maps (extent, not len), which is
-// the first thing the next session should try. Truncate (0.595) is the
-// deepest open class: traces show completions committing at the wrong
-// level of the spine on deep truncations ([1,[2,[3,[4 heads as Number).
+// THE OPEN DISCRIMINATOR (the next session's single question): a denial at
+// a reach site can be the honest junk-deletion (a repetition's stopped site)
+// or a disguised universal delete (deny anything so optional whitespace can
+// "match" -- the fact lands on a shared single-char clause and every caller
+// consumes it). Banning reach-denials fixes the committed-construct probes
+// and destroys the junk classes; allowing them does the reverse. The
+// distinguishing fact is what the denial BUYS: a one-character read inside a
+// clause that needed nothing is no purchase. This is b1's form of the net
+// question, and it is the last conceptual gap between this architecture and
+// the chart engines' accuracy.
 import 'dart:collection';
 
 import 'package:squirrel_parser/squirrel_parser.dart';
@@ -319,12 +316,14 @@ class Squirrel {
 
   /// Sites: the mismatch node itself, the slot clause that failed, where,
   /// how deep, and whether evidence reached it. Deepest first.
-  final List<(MatchResult, Clause, int, int, bool)> _front = [];
+  final List<(MatchResult, Clause, int, int, bool, bool)> _front = [];
   final Set<String> _seen = {};
   final Set<MatchResult> _walked = HashSet.identity();
 
-  void _add(MatchResult m, Clause c, int p, int d, bool ev) {
-    if (_seen.add('${identityHashCode(c)}:$p')) _front.add((m, c, p, d, ev));
+  void _add(MatchResult m, Clause c, int p, int d, bool ev, bool reach) {
+    if (_seen.add('${identityHashCode(c)}:$p')) {
+      _front.add((m, c, p, d, ev, reach));
+    }
   }
 
   /// Walk matches and mismatches alike: successful subclause work is
@@ -335,16 +334,20 @@ class Squirrel {
   /// it is at the end too, no widening exists down there, and the site at
   /// this level (completed as a unit, its partial work kept) says everything
   /// the deeper ones would.
-  void _collect(MatchResult m, bool ev, int d) {
+  void _collect(MatchResult m, bool ev, int d, [bool reach = false]) {
     if (!_walked.add(m)) return;
     final c = m.clause;
     if (!m.isMismatch) {
+      // sites under the side maps are REACH sites: the parse tried this and
+      // moved past without needing it, so a denial there is a disguised
+      // unconditional deletion (deny anything so optional whitespace can
+      // "match") -- they offer completions only
       final st = _stopped[m];
-      if (st != null) _collect(st, ev, d + 1);
+      if (st != null) _collect(st, ev, d + 1, true);
       final lo = _lost[m];
-      if (lo != null) _collect(lo, false, d + 1);
+      if (lo != null) _collect(lo, false, d + 1, true);
       for (final k in m.subClauseMatches) {
-        _collect(k, ev, d + 1);
+        _collect(k, ev, d + 1, reach);
       }
       return;
     }
@@ -353,22 +356,30 @@ class Squirrel {
       final fc = j < c.subClauses.length ? c.subClauses[j] : c.subClauses.last;
       final fm = m.subClauseMatches.last;
       for (var i = 0; i < j; i++) {
-        _collect(m.subClauseMatches[i], ev, d + 1);
+        _collect(m.subClauseMatches[i], ev, d + 1, reach);
       }
-      _add(fm, fc, fm.pos, d, ev);
-      if (fm.pos + fm.len < _n) _collect(fm, ev, d + 1);
+      _add(fm, fc, fm.pos, d, ev, reach);
+      // The failing child is always descended -- even at the end of the
+      // input. The EOI descent-cut was measured wrong: denials are already
+      // impossible at n (no widening is wasted), but the deepest sites carry
+      // the SHARED grammar clauses whose one zero-width fact closes every
+      // enclosing level at once through the memo ((']', 11) closes four
+      // arrays), and cutting them off left only wrong-level completions.
+      _collect(fm, ev, d + 1, reach);
       return;
     }
     if (c is First) {
       for (final k in m.subClauseMatches) {
-        _collect(k, ev && (k.isMismatch ? k.len > 0 : true), d + 1);
+        _collect(k, ev && (k.isMismatch ? k.len > 0 : true), d + 1, reach);
       }
       return;
     }
     for (final k in m.subClauseMatches) {
-      _collect(k, ev, d + 1);
+      _collect(k, ev, d + 1, reach);
     }
-    if (m.subClauseMatches.isEmpty && c != null) _add(m, c, m.pos, d, ev);
+    if (m.subClauseMatches.isEmpty && c != null) {
+      _add(m, c, m.pos, d, ev, reach);
+    }
   }
 
   /// A memoised frozen probe: does [c] read at [p] as things stand?
@@ -568,6 +579,11 @@ class Squirrel {
       _front.sort((x, y) => y.$4 - x.$4); // deepest first
       final was = _extent(root);
       final sig = _sig(root);
+      if (debug) {
+        print('round $round was=$was sites: ' +
+            [for (final (m, c, p, d, ev, rc) in _front)
+              '$c@$p(d$d,${ev ? "ev" : "op"}${rc ? ",rc" : ""},r${m.pos + m.len})'].join(' '));
+      }
       // REPAIR MODE. The evidenced frontier is widened to exhaustion before
       // any unevidenced arm may act (I99). Within a pass: price l ascending,
       // deepest site first, denial before completion at each site; a
@@ -580,9 +596,10 @@ class Squirrel {
       for (final pass in [true, false]) {
         var maxL = _n + 1;
         final comp = <int, (int, MatchResult)>{};
-        for (final (m, c, p, _, ev) in _front) {
+        for (final (m, c, p, _, ev, _) in _front) {
           if (ev != pass) continue;
           final done = _completion(m);
+          if (debug) print('  comp $c@$p -> ${done == null ? "null" : done.$1}');
           if (done != null) {
             var fact = done.$2;
             if (c is Ref && !identical(fact.clause, c)) {
@@ -600,15 +617,23 @@ class Squirrel {
           // interleaving preserves the deepest-first discipline for the held
           // class too, or a shallow denial's shape-change outranks the deep
           // completion that was the honest repair.
-          for (final (m, c, p, _, ev) in _front) {
+          for (final (m, c, p, _, ev, reach) in _front) {
             if (ev != pass) continue;
             final done = comp[identityHashCode(m)];
+            // Reach sites keep their denials FOR NOW: banning them fixed
+            // the committed-construct probes (recommit 13/16) and destroyed
+            // the junk classes (0.68 aggregate), because a repetition's
+            // stopped site is also the honest junk-deletion site. The real
+            // discriminator -- a denial that buys a one-character read
+            // inside a clause that needed nothing (the whitespace hijack) is
+            // no denial -- is b1's form of the net question, unsolved here.
             for (final fact in [
               _denyAt(c, p, l),
               if (done != null && done.$1 == l) done.$2
             ]) {
               if (fact == null) continue;
               final r = _attempt(c, p, fact, top, was, sig);
+              if (debug && r >= 0) print('  try $c@$p l=$l -> class $r');
               if (r > bestClass || (r == bestClass && r > 0 && best == null)) {
                 bestClass = r;
                 best = (c, p, fact);

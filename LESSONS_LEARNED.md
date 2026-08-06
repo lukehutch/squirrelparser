@@ -2092,7 +2092,23 @@ document. This is the r-series brief plus everything since: the sideways
 repair channel and readEnd invalidation from t1, the reach side maps, the
 evidence gate (I99) as the only guard.
 
-**Where it stands after six measured iterations (2026-08-06): 0.8375 /
+**Second session (2026-08-06 cont.): 0.8435 / 42.9%, and the remaining gap
+has a name.** Three truth-violations found by trace and fixed: extent must
+include the side maps (the parse's real frontier is everything it attempted);
+the EOI descent-cut was wrong — the deepest sites carry SHARED grammar
+clauses whose one zero-width fact closes every enclosing level through the
+memo (`(']', 11)` closes four arrays in one class-2 commit); and held
+shape-changers need the per-site denial/completion interleave. Confirmed:
+junk fills self-filter — a repair that does not survive its own re-parse
+classifies as nothing, so the memo is the honesty gate for fills. **The one
+open discriminator is b1's form of the `net` question**: a denial at a reach
+site is either the honest junk-deletion (a repetition's stopped site) or a
+disguised universal delete (deny anything so optional whitespace can
+"match"); banning reach-denials scores 13/16 recommit at 0.68, allowing them
+0.84 at 10/16 — the distinguishing fact is what the denial BUYS, and a
+one-character read inside a clause that needed nothing is no purchase.
+
+**First session's standing account: 0.8375 /
 41.5% / ~6 s; acceptance 3/3, freespan PASS, conf1 exact, recommit 9–12/16
 depending on a live fork.** The architecture is complete as specified — the
 EOI descent-stop, completions that reuse matched children, extent measured
