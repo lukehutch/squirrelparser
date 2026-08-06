@@ -37,6 +37,7 @@ E = {
     # drop LR-wrapper levels the cut removed -- astdiff.dart, LESSONS I107).
     # Measured 2026-08-06, one machine, one sweep. Engines beyond these ten
     # live in attic/ with their era-2 numbers in attic/OLD_LESSONS_LEARNED.md.
+    'c5': (0.9878, 83.9, 1620),
     'c4': (0.9878, 83.9, 1687), 'c3': (0.9829, 81.2, 1713),
     's1': (0.9825, 75.2, 1773), 'c1': (0.9818, 78.6, 1785),
     's4': (0.9818, 78.6, 2068), 'c2': (0.9812, 78.5, 2354),

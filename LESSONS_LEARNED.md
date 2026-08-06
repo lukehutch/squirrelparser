@@ -55,7 +55,8 @@ misc (transpositions, multi-site) 1.5.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c4** | **0.9878** | **83.9** | 1687 | 566 | all | **0.997** | **0.984** | 0.993 | **0.987** | **0.967** |
+| **c5** | **0.9878** | **83.9** | **1620** | 535 | all | **0.997** | **0.984** | 0.993 | **0.987** | **0.967** |
+| c4 | 0.9878 | 83.9 | 1687 | 566 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
 | c3 | 0.9829 | 81.2 | 1713 | 515 | all | 0.985 | 0.979 | 0.994 | 0.987 | 0.964 |
 | s1 | 0.9825 | 75.2 | 1773 | 697 | all | 0.987 | 0.980 | 0.994 | 0.981 | 0.963 |
 | c1 | 0.9818 | 78.6 | 1785 | 493 | all | 0.982 | 0.979 | 0.994 | 0.985 | 0.962 |
@@ -66,7 +67,9 @@ misc (transpositions, multi-site) 1.5.
 | m132 | 0.9600 | 65.8 | 1597 | 612 | recommit 15/16 | 0.908 | 0.978 | 0.988 | 0.981 | 0.953 |
 | t1 | 0.9287 | 55.9 | 1170 | 899 | all | 0.946 | 0.946 | 0.976 | 0.870 | 0.860 |
 
-Frontier (score/perfect/ms/LOC): c4 leads outright; c3–c2 form the size
+Frontier (score/perfect/ms/LOC): c5 leads outright (c4's judgment
+bit-identically, 31 lines smaller and 4% faster — see law 15); c4 is
+dominated by its own refinement; c3–c2 form the size
 ladder; t1 keeps raw latency; m143/m132 sit between. **s1 and r9 are
 dominated** — on the fair battery, s1's remaining era-2 edge over the
 c-line dissolves (it was tie-luck on coin flips and over-demanding
@@ -104,7 +107,7 @@ collapse (fills emerge from the descent; a literal is a sequence; a move is
 a resync at slot 0) at 480 lines. The c-line is this algebra rebuilt on
 better substrate.
 
-**c-line (c1–c4, all kept).** c1 (I101): parsing mode IS budget zero — with
+**c-line (c1–c5, all kept).** c1 (I101): parsing mode IS budget zero — with
 no edits left the descent is definitionally the pure parser, so the frozen
 memo answers unconditionally; the budget itself marks where repair can no
 longer reach. c2 (I102): the four-form normalization (X* is left recursion,
@@ -112,7 +115,8 @@ X? is choice, a literal is a char-sequence, EOI is a slot) — the smallest
 engine, and the proof that grammar rewriting costs accuracy and foreign
 trees. c3 (I103): the way-front — insertion IS the improvement test; the
 sort and its livelock class deleted. c4 (I104–I107): the completed rank and
-the fee's scope, current best on every accuracy axis.
+the fee's scope. c5 (I108): c4 with the swallow derived instead of stored —
+the standing engine.
 
 ## 4. The laws (what survived every measurement)
 
@@ -175,11 +179,23 @@ the fee's scope, current best on every accuracy axis.
     coin flips or post-cut structure measures tie-luck; curate mutations
     to what a human could arguably expect, and put expectation-changes in
     the open, never silently.
+15. **Derive, don't account** (I108): c4 stored the swallow toll and then
+    needed vouch, a judge, symmetry rules, and a root exception to keep
+    the accumulator honest — three fields and a two-session bug class. The
+    same judgment falls out of one idempotent expression evaluated at
+    every comparison (`absorbed > net`, relative to the comparing front's
+    position): zero differing cases over the battery, 31 fewer lines, 4%
+    faster, and the bug class is unrepresentable. When a stored quantity
+    needs machinery to prevent double-counting, ask whether it can be
+    derived at use instead.
 
 ## 5. What separates the top engines
 
 All of s1/s4/c1–c4 share the same judgment core. The deltas:
 
+- **c5 vs c4**: identical judgment (zero differing cases); the swallow is
+  derived at comparison rather than stored and guarded — toll, vouch,
+  `_judge`, and the vouch-symmetry rules deleted.
 - **c4 vs c3**: the six-key rank (vouch, marks), the fee's seed exemption,
   the literal replace edit, eof-not-spend. Worth +0.0049 score and +2.7
   perfect on the fair battery — every piece traced to a named family.
