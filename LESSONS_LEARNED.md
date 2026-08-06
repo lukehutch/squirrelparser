@@ -1914,23 +1914,56 @@ fallback) — passes `_recommit`'s swallow probes with no toll, no net-vs-
 absorption machinery and no whole-document charge: one structural rule where
 the chart engines need three pricing mechanisms.
 
-**Measured: 0.9326 / 57.7% / 1,035 ms / 861 lines — every gate green
+**Measured: 0.9326 / 57.7% / ~1,020 ms / 861 lines — every gate green
 (recommit 16/16, conformance `0 1 1 0 2 3`, 0 free passes), the fastest engine
-in the study, and the claim fails on both halves.** The reason is the finding:
+in the study, and the claim fails on both halves.** The first reading of that
+result was I98 below; the corrected reading is I100 after it:
 
-> **The mismatch tree does not already hold what the chart re-derives. It
-> holds the FIRST failure of each committed reading; recovery's information is
-> every reading the parse REJECTED — the repetition that stopped, the arm that
-> lost after reading further, the left-recursive pass the fixed point
-> discarded, the optional that matched empty over a broken body.** The chart's
-> cells hold all of those natively, alive at once. t1 had to rebuild each as a
+> **(I98, now SUPERSEDED in direction by I100.)** The mismatch tree as
+> shipped does not hold what the chart re-derives: it keeps the FIRST failure
+> of each committed reading, while recovery's information is every reading the
+> parse REJECTED — the repetition that stopped, the arm that lost after
+> reading further, the left-recursive pass the fixed point discarded, the
+> optional that matched empty over a broken body. t1 had to rebuild each as a
 > side map beside the node (`_stopped`, `_lost`, the salvage splice), and
-> every point of score it gained came from recovering one more species of
-> rejected reading: 0.825 blind → 0.912 with the rejected passes kept → 0.933
-> with the lost arms and splices. Grown to completeness it would BE the chart,
-> with the tree as its index — r13's verdict ("an exact frontier makes each
-> candidate cheaper; it does not make fewer of them"), reached from the other
-> side.
+> every point of score it gained came from recovering one more species:
+> 0.825 blind → 0.912 with the rejected passes kept → 0.933 with the lost
+> arms and splices.
+
+**I100 — the reversal, and the unifying principle the whole line was circling.**
+I98 read that species-by-species rebuild as "converging on the chart." It is
+the opposite. **Every one of those rejected readings was computed BY THE ONE
+FAILED PARSE and discarded on a combinator's success path — and the discard
+sites are a closed, finite list: a `First` that succeeds drops its failed
+prior arms; a repetition drops the iteration that stopped it; an optional
+that matches empty drops its broken body; a predicate drops its body; the LR
+fixed point drops its rejected final pass. Five sites. Keeping them is
+`reach` — steer #10's unbuilt half — and t1's side maps ARE that port, not a
+chart reconstruction.** The chart never held more than the parse computed: it
+RE-derives the same rejections at every budget round (which is its latency
+bill — s1 spends 1,686 ms re-deriving what t1 keeps from one parse in
+1,020). And underneath sits the identity the six-times-repeated steer was
+pointing at: **a mismatch and a left-recursion seed are the same object — a
+suspended reading, addressed by `(clause, pos)` in the memo — and the memo
+entry's grow-loop ("re-descend while the reading improves") is already the
+whole recovery engine. Left recursion is recovery at cost zero: its repair is
+the previous pass's own result, free. The chart is that loop's history
+materialized eagerly; the tree is its address book; the parser already
+contains the machine.**
+
+**What the reversal does NOT yet deliver, measured honestly.** If t1's gap
+were information, completing reach should close it; three schedule/gate ports
+of the chart's local rules were then tried and ALL LOST in the iterated
+architecture — a strict cheapest-first ladder (0.9258, cx2 broken; 0.9223
+with the I36 gate), the I36 determined-gate on owes (0.9287), and r9's
+give-up-only-where-nothing-reached exclusion (0.8997, b1 broken) — because
+the whole-document trial already sees what those rules encode locally, and
+suppressing candidates only removes information. What the chart still has
+that the iterated form does not is **simultaneity of rivals**: readings whose
+value appears only in pairs (a deny and an owe that must land together), and
+trial scores contaminated by a second damage the round has not yet repaired.
+That — not information — is the remaining 0.04, and it is the precise open
+question for attempt three.
 
 **Still open, found by the same residual read and deliberately not knobbed: the
 deleted-opener placement class**, ~7 case-equivalents across expr and stmt
@@ -2071,7 +2104,8 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I95 | A LITERAL'S INTERIOR CAN BE DENIED — the alignment is match/owe/deny, and D7-safe because the literal is determined | s1 | LIVE |
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
-| I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds the rejected readings sideways, one species at a time, and grown complete it would be the chart with the tree as its index | t1 | LIVE — settles the ★TODO's claim |
+| I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it. The iterated form's residual gap to the chart is rival SIMULTANEITY, not information | t1 | LIVE — the corrected verdict |
 | I99 | AN ARM THAT READ NOTHING MAY NOT INVENT — I43/I78 as a property of the mismatch tree, with I53 as its fallback pass; one structural rule standing in for toll, net-rank and the whole-document charge | t1 | LIVE |
 
 ---
@@ -2130,7 +2164,8 @@ it accepts (`net`), or absorbed by one that does not.
 | the obligation lattice (I6/I7) | measured inert on every real input; deleted by I24 |
 | cgfr1 / cgfr2 / cgfr5 | dead ends. cgfr5's own note: once the tape is actually present it is LARGER than the m68 it was offered to undercut |
 | the frontier list as a separate structure | disappears in r3 once the cell holds every reading |
-| "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); the tree holding what the chart re-derives is the false premise (I98) |
+| "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); what failed is stated by I100 — the SHIPPED tree lacks `reach`'s five discard sites, and the iterated form still lacks rival simultaneity |
+| the chart's local guards ported into the iterated engine | all three lost: strict cheapest-first ladder 0.9258 (cx2 broke) and 0.9223; I36 determined-gate on owes 0.9287; r9's reached-exclusion 0.8997 (b1 broke) — the whole-document trial subsumes them, and suppression only removes information (t1) |
 | **first-match-wins** (the brief's stopping rule) | r10 → r11 collapses 0.6440 → 0.3218 the moment the grammar side is added, because a give-up cannot fail. Replaced by a scored commit (r12: 0.8661) |
 | I49 — collapsing ref-cell and body-cell | 907 → 1351 ms, **1.49x worse**. A cell that looks like a duplicate of another cell may be the only cache on a different path |
 

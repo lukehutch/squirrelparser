@@ -220,12 +220,16 @@ class Squirrel {
             // input agreed with the longer arm through 3
             if (failed != null) {
               MatchResult? far;
+              MatchResult? blind;
               for (final k in failed) {
-                if (far == null || k.len > far.len) far = k;
+                if (k.len > 0) {
+                  if (far == null || k.len > far.len) far = k;
+                } else {
+                  blind ??= k;
+                }
               }
-              if (far != null) {
-                (far.len > 0 ? _stopped : _lost)[out] = far;
-              }
+              if (far != null) _stopped[out] = far;
+              if (blind != null) _lost[out] = blind;
             }
             return out;
           }
@@ -407,8 +411,31 @@ class Squirrel {
     if (_seen.add(key)) _cand.add((c, p, fact, evidenced, fee));
   }
 
+  /// What the fact itself claims: deletions, mid-document marks, and the
+  /// end-of-input claim once (I94) -- the candidate's own rung on the ladder.
+  int _price(MatchResult fact) {
+    var del = 0, mid = 0;
+    var eof = false;
+    void walk(MatchResult m) {
+      if (m is SyntaxError) {
+        if (m.len > 0) {
+          del += m.len;
+        } else if (m.pos >= _n) {
+          eof = true;
+        } else {
+          mid++;
+        }
+        return;
+      }
+      m.subClauseMatches.forEach(walk);
+    }
+
+    walk(fact);
+    return del + mid + (eof ? 1 : 0);
+  }
+
   /// Denial: the smallest skip after which [c] reads, and reads something.
-  /// Returns that skip, which is what I72's fee is measured against.
+  /// Returns that skip, the invention fee's basis (I72).
   int? _deny(Clause c, int p, bool ev) {
     for (var k = 1; p + k <= _n; k++) {
       final m = _probe(c, p + k);
@@ -441,12 +468,11 @@ class Squirrel {
     return row[p] = m.isMismatch ? null : m;
   }
 
-  /// The give-up: satisfy [c] at [p] with nothing, spine-noded mid-document.
-  /// I72: where the input offered something to read instead -- a denial at
-  /// this same site no dearer than the fill -- the invention pays one more.
-  /// The fee, not the ban: banning breaks cx2 (`xa`), exactly as the m-line
-  /// measured; past the end of the input no denial exists and the fee is 0,
-  /// which is what keeps truncation completions free.
+  /// The give-up: satisfy [c] at [p] with nothing, spine-noded mid-document,
+  /// priced with I72's fee where a no-dearer denial exists. The I36
+  /// determined-gate and r9's reached-exclusion were both measured here and
+  /// both lost (0.9223, 0.8997): the whole-document trial already sees what
+  /// those rules encode locally.
   void _owe(Clause c, int p, bool ev,
       {required bool parentAdvances, int? denyK}) {
     final fill = _minFill(c);
@@ -465,6 +491,24 @@ class Squirrel {
             ]),
         ev,
         denyK != null && denyK <= fill ? 1 : 0);
+  }
+
+  /// Whether every string [c] derives yields the same tree shape (I36) --
+  /// ported field for field from r9's honesty section.
+  final Map<Clause, bool> _det = HashMap.identity();
+  bool _determined(Clause c) {
+    final memo = _det[c];
+    if (memo != null) return memo;
+    _det[c] = false;
+    return _det[c] = c is Terminal || c is FollowedBy || c is NotFollowedBy
+        ? true
+        : c is Seq
+            ? c.subClauses.every(_determined)
+            : c is Repetition && c.requireOne
+                ? _determined(c.subClause)
+                : c is Ref
+                    ? _determined(rules[c.ruleName]!)
+                    : false;
   }
 
   /// I95: a damaged literal read through, one edit table, cheapest ends only.
@@ -683,6 +727,13 @@ class Squirrel {
       final fm = m.subClauseMatches.last;
       final fp = fm.pos;
       // the three repairs of the failing slot
+      // Deny and owe COMPETE -- r9's mutual exclusion (give up only where
+      // nothing reached the slot) was ported and measured 0.8997 with b1
+      // broken: in this architecture the trials are whole-document scores and
+      // the comparator is the filter, so suppressing a candidate only removes
+      // information. I72's fee is what keeps the competition honest: an owe
+      // where a no-dearer denial exists pays one more (b2), and past the end
+      // of the input no denial exists, so completions stay free.
       final denyK = _deny(fc, fp, ev);
       final nxt = j + 1 < c.subClauses.length ? c.subClauses[j + 1] : null;
       final adv = fp >= _n ||
@@ -903,6 +954,13 @@ class Squirrel {
       if (debug) {
         print('round $round base=$base cands=${_cand.length}');
       }
+      // ALL CANDIDATES COMPETE AT ONCE within an evidence pass, ranked by
+      // their whole-document trial score. A strict cheapest-own-price ladder
+      // was measured twice and lost twice (0.9258 with the fee, 0.9223 with
+      // the gate): in the chart a budget is a ceiling on whole READINGS, not
+      // a schedule for greedy commits, and the trial score's first key is
+      // already total edits, so cheap honest repairs win the comparisons that
+      // matter without a schedule refusing to look at the rest.
       for (final pass in [true, false]) {
         for (final (c, p, fact, ev, fee) in _cand) {
           if (ev != pass) continue;
