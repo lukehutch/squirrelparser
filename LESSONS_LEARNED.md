@@ -1980,6 +1980,24 @@ the r-line at last**: a fill the grammar SPELLS invents no content and rides
 free; only an UNSPELLABLE fill pays one rank-visible toll where a no-dearer
 denial offered to read instead. b2 then passes by pricing, not by suppression.
 
+**All three forms of D8's reason are now measured, and the scoped price is
+the only one that is both principled and undamaging.** b2's protection must
+live at the cost tier, because the owe-reading beats the denial on `net`
+(it pins the extra comma), so no rule below `net` can reach it: (1) s1's
+EXCLUSION (give up only where nothing reached) — 0.9841, but a scheduling
+rule that decides which candidates exist, the hidden-enumeration form of
+I30's sin, and it carries the "reached is not useful" hole; (2) s2's SCOPED
+PRICE (I72∩I36, m143's fee) — 0.9841, everything competes and the ordering
+decides; (3) the UNSCOPED CLAIM-WIDTH KEY (I62's `blind` ranked before
+`net`, no constant, no scope — the aesthetically cleanest form) — **0.9776,
+refuted**: it decides b2 correctly and then bleeds into every
+honest-completion tie, flipping the `[1,[,` class that I54 records as b2's
+same-evidence opposite-truth twin (literal-damage 0.977 → 0.955, multi
+0.958 → 0.944). The scoping is not a blemish on the fee; it IS I72's
+content — *a repair pays for inventing only where the input offered
+something to read instead* — and the elegance ranking inverts the naive
+aesthetic.
+
 **The escape-conjure swallow is the named resistant class** (~2.5 c-e, e.g.
 `{"n":[0,-7,1.5,2e],t":[...]}` at cost 1): an owed `\` reclassifies a real
 quote as string content through `Chr <- [^"\] / ('\' Esc)`. Three principled
@@ -2193,6 +2211,7 @@ it accepts (`net`), or absorbed by one that does not.
 | the frontier list as a separate structure | disappears in r3 once the cell holds every reading |
 | "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); what failed is stated by I100 — the SHIPPED tree lacks `reach`'s five discard sites, and the iterated form still lacks rival simultaneity |
 | the chart's local guards ported into the iterated engine | all three lost: strict cheapest-first ladder 0.9258 (cx2 broke) and 0.9223; I36 determined-gate on owes 0.9287; r9's reached-exclusion 0.8997 (b1 broke) — the whole-document trial subsumes them, and suppression only removes information (t1) |
+| I62's `blind` as an unscoped rank key before `net` (the "cleanest" form of D8's reason) | **0.9776 vs 0.9841** — decides b2 and then flips its same-evidence opposite-truth twin (`[1,[,`, I54) plus every honest-completion tie; the fee's scoping is I72's content, not a wart (s2) |
 | **first-match-wins** (the brief's stopping rule) | r10 → r11 collapses 0.6440 → 0.3218 the moment the grammar side is added, because a give-up cannot fail. Replaced by a scored commit (r12: 0.8661) |
 | I49 — collapsing ref-cell and body-cell | 907 → 1351 ms, **1.49x worse**. A cell that looks like a duplicate of another cell may be the only cache on a different path |
 
