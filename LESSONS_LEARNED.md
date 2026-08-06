@@ -15,7 +15,9 @@ when a primitive changes, the refuted list is back on the table.
 (0.9841 AST-diff, 77.0% perfect, 1,686 ms, 697 lines — §4.9), the first engine
 above the r9+m143 ensemble ceiling of 0.9805; **r9** (0.9748 / 74.0 / 562 lines)
 survives on the frontier only by being smaller, and **m143** stays the standing
-`m`-engine. Of ~160 engines, **nine are still worth considering** (Appendix).
+`m`-engine. Of ~160 engines, **ten are still worth considering** (Appendix) — the tenth,
+t1 (§4.9, attempt two), is the study's latency record at 1,035 ms and the
+engine that settled the ★TODO's claim.
 **s1 and r9 pass every gate** — all re-run 2026-08-05: acceptance 3/3, free-span,
 recommit 16/16, conformance `0 1 1 0 2 3` with zero free passes, core gate pass,
 library suite 320/320 — **and m143 does not**, failing one recommit case (§3.3).
@@ -1895,6 +1897,41 @@ r4's later-wins rule holds); I59's finality bit imported to the r-line (bought
 deletes was never the cost); deleting the markless stop (−0.0002 — with I96
 emitting spine nodes, the stop is the only way left to say "it just ended").
 
+### Attempt two: t1, the engine built AROUND the tree — and the verdict
+
+**The starred TODO's engine was then actually built (t1, same session): one
+squirrel core whose memo table IS the repair channel.** A repair is a fact
+written at `(clause, pos)` — content-addressed exactly like `foundLeftRec` —
+and retired by exactly the entries whose derivation read its position
+(`readEnd`, the per-position version bump generalised to a span). Candidates
+are read off the mismatch tree, never enumerated by position: deny (skip to
+where the failing clause reads), owe (minFill, with I72's fee where a no-dearer
+denial exists), align (I95), and retraction — cutting an already-matched
+subtree at a point where the enclosing context resumes, the cut READ OFF the
+match tree with no re-parse. The First-arm evidence gate — an arm whose
+mismatch read nothing may not invent (I43/I78 as a tree property, I53 as its
+fallback) — passes `_recommit`'s swallow probes with no toll, no net-vs-
+absorption machinery and no whole-document charge: one structural rule where
+the chart engines need three pricing mechanisms.
+
+**Measured: 0.9326 / 57.7% / 1,035 ms / 861 lines — every gate green
+(recommit 16/16, conformance `0 1 1 0 2 3`, 0 free passes), the fastest engine
+in the study, and the claim fails on both halves.** The reason is the finding:
+
+> **The mismatch tree does not already hold what the chart re-derives. It
+> holds the FIRST failure of each committed reading; recovery's information is
+> every reading the parse REJECTED — the repetition that stopped, the arm that
+> lost after reading further, the left-recursive pass the fixed point
+> discarded, the optional that matched empty over a broken body.** The chart's
+> cells hold all of those natively, alive at once. t1 had to rebuild each as a
+> side map beside the node (`_stopped`, `_lost`, the salvage splice), and
+> every point of score it gained came from recovering one more species of
+> rejected reading: 0.825 blind → 0.912 with the rejected passes kept → 0.933
+> with the lost arms and splices. Grown to completeness it would BE the chart,
+> with the tree as its index — r13's verdict ("an exact frontier makes each
+> candidate cheaper; it does not make fewer of them"), reached from the other
+> side.
+
 **Still open, found by the same residual read and deliberately not knobbed: the
 deleted-opener placement class**, ~7 case-equivalents across expr and stmt
 delim-delete and multi-damage. Both readings are pure-gap cost-1 with equal
@@ -2034,6 +2071,8 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I95 | A LITERAL'S INTERIOR CAN BE DENIED — the alignment is match/owe/deny, and D7-safe because the literal is determined | s1 | LIVE |
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
+| I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds the rejected readings sideways, one species at a time, and grown complete it would be the chart with the tree as its index | t1 | LIVE — settles the ★TODO's claim |
+| I99 | AN ARM THAT READ NOTHING MAY NOT INVENT — I43/I78 as a property of the mismatch tree, with I53 as its fallback pass; one structural rule standing in for toll, net-rank and the whole-document charge | t1 | LIVE |
 
 ---
 
@@ -2091,6 +2130,7 @@ it accepts (`net`), or absorbed by one that does not.
 | the obligation lattice (I6/I7) | measured inert on every real input; deleted by I24 |
 | cgfr1 / cgfr2 / cgfr5 | dead ends. cgfr5's own note: once the tape is actually present it is LARGER than the m68 it was offered to undercut |
 | the frontier list as a separate structure | disappears in r3 once the cell holds every reading |
+| "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); the tree holding what the chart re-derives is the false premise (I98) |
 | **first-match-wins** (the brief's stopping rule) | r10 → r11 collapses 0.6440 → 0.3218 the moment the grammar side is added, because a give-up cannot fail. Replaced by a scored commit (r12: 0.8661) |
 | I49 — collapsing ref-cell and body-cell | 907 → 1351 ms, **1.49x worse**. A cell that looks like a duplicate of another cell may be the only cache on a different path |
 
@@ -2261,17 +2301,23 @@ both axes at once. If two honest attempts land above 536 lines or below 0.9748,
 that is a result worth recording as such — §6.0's rule applies, and a refutation
 of one form of this idea is not a refutation of the idea.
 
-**Attempt one is recorded (2026-08-05, §4.9): the score half is exceeded and the
-size half failed.** s1 lands 0.9841 — +0.0093 over the bar — at 697 normalised
-lines against r9's 562 (the 536 above was the previous cache's figure; both
-numbers here are from one `loc.py` run). What s1 consumed of this TODO: round 0
-is now the library parse (the tree is produced and the memo table is D1's own),
-and the residual method (I93) is how its fixes were found — but its rounds
-still re-derive the chart rather than walking the tree, and the engine grew by
-three cost-model mechanisms rather than shrinking by deleted bookkeeping. **The
-engine this TODO describes — built AROUND the tree, smaller because the tree
-already holds what the chart re-derives — has still not been attempted.** The
-claim stands open on the size half.
+**Both attempts are now recorded (2026-08-05, §4.9), and by this claim's own
+protocol it is SETTLED: refuted as stated.** Attempt one (s1) exceeded the
+score half (0.9841) and failed the size half (697 > 562). Attempt two (t1) —
+the engine genuinely built around the tree, memo-as-repair-channel, candidates
+read off the failure — failed both halves (0.9326 at 861 lines) while passing
+every honesty gate and setting the study's latency record. The premise that
+fails is precisely the sentence this TODO was built on: *the tree does NOT
+already hold what the chart re-derives* — it holds each committed reading's
+first failure, while recovery's information is every reading the parse
+rejected, which the chart's cells hold natively and t1 had to rebuild species
+by species (I98). **What survives:** the sideways memo signal itself is sound
+and gate-proven (a content-addressed fact plus readEnd invalidation — t1's
+channel works; it is the SMALLNESS that was wrong), and the evidence gate (an
+arm that read nothing may not invent) does with one structural rule what the
+chart engines do with three pricing mechanisms. A third attempt should start
+from the other end: keep the chart, and use the tree as its *index* — §6.0's
+rule applies to that form, not this one.
 
 ---
 
@@ -2561,14 +2607,17 @@ excluded (they are broken, not slower), as are the six tape engines that never
 finished. m75 and m77 are held out because D1 disqualifies them, and reported
 separately.
 
-**Nine engines survive, of 53 compared** (re-computed 2026-08-05 with s1's row;
-the LOC cache was regenerated in the same run, which moved r9's normalised count
-from 536 to 562 — every number below is from that one cache).
+**Ten engines survive, of 54 compared** (re-computed 2026-08-05 with s1's and
+t1's rows; the LOC cache was regenerated in the same run, which moved r9's
+normalised count from 536 to 562 — every number below is from that one cache).
+t1 survives on latency alone (1,035 ms, the study's record) and dominates
+nothing; r13 survives on size alone.
 
 | engine | score | perfect% | ms | LOC | dominates | why it is on the frontier |
 |---|---:|---:|---:|---:|---:|---|
 | **s1** | 0.9841 | 77.0 | 1,686 | 697 | 9 | best score and best perfect% in the study; §4.9 |
 | **r9** | 0.9748 | 74.0 | 2,038 | 562 | 10 | best score under 600 lines |
+| t1 | 0.9326 | 57.7 | **1,035** | 861 | 0 | the latency record; attempt two of the ★TODO claim, §4.9 |
 | **m143** | 0.9693 | 72.1 | 1,131 | 628 | 20 | second-best accuracy at near-best latency |
 | **m132** | 0.9648 | 69.2 | **1,098** | 612 | 21 | **fastest engine in the study** |
 | m26 | 0.9551 | 67.2 | 1,479 | 381 | 19 | survives on one line under m41 |
