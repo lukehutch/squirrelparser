@@ -2225,6 +2225,26 @@ whole cost, and it is the way-algebra's rival multiplicity — the judgment
 itself, not waste; the m-line's ~1,100 ms remains cheaper by exactly the
 readings it does not weigh.
 
+**THE COMPACTION (owner's instruction: roll the benefits into a form
+closer to s4; audit fields for overlap).** Measured first: with budget-zero
+in place, the conditioned prefix-freeze (non-LR, span > 1, window, `clean`)
+bought ~6% median — and deleting it outright ran FASTER than keeping it
+(~1580 vs ~1598), because its per-visit library-memo consult cost roughly
+what its freezing saved. Deleted with it: the `_lr` leftmost-reachability
+closure, the `clean` boundary walk, the mismatch sentinel, and all four
+conditions — the mode split is now the single unconditional rule. The one
+case where c1 beat s4 came from the freeze, so the final form is **bit-
+identical to s4 on all 2,000 documents** (net +0.000) at **0.9823 / 79.1%
+/ ~1,580 ms / 493 LOC — 13 lines over s4, 16% faster**. The field audit's
+findings: `eof` was an int whose magnitude no consumer read — now a bool,
+which makes I94's charge-once STRUCTURAL (a bool cannot charge twice).
+The three cost fields that LOOK mergeable are three distinct meanings and
+must stay: `del` is span-arithmetic (read alone by the absorb/swallow
+computations), `gap` alone gates the D8 fee in the fold, and `toll` is a
+judgment penalty that deliberately never consumes budget (`_afford` and
+the fold's break filter on bare `edits`) — spend and penalty are different
+things, and merging them would change which ways a round can afford.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2410,7 +2430,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
-| I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round: parsing mode is the frozen memo answering first, repair mode is the way-descent opening only where a span touches damage, and greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet). Completed by PARSING MODE IS BUDGET ZERO: with no edits left the way-descent IS the pure parser, so the memo answers unconditionally — the budget itself is the damage boundary, and the clean suffix is free | b2 → c1 | **LIVE** — c1 0.9823/79.1/**1566 ms**/16-16, case-wise ≥ s4 everywhere, on the frontier dominating 16; prefix-freeze conditions: non-LR rules only, spans > 1 char, `pos+len+budget < clean`, `clean` = first error capped at the pure parse's stop; frozen ways carry `vouch = span − net` or swallow pricing breaks |
+| I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round, and the whole mode split is ONE RULE: parsing mode IS budget zero (with no edits left the way-descent is definitionally the pure parser, so the frozen memo answers unconditionally — the budget itself is the damage boundary, and the clean suffix is free); greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet) | b2 → c1 | **LIVE** — c1 0.9823/79.1/**~1,580 ms**/**493 LOC**/16-16, bit-identical to s4 on all 2,000 docs at 16% less latency, 13 lines over s4; the conditioned prefix-freeze was DELETED (its consult cost ≈ its savings); frozen ways carry `vouch = span − net` or swallow pricing breaks; `eof` is a bool, making I94's charge-once structural |
 | I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it | t1 → s3 | **LIVE — ★ THE PIVOTAL INSIGHT OF THE RECOVERY LINE, owner-confirmed 2026-08-05** ("the biggest breakthrough you have made so far"). Made STRUCTURAL in s3: one grow-loop, one entry, no second mechanism — the collapse that broke the size cliff and dominated r9. Answers §1.8's six-occasion steer |
 | I99 | AN ARM THAT READ NOTHING MAY NOT INVENT — I43/I78 as a property of the mismatch tree, with I53 as its fallback pass; one structural rule standing in for toll, net-rank and the whole-document charge | t1 | LIVE |
 
@@ -2477,6 +2497,7 @@ it accepts (`net`), or absorbed by one that does not.
 | freeze window from the REMAINING budget (c1) | the fold spends it to zero mid-descent and the window closes against the damage, freezing the swallow at the frontier; the entry budget is the honest horizon |
 | growing cells / semi-naive rounds as c1's major latency lever | profiled: only 32.7% of cell recomputations are identical (the r-chart's refuted 29% again); the round-over-round waste is real but capped far under the 2x target — the budget-0 collapse (−20%) was the honest lever |
 | frozen ways with vouch 0 | quote-delete 0.999 → 0.971: outer judgments re-charge already-vouched string content; a pure reading vouches span − net at every lift |
+| the conditioned prefix-freeze, kept alongside budget-zero | deleting it ran FASTER than keeping it (~1580 vs ~1598 median): its per-visit memo consult cost what its freezing saved, and its four conditions (non-LR, span > 1, window, clean-boundary) each carried a trap already paid for once |
 | "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); what failed is stated by I100 — the SHIPPED tree lacks `reach`'s five discard sites, and the iterated form still lacks rival simultaneity |
 | the chart's local guards ported into the iterated engine | all three lost: strict cheapest-first ladder 0.9258 (cx2 broke) and 0.9223; I36 determined-gate on owes 0.9287; r9's reached-exclusion 0.8997 (b1 broke) — the whole-document trial subsumes them, and suppression only removes information (t1) |
 | I62's `blind` as an unscoped rank key before `net` (the "cleanest" form of D8's reason) | **0.9776 vs 0.9841** — decides b2 and then flips its same-evidence opposite-truth twin (`[1,[,`, I54) plus every honest-completion tie; the fee's scoping is I72's content, not a wart (s2) |

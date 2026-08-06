@@ -1,13 +1,17 @@
-// c1.dart -- THE UNIFICATION: the two-mode architecture with the s-line's
-// judgment. Parsing mode is the frozen parser's memo; repair mode is the
-// way-descent; and they interleave PER CLAUSE, not per round: every rule
-// first asks the memo, and a clean match that ends before the first damage
-// IS the answer -- the finished subtree reused whole, cost zero, no
-// enumeration. Repair's search opens only where a span touches damage, so
-// the global judgment (every rival repair for the whole document priced in
-// one descent -- what greedy per-commit repair provably cannot do) is paid
-// only over the damaged region. s4's resync consult was this idea confined
-// to one call site; c1 makes it the first line of the descent.
+// c1.dart -- THE UNIFICATION (I101): the two-mode architecture with the
+// s-line's judgment, collapsed to one rule. PARSING MODE IS BUDGET ZERO:
+// with no edits left the way-descent is definitionally the pure parser, so
+// the frozen memo's answer is exactly equivalent and every continuation
+// that has spent its edits is O(1) to the end of the input -- the budget
+// itself marks where repair can no longer reach. Repair mode (the
+// way-descent, s4's judgment unchanged, every rival repair for the whole
+// document priced in one descent -- what greedy per-commit repair provably
+// cannot do) runs only while budget remains. The modes interleave per
+// clause, not per round. A conditioned prefix-freeze (non-LR rules, spans
+// > 1, a window before the first damage) was built first and DELETED: its
+// per-visit memo consult cost roughly what its freezing saved, and the
+// single unconditional rule is both smaller and faster than either
+// configuration.
 //
 // THE REUSE: the resync's question -- "where does this slot next read
 // cleanly?" -- is one the FROZEN parser already answers, memoized, with the
@@ -22,12 +26,10 @@
 // latency: ~100x per case (144 ms on one delim-delete case, battery
 // timeout). A3's truth stands re-confirmed: the budget is the HORIZON that
 // keeps nearly-correct input cheap; without it every cell explores every
-// repair at every depth. The real waste the tombstone-analogy names is the
-// clean spine's re-expansion per round (prefix-edits 0 means full-budget
-// sub-calls miss their lower-budget cells), and the no-repeat form that
-// removes it without removing the horizon -- cells that GROW to a new budget
-// instead of recomputing, the m-line's budget families done in one table --
-// is specified for the next round, not smuggled into this one.
+// repair at every depth. Growing cells (budget families in one table) were
+// then profiled OUT as the follow-up: only ~24-33% of cell recomputations
+// across rounds are identical, so the round-over-round waste caps far
+// below the budget-zero collapse this file uses instead.
 import 'dart:collection';
 
 import 'package:squirrel_parser/squirrel_parser.dart';
@@ -43,7 +45,7 @@ int _min(int a, int b) => a < b ? a : b;
 class _Way {
   const _Way(this.end, this.del, this.gap, this.net, this.key,
       {this.toll = 0,
-      this.eof = 0,
+      this.eof = false,
       this.vouch = 0,
       this.owing = false,
       this.leaf,
@@ -64,16 +66,19 @@ class _Way {
       : this(p, 0, atEof ? 0 : 1, 0, p,
             mark: SyntaxError(pos: p, len: 0),
             owing: true,
-            eof: atEof ? 1 : 0);
+            eof: atEof);
 
-  final int end, del, gap, net, key, toll, eof, vouch, from;
-  final bool owing;
+  final int end, del, gap, net, key, toll, vouch, from;
+
+  /// The document stopped: one claim however many slots it strands (I94) --
+  /// a bool can only charge once, which makes the collapse structural.
+  final bool owing, eof;
   final MatchResult? leaf;
   final Clause? cap;
   final _Way? link, prev;
   final SyntaxError? mark;
 
-  int get edits => del + gap + (eof > 0 ? 1 : 0);
+  int get edits => del + gap + (eof ? 1 : 0);
   bool get peg => key > _far;
   bool get free => key >= _far;
   bool get nodes => leaf != null || cap != null;
@@ -81,7 +86,7 @@ class _Way {
   _Way then(_Way v) =>
       _Way(v.end, del + v.del, gap + v.gap, net + v.net, _min(key, v.key),
           toll: toll + v.toll,
-          eof: eof + v.eof,
+          eof: eof || v.eof,
           vouch: vouch + v.vouch,
           owing: v.owing || (v.end == end && owing),
           link: v,
@@ -152,11 +157,7 @@ class Squirrel {
   late List<int> _version;
   final Map<Clause, bool> _det = {};
   final Map<Str, List<Clause>> _chars = {};
-  static bool debug = false;
-  static bool noFreeze = false;
   int _round = 0, _budget = 0;
-  int _clean = 0;
-  int lastRound = 0, cellsComputed = 0, cellsSame = 0; // positions before this parsed clean: parsing mode's span
   final Map<MatchResult, int> _nets = HashMap.identity();
   int lastCost = 0;
 
@@ -187,38 +188,21 @@ class Squirrel {
   List<_Way> _ways(Clause c, int pos) {
     if (pos > _in.length) return const [];
     if (c is Ref) {
-      // PARSING MODE IS BUDGET ZERO: with no edits left, the way-descent is
-      // the pure parser -- PEG choice, greedy repetition, left recursion and
-      // all -- so the memo's answer is exactly equivalent, unconditionally.
-      // Every continuation that has spent its edits collapses to O(1) here,
-      // which is what makes the clean SUFFIX free: the budget itself marks
-      // where repair can no longer reach.
+      // PARSING MODE IS BUDGET ZERO -- the whole of the mode split. With no
+      // edits left the way-descent IS the pure parser (PEG choice, greedy
+      // repetition, left recursion and all), so the frozen memo's answer is
+      // exactly equivalent, unconditionally: every continuation that has
+      // spent its edits is O(1) from here to the end of the input. The
+      // budget itself marks where repair can no longer reach. A pure
+      // reading vouches what it absorbed (span - net, the same at every
+      // lift of one span), or outer judgments re-charge vouched content.
       if (_budget == 0) {
-        final r = _ref.match(rules[c.ruleName]!, pos);
-        if (r.isMismatch) return const [];
-        final net = _nets[r] ??= _netOf(r);
-        // a pure reading vouches what it absorbed (span - net is the same
-        // at every lift of the same span), or outer judgments re-charge
-        // already-vouched content
-        return [
-          _Way(pos + r.len, 0, 0, net, _peg,
-              vouch: r.len - net,
-              leaf: Match(c, 0, 0, subClauseMatches: [r]))
-        ];
-      }
-      // PARSING MODE, per clause: the memo already read this rule here; a
-      // clean span that ends before the damage is settled work. A
-      // left-recursive rule is exempt: each spine extent is a distinct
-      // reading the repair judgment must keep, and the memo's one answer
-      // would collapse them.
-      final r = _lr(c) ? mismatch : _ref.match(rules[c.ruleName]!, pos);
-      if (!noFreeze && !r.isMismatch && r.len > 1 && pos + r.len + _budget < _clean) {
-        if (debug) print('freeze $c@$pos len=${r.len} budget=$_budget');
+        final m = _frozen(c, pos);
+        if (m == null) return const [];
+        final r = m.subClauseMatches.first;
         final net = _nets[r] ??= _netOf(r);
         return [
-          _Way(pos + r.len, 0, 0, net, _peg,
-              vouch: r.len - net,
-              leaf: Match(c, 0, 0, subClauseMatches: [r]))
+          _Way(pos + r.len, 0, 0, net, _peg, vouch: r.len - net, leaf: m)
         ];
       }
       return _lift(c, pos, _ways(rules[c.ruleName]!, pos));
@@ -251,8 +235,6 @@ class Squirrel {
     while (true) {
       final got = _prune([..._expand(c, pos), ..._afford(e.ways ?? const [])]);
       final done = e.ways != null && !_improved(got, e.ways!);
-      cellsComputed++;
-      if (done) cellsSame++;
       e.ways = got;
       e.at = _budget;
       if (done || !e.foundLR) break;
@@ -462,7 +444,7 @@ class Squirrel {
     final atEof = pos == _in.length;
     return [
       _Way(pos, 0, atEof ? 0 : 1, 0, pos,
-          eof: atEof ? 1 : 0,
+          eof: atEof,
           owing: true,
           leaf: Match(c, pos, 0,
               subClauseMatches: [SyntaxError(pos: pos, len: 0)]))
@@ -486,45 +468,6 @@ class Squirrel {
         ? Match(c, w.from, w.end - w.from)
         : Match(c, 0, 0, subClauseMatches: kids);
   }
-
-  static final MatchResult mismatch = Mismatch(null, 0, 0);
-
-  /// Whether [c]'s rule can reach itself through a leftmost position -- the
-  /// library's LR machinery owns those; frozen spans are not settled there.
-  final Map<String, bool> _lrMemo = {};
-  bool _lr(Ref c) => _lrMemo[c.ruleName] ??= () {
-        final seen = <String>{};
-        var grew = true;
-        void left(Clause k) {
-          if (k is Ref) {
-            if (seen.add(k.ruleName)) grew = true;
-          } else if (k is Seq) {
-            for (final sub in k.subClauses) {
-              left(sub);
-              if (_minFill(sub) > 0) break;
-            }
-          } else if (k is First) {
-            k.subClauses.forEach(left);
-          } else if (k is Repetition) {
-            left(k.subClause);
-          } else if (k is Optional) {
-            left(k.subClause);
-          } else if (k is FollowedBy) {
-            left(k.subClause);
-          } else if (k is NotFollowedBy) {
-            left(k.subClause);
-          }
-        }
-
-        left(rules[c.ruleName]!);
-        while (grew) {
-          grew = false;
-          for (final r in seen.toList()) {
-            left(rules[r]!);
-          }
-        }
-        return seen.contains(c.ruleName);
-      }();
 
   /// Whether every string [c] derives yields the same tree shape (I36).
   bool _determined(Clause c) {
@@ -591,22 +534,6 @@ class Squirrel {
     }
     _memo.clear();
     _version = List.filled(s.length + 2, 0);
-    // the damage boundary: the first error node, or -- when the pure parse
-    // simply stopped short and carries no error node -- where it stopped
-    var end = 0;
-    _clean = s.length;
-    void firstErr(MatchResult k) {
-      if (k is SyntaxError) {
-        if (k.pos < _clean) _clean = k.pos;
-      } else if (k.pos + k.len > end) {
-        end = k.pos + k.len;
-      }
-      k.subClauseMatches.forEach(firstErr);
-    }
-
-    firstErr(pure.root);
-    if (end < _clean) _clean = end;
-    if (debug) print('clean=$_clean n=$_n');
     final fill = _minFill(rules[topRuleName]!);
     final ceiling = fill >= _never ? -1 : s.length + fill;
     _Way? best, fall;
@@ -648,7 +575,6 @@ class Squirrel {
           if (f.edits + f.toll <= c.edits + c.toll && f.net > b.net) b = f;
         }
         best = b;
-        lastRound = _round;
         break;
       }
       if (fall == null && owed.isNotEmpty) {
