@@ -1,0 +1,742 @@
+// b1.dart -- the two-mode engine the owner has been describing all along.
+// PARSING MODE runs until stuck; the enriched mismatch tree means the ENTIRE
+// frontier is known the instant it stops (every failing clause, wired through
+// mismatch nodes whose successful subclause children are finished work,
+// reused, never recomputed). REPAIR MODE is a breadth-first widening over
+// that frontier: price l = 1, 2, ..., sites deepest-to-shallowest so the
+// repair is as small and local as possible, two operations per site (deny l
+// characters so the clause reads; give the clause up where its price is l),
+// and the commit criterion is the parser's own: DOES A NEW MATCH MOVE THE
+// POSITION FORWARD? The first candidate that changes the frontier's shape
+// commits -- completion beats mere advancement inside a level -- and the
+// engine drops back into parsing mode at once, resuming the same memo table.
+// No budget over the document, no chart, no way-algebra, no rank: repair
+// effort is spent only at the frontier, only until unstuck.
+//
+// The one guard kept from the record is the evidence gate (I99): a site
+// reached only through a choice arm whose mismatch read nothing may not act
+// unless no evidenced site advances at the same price -- without it the
+// swallow completes first (an owed quote at position 0 buys the document).
+// STATUS (2026-08-05, honest): work in progress at 0.8000 / 44.6% / ~12 s
+// battery after two measured iterations. Acceptance 3/3, freespan PASS,
+// conf1 `0 1 1 0 2 3` with 0 free passes, recommit 14/16. The trajectory
+// mirrors t1's climb (0.83 -> 0.93 over ~ten ported lessons): iteration one
+// showed the commit criterion needs the EOF amendment (nothing can move
+// forward at the end of input; a fill that discharges its site changes the
+// frontier's SHAPE, which is the criterion's own wording); iteration two
+// showed the class ordering (complete > advance > shape-change) must not
+// let shape-changers commit where advancers exist mid-document -- the
+// current 0.80 is that regression, unfixed. What this file is FOR: the
+// faithful form of the two-mode architecture, kept so the next session
+// continues from measurements instead of from memory.
+//
+import 'dart:collection';
+
+import 'package:squirrel_parser/squirrel_parser.dart';
+
+/// A rule-level memo entry: the frozen parser's four fields plus the span its
+/// derivation read, which is what lets a repair invalidate exactly the entries
+/// that could have seen it.
+class _E {
+  MatchResult? r;
+  bool inPath = false, foundLR = false;
+  int ver = 0, readEnd = -1;
+}
+
+class Squirrel {
+  Squirrel({required Map<String, Clause> rules, required this.topRuleName}) {
+    for (final e in rules.entries) {
+      this.rules[e.key.startsWith('~') ? e.key.substring(1) : e.key] = e.value;
+    }
+  }
+
+  final Map<String, Clause> rules = {};
+  final String topRuleName;
+
+  String _in = '';
+  int _n = 0;
+  late Parser _ref; // input carrier, so terminals are the library's own
+  final Map<Clause, List<_E?>> _memo = HashMap.identity();
+  late List<int> _version;
+  int _read = -1; // watermark: the furthest input index the descent examined
+
+  /// THE REPAIR CHANNEL: committed facts at (clause, pos), consulted before
+  /// anything else. Writing one is the sideways O(1) signal; [_invalidate] is
+  /// its broadcast.
+  final Map<Clause, Map<int, MatchResult>> _fix = HashMap.identity();
+
+  /// What a successful repetition or optional tried and threw away -- the
+  /// reach the library discards, kept beside the node instead of inside it.
+  final Map<MatchResult, MatchResult> _stopped = HashMap.identity();
+
+  /// An ordered choice's failed PRIOR arms, kept beside the winner. Separate
+  /// from [_stopped] because an arm that read nothing was never chosen by the
+  /// evidence: its candidates are opened-bucket (I43/I53), consulted only
+  /// when nothing evidenced improves the tree. This is what lets `"a":1...}`
+  /// find the Object arm's owed `{` after String already won at position 0.
+  final Map<MatchResult, MatchResult> _lost = HashMap.identity();
+
+  int lastCost = 0;
+  static bool debug = false;
+
+  void _touch(int i) {
+    if (i > _read) _read = i;
+  }
+
+  // -- the core: one squirrel parser whose memo can carry repairs ------------
+
+  MatchResult _match(Clause c, int pos) {
+    final o = _fix[c]?[pos];
+    if (o != null) {
+      _touch(pos + (o.len > 0 ? o.len : 0));
+      return o;
+    }
+    if (pos > _n) {
+      _touch(pos);
+      return Mismatch(c, pos, 0);
+    }
+    if (c is Ref) {
+      final r = _rule(rules[c.ruleName]!, pos);
+      return r.isMismatch ? r : Match(c, 0, 0, subClauseMatches: [r]);
+    }
+    return _expand(c, pos);
+  }
+
+  /// The library's left-recursion algorithm, with [readEnd] recorded.
+  MatchResult _rule(Clause body, int pos) {
+    final o = _fix[body]?[pos];
+    if (o != null) {
+      _touch(pos + (o.len > 0 ? o.len : 0));
+      return o;
+    }
+    final row = _memo[body] ??= List.filled(_n + 2, null);
+    final e = row[pos] ??= _E();
+    if (e.r != null && (e.inPath || e.ver == _version[pos])) {
+      _touch(e.readEnd);
+      return e.r!;
+    }
+    if (e.inPath) {
+      e.foundLR = true;
+      return e.r = Mismatch(body, pos, 0);
+    }
+    e.inPath = true;
+    final saved = _read;
+    _read = -1;
+    while (true) {
+      final m = _match(body, pos);
+      if (e.r != null &&
+          (m.isMismatch || (!e.r!.isMismatch && m.len <= e.r!.len))) {
+        if (m.isMismatch && e.r!.isMismatch && m.len >= e.r!.len) e.r = m;
+        // THE REJECTED PASS IS THE FRONTIER. A left-recursive rule that grew
+        // as far as the damage and then failed keeps only the last good
+        // match, and the failing expansion -- the tree that names the damaged
+        // site -- was discarded. Without it, every damaged input to the expr
+        // grammar collapsed to its first Term. Kept beside the result like a
+        // repetition's stoppedBy; the rejected pass may itself be a match
+        // (an ordered choice fell back to a shorter arm) whose own side
+        // entries lead to the failure.
+        if (!identical(m, e.r) && !e.r!.isMismatch) _stopped[e.r!] ??= m;
+        break;
+      }
+      e.r = m;
+      if (!e.foundLR) break;
+      e.ver = ++_version[pos];
+    }
+    e.inPath = false;
+    e.ver = _version[pos];
+    e.readEnd = _read;
+    _read = saved > e.readEnd ? saved : e.readEnd;
+    return e.r!;
+  }
+
+  MatchResult _expand(Clause c, int pos) {
+    switch (c) {
+      case Seq s:
+        final kids = <MatchResult>[];
+        var cur = pos;
+        for (final sub in s.subClauses) {
+          final m = _match(sub, cur);
+          if (m.isMismatch) {
+            kids.add(m);
+            return Mismatch(c, pos, cur - pos, subClauseMatches: kids);
+          }
+          kids.add(m);
+          cur += m.len;
+        }
+        return kids.isEmpty
+            ? Match(c, pos, 0)
+            : Match(c, 0, 0, subClauseMatches: kids);
+      case First f:
+        List<MatchResult>? failed;
+        var read = 0;
+        for (final sub in f.subClauses) {
+          final m = _match(sub, pos);
+          if (!m.isMismatch) {
+            final out = Match(c, 0, 0, subClauseMatches: [m]);
+            // the arms that lost before this one won are frontier too --
+            // `("abcd" / "ab") 'z'` on `abcX` commits to `ab` while the
+            // input agreed with the longer arm through 3
+            if (failed != null) {
+              MatchResult? far;
+              MatchResult? blind;
+              for (final k in failed) {
+                if (k.len > 0) {
+                  if (far == null || k.len > far.len) far = k;
+                } else {
+                  blind ??= k;
+                }
+              }
+              if (far != null) _stopped[out] = far;
+              if (blind != null) _lost[out] = blind;
+            }
+            return out;
+          }
+          (failed ??= []).add(m);
+          if (m.len > read) read = m.len;
+        }
+        return Mismatch(c, pos, read, subClauseMatches: failed ?? const []);
+      case Repetition r:
+        final kids = <MatchResult>[];
+        var cur = pos;
+        MatchResult? stop;
+        while (cur <= _n) {
+          final m = _match(r.subClause, cur);
+          if (m.isMismatch) {
+            stop = m;
+            break;
+          }
+          if (m.len == 0) break;
+          kids.add(m);
+          cur += m.len;
+        }
+        if (r.requireOne && kids.isEmpty) {
+          return Mismatch(c, pos, 0,
+              subClauseMatches: stop == null ? const [] : [stop]);
+        }
+        final out = kids.isEmpty
+            ? Match(c, pos, 0)
+            : Match(c, 0, 0, subClauseMatches: kids);
+        if (stop != null) _stopped[out] = stop;
+        return out;
+      case Optional o:
+        final m = _match(o.subClause, pos);
+        if (m.isMismatch) {
+          final out = Match(c, pos, 0);
+          _stopped[out] = m;
+          return out;
+        }
+        return Match(c, 0, 0, subClauseMatches: [m]);
+      case FollowedBy f:
+        final m = _match(f.subClause, pos);
+        return m.isMismatch ? Mismatch(c, pos, 0) : Match(c, pos, 0);
+      case NotFollowedBy nf:
+        final m = _match(nf.subClause, pos);
+        return m.isMismatch ? Match(c, pos, 0) : Mismatch(c, pos, 0);
+      default:
+        final m = (c as Terminal).match(_ref, pos);
+        _touch(pos + (m.isMismatch ? m.len : m.len - 1) + 1);
+        return m;
+    }
+  }
+
+  // -- the price of nothing (shared with every engine since m41) -------------
+
+  static const int _never = 1 << 30;
+  final Map<Clause, int> _fill = {};
+
+  int _minFill(Clause c) {
+    if (_fill.isEmpty) {
+      final all = <Clause>[];
+      void collect(Clause k) {
+        if (_fill.containsKey(k)) return;
+        _fill[k] = _never;
+        all.add(k);
+        if (k is Ref) {
+          collect(rules[k.ruleName]!);
+        } else if (k is HasOneSubClause) {
+          collect(k.subClause);
+        } else if (k is HasMultipleSubClauses) {
+          k.subClauses.forEach(collect);
+        }
+      }
+
+      rules.values.forEach(collect);
+      for (var moved = true; moved;) {
+        moved = false;
+        for (final k in all) {
+          final v = _fillOf(k);
+          if (v < _fill[k]!) {
+            _fill[k] = v;
+            moved = true;
+          }
+        }
+      }
+    }
+    return _fill[c] ?? _never;
+  }
+
+  int _fillOf(Clause c) {
+    if (c is Ref) return _fill[rules[c.ruleName]!]!;
+    if (c is Seq) {
+      var m = 0;
+      for (final k in c.subClauses) {
+        final v = _fill[k]!;
+        if (v >= _never) return _never;
+        m += v;
+      }
+      return m;
+    }
+    if (c is First) {
+      var m = _never;
+      for (final k in c.subClauses) {
+        if (_fill[k]! < m) m = _fill[k]!;
+      }
+      return m;
+    }
+    if (c is Repetition) return c.requireOne ? _fill[c.subClause]! : 0;
+    if (c is Optional || c is FollowedBy || c is NotFollowedBy) return 0;
+    if (c is Str) return c.text.length;
+    return c is Nothing ? 0 : 1;
+  }
+
+  /// I96: the named spine the grammar forces for an owed slot, or null.
+  MatchResult? _owedNode(Clause sub, int p, int fill) {
+    final chain = <Clause>[];
+    var c = sub;
+    for (var guard = 0; guard < 64; guard++) {
+      if (c is Ref) {
+        chain.add(c);
+        c = rules[c.ruleName]!;
+        continue;
+      }
+      if (c is Repetition && c.requireOne) {
+        c = c.subClause;
+        continue;
+      }
+      if (c is Seq) {
+        Clause? nz;
+        var many = false;
+        for (final k in c.subClauses) {
+          if (_minFill(k) > 0) {
+            if (nz != null) many = true;
+            nz = k;
+          }
+        }
+        if (nz == null || many) break;
+        c = nz;
+        continue;
+      }
+      if (c is First) {
+        Clause? best;
+        var min = _never;
+        var many = false;
+        for (final k in c.subClauses) {
+          final v = _minFill(k);
+          if (v < min) {
+            min = v;
+            best = k;
+            many = false;
+          } else if (v == min) {
+            many = true;
+          }
+        }
+        if (best == null || many || min >= _never) break;
+        c = best;
+        continue;
+      }
+      break;
+    }
+    if (chain.isEmpty) return null;
+    MatchResult node = Match(chain.last, p, 0, subClauseMatches: [
+      for (var j = 0; j < fill; j++) SyntaxError(pos: p, len: 0)
+    ]);
+    for (var i = chain.length - 2; i >= 0; i--) {
+      node = Match(chain[i], p, 0, subClauseMatches: [node]);
+    }
+    return node;
+  }
+
+  // -- candidates: read off the tree, filtered by probes ---------------------
+
+  // -- the frontier: known the instant parsing stops ------------------------
+
+  /// Sites (clause, pos, depth, evidenced), deepest first. The tree names
+  /// them; nothing is searched for.
+  final List<(Clause, int, int, bool)> _front = [];
+  final Set<String> _seen = {};
+  final Set<MatchResult> _walked = HashSet.identity();
+
+  void _add(Clause c, int p, int d, bool ev) {
+    if (_seen.add('${identityHashCode(c)}:$p')) _front.add((c, p, d, ev));
+  }
+
+  /// Walk matches and mismatches alike: successful subclause work is
+  /// descended only for what it tried and threw away ([_stopped], [_lost]),
+  /// and mismatch nodes are recursed THROUGH -- their matched children are
+  /// finished work, their failing child is where the frontier lives.
+  void _collect(MatchResult m, bool ev, int d) {
+    if (!_walked.add(m)) return;
+    final c = m.clause;
+    if (!m.isMismatch) {
+      final st = _stopped[m];
+      if (st != null) _collect(st, ev, d + 1);
+      final lo = _lost[m];
+      if (lo != null) _collect(lo, false, d + 1);
+      for (final k in m.subClauseMatches) {
+        _collect(k, ev, d + 1);
+      }
+      return;
+    }
+    if (c is Seq) {
+      final j = m.subClauseMatches.length - 1;
+      final fc = j < c.subClauses.length ? c.subClauses[j] : c.subClauses.last;
+      final fm = m.subClauseMatches.last;
+      for (var i = 0; i < j; i++) {
+        _collect(m.subClauseMatches[i], ev, d + 1);
+      }
+      _add(fc, fm.pos, d, ev);
+      _collect(fm, ev, d + 1);
+      return;
+    }
+    if (c is First) {
+      for (final k in m.subClauseMatches) {
+        _collect(k, ev && (k.isMismatch ? k.len > 0 : true), d + 1);
+      }
+      return;
+    }
+    for (final k in m.subClauseMatches) {
+      _collect(k, ev, d + 1);
+    }
+    if (m.subClauseMatches.isEmpty && c != null) _add(c, m.pos, d, ev);
+  }
+
+  /// A memoised frozen probe: does [c] read at [p] as things stand?
+  final Map<Clause, Map<int, MatchResult?>> _probes = HashMap.identity();
+  MatchResult? _probe(Clause c, int p) {
+    final row = _probes[c] ??= {};
+    if (row.containsKey(p)) return row[p];
+    final m = _match(c, p);
+    return row[p] = m.isMismatch ? null : m;
+  }
+
+  /// Whether every string [c] derives yields the same tree shape (I36).
+  final Map<Clause, bool> _det = HashMap.identity();
+  bool _determined(Clause c) {
+    final memo = _det[c];
+    if (memo != null) return memo;
+    _det[c] = false;
+    return _det[c] = c is Terminal || c is FollowedBy || c is NotFollowedBy
+        ? true
+        : c is Seq
+            ? c.subClauses.every(_determined)
+            : c is Repetition && c.requireOne
+                ? _determined(c.subClause)
+                : c is Ref
+                    ? _determined(rules[c.ruleName]!)
+                    : false;
+  }
+
+  // -- repair mode: breadth-first over the frontier --------------------------
+
+  /// Deny exactly [l] characters so the clause reads where it stands.
+  MatchResult? _denyAt(Clause c, int p, int l) {
+    if (p + l > _n) return null;
+    final m = _probe(c, p + l);
+    if (m == null) return null;
+    if (m.len == 0 && c is! FollowedBy && c is! NotFollowedBy) return null;
+    final inner = identical(m.clause, c) && m.subClauseMatches.length == 1
+        ? m.subClauseMatches.first
+        : m;
+    return Match(c, p, l + m.len, subClauseMatches: [
+      SyntaxError(pos: p, len: l),
+      if (m.len > 0 || m.subClauseMatches.isNotEmpty) inner
+    ]);
+  }
+
+  /// Give the clause up, where its price is exactly [l].
+  MatchResult? _fillAt(Clause c, int p, int l) {
+    final fill = _minFill(c);
+    if (fill != l || fill <= 0 || fill >= _never) return null;
+    final spine = p < _n ? _owedNode(c, p, fill) : null;
+    return spine ??
+        Match(null, p, 0, subClauseMatches: [
+          for (var j = 0; j < fill; j++) SyntaxError(pos: p, len: 0)
+        ]);
+  }
+
+  /// The furthest input position the current reading accepts -- what the
+  /// commit criterion means by the position MOVING FORWARD.
+  int _extent(MatchResult m) {
+    var e = m.pos + m.len;
+    for (final k in m.subClauseMatches) {
+      final d = _extent(k);
+      if (d > e) e = d;
+    }
+    return e;
+  }
+
+  bool _complete(MatchResult r) => !r.isMismatch && r.pos + r.len >= _n;
+
+  /// The frontier's SHAPE: the rightmost failing spine as a signature. At the
+  /// end of the input nothing can move forward, but a fill that discharges
+  /// its site exposes the next one -- the shape changes, and that is the
+  /// commit criterion's own wording.
+  int _sig(MatchResult m) {
+    var h = 0;
+    MatchResult? k = m;
+    while (k != null && k.subClauseMatches.isNotEmpty) {
+      h = h * 31 + identityHashCode(k.clause) + k.pos * 7 + k.len;
+      k = k.subClauseMatches.last;
+    }
+    return h * 31 + (k == null ? 0 : identityHashCode(k.clause) + k.pos * 7);
+  }
+
+  /// Install [fact], resume parsing (memo-warm), classify what happened
+  /// (2 completed, 1 advanced, 0 shape changed, -1 nothing), and uninstall.
+  int _attempt(Clause c, int p, MatchResult fact, Clause top, int was, int sig) {
+    (_fix[c] ??= {})[p] = fact;
+    _invalidate(p);
+    final root = _rule(top, 0);
+    final r = _complete(root)
+        ? 2
+        : _extent(root) > was
+            ? 1
+            : _sig(root) != sig
+                ? 0
+                : -1;
+    _fix[c]!.remove(p);
+    _invalidate(p);
+    return r;
+  }
+
+  // -- the two modes ---------------------------------------------------------
+
+  MatchResult recover(String s) {
+    _in = s;
+    _n = s.length;
+    _ref = Parser(rules: rules, topRuleName: topRuleName, input: s);
+    _memo.clear();
+    _fix.clear();
+    _stopped.clear();
+    _lost.clear();
+    _probes.clear();
+    _fill.clear();
+    _version = List.filled(s.length + 2, 0);
+    _read = -1;
+    final top = rules[topRuleName]!;
+    var root = _rule(top, 0);
+    for (var round = 0; round <= 4 * _n + 16; round++) {
+      if (_complete(root)) break;
+      // PARSING STOPPED: the whole frontier is in the tree already.
+      _front.clear();
+      _seen.clear();
+      _walked.clear();
+      _probes.clear();
+      _collect(root, true, 0);
+      _front.sort((x, y) => y.$3 - x.$3); // deepest first
+      final was = _extent(root);
+      final sig = _sig(root);
+      // REPAIR MODE: widen breadth-first -- at each price, deepest site
+      // first, the evidence gate (I99) holding unevidenced arms to a second
+      // pass. Completion beats advancement beats a bare change of the
+      // frontier's shape; the first candidate in the winning class commits,
+      // and parsing resumes at once.
+      var committed = false;
+      for (var l = 1; l <= _n + 1 && !committed; l++) {
+        for (final pass in [true, false]) {
+          (Clause, int, MatchResult)? best;
+          var bestClass = -1;
+          for (final (c, p, _, ev) in _front) {
+            if (ev != pass) continue;
+            for (final fact in [_denyAt(c, p, l), _fillAt(c, p, l)]) {
+              if (fact == null) continue;
+              final r = _attempt(c, p, fact, top, was, sig);
+              if (r > bestClass) {
+                bestClass = r;
+                best = (c, p, fact);
+              }
+              if (r == 2) break;
+            }
+            if (bestClass == 2) break;
+          }
+          if (best != null && bestClass >= 0) {
+            final (c, p, fact) = best;
+            (_fix[c] ??= {})[p] = fact;
+            _invalidate(p);
+            committed = true;
+          }
+          if (committed) break;
+        }
+      }
+      if (!committed) break;
+      // BACK TO PARSING MODE, same memo table.
+      root = _rule(top, 0);
+    }
+    final out = _emit(root);
+    var del = 0, gap = 0;
+    void walkE(MatchResult k) {
+      if (k is SyntaxError) {
+        if (k.len == 0) {
+          gap++;
+        } else {
+          del += k.len;
+        }
+      }
+      k.subClauseMatches.forEach(walkE);
+    }
+
+    walkE(out);
+    lastCost = del + gap;
+    return out;
+  }
+
+  int recoverCost(String s) {
+    recover(s);
+    return lastCost;
+  }
+
+  /// Drop every memo entry whose derivation could have read [p] -- the
+  /// per-position version bump, generalised to the span an entry actually
+  /// read. Probes are positional too, so they reset wholesale.
+  void _invalidate(int p) {
+    for (final row in _memo.values) {
+      for (var i = 0; i < row.length; i++) {
+        final e = row[i];
+        if (e != null && (i >= p || e.readEnd >= p)) row[i] = null;
+      }
+    }
+    _probes.clear();
+  }
+
+  // -- emit ------------------------------------------------------------------
+
+  MatchResult _emit(MatchResult root) {
+    final t = root.isMismatch ? _salvage(root) : root;
+    if (t == null) return SyntaxError(pos: 0, len: _n);
+    final e = t.pos + t.len;
+    if (e >= _n) return t;
+    return Match(null, 0, 0,
+        subClauseMatches: [t, SyntaxError(pos: e, len: _n - e)]);
+  }
+
+  /// The derivation a failure still contains: its satisfied prefix, an
+  /// ordered choice salvaged by its furthest arm.
+  final Map<MatchResult, MatchResult?> _salved = HashMap.identity();
+  int _abandon = 0, _abandonEof = 0;
+
+  void _charge(int v, int at) {
+    if (v >= _never) v = 1;
+    if (at >= _n) {
+      _abandonEof += v;
+    } else {
+      _abandon += v;
+    }
+  }
+
+  /// The derivation a failure still contains, with EVERY mismatch charging its
+  /// own completion price exactly once: a terminal charges its minFill, a Seq
+  /// charges the slots never reached (its broken child charges itself), a
+  /// First charges only when no arm salvaged anything. Split accounting was
+  /// measured double-charging the honest reading (`if ` scored 0.000).
+  MatchResult? _salvage(MatchResult m) {
+    if (!m.isMismatch) return m;
+    if (_salved.containsKey(m)) return _salved[m];
+    _salved[m] = null;
+    final cl = m.clause;
+    if (cl is First) {
+      final before = _abandon, beforeE = _abandonEof;
+      MatchResult? pick;
+      var pickOwed = 0, pickOwedE = 0;
+      final arms = cl.subClauses;
+      for (var i = 0; i < m.subClauseMatches.length; i++) {
+        _abandon = before;
+        _abandonEof = beforeE;
+        var d = _salvage(m.subClauseMatches[i]);
+        // a failed Ref passes through unwrapped, so the arm's rule name is
+        // restored here or the salvaged spine loses every label
+        if (d != null && i < arms.length && arms[i] is Ref) {
+          d = Match(arms[i], 0, 0, subClauseMatches: [d]);
+        }
+        if (d != null && (pick == null || d.len > pick.len)) {
+          pick = d;
+          pickOwed = _abandon;
+          pickOwedE = _abandonEof;
+        }
+      }
+      _abandon = before;
+      _abandonEof = beforeE;
+      if (pick == null) {
+        _charge(_minFill(cl), m.pos);
+        return _salved[m] = null;
+      }
+      _abandon = pickOwed;
+      _abandonEof = pickOwedE;
+      return _salved[m] = Match(cl, 0, 0, subClauseMatches: [pick]);
+    }
+    if (m.subClauseMatches.isEmpty) {
+      _charge(cl == null ? 1 : _minFill(cl), m.pos);
+      return _salved[m] = null;
+    }
+    final kids = <MatchResult>[];
+    var broke = -1;
+    for (var i = 0; i < m.subClauseMatches.length; i++) {
+      final k = m.subClauseMatches[i];
+      if (!k.isMismatch) {
+        // A MATCHED CHILD'S STOPPED ATTEMPT IS ITS HONEST CONTINUATION. An
+        // optional that matched empty over a failed member chain hides the
+        // whole chain in the side map; without splicing it back, the salvage
+        // of a deeply truncated document kept one brace and every trial
+        // inherited the blindness -- no end-of-input owe could ever look
+        // better than closing the construct empty.
+        final st = _stopped[k];
+        if (st != null) {
+          final d = _salvage(st);
+          if (d != null && d.len > 0) {
+            kids.add(k.subClauseMatches.isEmpty && k.len == 0
+                ? Match(k.clause, 0, 0, subClauseMatches: [d])
+                : Match(k.clause, 0, 0,
+                    subClauseMatches: [...k.subClauseMatches, d]));
+            broke = i;
+            break;
+          }
+        }
+        kids.add(k);
+        continue;
+      }
+      var deep = _salvage(k); // charges its own completion
+      // restore the rule label the Ref passthrough dropped, whatever kind of
+      // parent held the slot -- without the repetition/optional case every
+      // Stmt and Value under a list vanished from the skeleton
+      final slot = cl is Seq && i < cl.subClauses.length
+          ? cl.subClauses[i]
+          : cl is HasOneSubClause
+              ? cl.subClause
+              : null;
+      if (deep != null && slot is Ref) {
+        deep = Match(slot, 0, 0, subClauseMatches: [deep]);
+      }
+      if (deep != null && deep.len > 0) kids.add(deep);
+      broke = i;
+      break;
+    }
+    if (cl is Seq && broke >= 0) {
+      final at = m.subClauseMatches[broke].pos;
+      for (var j = broke + 1; j < cl.subClauses.length; j++) {
+        _charge(_minFill(cl.subClauses[j]), at);
+      }
+    }
+    if (kids.isEmpty) return _salved[m] = null;
+    return _salved[m] = Match(cl, 0, 0, subClauseMatches: kids);
+  }
+
+}
+
+void main() {
+  final rules = MetaGrammar.parseGrammar("S <- Item+;\nItem <- 'a' 'b';\n");
+  final eng = Squirrel(rules: rules, topRuleName: 'S');
+  for (final s in ['abab', 'abXab', 'abaXb', 'ab', 'XXab', 'aba']) {
+    final t = eng.recover(s);
+    print('"$s" -> cost ${eng.lastCost} '
+        '${t.toPrettyString(s).split('\n').take(3).join(' | ')}');
+  }
+}

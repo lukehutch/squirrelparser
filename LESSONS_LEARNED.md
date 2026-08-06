@@ -2076,6 +2076,36 @@ recomputing, the m-line's budget families (I74/I75) folded into one table —
 is the specified next step, expected to buy m143-class latency and further
 lines, and it is not smuggled into this file unmeasured.
 
+### b1 — the two-mode engine, built faithfully, measurements begun
+
+**The owner's architecture, stated precisely and built as `b1.dart`:** parsing
+mode runs until stuck; the enriched tree hands over the ENTIRE frontier at
+that instant (successful subclause work reused through mismatch nodes, never
+recomputed); repair mode is a breadth-first widening over that frontier —
+price l = 1, 2, ..., sites deepest-to-shallowest — whose commit criterion is
+the parser's own: a new match moves the position forward (completion first;
+at the end of the input, where nothing can move forward, a fill that
+discharges its site CHANGES THE FRONTIER'S SHAPE, which is the criterion's
+own wording); the first committing candidate returns the engine to parsing
+mode on the same memo table. No chart, no way-algebra, no budget over the
+document. This is the r-series brief plus everything since: the sideways
+repair channel and readEnd invalidation from t1, the reach side maps, the
+evidence gate (I99) as the only guard.
+
+**Where it measurably stands after two iterations: 0.8000 / 44.6% / ~12 s,
+acceptance 3/3, freespan PASS, conf1 exact, recommit 14/16.** Iteration one
+(advancement-only commits) scored 0.8113 with truncations at 0.609 — EOF
+fills can never advance, so only one-step swallows completed; the shape-
+change amendment fixed truncate (0.750) and freespan. Iteration two exposed
+the ordering defect now standing: shape-changers commit where advancers
+should hold mid-document (quote-delete 0.678). The trajectory is t1's climb
+replayed — each ported lesson moves it — and the open question is the same
+one the record already holds twice (r13's verdict, t1's I98-era finding):
+whether local-commit engines cap below the chart on the classes that need
+paired readings, or whether the shape-change criterion plus the deepest-
+first order eventually subsumes them. The file's header carries the exact
+state so the next session continues from measurements, not memory.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
