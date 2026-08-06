@@ -41,6 +41,7 @@ int _min(int a, int b) => a < b ? a : b;
 class _Way {
   const _Way(this.end, this.del, this.gap, this.net, this.key,
       {this.toll = 0,
+      this.fees = 0,
       this.eof = false,
       this.vouch = 0,
       this.owing = false,
@@ -63,7 +64,7 @@ class _Way {
       : this(p, 0, atEof ? 0 : 1, 0, p,
             mark: SyntaxError(pos: p, len: 0), owing: true, eof: atEof);
 
-  final int end, del, gap, net, key, toll, vouch, marks, from;
+  final int end, del, gap, net, key, toll, fees, vouch, marks, from;
 
   /// The document stopped: one claim however many slots it strands (I94) --
   /// a bool can only charge once, which makes the collapse structural.
@@ -86,6 +87,7 @@ class _Way {
   _Way then(_Way v) =>
       _Way(v.end, del + v.del, gap + v.gap, net + v.net, _min(key, v.key),
           toll: toll + v.toll,
+          fees: fees + v.fees,
           eof: eof || v.eof,
           vouch: vouch + v.vouch,
           owing: v.owing || (v.end == end && owing),
@@ -97,6 +99,7 @@ class _Way {
   _Way over(MatchResult n, [int k = _peg]) =>
       _Way(end, del, gap, net, _min(key, k),
           toll: toll,
+          fees: fees,
           eof: eof,
           vouch: vouch,
           owing: owing,
@@ -106,6 +109,7 @@ class _Way {
   _Way capped(Clause c, int pos, [int k = _peg, int ate = 0, int v = 0]) =>
       _Way(end, del, gap, net, _min(key, k),
           toll: toll + ate,
+          fees: fees,
           eof: eof,
           vouch: v > vouch ? v : vouch,
           owing: owing,
@@ -116,8 +120,9 @@ class _Way {
 
   /// A field-for-field copy with one change -- the D8 fee and the PEG
   /// demotion are the same operation on different fields.
-  _Way _copy({int? key, int? toll}) => _Way(end, del, gap, net, key ?? this.key,
-      toll: toll ?? this.toll,
+  _Way _copy({int? key, int? fees}) => _Way(end, del, gap, net, key ?? this.key,
+      toll: toll,
+      fees: fees ?? this.fees,
       eof: eof,
       vouch: vouch,
       owing: owing,
@@ -129,7 +134,12 @@ class _Way {
       prev: prev,
       mark: mark);
 
-  _Way fee() => _copy(toll: toll + 1);
+  /// D8's fee ranks BELOW net: it breaks ties toward the denial when a
+  /// fill is unspellable, but it never outweighs a reading that explains
+  /// strictly more -- charged into the price it poisoned the operand-
+  /// deletion spine, whose seed-owe is redeemed by everything the grown
+  /// way reads.
+  _Way fee() => _copy(fees: fees + 1);
 
   _Way get demoted => _copy(key: _min(key, _far));
 }
@@ -155,10 +165,10 @@ class _Front {
     }
     final r = Squirrel._rank(w, b);
     if (r > 0) return false;
-    // THE TIE LAW, measured three ways: the LATEST same-price rival holds
-    // the bucket (deterministic -- expansion order is). First-keeps loses
-    // 2.6 perfect points; PEG-first-within/refresh-across loses 3.0. A tie
-    // never signals improvement, or rank-equal rivals would spin forever.
+    // THE TIE LAW, measured four ways now: the LATEST same-price rival
+    // holds the bucket (deterministic -- expansion order is). First-keeps
+    // loses 3.1 perfect points even with the vouch and marks keys ranked;
+    // a tie never signals improvement, or rank-equal rivals spin forever.
     _by[w.end] = w;
     return r < 0;
   }
@@ -207,7 +217,7 @@ class Squirrel {
   // tolls -- rank-invisible vouch made tie-freshness load-bearing by
   // accident.
   static int _rank(_Way a, _Way b) {
-    final ea = a.edits + a.toll, eb = b.edits + b.toll;
+    final ea = a.edits + a.toll + a.fees, eb = b.edits + b.toll + b.fees;
     if (ea != eb) return ea - eb;
     if (a.peg != b.peg) return a.peg ? -1 : 1;
     if (a.net != b.net) return b.net - a.net;
@@ -332,7 +342,7 @@ class Squirrel {
     }
     _stack.removeLast();
     e.inPath = false;
-    if (spyOn && pos <= 2) {
+    if (spyOn && pos == 5) {
       print('store $c@$pos: ' +
           e
               .ways()
@@ -423,7 +433,12 @@ class Squirrel {
             break;
           }
         }
-        final fee = k > 0 && !_determined(sub);
+        // a slot that is a back-edge into a cell being grown is an LR
+        // seed: its give-up anchors the spine the growth exists to build,
+        // and feeing it kills the growth -- the seed is exempt
+        final seed = sub is Ref &&
+            (_memo[rules[sub.ruleName]!]?[w.end]?.inPath ?? false);
+        final fee = k > 0 && !seed && !_determined(sub);
         for (final v in here) {
           next.add(w.then(
               fee && v.end == w.end && !v.free && k <= v.gap ? v.fee() : v));

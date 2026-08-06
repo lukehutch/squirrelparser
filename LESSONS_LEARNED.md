@@ -2406,6 +2406,36 @@ dominating 18.** The eager-tree question also closed honestly: the
 tie-refresh volume that priced it is the tie law itself — semantic, not
 waste.
 
+### c4, third act — the seed exemption (I106): 84 losses become 54
+
+**The instruction: compare the cases where c4 loses to s1 and eliminate
+them.** The dominant family was the deleted operand (`2+*`, `(+c)`,
+`(-5)`): the honest repair owes the missing Factor as the seed of a
+left-recursive spine, keeping the operator read. The spine formed, out-
+netted the denial — and was poisoned by the D8 fee, charged to the seed-owe
+inside the growing arm's own fold where the deny-scan found the rival
+denial. **The resolution is scope, not rank: a slot that is a back-edge
+into a cell being grown is an LR SEED — its give-up anchors the spine the
+growth exists to build, and feeing it kills the growth. The seed is
+exempt** (detectable exactly: the slot's rule-body cell at that position
+is in-path). Moving the fee below net instead was measured seductive and
+wrong: 0.9878/84.5 but the fee's own gate broke (accept b2 — the list
+fill out-nets the deny there and must still lose; b2's fill and the
+operand's seed carry IDENTICAL local scalars, and only the in-path test
+tells them apart). The tie law was re-measured with the full six-key rank:
+first-keeps still loses 3.1 perfect — latest-wins stands, four
+measurements deep. **c4: 0.9870 / 83.3% (both records) / ~1,560 ms / 566
+LOC, every gate green; vs s1 case-wise: 54 worse (sum −3.71, from 84 and
+−6.66), ~190 better.**
+
+**The remaining 54, classified**: tiny stmt truncations (`i` → Assign
+where the corpus's original was If: a full six-key tie decided by marks
+toward the shorter completion, where s1 wins by PEG arm order — the one
+family where the corpus's priors beat the algebra's parsimony);
+junk-before-operand inserts (`3*;4`); the json negative-number family
+(`0-7`, `0,-,7`); small expr truncate/transpose tails. Each needs a
+per-family mechanism; none is a bug of the six keys.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2591,6 +2621,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I106 | THE SEED IS EXEMPT — a slot that is a back-edge into a growing cell anchors the spine the growth exists to build; D8's fee may not charge it (in-path test), and may not rank below net (accept-b2's fill out-nets its denial and must still lose — scope discriminates what no scalar can) | c4 | **LIVE** — 0.9870/83.3, all gates; c4-vs-s1 losses 84 → 54 |
 | I105 | A LOAD-BEARING ACCIDENT IS A MISSING KEY — instrument the ties: freshness mattered because vouch was rank-invisible (fifth key), spine depth tied because the collapsed eof claim hid the mark count (sixth key), and the remainder is the TIE LAW (latest same-price rival wins, deterministically). With the eof edit recognized as the root's claim rather than local spend (I94 completed) and the literal replace edit (I95's third op), c4 passes s1: 0.9850/82.7/all gates | c4 | **LIVE** — the standing engine; rank is now (edits+toll, peg, net, key, vouch, marks) |
 | I104 | THE SIZE FLOOR IS A MEASUREMENT, NOT A TASTE — at (0.9826/81.7/~1,480/all gates) the engine's floor is ~511 lines: nine attempted collapses each broke a bar by a recorded number, and the two real finds (grammar-static minFill cached per engine; the cell IS the front) are worth −4 lines and the latency of 2,000 spared recursions | c4 | **LIVE** — c4 bit-identical to c3 case-wise; the seam below the floor is c2's 454 at −0.0008 |
 | I103 | INSERTION IS THE IMPROVEMENT TEST — the way-front (champion per ending, rank at insert, ties replace silently but never signal, demotion and affordability as read-time views) unifies the prune, the sort, and the grow-loop's convergence test in one structure; the seed is read raw, and re-entry IS left recursion | c3 | **LIVE** — 0.9826/**81.7**/~1,470 ms/515 LOC, all gates, frontier #2 dominating 18; the sort and its unstable-tie livelock class deleted by construction; rep-through-own-cell measured out once more (2,440 vs 1,535 ms) — the closure is the same fixpoint on a specialized scheduler |
