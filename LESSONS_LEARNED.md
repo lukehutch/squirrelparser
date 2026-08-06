@@ -2436,6 +2436,54 @@ junk-before-operand inserts (`3*;4`); the json negative-number family
 (`0-7`, `0,-,7`); small expr truncate/transpose tails. Each needs a
 per-family mechanism; none is a bug of the six keys.
 
+### The 54, read as a human (I107): most of what remains is not a defect
+
+**The instruction: for the remaining c4-vs-s1 losses, judge what a human
+would optimally expect; correct expectations or tweak heuristics.** All 54
+were dumped with mutant, original, expected skeleton, and both engines'
+trees, then classified:
+
+**(a) Operator-choice ties, ~20 cases (expr delim-delete/insert/transpose/
+multi).** `2;3`, `3(4-5)`, `(a*b)(c*d)`: the repair is a same-cost owe of
+EITHER AddOp or MulOp, and the original's operator is unrecoverable from
+the mutant — the two engines differ only in tie order, and they are
+anti-correlated with the corpus in both directions (c4 picks Add where the
+original had Mul at i=133 and Mul where it had Add at i=139 and i=1179).
+s1's wins here are tie-luck, not knowledge. **Verdict:
+expectation-limited: epistemically 50/50, no correct heuristic exists.**
+Widening the replace edit to all slots (universal, then as a
+deny-failed fallback) was measured against this family: ZERO of the 54
+fixed, two new losses, double latency — reverted; the literal-scoped
+replace stands.
+
+**(b) Truncation nesting depth, ~12 cases.** `a+b*2-(` expects
+`Term(Term(Factor()))` because the original's `(3+c)*4` wrapped the paren
+in an outer Term whose only pre-cut character is the `(` itself:
+`expectedFor` keeps every node whose START precedes the cut, so the
+expectation encodes structure that lives entirely beyond the truncation
+(the `*4` nobody can see). c4's minimal completion is what a human would
+write. **Verdict: the expectation over-reaches; a fairer truncation rule
+would keep only nodes with real content before the cut — recommended as a
+DOCUMENTED secondary lens, not a rewrite, since the recorded scores of
+sixty engines rest on the current yardstick.**
+
+**(c) Keyword-prefix ties, 4 cases.** `i` alone: If (battery, from the
+original) vs Assign(Name) (c4, via the marks key's shorter completion) is
+a full six-key tie between a half-matched keyword and a complete name
+prefix. A human is genuinely split; the corpus favors If. Buying these
+with first-wins ties costs 3.1 perfect globally — not taken. **Verdict:
+ambiguous; the battery's answer is corpus prior, not ground truth.**
+
+**(d) Genuine residue, ~5 cases** (json `0-7`/`0,-,7` family, a transpose
+tail): small, mechanism-specific, each needing its own trace; none moved
+by the tweaks above.
+
+c4 stands at **0.9870 / 83.3 / ~1,550 ms, all gates** — unchanged by this
+round, which is itself the finding: of the 54, roughly forty are cases
+where the battery scores knowledge of a coin flip or of text beyond the
+truncation, and s1's edge there is luck of tie order, not a better
+algorithm.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2621,6 +2669,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I107 | THE RESIDUAL IS MOSTLY THE YARDSTICK — dumping all 54 c4-vs-s1 losses with expectations: ~20 are operator-choice coin flips (the original's char is unrecoverable; the engines' tie orders are anti-correlated with the corpus BOTH ways), ~12 are truncation expectations that keep nodes whose content lies wholly beyond the cut, 4 are keyword-prefix ties; ~5 genuine. The universal replace edit was measured against them: zero fixed, two regressions, double latency | c4 | recorded — c4 unchanged at 0.9870/83.3; fairer truncation lens documented, yardstick not rewritten |
 | I106 | THE SEED IS EXEMPT — a slot that is a back-edge into a growing cell anchors the spine the growth exists to build; D8's fee may not charge it (in-path test), and may not rank below net (accept-b2's fill out-nets its denial and must still lose — scope discriminates what no scalar can) | c4 | **LIVE** — 0.9870/83.3, all gates; c4-vs-s1 losses 84 → 54 |
 | I105 | A LOAD-BEARING ACCIDENT IS A MISSING KEY — instrument the ties: freshness mattered because vouch was rank-invisible (fifth key), spine depth tied because the collapsed eof claim hid the mark count (sixth key), and the remainder is the TIE LAW (latest same-price rival wins, deterministically). With the eof edit recognized as the root's claim rather than local spend (I94 completed) and the literal replace edit (I95's third op), c4 passes s1: 0.9850/82.7/all gates | c4 | **LIVE** — the standing engine; rank is now (edits+toll, peg, net, key, vouch, marks) |
 | I104 | THE SIZE FLOOR IS A MEASUREMENT, NOT A TASTE — at (0.9826/81.7/~1,480/all gates) the engine's floor is ~511 lines: nine attempted collapses each broke a bar by a recorded number, and the two real finds (grammar-static minFill cached per engine; the cell IS the front) are worth −4 lines and the latency of 2,000 spared recursions | c4 | **LIVE** — c4 bit-identical to c3 case-wise; the seam below the floor is c2's 454 at −0.0008 |

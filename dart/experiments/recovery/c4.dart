@@ -446,7 +446,10 @@ class Squirrel {
         // THE REPLACE EDIT, inside a literal only (I95's third op): the
         // wrong character is denied AND the right one owed, so 'i"' reads
         // as 'if' at cost two -- the plain deny-scan cannot express it
-        // because its skip must READ, and the owe alone cannot consume
+        // because its skip must READ. Widening it to every slot was
+        // measured twice (universal, then deny-failed-fallback): zero of
+        // the s1-residual cases fixed, two new losses, double latency --
+        // that family is operator-choice coin flips, not missing machinery
         if (lit && !clean && w.end < _n) {
           final sk = w.then(_Way.skip(w.end, w.end + 1));
           for (final v in _ways(sub, w.end + 1)) {
