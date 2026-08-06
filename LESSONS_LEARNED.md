@@ -2127,6 +2127,79 @@ commitment should be measured through the side maps, the next session's
 first move), and deep truncations still commit at the wrong spine level.
 The header carries the exact state, traces and both fork numbers.
 
+### b2 — the design synthesis, and where greedy commitment hits its wall
+
+**The instruction: compare the DESIGNS and combine their strengths.** b2 =
+b1's two-mode architecture + the chart engines' rival judgment applied where
+the classes tie: `net` (evidence explained by constraining terminals, read
+off the root tree `_attempt` already materializes for free) and the I72∩I36
+fee rank rivals WITHIN a class; the classes still rank between themselves.
+Each piece measured as it landed: fee+net within a class 0.8435 → 0.8528
+(recommit 14/16 — the whitespace-hijack dies because the honest `'}'`
+completion nets one more than the denial that pins nothing); the
+across-rung arbiter — **a dear advancer may not delete more explained
+evidence than a cheaper held shape-change explains** — 0.8528 → 0.8816 and
+recommit 15/16, the first rule that served BOTH regimes (it was found by
+tracing a 28-character denial at rung 28 that classified "complete" and
+preempted the l=1 fill chain whose total price was 6); the I95 literal
+alignment as a candidate species (`_strAt`: owe inside the literal, then
+consume real input — the one shape neither suffix-completion nor
+prefix-denial can express) 0.8816 → **0.8826 / 48.2% / recommit 15/16, the
+b-line's standing best**. Two refutations paid for en route: crediting bare
+`Match(null)` evidence spans in `net` re-weights every completion's matched
+prefix and costs three recommit cases; banning completions at ALL reach
+sites (the I68 reading) kills the honest closers too — 0.7266, acceptance
+gate broken — because a Seq's failing later slot is also "reach."
+
+**Why the b-line stalls at 0.88: greedy sequential commitment.** Every
+rung-rule measured (class-first with held shape-changers, price-first with
+class-within-rung, the net arbiter) fixes the regime it was traced on and
+breaks the other, because the correct choice between a cheap fill and a
+dear denial depends on the repairs that come AFTER it — which no
+commit-one-then-reparse order can see. The s-engines never face the
+question: the way-algebra prices every rival repair for the whole document
+simultaneously. That diagnosis, not another rung-rule, is what c1 acts on.
+
+### c1 — the unification: two modes made per-clause, at SOTA accuracy
+
+**Judge globally, search locally, never re-derive.** c1 = s4 with the
+two-mode architecture installed at the head of the descent: every Ref's
+`_ways` first asks the frozen parser's memo (parsing mode); a clean span
+that ends before the damage IS the answer — one peg way carrying the
+finished subtree, cost zero, no enumeration; repair's search (the
+way-algebra, unchanged) opens only where a span touches damage. s4's
+resync consult was this idea confined to one call site; c1 makes it the
+first line. The LR grow-loop stays the recovery loop (I100) — and the
+freeze honors it by exemption: **a left-recursive rule is never frozen**,
+because each spine extent is a distinct reading the repair judgment must
+keep, and the memo's one answer would collapse them (found as a −8.89
+crater confined entirely to the expr corpus; leftmost-reachability closure
+computed once per rule). Three more freeze conditions, each traced to a
+failing case: the window is `pos + len + budget < clean` (a repair of
+price b may rewrite up to b characters upstream of where damage was
+noticed); spans of ≤ 1 character never freeze (nothing to re-derive — the
+freeze exists solely to save derivation, and freezing a nullable rule's
+empty answer suppresses the alternative stopping points repairs thread
+through); and `clean` is the FIRST error node's position **capped at where
+the pure parse stopped consuming** — the library's failed root can carry
+no error node at all (`x="ab"; y="cz; ...` stops at 8 with a clean
+partial root), and believing the whole document clean froze the swallow
+itself (cost 4 where s4 pays 1).
+
+**Result: 0.9823 / 79.1% / 2022 ms / 545 LOC — every gate green, recommit
+16/16, and case-wise ≥ s4 on all 2000 documents (strictly better on one,
++0.037).** Identical judgment to the standing SOTA, reproduced inside the
+owner's architecture; in pareto's frame s4 still holds the frontier point
+(smaller and a hair faster), so the c-line's contribution is structural:
+the two modes are real, they interleave per clause rather than per round,
+and the memo is the substrate both share. What remains unclaimed is the
+latency the substrate promises — the freeze fires only before the FIRST
+damage, so multi-error documents and everything downstream still
+re-enumerate per round; freezing the clean middles needs the boundary of
+the NEXT damage region, which only the full parse→repair→commit→parse
+iteration (or a per-region clean map) can supply. That, and the m-line's
+growing cells (budget families in one table), are the recorded next moves.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2312,6 +2385,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round: parsing mode is the frozen memo answering first, repair mode is the way-descent opening only where a span touches damage, and greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet) | b2 → c1 | **LIVE** — c1 0.9823/79.1/16-16, case-wise ≥ s4 everywhere; freeze conditions: non-LR rules only, spans > 1 char, `pos+len+budget < clean`, `clean` = first error capped at the pure parse's stop |
 | I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it | t1 → s3 | **LIVE — ★ THE PIVOTAL INSIGHT OF THE RECOVERY LINE, owner-confirmed 2026-08-05** ("the biggest breakthrough you have made so far"). Made STRUCTURAL in s3: one grow-loop, one entry, no second mechanism — the collapse that broke the size cliff and dominated r9. Answers §1.8's six-occasion steer |
 | I99 | AN ARM THAT READ NOTHING MAY NOT INVENT — I43/I78 as a property of the mismatch tree, with I53 as its fallback pass; one structural rule standing in for toll, net-rank and the whole-document charge | t1 | LIVE |
 
@@ -2371,6 +2445,11 @@ it accepts (`net`), or absorbed by one that does not.
 | the obligation lattice (I6/I7) | measured inert on every real input; deleted by I24 |
 | cgfr1 / cgfr2 / cgfr5 | dead ends. cgfr5's own note: once the tape is actually present it is LARGER than the m68 it was offered to undercut |
 | the frontier list as a separate structure | disappears in r3 once the cell holds every reading |
+| net credits bare evidence spans (`Match(null, len>0)` counted as pinned) | b2: re-weights every completion's matched-prefix wrapper; recommit 15/16 → 12/16, −0.03 battery |
+| completions banned at reach sites (the blunt I68 reading) | b2: 0.8826 → 0.7266, acceptance b1 case broken — a Seq's failing later slot is also "reach", so the honest closers die with the mark-stuffers |
+| any single rung-rule for greedy commit (class-first 0.8528 / price-first 0.8230 / net-arbiter 0.8816) | the b-line's ceiling: each fixes the regime it was traced on and breaks the other; the choice needs the repairs AFTER it, which only simultaneous judgment (c1) sees |
+| freezing LR rules' clean spans (c1) | −8.89 confined to expr: each spine extent is a distinct reading; the memo's one answer collapses them |
+| freeze window from the REMAINING budget (c1) | the fold spends it to zero mid-descent and the window closes against the damage, freezing the swallow at the frontier; the entry budget is the honest horizon |
 | "the mismatch tree plus one sideways signal is strictly smaller than r9 at no worse than 0.9748" (the ★TODO claim) | **refuted by its own two-attempt protocol**: s1 0.9841/697, t1 0.9326/861 vs the bar 0.9748/562. The signal is sound (t1's gates); what failed is stated by I100 — the SHIPPED tree lacks `reach`'s five discard sites, and the iterated form still lacks rival simultaneity |
 | the chart's local guards ported into the iterated engine | all three lost: strict cheapest-first ladder 0.9258 (cx2 broke) and 0.9223; I36 determined-gate on owes 0.9287; r9's reached-exclusion 0.8997 (b1 broke) — the whole-document trial subsumes them, and suppression only removes information (t1) |
 | I62's `blind` as an unscoped rank key before `net` (the "cleanest" form of D8's reason) | **0.9776 vs 0.9841** — decides b2 and then flips its same-evidence opposite-truth twin (`[1,[,`, I54) plus every honest-completion tie; the fee's scoping is I72's content, not a wart (s2) |
