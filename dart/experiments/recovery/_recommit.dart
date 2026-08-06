@@ -136,10 +136,7 @@ void main(List<String> argv) {
           'r9', // the shipped r-engine; without it a bare run checks no r
           's1',
           't1',
-          's2',
-          's3',
           's4',
-          'b2',
           'c1',
           'c2',
           'c3',

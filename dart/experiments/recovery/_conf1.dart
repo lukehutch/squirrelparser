@@ -14,83 +14,11 @@
 // so this is a live path on the battery, not a constructed one.
 import 'package:squirrel_parser/squirrel_parser.dart';
 
-import 'm78.dart' as m78;
-import 'm79.dart' as m79;
-import 'm80.dart' as m80;
-import 'm81.dart' as m81;
-import 'm82.dart' as m82;
-import 'm83.dart' as m83;
-import 'm84.dart' as m84;
-import 'm85.dart' as m85;
-import 'm86.dart' as m86;
-import 'm87.dart' as m87;
-import 'm88.dart' as m88;
-import 'm89.dart' as m89;
-import 'm90.dart' as m90;
-import 'm91.dart' as m91;
-import 'm92.dart' as m92;
-import 'm93.dart' as m93;
-import 'm94.dart' as m94;
-import 'm95.dart' as m95;
-import 'm96.dart' as m96;
-import 'm97.dart' as m97;
-import 'm98.dart' as m98;
-import 'm99.dart' as m99;
-import 'm100.dart' as m100;
-import 'm101.dart' as m101;
-import 'm102.dart' as m102;
-import 'm103.dart' as m103;
-import 'm105.dart' as m105;
-import 'm106.dart' as m106;
-import 'm108.dart' as m108;
-import 'm109.dart' as m109;
-import 'm110.dart' as m110;
-import 'm111.dart' as m111;
-import 'm112.dart' as m112;
-import 'm113.dart' as m113;
-import 'm114.dart' as m114;
-import 'm115.dart' as m115;
-import 'm116.dart' as m116;
-import 'm117.dart' as m117;
-import 'm118.dart' as m118;
-import 'm119.dart' as m119;
-import 'm120.dart' as m120;
-import 'm121.dart' as m121;
-import 'm124.dart' as m124;
-import 'm125.dart' as m125;
-import 'm126.dart' as m126;
-import 'm127.dart' as m127;
-import 'm128.dart' as m128;
-import 'm129.dart' as m129;
-import 'm130.dart' as m130;
-import 'm131.dart' as m131;
 import 'm132.dart' as m132;
-import 'm141.dart' as m141;
 import 'm143.dart' as m143;
-import 'm133.dart' as m133;
-import 'm134.dart' as m134;
-import 'm135.dart' as m135;
-import 'm136.dart' as m136;
-import 'm137.dart' as m137;
-import 'm138.dart' as m138;
-import 'm139.dart' as m139;
-import 'm140.dart' as m140;
-import 'm122.dart' as m122;
-import 'm123.dart' as m123;
-import 'r1.dart' as r1;
-import 'r2.dart' as r2;
-import 'r3.dart' as r3;
-import 'r4.dart' as r4;
-import 'r5.dart' as r5;
-import 'r6.dart' as r6;
-import 'r7.dart' as r7;
-import 'r8.dart' as r8;
 import 'r9.dart' as r9;
 import 's1.dart' as s1;
 import 't1.dart' as t1;
-import 's2.dart' as s2;
-import 's3.dart' as s3;
-import 'b2.dart' as b2;
 import 'c1.dart' as c1;
 import 'c2.dart' as c2;
 import 'c3.dart' as c3;
@@ -116,84 +44,12 @@ Word <- [a-z]+;
 typedef Cost = int Function(String) Function(Map<String, Clause>, String);
 
 final engines = <(String, Cost)>[
-  ('m78', (r, t) => m78.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m79', (r, t) => m79.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m80', (r, t) => m80.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m81', (r, t) => m81.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m82', (r, t) => m82.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m83', (r, t) => m83.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m84', (r, t) => m84.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m85', (r, t) => m85.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m86', (r, t) => m86.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m87', (r, t) => m87.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m88', (r, t) => m88.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m89', (r, t) => m89.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m90', (r, t) => m90.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m91', (r, t) => m91.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m92', (r, t) => m92.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m93', (r, t) => m93.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m94', (r, t) => m94.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m95', (r, t) => m95.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m96', (r, t) => m96.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m97', (r, t) => m97.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m98', (r, t) => m98.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m99', (r, t) => m99.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m100', (r, t) => m100.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m101', (r, t) => m101.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m102', (r, t) => m102.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m103', (r, t) => m103.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m105', (r, t) => m105.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m106', (r, t) => m106.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m108', (r, t) => m108.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m109', (r, t) => m109.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m110', (r, t) => m110.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m111', (r, t) => m111.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m112', (r, t) => m112.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m113', (r, t) => m113.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m114', (r, t) => m114.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m115', (r, t) => m115.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m116', (r, t) => m116.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m117', (r, t) => m117.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m118', (r, t) => m118.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m119', (r, t) => m119.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m120', (r, t) => m120.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m121', (r, t) => m121.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m124', (r, t) => m124.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m125', (r, t) => m125.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m126', (r, t) => m126.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m127', (r, t) => m127.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m128', (r, t) => m128.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m129', (r, t) => m129.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m130', (r, t) => m130.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m131', (r, t) => m131.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m132', (r, t) => m132.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m141', (r, t) => m141.SuperDot3(rules: r, topRuleName: t).recoverCost),
   ('m143', (r, t) => m143.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m133', (r, t) => m133.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m134', (r, t) => m134.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m135', (r, t) => m135.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m136', (r, t) => m136.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m137', (r, t) => m137.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m138', (r, t) => m138.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m139', (r, t) => m139.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m140', (r, t) => m140.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m122', (r, t) => m122.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m123', (r, t) => m123.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('r1', (r, t) => r1.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('r2', (r, t) => r2.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('r3', (r, t) => r3.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('r4', (r, t) => r4.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('r5', (r, t) => r5.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('r6', (r, t) => r6.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('r7', (r, t) => r7.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('r8', (r, t) => r8.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('r9', (r, t) => r9.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('s1', (r, t) => s1.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('t1', (r, t) => t1.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('s2', (r, t) => s2.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('s3', (r, t) => s3.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('s4', (r, t) => s4.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('b2', (r, t) => b2.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('c1', (r, t) => c1.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('c2', (r, t) => c2.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('c3', (r, t) => c3.Squirrel(rules: r, topRuleName: t).recoverCost),

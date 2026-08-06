@@ -51,7 +51,6 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 import 'astdiff.dart' show corpora, skeleton;
-import 'final_table.dart' show buildSetup;
 import '_score1.dart' show resolve;
 
 const base = '{"a":1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}';
@@ -110,7 +109,8 @@ void main(List<String> argv) {
   if (cx2 == 0) fails.add('cx2');
 
   // --- the brief's two acceptance cases ------------------------------------
-  final jr = buildSetup().$1;
+  final jr = MetaGrammar.parseGrammar(
+      corpora.firstWhere((c) => c.name == 'json').grammar);
   final named = corpora.firstWhere((c) => c.name == 'json').named;
 
   List<String> shapeOf(String s) =>

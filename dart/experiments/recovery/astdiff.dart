@@ -83,13 +83,51 @@ List<String> skeleton(MatchResult r, Set<String> named) {
 /// it should always have been. No named node in any corpus is zero-width
 /// (0 of 667), so `pos < k` is exactly "covers at least one retained character".
 List<String> expectedFor(Case k, MatchResult original, Set<String> named) {
-  if (k.category != 'truncate') return skeleton(original, named);
+  if (k.category != 'truncation') return skeleton(original, named);
   final cut = k.mutant.length;
+
+  // How much pre-cut evidence a subtree really shows: the furthest end of
+  // any real read before the cut.
+  int preEnd(MatchResult m) {
+    if (m.subClauseMatches.isEmpty) {
+      return m.len > 0 && m.pos < cut ? _mi(m.pos + m.len, cut) : -1;
+    }
+    var e = -1;
+    for (final s in m.subClauseMatches) {
+      final p = preEnd(s);
+      if (p > e) e = p;
+    }
+    return e;
+  }
+
+  // The first named descendant, looking through unnamed wrappers.
+  MatchResult? firstNamed(MatchResult m) {
+    for (final s in m.subClauseMatches) {
+      final c = s.clause;
+      if (c is Ref && named.contains(c.ruleName)) return s;
+      final deep = firstNamed(s);
+      if (deep != null) return deep;
+    }
+    return null;
+  }
+
   final out = <String>[];
   void walk(MatchResult m) {
     final c = m.clause;
     if (c is Ref && named.contains(c.ruleName)) {
       if (m.pos >= cut) return;
+      // A LEFT-RECURSION LEVEL THE CUT REMOVED IS NOT EXPECTED (I107): if
+      // this node's first named child is the same rule and the node shows
+      // no evidence of its own before the cut (its pre-cut span IS the
+      // child's), the wrapper describes an operator that lies wholly
+      // beyond the truncation, which no reader of the mutant can know.
+      final f = firstNamed(m);
+      if (f != null &&
+          (f.clause as Ref).ruleName == c.ruleName &&
+          preEnd(m) == preEnd(f)) {
+        m.subClauseMatches.forEach(walk);
+        return;
+      }
       out.add(c.ruleName);
       out.add('(');
       m.subClauseMatches.forEach(walk);
@@ -102,6 +140,8 @@ List<String> expectedFor(Case k, MatchResult original, Set<String> named) {
   walk(original);
   return out;
 }
+
+int _mi(int a, int b) => a < b ? a : b;
 
 /// Levenshtein distance over label sequences: the number of structural errors.
 ///
@@ -311,35 +351,26 @@ const corpora = <Corpus>[
 // unterminated strings follow because they are what a person actually mistypes.
 // Damage inside string CONTENT is last: it usually still parses, so it tests
 // little.
+// THE FIVE CATEGORIES ARE THE OPERATIONS. A mutation is what a person did
+// to the document -- deleted something, inserted something, replaced
+// something, stopped typing -- so the categories name the operation, not
+// the character it happened to hit. `misc` holds what does not classify
+// cleanly: transpositions and multi-site damage.
 const categoryWeight = <String, double>{
-  'truncate': 3.0,
-  'delim-delete': 3.0,
-  'quote-delete': 2.5,
-  'delim-insert': 2.0,
-  'junk-insert': 2.0,
-  'literal-damage': 1.5,
-  'quote-insert': 1.5,
-  'multi-damage': 1.5,
-  'transpose': 1.0,
-  'content-damage': 1.0,
+  'truncation': 3.0,
+  'deletion': 3.0,
+  'insertion': 2.5,
+  'substitution': 2.0,
+  'misc': 1.5,
 };
 
-const _delims = '{}[],:()=;+-*/';
-
-/// What role does the character at [j] play in [doc]? Used only to CATEGORISE a
-/// mutation, never to guide one.
-String _role(String doc, int j) {
-  final ch = doc[j];
-  if (ch == '"') return 'quote';
-  if (_delims.contains(ch)) return 'delim';
-  if (ch == ' ' || ch == '\t' || ch == '\n') return 'space';
-  // Inside a pair of quotes?
-  var q = 0;
-  for (var i = 0; i < j; i++) {
-    if (doc[i] == '"') q++;
-  }
-  return q.isOdd ? 'content' : 'literal';
-}
+/// Characters whose loss or replacement is an unrecoverable coin flip: a
+/// binary operator deleted between two operands (`3(4-5)`) or replaced by
+/// junk (`2;3`) admits BOTH restorations at the same edit distance, and the
+/// original is not recoverable from the mutant. A test that scores
+/// knowledge of a coin flip measures tie-luck, so these mutations are not
+/// generated (I107).
+const _coinFlip = '+-*/';
 
 /// Build the battery: every single-character damage to every document in every
 /// corpus that actually breaks the parse, plus truncations and two-error cases.
@@ -363,12 +394,10 @@ List<Case> buildBattery() {
       }
 
       for (var j = 0; j < doc.length; j++) {
-        final role = _role(doc, j);
-        // DELETE
-        add(doc.substring(0, j) + doc.substring(j + 1),
-            role == 'quote' ? 'quote-delete'
-                : role == 'delim' ? 'delim-delete'
-                    : role == 'content' ? 'content-damage' : 'literal-damage');
+        // DELETE -- except operators, whose loss is a coin flip (I107)
+        if (!_coinFlip.contains(doc[j])) {
+          add(doc.substring(0, j) + doc.substring(j + 1), 'deletion');
+        }
         // TRANSPOSE with the next character
         if (j + 1 < doc.length && doc[j] != doc[j + 1]) {
           add(
@@ -376,28 +405,27 @@ List<Case> buildBattery() {
                   doc[j + 1] +
                   doc[j] +
                   doc.substring(j + 2),
-              'transpose');
+              'misc');
         }
       }
       // INSERT / SUBSTITUTE
       for (var j = 0; j <= doc.length; j++) {
         for (final ch in ['z', 'Q', '"', ',', '}', '5', ';', ')', '\\']) {
-          final at = _role(doc, j < doc.length ? j : doc.length - 1);
-          final role = at == 'content' && ch != '"'
-              ? 'content-damage'
-              : ch == '"'
-                  ? 'quote-insert'
-                  : _delims.contains(ch) ? 'delim-insert' : 'junk-insert';
-          add(doc.substring(0, j) + ch + doc.substring(j), role);
-          if (j < doc.length && doc[j] != ch) {
+          add(doc.substring(0, j) + ch + doc.substring(j), 'insertion');
+          // substitution of an operator is the same coin flip as deleting it
+          if (j < doc.length &&
+              doc[j] != ch &&
+              !_coinFlip.contains(doc[j])) {
             add(doc.substring(0, j) + ch + doc.substring(j + 1),
-                _role(doc, j) == 'quote' ? 'quote-delete' : role);
+                'substitution');
           }
         }
       }
-      // TRUNCATE -- the incomplete document, at every prefix length.
-      for (var k = 1; k < doc.length; k++) {
-        add(doc.substring(0, k), 'truncate');
+      // TRUNCATE -- the incomplete document at every prefix length that
+      // leaves real evidence: one- and two-character stubs are noise a
+      // human could not read either (I107)
+      for (var k = 3; k < doc.length; k++) {
+        add(doc.substring(0, k), 'truncation');
       }
       // MULTI -- two independent deletions, spread across the document so the
       // repairs cannot be merged into one span.
@@ -409,7 +437,7 @@ List<Case> buildBattery() {
               doc.substring(0, j) +
                   doc.substring(j + 1, k) +
                   doc.substring(k + 1),
-              'multi-damage');
+              'misc');
         }
       }
     }

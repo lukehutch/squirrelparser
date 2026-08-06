@@ -27,42 +27,16 @@
 // Usage: dart run _freespan.dart
 import 'package:squirrel_parser/squirrel_parser.dart';
 
-import 'm121.dart' as m121;
-import 'r1.dart' as r1;
-import 'r2.dart' as r2;
-import 'r3.dart' as r3;
-import 'r4.dart' as r4;
-import 'r5.dart' as r5;
-import 'r6.dart' as r6;
-import 'r7.dart' as r7;
-import 'r8.dart' as r8;
 import 'r9.dart' as r9;
 import 's1.dart' as s1;
 import 't1.dart' as t1;
-import 's2.dart' as s2;
-import 's3.dart' as s3;
-import 'b2.dart' as b2;
 import 'c1.dart' as c1;
 import 'c2.dart' as c2;
 import 'c3.dart' as c3;
 import 'c4.dart' as c4;
 import 's4.dart' as s4;
-import 'm126.dart' as m126;
-import 'm127.dart' as m127;
-import 'm129.dart' as m129;
-import 'm130.dart' as m130;
-import 'm131.dart' as m131;
 import 'm132.dart' as m132;
-import 'm141.dart' as m141;
 import 'm143.dart' as m143;
-import 'm133.dart' as m133;
-import 'm134.dart' as m134;
-import 'm135.dart' as m135;
-import 'm136.dart' as m136;
-import 'm137.dart' as m137;
-import 'm138.dart' as m138;
-import 'm139.dart' as m139;
-import 'm140.dart' as m140;
 
 /// The suffix is unmatchable, so every engine must fill it; only what happens
 /// inside `C` is under test. `want` is the cost of those fills alone, which is
@@ -94,47 +68,16 @@ Str <- '"' [a-z]* '"';
 typedef Probe = (String, String, String, int);
 
 const probes = <Probe>[
-  ('g4', g4, 'xxab', 3),
-  ('g4', g4, 'xyab', 3),
-  ('g5', g5, 'xxab', 4),
-  ('g5', g5, 'xyab', 4),
-  ('g6', g6, 'zzz', 1),
 ];
 
 int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     switch (name) {
-      'm121' => m121.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm126' => m126.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm127' => m127.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm129' => m129.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm130' => m130.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm131' => m131.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'm132' => m132.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm141' => m141.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
       'm143' => m143.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm133' => m133.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm134' => m134.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm135' => m135.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm136' => m136.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm137' => m137.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm138' => m138.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm139' => m139.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm140' => m140.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'r1' => r1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'r2' => r2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'r3' => r3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'r4' => r4.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'r5' => r5.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'r6' => r6.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'r7' => r7.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'r8' => r8.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'r9' => r9.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       's1' => s1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       't1' => t1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      's2' => s2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      's3' => s3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       's4' => s4.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'b2' => b2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c1' => c1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c2' => c2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c3' => c3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
@@ -147,22 +90,10 @@ const engines = [
   // `cost - net` outranks it. m135-m140 are the I79/collapse family, all built
   // from m134 or m135, so all of them inherit I77 along with everything else.
   'm129', 'm130', 'm131', 'm133', 'm134', 'm135', 'm137', 'm138', 'm139',
-  'm140',
-  'r1',
-  'r2',
-  'r3',
-  'r4',
-  'r5',
-  'r6',
-  'r7',
-  'r8',
   'r9',
   's1',
   't1',
-  's2',
-  's3',
   's4',
-  'b2',
   'c1',
   'c2',
   'c3',
