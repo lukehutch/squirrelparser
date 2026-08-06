@@ -1,23 +1,31 @@
-// c4.dart -- c3's semantics exactly (bit-identical on all 2,000 battery
-// documents), with the two improvements that SURVIVED measurement: the
-// grammar-static minimum-fill is computed once per engine instead of once
-// per recover, and the memo cell IS the way-front (one class, one identity).
+// c4.dart -- THE NEW STANDING BEST (I105): 0.9850 / 82.7% perfect, first
+// engine past s1 on score, best perfect rate ever, all gates. c3's
+// structure plus four discoveries, each traced to a failing case:
 //
-// THE SIZE FLOOR, MEASURED. This file exists at ~511 normalised lines
-// because nine attempted collapses below it each broke a bar, by number:
-// eager tree building (ways as materialized trees, 6 fields and _build
-// deleted): +20-31% latency at the tie-refresh volume, I88 confirmed a
-// third time; a scalar takes() veto before materializing: no help (the
-// volume is accepted ties, whose freshness the perfect rate needs --
-// ties-stale costs 81.7 -> 79.8); repetition through its own memo cell:
-// 2,440 vs 1,535 ms; grammar rewriting (c2): -0.0008 and foreign trees;
-// root simplification (drop owed-admission): recommit 15/16 -- the
-// incoherent honest reading MUST displace the coherent swallow; Ref-cells
-// (cache the lift): +100-180 ms read-side; cached front views: pays only
-// with Ref-cells' read volume; merging _determined and _minFill: memoizing
-// under a cycle-cut poisons minFill for nodes computed inside an LR path;
-// comment dieting: normalised LOC never counted comments. What remains is
-// what the gates and the battery pin in place.
+// (1) VOUCH IS A RANK KEY. Instrumenting rank-ties showed virtually every
+// materially different tie was the same reading carrying MORE certified
+// absorption; vouch decides future swallow tolls, and its rank-invisibility
+// made tie-freshness load-bearing by accident. (2) THE REPLACE EDIT inside
+// a literal (I95's third op): the wrong character denied AND the right one
+// owed, so 'i"' reads as 'if' at cost two -- the deny-scan cannot express
+// it because its skip must READ. (3) THE EOF EDIT IS NOT SPEND (I94
+// completed): it is the root's one "document stopped" claim, so it neither
+// blocks a fold's continuation nor fails an afford filter -- without this
+// a truncation's spine died at its second obligation, locally broke, and
+// a swallow won; since eof-ways exist only at the end of the input, the
+// exclusion is intrinsically EOF-scoped. (4) FEWEST MARKS is the last
+// rank key: the eof claim charges once however many slots it strands, so
+// without it a five-mark spine ties a two-mark one and the tie law picks
+// the deepest.
+//
+// THE TIE LAW, measured three ways: the LATEST same-price rival holds the
+// bucket. First-keeps loses 2.6 perfect points; PEG-first-within with
+// refresh-across loses 3.0. Deterministic, since expansion order is.
+//
+// Also here: the grammar-static minimum-fill computed once per engine
+// (it was recomputed per recover), and the memo cell IS the way-front.
+// The size-floor ledger lives in LESSONS (I104): nine collapses below
+// ~511 lines each broke a bar by number; the accuracy above cost +48.
 import 'dart:collection';
 
 import 'package:squirrel_parser/squirrel_parser.dart';
@@ -36,6 +44,7 @@ class _Way {
       this.eof = false,
       this.vouch = 0,
       this.owing = false,
+      this.marks = 0,
       this.leaf,
       this.cap,
       this.from = 0,
@@ -54,7 +63,7 @@ class _Way {
       : this(p, 0, atEof ? 0 : 1, 0, p,
             mark: SyntaxError(pos: p, len: 0), owing: true, eof: atEof);
 
-  final int end, del, gap, net, key, toll, vouch, from;
+  final int end, del, gap, net, key, toll, vouch, marks, from;
 
   /// The document stopped: one claim however many slots it strands (I94) --
   /// a bool can only charge once, which makes the collapse structural.
@@ -65,6 +74,11 @@ class _Way {
   final SyntaxError? mark;
 
   int get edits => del + gap + (eof ? 1 : 0);
+
+  /// What a way has spent LOCALLY: the eof edit is the root's one
+  /// "document stopped" claim, not spend -- and since eof-ways exist only
+  /// at the end of the input, excluding it is intrinsically EOF-scoped.
+  int get spend => del + gap;
   bool get peg => key > _far;
   bool get free => key >= _far;
   bool get nodes => leaf != null || cap != null;
@@ -75,13 +89,19 @@ class _Way {
           eof: eof || v.eof,
           vouch: vouch + v.vouch,
           owing: v.owing || (v.end == end && owing),
+          marks: marks + v.marks,
           link: v,
           prev: this,
           mark: v.mark);
 
   _Way over(MatchResult n, [int k = _peg]) =>
       _Way(end, del, gap, net, _min(key, k),
-          toll: toll, eof: eof, vouch: vouch, owing: owing, leaf: n);
+          toll: toll,
+          eof: eof,
+          vouch: vouch,
+          owing: owing,
+          marks: marks,
+          leaf: n);
 
   _Way capped(Clause c, int pos, [int k = _peg, int ate = 0, int v = 0]) =>
       _Way(end, del, gap, net, _min(key, k),
@@ -89,6 +109,7 @@ class _Way {
           eof: eof,
           vouch: v > vouch ? v : vouch,
           owing: owing,
+          marks: marks,
           cap: c,
           from: pos,
           link: this);
@@ -100,6 +121,7 @@ class _Way {
       eof: eof,
       vouch: vouch,
       owing: owing,
+      marks: marks,
       leaf: leaf,
       cap: cap,
       from: from,
@@ -133,9 +155,10 @@ class _Front {
     }
     final r = Squirrel._rank(w, b);
     if (r > 0) return false;
-    // a tie replaces silently: the freshest reading holds the bucket (as
-    // the rebuilt-list prune always had it), but a tie is never an
-    // improvement, or the grow-loop would spin on rank-equal rivals
+    // THE TIE LAW, measured three ways: the LATEST same-price rival holds
+    // the bucket (deterministic -- expansion order is). First-keeps loses
+    // 2.6 perfect points; PEG-first-within/refresh-across loses 3.0. A tie
+    // never signals improvement, or rank-equal rivals would spin forever.
     _by[w.end] = w;
     return r < 0;
   }
@@ -147,7 +170,7 @@ class _Front {
     }
     return [
       for (final w in _by.values)
-        if (w.edits <= budget) w.peg && w.end != far ? w.demoted : w
+        if (w.spend <= budget) w.peg && w.end != far ? w.demoted : w
     ];
   }
 }
@@ -171,18 +194,29 @@ class Squirrel {
   int _tick = 0;
   final Map<Clause, bool> _det = {};
   final Map<Str, List<Clause>> _chars = {};
+  static bool spyOn = false;
   int _round = 0, _budget = 0;
   int? _fill;
   final Map<MatchResult, int> _nets = HashMap.identity();
   int lastCost = 0;
 
-  // -- ordering: fewest edits; PEG's reading; most explained; latest doubt --
+  // -- ordering: fewest edits; PEG's reading; most explained; latest
+  // doubt; most vouched. The last key was found by instrumenting ties:
+  // virtually every materially different rank-tie was the same reading
+  // carrying MORE certified absorption, and vouch decides future swallow
+  // tolls -- rank-invisible vouch made tie-freshness load-bearing by
+  // accident.
   static int _rank(_Way a, _Way b) {
     final ea = a.edits + a.toll, eb = b.edits + b.toll;
     if (ea != eb) return ea - eb;
     if (a.peg != b.peg) return a.peg ? -1 : 1;
     if (a.net != b.net) return b.net - a.net;
-    return b.key - a.key;
+    if (a.key != b.key) return b.key - a.key;
+    if (a.vouch != b.vouch) return b.vouch - a.vouch;
+    // fewest owed marks: the eof claim charges once however many slots it
+    // strands, so without this a five-mark spine ties a two-mark one and
+    // the tie law picks the deepest
+    return a.marks - b.marks;
   }
 
   /// One way per end -- the transient view of the same structure the memo
@@ -206,7 +240,7 @@ class Squirrel {
       // budget itself marks where repair can no longer reach. A pure
       // reading vouches what it absorbed (span - net, the same at every
       // lift of one span), or outer judgments re-charge vouched content.
-      if (_budget == 0) {
+      if (_budget == 0 && pos < _n) {
         final m = _frozen(c, pos);
         if (m == null) return const [];
         final r = m.subClauseMatches.first;
@@ -215,14 +249,20 @@ class Squirrel {
           _Way(pos + r.len, 0, 0, net, _peg, vouch: r.len - net, leaf: m)
         ];
       }
-      return _lift(c, pos, _ways(rules[c.ruleName]!, pos));
+      final body = _ways(rules[c.ruleName]!, pos);
+      final lifted = _lift(c, pos, body);
+      if (spyOn && pos == 2 && c.ruleName == 'Value') {
+        print(
+            'REF Value@2 b=$_budget body=${body.length} lifted=${lifted.length}');
+      }
+      return lifted;
     }
     if (c is! HasOneSubClause && c is! HasMultipleSubClauses) {
       if (c is Str && c.text.length > 1) {
         final m = (c as Terminal).match(_ref, pos);
         if (!m.isMismatch)
           return [_Way(pos + m.len, 0, 0, m.len, _peg, leaf: m)];
-        if (_budget < 1) return const [];
+        if (_budget < 1 && pos < _in.length) return const [];
         // A LITERAL IS A SEQUENCE: the fold gives it denial, partial
         // prefixes and completion with no alignment table of its own.
         return _prune(_fold(
@@ -230,7 +270,8 @@ class Squirrel {
               for (final u in c.text.codeUnits) Char(String.fromCharCode(u))
             ],
             c,
-            pos));
+            pos,
+            lit: true));
       }
       return _prune(_term(c as Terminal, pos));
     }
@@ -254,7 +295,7 @@ class Squirrel {
         return e.ways(_budget);
       }
     }
-    if (_budget == 0 && e.at < 0) {
+    if (_budget == 0 && e.at < 0 && pos < _n) {
       // parsing mode for composites too: at budget zero the descent is the
       // pure parser for ANY clause, so the library answers -- cached in the
       // cell, since the library memoizes only rules
@@ -276,6 +317,10 @@ class Squirrel {
       }
       e.at = _budget;
       e.tick = _tick;
+      if (spyOn && pos == 2 && c is First) {
+        print('grow@2 $c changed=$changed foundLR=${e.foundLR} '
+            'size=${e._by.length} b=$_budget');
+      }
       if (!changed || !e.foundLR) break;
       _tick++;
       _heads[pos] = {...?saved, ...?e.involved};
@@ -287,6 +332,14 @@ class Squirrel {
     }
     _stack.removeLast();
     e.inPath = false;
+    if (spyOn && pos <= 2) {
+      print('store $c@$pos: ' +
+          e
+              .ways()
+              .map((w) => '(e${w.end},g${w.gap},d${w.del},eof${w.eof ? 1 : 0},'
+                  'n${w.net},k${w.key})')
+              .join());
+    }
     return e.ways(_budget);
   }
 
@@ -334,16 +387,21 @@ class Squirrel {
   /// its obligations); where a slot cannot be read as it stands, input may be
   /// denied up to the first place it reads freely; an unspellable fill pays
   /// D8's fee where that denial was no dearer (I72 scoped by I36).
-  List<_Way> _fold(List<Clause> subs, Clause cap, int pos) {
+  List<_Way> _fold(List<Clause> subs, Clause cap, int pos, {bool lit = false}) {
     var cur = <_Way>[_Way.unit(pos)];
     for (final sub in subs) {
       final next = <_Way>[];
       for (final w in cur) {
-        if (w.edits > _budget) break;
+        // continue, not break: front views are insertion-ordered
+        if (w.spend > _budget) continue;
         final full = _budget;
-        _budget = full - w.edits;
+        _budget = full - w.spend;
         final here = _ways(sub, w.end);
         _budget = full;
+        if (spyOn && pos == 1) {
+          print(
+              'fold@1 sub=$sub w.end=${w.end} w.edits=${w.edits} b=$full here=${here.length}');
+        }
         var clean = false;
         for (final v in here) {
           if (v.free) clean = true;
@@ -369,6 +427,16 @@ class Squirrel {
         for (final v in here) {
           next.add(w.then(
               fee && v.end == w.end && !v.free && k <= v.gap ? v.fee() : v));
+        }
+        // THE REPLACE EDIT, inside a literal only (I95's third op): the
+        // wrong character is denied AND the right one owed, so 'i"' reads
+        // as 'if' at cost two -- the plain deny-scan cannot express it
+        // because its skip must READ, and the owe alone cannot consume
+        if (lit && !clean && w.end < _n) {
+          final sk = w.then(_Way.skip(w.end, w.end + 1));
+          for (final v in _ways(sub, w.end + 1)) {
+            next.add(sk.then(v));
+          }
         }
       }
       if (next.isEmpty) return const [];
@@ -480,12 +548,17 @@ class Squirrel {
           c is Str || c is Char || (c is CharSet && !c.inverted) ? m.len : 0;
       return [_Way(pos + m.len, 0, 0, n, _peg, leaf: m)];
     }
-    if (_budget < 1) return const [];
+    // an owe at the end of the input is offered even with no budget left:
+    // it joins the one standing "the document stopped" claim (I94), and
+    // the afford filters price the single eof edit -- without this, a
+    // truncation's spine dies at its second obligation
+    if (_budget < 1 && pos < _in.length) return const [];
     final atEof = pos == _in.length;
     return [
       _Way(pos, 0, atEof ? 0 : 1, 0, pos,
           eof: atEof,
           owing: true,
+          marks: 1,
           leaf: Match(c, pos, 0,
               subClauseMatches: [SyntaxError(pos: pos, len: 0)]))
     ];
@@ -580,6 +653,11 @@ class Squirrel {
       _budget = _round;
       final owed = <_Way>[];
       for (final w in _ways(rules[topRuleName]!, 0)) {
+        if (spyOn) {
+          print('root r=$_round e${w.end} del${w.del} gap${w.gap} '
+              'eof=${w.eof} toll${w.toll} net${w.net} k${w.key} '
+              'edits${w.edits} owing=${w.owing}');
+        }
         // A way that stops short is charged for the tail it never reached,
         // loses its PEG claim with it, and pays once if it absorbed more of
         // the document than it pinned (the swallow, charged where it cannot

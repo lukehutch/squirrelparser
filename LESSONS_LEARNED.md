@@ -2370,6 +2370,42 @@ comments. **What remains at ~511 lines is what the gates and the battery
 pin in place**; the recorded seam below it is c2 at 454, paid for with
 −0.0008 score and foreign trees.
 
+### c4, second act — past s1 (I105): the tie autopsy that became four keys
+
+**The instruction: explain why tie-freshness was load-bearing, fix it, and
+close the score to s1.** Instrumenting the half-million rank-ties per
+battery answered the first question: 97% were identity churn, and of the
+3% that differed materially, virtually every one was the same reading
+carrying MORE vouch — rank-invisible, but vouch decides future swallow
+tolls, so freshness was a proxy for a missing rank key. **Vouch is now the
+fifth key.** The residual freshness effect is a real, deterministic
+preference — THE TIE LAW: the latest same-price rival holds the bucket
+(first-keeps loses 2.6 perfect; PEG-first-within/refresh-across loses
+3.0) — not fragility: expansion order is deterministic.
+
+**Closing to s1 became passing s1, by itemized residual (I93 again):**
+(1) THE REPLACE EDIT inside a literal — I95's third op: `i"` reads as `if`
+by denying the `"` AND owing the `f`; the deny-scan cannot express it
+(its skip must READ), and a whole quote-insert family fell to a String
+swallow without it. (2) THE EOF EDIT IS NOT SPEND — I94 completed: the
+eof bit is the root's one "document stopped" claim, so it must neither
+block a fold's continuation nor fail an afford filter; it took three
+buried gates (the terminal's budget refusal, the Ref branch's frozen
+short-circuit, the fold's affordability break — itself wrong since the
+Front made views insertion-ordered) plus the read-side filter to find,
+and since eof-ways exist only at the end of the input the exclusion is
+intrinsically EOF-scoped, no special cases. Without it a truncation's
+spine died at its SECOND obligation and `{"` read as a String. (3)
+FEWEST MARKS is the sixth rank key: the eof claim charges once however
+many slots it strands, so a five-mark spine tied a two-mark one and the
+tie law picked the deepest — expr truncates paid until the mark count
+entered the rank. **c4 final: 0.9850 / 82.7% / ~1,520 ms / 559 LOC —
+first engine past s1 (0.9841) on score, best perfect rate ever, every
+gate green, case-wise 184 better / 84 worse against s1, frontier #1
+dominating 18.** The eager-tree question also closed honestly: the
+tie-refresh volume that priced it is the tie law itself — semantic, not
+waste.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2555,6 +2591,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I105 | A LOAD-BEARING ACCIDENT IS A MISSING KEY — instrument the ties: freshness mattered because vouch was rank-invisible (fifth key), spine depth tied because the collapsed eof claim hid the mark count (sixth key), and the remainder is the TIE LAW (latest same-price rival wins, deterministically). With the eof edit recognized as the root's claim rather than local spend (I94 completed) and the literal replace edit (I95's third op), c4 passes s1: 0.9850/82.7/all gates | c4 | **LIVE** — the standing engine; rank is now (edits+toll, peg, net, key, vouch, marks) |
 | I104 | THE SIZE FLOOR IS A MEASUREMENT, NOT A TASTE — at (0.9826/81.7/~1,480/all gates) the engine's floor is ~511 lines: nine attempted collapses each broke a bar by a recorded number, and the two real finds (grammar-static minFill cached per engine; the cell IS the front) are worth −4 lines and the latency of 2,000 spared recursions | c4 | **LIVE** — c4 bit-identical to c3 case-wise; the seam below the floor is c2's 454 at −0.0008 |
 | I103 | INSERTION IS THE IMPROVEMENT TEST — the way-front (champion per ending, rank at insert, ties replace silently but never signal, demotion and affordability as read-time views) unifies the prune, the sort, and the grow-loop's convergence test in one structure; the seed is read raw, and re-entry IS left recursion | c3 | **LIVE** — 0.9826/**81.7**/~1,470 ms/515 LOC, all gates, frontier #2 dominating 18; the sort and its unstable-tie livelock class deleted by construction; rep-through-own-cell measured out once more (2,440 vs 1,535 ms) — the closure is the same fixpoint on a specialized scheduler |
 | I102 | ITERATION, LEFT RECURSION, AND REPAIR ARE ONE MECHANISM — a memo entry growing to its fixed point. Normalize the grammar (X* ← X* X / ε; X? ← X / ε; literal ← char sequence; EOI ← a slot) until the engine speaks four forms and one fixpoint; anonymous rules cap without judgment; the boundary rule B is the final judgment (admit all, vouch-blind, before the EOI fold); a frozen span vouches span − net (the enumerated equivalence) | c2 | **LIVE** — 0.9818/78.7/454 LOC, all gates, smallest ≥0.98 engine; needs Warth's involved-set (the version bump cold-starts everything once growth is ubiquitous) and a total prune order (unstable sort ties read as improvement forever) |
