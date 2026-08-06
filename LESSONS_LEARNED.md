@@ -2297,6 +2297,46 @@ expr, the true-LR grammar under rep-as-LR), +25% latency — the grow-loop
 per repetition costs real iterations; c1 keeps the speed point (1,576),
 c2 takes the size point (454). Both on the frontier.
 
+### c3 — the rewrite hoisted, the sort deleted, the best of both lines (I103)
+
+**The instruction: hoist the rewriting into behavior (trees must follow the
+grammar); unify the sort order and the improvement comparison into one
+structure; find the c2 regression; compact.** c3 is c1's proven behavioral
+forms (repetition closure, option, literal char-fold, root protocol — no
+grammar rewriting, every tree under the original clause) carrying the two
+laws c2 PROVED (Warth's involved-set; frozen-span vouch symmetry), plus THE
+WAY-FRONT: one champion per ending, decided by rank at insertion. An
+accepted insert IS the improvement signal the grow-loop waits on; ties
+replace silently (the freshest reading holds the bucket, but a tie must
+never read as improvement or rank-equal rivals spin forever); farthest-PEG
+demotion and the budget filter are read-time views. The sort — and the
+unstable-tie livelock class it carried — ceases to exist; iteration order
+is the map's own, deterministic by construction. **0.9826 / 81.7% /
+~1,470 ms / 515 LOC — every gate green, recommit 16/16 — the best perfect
+rate ever recorded, frontier #2, dominating 18 engines, case-wise net
++0.68 over c1 (105 better / 65 worse).**
+
+**Two porting truths the battery taught (the port scored 0.9766 until
+both were found):** (1) **the seed is read RAW** — applying the budget
+filter at the seed-hit hides the seed's repair-carrying ways from the very
+growth that must build on them (LR spines stopped growing repairs;
+`1*` lost its MulOp level); (2) **re-entry IS left recursion** — any
+inPath hit sets foundLR; c1 gated the flag on a null ways-list, and once
+fronts are pre-created that first-hit signal silently vanishes, turning
+growth off entirely (all-expr collapse, −0.0057). Also measured and kept
+out AGAIN, now isolated from the rewrite: growing the repetition through
+its own cell (the I102 pure form) costs 2,440 ms vs 1,535 for the one-pass
+closure at no accuracy change — the general grow-loop re-expands the whole
+rule per growth step; the closure keeps its specialized scheduler, stated
+as such. And budget-zero parsing extends to EVERY memoized clause (the
+library answers composites too, cached in the cell), worth −6% latency.
+
+**The c2 regression, resolved**: the 19 lost cases were the desugar's
+semantic drift (the rep's advance-only guard and empty-`+` fallback,
+`_opt`'s peg-aware empty way, c1's root owed-admission) — all restored
+here by construction, and the expr classes flipped from c2's biggest loss
+to c3's biggest gain (+12 truncate, +11 delim-insert, +10 junk-insert).
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2482,6 +2522,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I103 | INSERTION IS THE IMPROVEMENT TEST — the way-front (champion per ending, rank at insert, ties replace silently but never signal, demotion and affordability as read-time views) unifies the prune, the sort, and the grow-loop's convergence test in one structure; the seed is read raw, and re-entry IS left recursion | c3 | **LIVE** — 0.9826/**81.7**/~1,470 ms/515 LOC, all gates, frontier #2 dominating 18; the sort and its unstable-tie livelock class deleted by construction; rep-through-own-cell measured out once more (2,440 vs 1,535 ms) — the closure is the same fixpoint on a specialized scheduler |
 | I102 | ITERATION, LEFT RECURSION, AND REPAIR ARE ONE MECHANISM — a memo entry growing to its fixed point. Normalize the grammar (X* ← X* X / ε; X? ← X / ε; literal ← char sequence; EOI ← a slot) until the engine speaks four forms and one fixpoint; anonymous rules cap without judgment; the boundary rule B is the final judgment (admit all, vouch-blind, before the EOI fold); a frozen span vouches span − net (the enumerated equivalence) | c2 | **LIVE** — 0.9818/78.7/454 LOC, all gates, smallest ≥0.98 engine; needs Warth's involved-set (the version bump cold-starts everything once growth is ubiquitous) and a total prune order (unstable sort ties read as improvement forever) |
 | I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round, and the whole mode split is ONE RULE: parsing mode IS budget zero (with no edits left the way-descent is definitionally the pure parser, so the frozen memo answers unconditionally — the budget itself is the damage boundary, and the clean suffix is free); greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet) | b2 → c1 | **LIVE** — c1 0.9823/79.1/**~1,580 ms**/**493 LOC**/16-16, bit-identical to s4 on all 2,000 docs at 16% less latency, 13 lines over s4; the conditioned prefix-freeze was DELETED (its consult cost ≈ its savings); frozen ways carry `vouch = span − net` or swallow pricing breaks; `eof` is a bool, making I94's charge-once structural |
 | I100 | A MISMATCH IS A SUSPENDED READING, AND LEFT RECURSION IS RECOVERY AT COST ZERO — the memo entry's grow-loop is already the whole recovery engine; the parse computes every reading recovery needs exactly once, success discards them at five combinator sites (`reach` completes the record), the chart re-derives that record every round, and the tree indexes it | t1 → s3 | **LIVE — ★ THE PIVOTAL INSIGHT OF THE RECOVERY LINE, owner-confirmed 2026-08-05** ("the biggest breakthrough you have made so far"). Made STRUCTURAL in s3: one grow-loop, one entry, no second mechanism — the collapse that broke the size cliff and dominated r9. Answers §1.8's six-occasion steer |
