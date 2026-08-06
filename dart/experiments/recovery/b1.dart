@@ -17,19 +17,35 @@
 // reached only through a choice arm whose mismatch read nothing may not act
 // unless no evidenced site advances at the same price -- without it the
 // swallow completes first (an owed quote at position 0 buys the document).
-// STATUS (2026-08-05, honest): work in progress at 0.8000 / 44.6% / ~12 s
-// battery after two measured iterations. Acceptance 3/3, freespan PASS,
-// conf1 `0 1 1 0 2 3` with 0 free passes, recommit 14/16. The trajectory
-// mirrors t1's climb (0.83 -> 0.93 over ~ten ported lessons): iteration one
-// showed the commit criterion needs the EOF amendment (nothing can move
-// forward at the end of input; a fill that discharges its site changes the
-// frontier's SHAPE, which is the criterion's own wording); iteration two
-// showed the class ordering (complete > advance > shape-change) must not
-// let shape-changers commit where advancers exist mid-document -- the
-// current 0.80 is that regression, unfixed. What this file is FOR: the
-// faithful form of the two-mode architecture, kept so the next session
-// continues from measurements instead of from memory.
+// STATUS (2026-08-06, honest): 0.8375 / 41.5% / ~6 s battery; accept 3/3,
+// freespan PASS, conf1 `0 1 1 0 2 3` (0 free passes), recommit 9/16. The
+// architecture is now COMPLETE as specified -- two modes; the EOI rule (a
+// failing child at end-of-input is not descended: everything beneath is at
+// the end too, and the site at this level, completed as a unit with its
+// partial work kept, says everything the deeper ones would); completions
+// that REUSE matched children instead of re-filling from scratch; extent
+// measured over the side maps too (the parse's real frontier includes what
+// success threw away -- without this a destructive denial "advanced"
+// against a false baseline); per-site interleave of denial-then-completion
+// so the deepest site speaks first even for held shape-changers; and the
+// class order complete > advance > shape-change, shape-changers committing
+// only when nothing anywhere can move forward.
 //
+// THE RESULT WORTH KEEPING ALREADY: the class system decides BOTH of D8's
+// acceptance cases with zero pricing machinery. b2's denial COMPLETES and
+// wins by being attempted first; cx2's fill COMPLETES where its denial
+// merely advances. The fee, the net rank, the toll -- every engine's D8
+// apparatus -- were compensations for judging repairs by score instead of
+// by the parser's own progress.
+//
+// LIVE FORK, both measured: the First-completion arm chooser. Furthest-
+// read arm (I27, r13's salvage rule; this file): 0.8375 aggregate but
+// recommit 9/16. Cheapest arm: 0.8325 but recommit 12/16 -- each flips a
+// different set of committed-construct cases, so the chooser needs the
+// commitment measured through the side maps (extent, not len), which is
+// the first thing the next session should try. Truncate (0.595) is the
+// deepest open class: traces show completions committing at the wrong
+// level of the spine on deep truncations ([1,[2,[3,[4 heads as Number).
 import 'dart:collection';
 
 import 'package:squirrel_parser/squirrel_parser.dart';
@@ -299,81 +315,26 @@ class Squirrel {
     return c is Nothing ? 0 : 1;
   }
 
-  /// I96: the named spine the grammar forces for an owed slot, or null.
-  MatchResult? _owedNode(Clause sub, int p, int fill) {
-    final chain = <Clause>[];
-    var c = sub;
-    for (var guard = 0; guard < 64; guard++) {
-      if (c is Ref) {
-        chain.add(c);
-        c = rules[c.ruleName]!;
-        continue;
-      }
-      if (c is Repetition && c.requireOne) {
-        c = c.subClause;
-        continue;
-      }
-      if (c is Seq) {
-        Clause? nz;
-        var many = false;
-        for (final k in c.subClauses) {
-          if (_minFill(k) > 0) {
-            if (nz != null) many = true;
-            nz = k;
-          }
-        }
-        if (nz == null || many) break;
-        c = nz;
-        continue;
-      }
-      if (c is First) {
-        Clause? best;
-        var min = _never;
-        var many = false;
-        for (final k in c.subClauses) {
-          final v = _minFill(k);
-          if (v < min) {
-            min = v;
-            best = k;
-            many = false;
-          } else if (v == min) {
-            many = true;
-          }
-        }
-        if (best == null || many || min >= _never) break;
-        c = best;
-        continue;
-      }
-      break;
-    }
-    if (chain.isEmpty) return null;
-    MatchResult node = Match(chain.last, p, 0, subClauseMatches: [
-      for (var j = 0; j < fill; j++) SyntaxError(pos: p, len: 0)
-    ]);
-    for (var i = chain.length - 2; i >= 0; i--) {
-      node = Match(chain[i], p, 0, subClauseMatches: [node]);
-    }
-    return node;
-  }
-
-  // -- candidates: read off the tree, filtered by probes ---------------------
-
   // -- the frontier: known the instant parsing stops ------------------------
 
-  /// Sites (clause, pos, depth, evidenced), deepest first. The tree names
-  /// them; nothing is searched for.
-  final List<(Clause, int, int, bool)> _front = [];
+  /// Sites: the mismatch node itself, the slot clause that failed, where,
+  /// how deep, and whether evidence reached it. Deepest first.
+  final List<(MatchResult, Clause, int, int, bool)> _front = [];
   final Set<String> _seen = {};
   final Set<MatchResult> _walked = HashSet.identity();
 
-  void _add(Clause c, int p, int d, bool ev) {
-    if (_seen.add('${identityHashCode(c)}:$p')) _front.add((c, p, d, ev));
+  void _add(MatchResult m, Clause c, int p, int d, bool ev) {
+    if (_seen.add('${identityHashCode(c)}:$p')) _front.add((m, c, p, d, ev));
   }
 
   /// Walk matches and mismatches alike: successful subclause work is
-  /// descended only for what it tried and threw away ([_stopped], [_lost]),
-  /// and mismatch nodes are recursed THROUGH -- their matched children are
-  /// finished work, their failing child is where the frontier lives.
+  /// descended only for what it tried and threw away ([_stopped], [_lost]);
+  /// mismatch nodes are recursed THROUGH -- their matched children are
+  /// finished work, their failing child is the frontier -- EXCEPT where the
+  /// failing child already sits at the end of the input: everything beneath
+  /// it is at the end too, no widening exists down there, and the site at
+  /// this level (completed as a unit, its partial work kept) says everything
+  /// the deeper ones would.
   void _collect(MatchResult m, bool ev, int d) {
     if (!_walked.add(m)) return;
     final c = m.clause;
@@ -394,8 +355,8 @@ class Squirrel {
       for (var i = 0; i < j; i++) {
         _collect(m.subClauseMatches[i], ev, d + 1);
       }
-      _add(fc, fm.pos, d, ev);
-      _collect(fm, ev, d + 1);
+      _add(fm, fc, fm.pos, d, ev);
+      if (fm.pos + fm.len < _n) _collect(fm, ev, d + 1);
       return;
     }
     if (c is First) {
@@ -407,7 +368,7 @@ class Squirrel {
     for (final k in m.subClauseMatches) {
       _collect(k, ev, d + 1);
     }
-    if (m.subClauseMatches.isEmpty && c != null) _add(c, m.pos, d, ev);
+    if (m.subClauseMatches.isEmpty && c != null) _add(m, c, m.pos, d, ev);
   }
 
   /// A memoised frozen probe: does [c] read at [p] as things stand?
@@ -417,23 +378,6 @@ class Squirrel {
     if (row.containsKey(p)) return row[p];
     final m = _match(c, p);
     return row[p] = m.isMismatch ? null : m;
-  }
-
-  /// Whether every string [c] derives yields the same tree shape (I36).
-  final Map<Clause, bool> _det = HashMap.identity();
-  bool _determined(Clause c) {
-    final memo = _det[c];
-    if (memo != null) return memo;
-    _det[c] = false;
-    return _det[c] = c is Terminal || c is FollowedBy || c is NotFollowedBy
-        ? true
-        : c is Seq
-            ? c.subClauses.every(_determined)
-            : c is Repetition && c.requireOne
-                ? _determined(c.subClause)
-                : c is Ref
-                    ? _determined(rules[c.ruleName]!)
-                    : false;
   }
 
   // -- repair mode: breadth-first over the frontier --------------------------
@@ -453,23 +397,115 @@ class Squirrel {
     ]);
   }
 
-  /// Give the clause up, where its price is exactly [l].
-  MatchResult? _fillAt(Clause c, int p, int l) {
-    final fill = _minFill(c);
-    if (fill != l || fill <= 0 || fill >= _never) return null;
-    final spine = p < _n ? _owedNode(c, p, fill) : null;
-    return spine ??
-        Match(null, p, 0, subClauseMatches: [
-          for (var j = 0; j < fill; j++) SyntaxError(pos: p, len: 0)
-        ]);
+  /// COMPLETE the failed node: its matched children kept as they stand, the
+  /// missing remainder owed as zero-width marks -- valid work is reused,
+  /// never re-derived. A started construct keeps its name; one that never
+  /// read a character and sits at the end of the input has none (I81). A
+  /// predicate cannot be completed by fiat (I68). Returns (price, fact).
+  (int, MatchResult)? _completion(MatchResult m) {
+    final c = m.clause;
+    if (c is FollowedBy || c is NotFollowedBy) return null;
+    if (m.subClauseMatches.isEmpty) {
+      int need;
+      if (c is Str) {
+        need = c.text.length - m.len;
+      } else if (c is Terminal) {
+        need = 1;
+      } else {
+        final f = c == null ? _never : _minFill(c);
+        if (f <= 0 || f >= _never) return null;
+        need = f;
+      }
+      final at = m.pos + m.len;
+      final label = m.len > 0 || at < _n ? c : null;
+      return (
+        need,
+        Match(label, m.pos, m.len, subClauseMatches: [
+          if (m.len > 0) Match(null, m.pos, m.len),
+          for (var i = 0; i < need; i++) SyntaxError(pos: at, len: 0)
+        ])
+      );
+    }
+    if (c is First) {
+      // THE ARM THAT READ FURTHEST HOLDS THE COMMITMENT (I27): completing
+      // the cheapest arm abandoned eleven characters of started Array for a
+      // one-mark Number. Furthest evidence first; price breaks ties.
+      final arms = c.subClauses;
+      (int, MatchResult)? best;
+      var bestRead = -1;
+      for (var i = 0; i < m.subClauseMatches.length; i++) {
+        final am = m.subClauseMatches[i];
+        var deep = _completion(am);
+        if (deep == null) continue;
+        if (i < arms.length && arms[i] is Ref) {
+          deep = (deep.$1, Match(arms[i], 0, 0, subClauseMatches: [deep.$2]));
+        }
+        if (am.len > bestRead ||
+            (am.len == bestRead && (best == null || deep.$1 < best.$1))) {
+          bestRead = am.len;
+          best = deep;
+        }
+      }
+      return best;
+    }
+    if (c is Seq) {
+      final j = m.subClauseMatches.length - 1;
+      final fm = m.subClauseMatches.last;
+      var deep = _completion(fm);
+      if (deep == null) return null;
+      final fc = j < c.subClauses.length ? c.subClauses[j] : null;
+      if (fc is Ref) {
+        deep = (deep.$1, Match(fc, 0, 0, subClauseMatches: [deep.$2]));
+      }
+      var price = deep.$1;
+      final at = fm.pos + fm.len;
+      final marks = <MatchResult>[];
+      for (var k = j + 1; k < c.subClauses.length; k++) {
+        final f = _minFill(c.subClauses[k]);
+        if (f >= _never) return null;
+        price += f;
+        for (var i = 0; i < f; i++) {
+          marks.add(SyntaxError(pos: at, len: 0));
+        }
+      }
+      return (
+        price,
+        Match(null, 0, 0, subClauseMatches: [
+          ...m.subClauseMatches.take(j),
+          deep.$2,
+          ...marks
+        ])
+      );
+    }
+    if (c is Repetition) {
+      final deep =
+          m.subClauseMatches.isEmpty ? null : _completion(m.subClauseMatches.last);
+      if (deep == null) return null;
+      return (deep.$1, Match(null, 0, 0, subClauseMatches: [deep.$2]));
+    }
+    return null;
   }
 
-  /// The furthest input position the current reading accepts -- what the
-  /// commit criterion means by the position MOVING FORWARD.
-  int _extent(MatchResult m) {
+  /// The furthest input position the parse ATTEMPTED -- side maps included,
+  /// because the work a successful clause tried and threw away is part of
+  /// the frontier (measuring only the tree let a destructive denial
+  /// "advance" against a baseline that ignored the real exploration).
+  int _extent(MatchResult m, [Set<MatchResult>? seen]) {
+    final v = seen ?? HashSet.identity();
+    if (!v.add(m)) return 0;
     var e = m.pos + m.len;
+    final st = _stopped[m];
+    if (st != null) {
+      final d = _extent(st, v);
+      if (d > e) e = d;
+    }
+    final lo = _lost[m];
+    if (lo != null) {
+      final d = _extent(lo, v);
+      if (d > e) e = d;
+    }
     for (final k in m.subClauseMatches) {
-      final d = _extent(k);
+      final d = _extent(k, v);
       if (d > e) e = d;
     }
     return e;
@@ -477,10 +513,7 @@ class Squirrel {
 
   bool _complete(MatchResult r) => !r.isMismatch && r.pos + r.len >= _n;
 
-  /// The frontier's SHAPE: the rightmost failing spine as a signature. At the
-  /// end of the input nothing can move forward, but a fill that discharges
-  /// its site exposes the next one -- the shape changes, and that is the
-  /// commit criterion's own wording.
+  /// The frontier's SHAPE: the rightmost failing spine as a signature.
   int _sig(MatchResult m) {
     var h = 0;
     MatchResult? k = m;
@@ -491,8 +524,8 @@ class Squirrel {
     return h * 31 + (k == null ? 0 : identityHashCode(k.clause) + k.pos * 7);
   }
 
-  /// Install [fact], resume parsing (memo-warm), classify what happened
-  /// (2 completed, 1 advanced, 0 shape changed, -1 nothing), and uninstall.
+  /// Install [fact], resume parsing on the same memo, classify (2 completed,
+  /// 1 advanced, 0 the frontier changed shape, -1 nothing), uninstall.
   int _attempt(Clause c, int p, MatchResult fact, Clause top, int was, int sig) {
     (_fix[c] ??= {})[p] = fact;
     _invalidate(p);
@@ -527,50 +560,84 @@ class Squirrel {
     var root = _rule(top, 0);
     for (var round = 0; round <= 4 * _n + 16; round++) {
       if (_complete(root)) break;
-      // PARSING STOPPED: the whole frontier is in the tree already.
       _front.clear();
       _seen.clear();
       _walked.clear();
       _probes.clear();
       _collect(root, true, 0);
-      _front.sort((x, y) => y.$3 - x.$3); // deepest first
+      _front.sort((x, y) => y.$4 - x.$4); // deepest first
       final was = _extent(root);
       final sig = _sig(root);
-      // REPAIR MODE: widen breadth-first -- at each price, deepest site
-      // first, the evidence gate (I99) holding unevidenced arms to a second
-      // pass. Completion beats advancement beats a bare change of the
-      // frontier's shape; the first candidate in the winning class commits,
-      // and parsing resumes at once.
+      // REPAIR MODE. The evidenced frontier is widened to exhaustion before
+      // any unevidenced arm may act (I99). Within a pass: price l ascending,
+      // deepest site first, denial before completion at each site; a
+      // completion beats an advancement at the same (site, l) -- which is
+      // the whole of D8: b2's denial completes and wins by coming first,
+      // cx2's fill completes where its denial merely advances. A repair
+      // that only rearranges the frontier (class 0) is taken only when no
+      // repair anywhere can move it forward.
       var committed = false;
-      for (var l = 1; l <= _n + 1 && !committed; l++) {
-        for (final pass in [true, false]) {
+      for (final pass in [true, false]) {
+        var maxL = _n + 1;
+        final comp = <int, (int, MatchResult)>{};
+        for (final (m, c, p, _, ev) in _front) {
+          if (ev != pass) continue;
+          final done = _completion(m);
+          if (done != null) {
+            var fact = done.$2;
+            if (c is Ref && !identical(fact.clause, c)) {
+              fact = Match(c, 0, 0, subClauseMatches: [fact]);
+            }
+            comp[identityHashCode(m)] = (done.$1, fact);
+            if (done.$1 > maxL) maxL = done.$1;
+          }
+        }
+        (Clause, int, MatchResult)? held;
+        for (var l = 1; l <= maxL && !committed; l++) {
+          var bestClass = 0;
           (Clause, int, MatchResult)? best;
-          var bestClass = -1;
-          for (final (c, p, _, ev) in _front) {
+          // Per SITE, deepest first: its denial, then its completion --
+          // interleaving preserves the deepest-first discipline for the held
+          // class too, or a shallow denial's shape-change outranks the deep
+          // completion that was the honest repair.
+          for (final (m, c, p, _, ev) in _front) {
             if (ev != pass) continue;
-            for (final fact in [_denyAt(c, p, l), _fillAt(c, p, l)]) {
+            final done = comp[identityHashCode(m)];
+            for (final fact in [
+              _denyAt(c, p, l),
+              if (done != null && done.$1 == l) done.$2
+            ]) {
               if (fact == null) continue;
               final r = _attempt(c, p, fact, top, was, sig);
-              if (r > bestClass) {
+              if (r > bestClass || (r == bestClass && r > 0 && best == null)) {
                 bestClass = r;
                 best = (c, p, fact);
+              } else if (r == 0 && held == null) {
+                held = (c, p, fact);
               }
-              if (r == 2) break;
+              if (bestClass == 2) break;
             }
             if (bestClass == 2) break;
           }
-          if (best != null && bestClass >= 0) {
+          if (best != null && bestClass > 0) {
             final (c, p, fact) = best;
+            if (debug) print('commit class=$bestClass $c@$p l=$l pass=$pass');
             (_fix[c] ??= {})[p] = fact;
             _invalidate(p);
             committed = true;
           }
-          if (committed) break;
         }
+        if (!committed && held != null) {
+          final (c, p, fact) = held;
+          if (debug) print('commit held $c@$p pass=$pass');
+          (_fix[c] ??= {})[p] = fact;
+          _invalidate(p);
+          committed = true;
+        }
+        if (committed) break;
       }
       if (!committed) break;
-      // BACK TO PARSING MODE, same memo table.
-      root = _rule(top, 0);
+      root = _rule(top, 0); // BACK TO PARSING MODE, same memo table
     }
     final out = _emit(root);
     var del = 0, gap = 0;

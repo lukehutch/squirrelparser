@@ -2092,19 +2092,24 @@ document. This is the r-series brief plus everything since: the sideways
 repair channel and readEnd invalidation from t1, the reach side maps, the
 evidence gate (I99) as the only guard.
 
-**Where it measurably stands after two iterations: 0.8000 / 44.6% / ~12 s,
-acceptance 3/3, freespan PASS, conf1 exact, recommit 14/16.** Iteration one
-(advancement-only commits) scored 0.8113 with truncations at 0.609 — EOF
-fills can never advance, so only one-step swallows completed; the shape-
-change amendment fixed truncate (0.750) and freespan. Iteration two exposed
-the ordering defect now standing: shape-changers commit where advancers
-should hold mid-document (quote-delete 0.678). The trajectory is t1's climb
-replayed — each ported lesson moves it — and the open question is the same
-one the record already holds twice (r13's verdict, t1's I98-era finding):
-whether local-commit engines cap below the chart on the classes that need
-paired readings, or whether the shape-change criterion plus the deepest-
-first order eventually subsumes them. The file's header carries the exact
-state so the next session continues from measurements, not memory.
+**Where it stands after six measured iterations (2026-08-06): 0.8375 /
+41.5% / ~6 s; acceptance 3/3, freespan PASS, conf1 exact, recommit 9–12/16
+depending on a live fork.** The architecture is complete as specified — the
+EOI descent-stop, completions that reuse matched children, extent measured
+through the side maps (the parse's real frontier includes what success
+threw away), per-site denial-then-completion interleave, and the class
+order complete > advance > shape-change with shape-changers committing only
+when nothing can move forward. **One result already worth the file: the
+class system decides BOTH of D8's acceptance cases with zero pricing
+machinery** — b2's denial completes and wins by being attempted first;
+cx2's fill completes where its denial merely advances; the fee, the net
+rank and the toll were all compensations for judging repairs by score
+instead of by the parser's own progress. The live fork is the
+First-completion arm chooser (furthest-read arm: 0.8375/9-16; cheapest:
+0.8325/12-16 — each flips different committed-construct cases; the
+commitment should be measured through the side maps, the next session's
+first move), and deep truncations still commit at the wrong spine level.
+The header carries the exact state, traces and both fork numbers.
 
 ### s2 — the exclusion closed, and what a wash teaches
 
