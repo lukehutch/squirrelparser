@@ -45,6 +45,7 @@ import 'b2.dart' as b2;
 import 'c1.dart' as c1;
 import 'c2.dart' as c2;
 import 'c3.dart' as c3;
+import 'c4.dart' as c4;
 import 's4.dart' as s4;
 import 'm126.dart' as m126;
 import 'm127.dart' as m127;
@@ -137,6 +138,7 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
       'c1' => c1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c2' => c2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c3' => c3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
+      'c4' => c4.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       _ => null,
     };
 
@@ -164,6 +166,7 @@ const engines = [
   'c1',
   'c2',
   'c3',
+  'c4',
 ];
 
 void main() {

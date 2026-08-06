@@ -2337,6 +2337,39 @@ semantic drift (the rep's advance-only guard and empty-`+` fallback,
 here by construction, and the expr classes flipped from c2's biggest loss
 to c3's biggest gain (+12 truncate, +11 delim-insert, +10 junk-insert).
 
+### c4 — the size floor, measured (the halving that refused)
+
+**The instruction: match or exceed c3 on every metric at approximately half
+the size.** c4 is c3's semantics exactly — bit-identical on all 2,000
+battery documents, every gate green — carrying the only two changes that
+survived measurement: the grammar-static `minFill` computed once per
+engine instead of once per recover (it had been recomputed 2,000 times per
+battery), and the memo cell merged INTO the way-front (one class, one
+identity). **0.9826 / 81.7% / ~1,480 ms (bands overlapping c3's) /
+511 LOC.**
+
+**The halving is measured-infeasible at these bars, and the proof is the
+ledger.** Nine collapses attempted, each killed by a number: (1) eager
+tree-building — ways AS materialized trees, six lazy fields and `_build`
+deleted, −45 lines — costs +20–31% latency at the tie-refresh volume
+(every grow iteration re-materializes rank-equal freshness), I88 confirmed
+a third time; (2) a scalar `takes()` veto before materializing — no help,
+because the volume is ACCEPTED ties, (3) whose freshness the perfect rate
+needs: ties-stale scored 81.7 → 79.8; (4) repetition through its own memo
+cell — 2,440 vs 1,535 ms, twice measured; (5) grammar rewriting — c2's
+whole story, −0.0008 and trees that no longer follow the grammar; (6) root
+simplification (drop the owed-admission) — recommit 15/16: the incoherent
+honest Array MUST be able to displace the coherent String swallow; (7)
+Ref-cells to cache the lift — +100–180 ms of read-side view allocation;
+(8) cached front views — pays only against Ref-cells' read volume, +12
+lines otherwise; (9) merging `_determined` and `_minFill` — memoizing
+under a cycle-cut poisons minFill for nodes first computed inside a
+left-recursion path; their different recursion protocols are correct, not
+redundant. Comment-dieting is a non-move: normalised LOC never counted
+comments. **What remains at ~511 lines is what the gates and the battery
+pin in place**; the recorded seam below it is c2 at 454, paid for with
+−0.0008 score and foreign trees.
+
 ### s2 — the exclusion closed, and what a wash teaches
 
 **s2 is s1 with the give-up exclusion deleted and D8's reason made arithmetic:
@@ -2522,6 +2555,7 @@ insight), REFUTED/WITHDRAWN (measured and rejected — see Part VI).
 | I96 | AN OWED SLOT IS STILL A PLACE IN THE TREE — emit the spine the grammar forces, descend a choice only on a unique cheapest arm, withhold at end of input | s1 | LIVE |
 | I97 | A SPAN IS JUDGED ONCE — absorption vouched by a free subtree or a toll below is not re-judged above | s1 | LIVE |
 | I98 | THE TREE HOLDS THE FIRST FAILURE; THE CHART HOLDS EVERY REJECTED READING — an engine walking the tree rebuilds them sideways, one species at a time | t1 | **SUPERSEDED by I100**: true of the half-ported tree, wrong in direction — the species are the FIVE discard sites of `reach`, not the chart |
+| I104 | THE SIZE FLOOR IS A MEASUREMENT, NOT A TASTE — at (0.9826/81.7/~1,480/all gates) the engine's floor is ~511 lines: nine attempted collapses each broke a bar by a recorded number, and the two real finds (grammar-static minFill cached per engine; the cell IS the front) are worth −4 lines and the latency of 2,000 spared recursions | c4 | **LIVE** — c4 bit-identical to c3 case-wise; the seam below the floor is c2's 454 at −0.0008 |
 | I103 | INSERTION IS THE IMPROVEMENT TEST — the way-front (champion per ending, rank at insert, ties replace silently but never signal, demotion and affordability as read-time views) unifies the prune, the sort, and the grow-loop's convergence test in one structure; the seed is read raw, and re-entry IS left recursion | c3 | **LIVE** — 0.9826/**81.7**/~1,470 ms/515 LOC, all gates, frontier #2 dominating 18; the sort and its unstable-tie livelock class deleted by construction; rep-through-own-cell measured out once more (2,440 vs 1,535 ms) — the closure is the same fixpoint on a specialized scheduler |
 | I102 | ITERATION, LEFT RECURSION, AND REPAIR ARE ONE MECHANISM — a memo entry growing to its fixed point. Normalize the grammar (X* ← X* X / ε; X? ← X / ε; literal ← char sequence; EOI ← a slot) until the engine speaks four forms and one fixpoint; anonymous rules cap without judgment; the boundary rule B is the final judgment (admit all, vouch-blind, before the EOI fold); a frozen span vouches span − net (the enumerated equivalence) | c2 | **LIVE** — 0.9818/78.7/454 LOC, all gates, smallest ≥0.98 engine; needs Warth's involved-set (the version bump cold-starts everything once growth is ubiquitous) and a total prune order (unstable sort ties read as improvement forever) |
 | I101 | JUDGE GLOBALLY, SEARCH LOCALLY, NEVER RE-DERIVE — the two modes are per-clause, not per-round, and the whole mode split is ONE RULE: parsing mode IS budget zero (with no edits left the way-descent is definitionally the pure parser, so the frozen memo answers unconditionally — the budget itself is the damage boundary, and the clean suffix is free); greedy commit-one-then-reparse is refuted as a judgment (its correct choice depends on repairs it has not made yet) | b2 → c1 | **LIVE** — c1 0.9823/79.1/**~1,580 ms**/**493 LOC**/16-16, bit-identical to s4 on all 2,000 docs at 16% less latency, 13 lines over s4; the conditioned prefix-freeze was DELETED (its consult cost ≈ its savings); frozen ways carry `vouch = span − net` or swallow pricing breaks; `eof` is a bool, making I94's charge-once structural |
