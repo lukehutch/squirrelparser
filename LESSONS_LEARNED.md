@@ -13,11 +13,12 @@ when a primitive changes, the refuted list is back on the table.
 
 **Where things stand, in four lines (2026-08-05).** Two engines lead: **s1**
 (0.9841 AST-diff, 77.0% perfect, 697 lines — §4.9) has the best score, and
-**s3** (0.9819, **78.8% perfect — the study's best**, **484 lines**, §4.9) is
-the collapsed pure core that **dominates r9 on all four axes — the first time
-r9 has been beaten on every column at once** — and breaks the size cliff
-(nothing under 562 lines had exceeded 0.9551). **m143** stays the standing
-`m`-engine. Of ~160 engines, **ten are still worth considering** (Appendix) — the tenth,
+**s4** (0.9823, **79.1% perfect — the study's best**, **480 lines**, §4.9) is
+the collapsed pure core — s3 plus frozen-work reuse — that **dominates r9 on
+all four axes** and breaks the size cliff (nothing under 562 lines had
+exceeded 0.9551). **m143** stays the standing `m`-engine; the budget-deletion
+experiment is refuted (§4.9, s4) and the growing-cell form is the specified
+next step. Of ~160 engines, **ten are still worth considering** (Appendix) — the tenth,
 t1 (§4.9, attempt two), is the study's latency record at 1,035 ms and the
 engine that settled the ★TODO's claim.
 **s1 and r9 pass every gate** — all re-run 2026-08-05: acceptance 3/3, free-span,
@@ -2040,6 +2041,40 @@ where the stop priced it at one, and choose tied `First` arms by PEG order),
 against −213 lines and +1.8 perfect points. On the frontier s1 survives on
 score alone; s3 owns perfect%, the under-500 class, and dominates twelve
 engines including r9.
+
+### s4 — the frozen work reused, and the budget-deletion refuted
+
+**s4 is the standing small engine: 0.9823 / 79.1% perfect (the study's best) /
+~1,900 ms / 480 lines, every gate green — a strict improvement on s3.** Two
+changes, one refutation:
+
+- **The resync reuses the frozen parse.** Its question — "where does this
+  slot next read cleanly?" — is one the frozen parser already answered,
+  memoized, with the finished subtree attached. s3 answered it by running its
+  own chart at budget 0 down the scan; s4 asks the library and reuses the
+  subtree as a leaf way (re-wrapped in its Ref node, which the direct
+  `Parser.match` path skips — losing the wrap cost 10 perfect points and b2
+  until caught). Valid work already done is never repeated.
+- **The fill solver collapsed** to a single recursion with cycles reading as
+  unreachable, computed once for the ceiling — its only remaining client.
+
+**REFUTED on the way (do not re-litigate without new structure): deleting the
+budget outright.** The tombstone reading of the steer — a cell computed at
+budget b inhibits what b+1 needs, so delete the budget and compute each cell
+once, completely — was built first: one unbudgeted descent, termination by
+prune-per-end and the cycle seeds (a zero-width fill recursion IS left
+recursion and closes through the same seed). It is CORRECT and it is
+**~100x too slow** (144 ms on one ordinary delim-delete case; battery
+timeout): A3's old truth re-confirmed — the budget is the HORIZON that keeps
+nearly-correct input cheap, because without it every cell explores every
+repair at every depth. The waste the tombstone analogy truly names is
+narrower: the CLEAN SPINE re-expands each round (prefix-edits 0 means
+full-budget sub-calls miss their lower-budget cells), while repaired-prefix
+sub-calls already reuse across rounds via `at >= budget`. The no-repeat form
+that keeps the horizon — cells that GROW to a new budget instead of
+recomputing, the m-line's budget families (I74/I75) folded into one table —
+is the specified next step, expected to buy m143-class latency and further
+lines, and it is not smuggled into this file unmeasured.
 
 ### s2 — the exclusion closed, and what a wash teaches
 
