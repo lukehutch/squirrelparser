@@ -56,14 +56,14 @@
 %% end of the preamble, start of the body of the document source.
 \begin{document}
 
-\title[The Squirrel Parser]{The Squirrel Parser: Packrat Parsing with Left Recursion and Minimum-Edit-Distance Error Repair}
+\title[The Squirrel Parser]{The Squirrel Parser: Packrat Parsing with Left Recursion and Minimum-Cost Error Recovery}
 
 \author{Luke A. D. Hutchison}
 \email{luke.hutch@alum.mit.edu}
 \orcid{0000-0002-2937-8619}
 
 \begin{abstract}
-The \emph{squirrel parsing algorithm} extends packrat parsing to directly support all forms of left recursion: direct, indirect, input-dependent, and interwoven left-recursive cycles, to any degree of complexity. The extension consists of adding three metadata fields to each memo table entry and an expansion loop to the memo-table access function, and it reduces exactly to standard packrat parsing whenever no left-recursive cycle is encountered, so its cost on non-left-recursive grammars is negligible. For left-recursive grammars, parsing time remains linear in the length of the input whenever the expansion regions of left-recursive cycles are disjoint, a condition satisfied by every practical grammar we examined; we exhibit an adversarial grammar, nesting syntactic lookahead over a left-recursive rule, for which the algorithm (in common with prior bounded-left-recursion approaches) requires quadratic time. This paper also introduces an error repair algorithm for recursive descent parsing that inverts the usual architecture: instead of modifying the parser to tolerate errors, it keeps the parser intact and searches the space of \emph{edited inputs}, using the parser as an oracle, for a nearest member of the grammar's language under Damerau-Levenshtein distance. Because the parser is never modified, repair composes with left recursion, adds zero overhead to the parsing of valid input, and inherits a precise, declarative semantics: the repair of an invalid input is a minimum-edit-distance transformation of that input into the language. In systematic mutation testing over a JSON grammar, the repair search recovered a provably minimum-cost repair for all 519 single-character mutations tested, restoring the exact structural parse tree of the unmutated document in 94.4\% of cases, where a previous in-parser recovery design produced cascading errors on the majority of the same mutants; minimality was further verified against a brute-force oracle across five grammars, including a left-recursive expression grammar.
+The \emph{squirrel parsing algorithm} extends packrat parsing to directly support all forms of left recursion: direct, indirect, input-dependent, and interwoven left-recursive cycles, to any degree of complexity. The extension consists of adding three metadata fields to each memo table entry and an expansion loop to the memo-table access function, and it reduces exactly to standard packrat parsing whenever no left-recursive cycle is encountered, so its cost on non-left-recursive grammars is negligible. For left-recursive grammars, parsing time remains linear in the length of the input whenever the expansion regions of left-recursive cycles are disjoint, a condition satisfied by every practical grammar we examined; we exhibit an adversarial grammar, nesting syntactic lookahead over a left-recursive rule, for which the algorithm (in common with prior bounded-left-recursion approaches) requires quadratic time. This paper also introduces an error recovery algorithm for PEG parsing that keeps the parser intact and runs the same recursive descent a second time in a costed form: every clause returns a set of candidate \emph{readings} of the input, each pricing the characters it deletes as noise and the required constructs it records as missing, and for each clause, position, and end position only the best-priced reading survives. The search deepens a repair budget one edit at a time and stops at the first budget at which some reading explains the entire input, so recovery returns a complete parse tree over the unmodified input, with damage confined to explicit syntax-error marks, at minimum cost under a stated five-part comparison. The recovery never invents characters: text the grammar requires but the input lacks is reported as missing, never spelled, which is also what keeps the objective tractable, since we prove that exact minimum-distance repair with invented text is NP-hard for PEGs, and that any efficient compositional repairer must carry set-valued summaries. Left recursion is handled inside recovery by the same seed-growing mechanism the parser itself uses. Over an exhaustive mutation battery of 2{,}101 damaged documents across three grammars, including a left-recursive expression grammar, recovery restored the exact tree skeleton a reader of the undamaged document would expect in 84.0\% of cases, with a mean skeleton similarity of 0.988, at about half a millisecond per document; valid inputs pay nothing, because the plain parse is the search's own zeroth round.
 \end{abstract}
 
 \begin{CCSXML}
@@ -103,7 +103,7 @@ For left recursion, the available workarounds each give up one of those properti
 
 For error recovery, the situation is starker: fifty years of work on syntax error recovery has produced practical methods for LR and LL table-driven parsers, yet almost none of it transfers to recursive descent parsers in general or to PEG parsers in particular, for structural reasons. Aho and Peterson showed in 1972 that a context-free parser can be made globally error-correcting, producing a parse whose distance from the input is minimal, by extending the grammar with error productions and parsing with an Earley-style algorithm in cubic time~\cite{aho1972}; Lyon gave a practical variant~\cite{lyon1974}. The minimum-distance objective was thereafter largely abandoned as impractical, in favor of local repair heuristics: Burke and Fisher's method considers single-token repairs at the failure point, validated by parsing ahead a fixed number of tokens~\cite{burke1987}, and the recent CPCT+ algorithm of Diekmann and Tratt computes complete sets of minimum-cost repair sequences at the failure point of an LR parser~\cite{diekmann2020}. All of these operate on the parser's internal configuration at the moment of failure, and therefore cannot repair an error whose edit lies \emph{before} the failure point, as an unclosed string literal requires. In the PEG setting, proposed recovery mechanisms attach recovery expressions to labeled failure points in the grammar~\cite{medeiros2018,medeiros2020}, which requires per-grammar recovery engineering; in the scannerless generalized-LR setting, de Jonge et al.\ derive permissive grammars with recovery productions automatically~\cite{dejonge2012}. The pika parser, our earlier work, inverts packrat parsing into a right-to-left dynamic programming algorithm, which handles left recursion and supports recovery after syntax errors, at a significant constant-factor performance cost, and with recovery anchored to user-designated recovery rules~\cite{hutchison2020}.
 
-Both problems, we contend, yield to the same discipline: identify the invariants that make the packrat architecture work, and extend the architecture only in ways that preserve them. For left recursion, the load-bearing invariant is the purity of memoization, and re-examining what a left-recursive cycle means to a memoizing parser leads to an algorithm, the \emph{squirrel parser}, that handles every form of left recursion by adding three metadata fields to each memo entry and one expansion loop to the memo access function, reducing exactly to packrat parsing whenever no cycle is met. For error recovery, the load-bearing invariant is the parser itself: prior methods modify the parser, or the grammar, to tolerate errors, and the modification is what cascades. Keeping the parser intact and searching instead over \emph{edited copies of the input}, with the parser as an acceptance oracle, turns recovery into a shortest-path problem in edit space whose answer is declarative, the nearest member of the grammar's language under Damerau-Levenshtein distance, in place of a collection of heuristics.
+Both problems, we contend, yield to the same discipline: identify the invariants that make the packrat architecture work, and extend the architecture only in ways that preserve them. For left recursion, the load-bearing invariant is the purity of memoization, and re-examining what a left-recursive cycle means to a memoizing parser leads to an algorithm, the \emph{squirrel parser}, that handles every form of left recursion by adding three metadata fields to each memo entry and one expansion loop to the memo access function, reducing exactly to packrat parsing whenever no cycle is met. For error recovery, the load-bearing invariant is the parser itself: prior methods modify the parser, or the grammar, to tolerate errors, and the modification is what cascades. Keeping the plain parser intact, and running the same descent a second time in a form where failure has a price instead of being final, turns recovery into a bounded search over competing whole-document readings whose answer is declarative: a complete parse of the unmodified input at minimum repair cost, with every deleted character and every missing construct marked in the tree, in place of a collection of heuristics.
 
 %----------------------------------------------------------------------
 \subsection{Parsing expression grammars}
@@ -568,109 +568,30 @@ Second, \emph{ordered choice commits}. Once \cd{First} selects an alternative, t
 
 Third, \emph{scannerless parsing removes the token safety net}. Classic panic-mode recovery skips to a synchronizing token; PEG parsers of the packrat family parse at character granularity, where no reserved delimiter set exists and any ``synchronizing'' character may equally occur inside a string literal or comment. Recovery mechanisms that have been proposed for PEGs re-introduce synchronization by hand: labeled failures with per-label recovery expressions require the grammar author to anticipate error points and write recovery expressions for them~\cite{medeiros2018}, and the follow-up work inserts such expressions automatically using FIRST- and FOLLOW-set heuristics~\cite{medeiros2020}. These methods make PEG recovery practical, at the cost of per-grammar engineering or heuristic annotation, and the recovered parse has no characterization beyond the behavior of the annotations themselves.
 
-Fourth, and specific to the setting of this paper, \emph{recovery machinery woven into a memoizing parser corrupts the memo table's meaning}. A memo entry is sound because matching a rule at a position always yields the same result (Section~\ref{sec:purity}); a recovery mode that skips characters or fabricates matches makes results depend on recovery context, which is not part of the memo key. With left recursion the interaction is worse, since expansion relies on the never-downgrade rule and version invalidation, and recovery-induced matches feed back into seeds. We report a cautionary datum: an earlier design of ours that threaded error tolerance through the squirrel matching algorithm itself, propagating per-clause skip bounds through the memo table, produced cascading errors on 79\% of single-character mutations of a valid JSON document, recovering the ideal single-error parse for only 2\%, under the same mutation methodology as Section~\ref{sec:evaluation}. The failure mode was not a bug but the architecture: each locally tolerated error perturbed downstream memoization and choice commitment, manufacturing further spurious errors.
+Fourth, and specific to the setting of this paper, \emph{recovery machinery woven into a memoizing parser corrupts the memo table's meaning}. A memo entry is sound because matching a rule at a position always yields the same result (Section~\ref{sec:purity}); a recovery mode that skips characters or fabricates matches makes results depend on recovery context, which is not part of the memo key. With left recursion the interaction is worse, since expansion relies on the never-downgrade rule and version invalidation, and recovery-induced matches feed back into seeds. We report a cautionary datum: an earlier design of ours that threaded error tolerance through the squirrel matching algorithm itself, propagating per-clause skip bounds through the memo table, produced cascading errors on 79\% of the single-character mutations of a valid JSON document, recovering the ideal single-error parse for only 2\%, under exhaustive single-character mutation of the same 48-character document used in Section~\ref{sec:evaluation}. The failure mode was not a bug but the architecture: each locally tolerated error perturbed downstream memoization and choice commitment, manufacturing further spurious errors.
 
 The pika parser~\cite{hutchison2020} escapes several of these constraints by abandoning recursive descent altogether, parsing bottom-up and right to left by dynamic programming, so that structure after an error is recovered independently of the error; but it pays a large constant-factor cost on every input, valid or not, and its recovery is organized around designated rules of interest rather than a criterion of repair quality.
 
 What is common to every approach above is that it modifies the parser, or the grammar, to tolerate errors. The parser is the most delicate machine in the system, and its invariants, greedy choice, memoization purity, and monotonic left-recursive expansion, are exactly what error tolerance perturbs.
 
 %----------------------------------------------------------------------
-\section{Error recovery as minimum-distance repair search}
+\section{Error recovery as a costed second descent}
 \label{sec:repair}
 %----------------------------------------------------------------------
 
-We instead leave the parser untouched, and move recovery outside it: if the input does not parse, search for the nearest input that does. The parser's role in recovery is reduced to that of an \emph{oracle}, deciding membership in $L(G)$ and reporting where and why candidate inputs fail; recovery becomes a shortest-path search over \emph{edited copies of the input}.
-
-%----------------------------------------------------------------------
-\subsection{Problem statement}
-\label{sec:problem}
-%----------------------------------------------------------------------
-
-\begin{definition}[Repair]
-\label{def:repair}
-Given a grammar $G$ and an input $s \notin L(G)$, a \emph{repair} of $s$ is a string $s^* \in L(G)$ together with a sequence of single-character edit operations, insertions, deletions, substitutions, and transpositions of adjacent characters, transforming $s$ into $s^*$. The \emph{cost} of the repair is the number of operations, and a repair is \emph{minimal} if no repair of $s$ has lower cost. The minimal cost is the Damerau-Levenshtein distance from $s$ to the language, $d(s, L(G)) = \min_{t \in L(G)} d_{\mathrm{DL}}(s, t)$.
-\end{definition}
-
-The output of recovery is the parse tree of $s^*$, which is an ordinary, complete parse tree of the unmodified grammar, plus the edit list, recovered by edit-distance alignment of $s^*$ against $s$~\cite{wagner1974} and mapped back to the coordinates of the original input, which tells the client exactly which characters of the user's input were added, removed, altered, or swapped. One asymmetry between the cost and the list deserves note: the cost is the length of the minimal operation \emph{sequence}, whose operations act on intermediate strings, while the list is a fixed-coordinate alignment script, and in the rare case where the minimal sequence applies a transposition to characters made adjacent by an earlier deletion, no fixed-coordinate script has as few operations, so the list can exceed the cost. Tooling that requires error nodes embedded in the tree can reconstruct them from the edit list and the alignment of $s$ with $s^*$.
-
-Definition~\ref{def:repair} is the entire semantics of recovery: which parse is produced for an invalid input is determined by a distance metric over inputs, not by properties of the recovery implementation. The choice of edit moves follows Damerau's classic observation that over 80 percent of human spelling errors are a single insertion, deletion, substitution, or transposition~\cite{damerau1964,levenshtein1966}; a syntax error in source code is a human transcription error of the same species. The metric is defined without reference to the grammar's structure, so recovery makes no assumption about what kind of language is being parsed, and requires no annotation, no recovery rules, and no synchronization tokens. When more than one repair achieves the minimal cost, some choice among them must still be made, and that choice is policy rather than derived objective: it is the one place where an implementation's preferences show through, and it must be stated for recovery to be deterministic.
-
-Two properties are immediate. Recovery adds \emph{zero} cost to valid inputs, because the repair machinery is invoked only after the ordinary parse has rejected the input, and that parse is the unmodified linear-time parse of Sections~\ref{sec:algorithm} and~\ref{sec:complexity}. And recovery composes with left recursion \emph{for free}: every candidate the search examines is a plain string handed to the unmodified squirrel parser, whose left recursion handling is input-agnostic, so the class of interactions between recovery and expansion that undermined the in-parser design of Section~\ref{sec:whyhard} cannot arise, structurally.
-
-%----------------------------------------------------------------------
-\subsection{What an implementation must supply}
-\label{sec:searchstructure}
-%----------------------------------------------------------------------
-
-Definition~\ref{def:repair} fixes what recovery returns without fixing how to compute it. Any implementation needs two things: a way to decide membership in $L(G)$, which is the unmodified parser, and a way to bound the set of candidate strings that must be examined, since the four edit operations over an unbounded alphabet propose infinitely many. The bound is the subject of Lemma~\ref{lem:alphabet}, and it is a property of the grammar, not of any search strategy. Everything proved in this section is stated for that setting, an arbitrary search over edited copies of the input with the parser as the only source of information about them, and so holds of any implementation of Definition~\ref{def:repair}.
-
-One quantity recurs, and it is a property of a \emph{parse}, not of whatever instrumentation is used to observe one. The parser consults the input only through \emph{character tests}, each evaluated at a single position: equality with one character of a \cd{Char} or \cd{Str} literal, membership in a character class, and the always-true test of the any-character terminal. The \emph{horizon} $h(u)$ of a parse of $u$ is the largest position at which any character test was evaluated, successful tests included, or at which the whole-input acceptance check probed for a character. The \emph{frontier} is the farthest position reached by a longest partial match or by a failure, which is the classic farthest-failure position~\cite{ford2002b}.
-
-The distinction between the two carries weight, because the frontier is an unsound bound on where a repair can lie and the horizon is not. For the grammar $S \leftarrow (\texttt{\&"xxxxxxxxxxq"} \; \texttt{'x'}) \, / \, \texttt{"xxxxxxxxxxz"}$ and the input \cd{xxxxxxxxxxq}, the positive lookahead of the first alternative succeeds after reading all eleven characters, the alternative then matches a single \cd{x}, and the parse fails on trailing input with its frontier near position 1, while the minimal repair substitutes \cd{z} for the \cd{q} at position 10, far beyond the frontier but within the horizon, flipping the lookahead so that the second alternative matches the whole input. A search whose candidate window stops at the frontier misses this cost-1 repair and returns cost 3. The two quantities cross in the other direction as well: the character-test maximum exceeds the frontier when a lookahead reads ahead and succeeds, and the frontier exceeds the character-test maximum on trailing input, where the acceptance check probes just past the matched prefix without any grammar test reading it.
-
-Bounding the characters a repair may \emph{invent} is the second requirement, and it rests on the same observation about character tests.
-
-\begin{definition}[Character equivalence]
-\label{def:charequiv}
-Two characters are \emph{equivalent with respect to $G$}, written $c \equiv_G c'$, if every character test occurring in $G$ accepts both or rejects both.
-\end{definition}
-
-The equivalence classes are computable, and few: test outcomes change only at the boundaries of literal characters and class ranges, so the classes are the intervals between these finitely many breakpoints, even over the full Unicode range. $\Sigma_G$ contains one representative of every class that at least one test accepts, with the characters the grammar mentions literally serving as representatives of their own (singleton) classes.
-
-\begin{lemma}[Alphabet sufficiency]
-\label{lem:alphabet}
-For every input $s$, some minimal repair of $s$ draws every inserted and substituted character from $\Sigma_G$.
-\end{lemma}
-
-\begin{proof}
-Two preliminary facts. First, every character of every string in $L(G)$ is accepted by some test of $G$: a successful parse consumes its whole input, and the input position advances only across characters that a terminal test has just accepted, so each character of the string is consumed by an accepting test. Second, the parse result is a deterministic function of the outcomes of the character tests at each position: every construct other than a terminal, including sequences, choices, repetitions, lookaheads, rule references, the memo table, and the left recursion expansion loop, manipulates positions and previously computed results without reading the input. Consequently, replacing any character of any input by an equivalent character changes no test outcome and therefore no match result at any position; in particular, $L(G)$ is closed under such replacement.
-
-Next, a persistence claim: some minimal repair never destroys a character it wrote. Track labeled character occurrences through a minimal operation sequence $s = u_0 \to \cdots \to u_k = s^*$, and observe that erasing one tracked occurrence from every intermediate string projects each operation to at most one operation on the shortened strings: an operation on another occurrence remains the same operation, at an index reduced by one when the erased occurrence preceded it; a transposition of the erased occurrence with a neighbor projects to nothing, since its two endpoint strings project to the same string; and a transposition of two surviving occurrences remains legal, since erasure never separates adjacent survivors. The projection preserves the values and relative order of all surviving occurrences, so it preserves the final string restricted to them. Now suppose an occurrence written by an insertion or substitution is later destroyed. If it is overwritten by a later substitution, let the earlier operation write the later value directly and drop the later operation; no intermediate operation depends on the occurrence's value, since operations act on positions, though a transposition that now swaps equal characters may be dropped as a string-level identity. The sequence still ends at $s^*$ and is at least one operation shorter, contradicting minimality. If an inserted occurrence is later deleted, project the erased occurrence away: its insertion, its deletion, and its every transposition vanish, at least two operations, a contradiction. If a substituted-in occurrence is later deleted, replace the substitution by an immediate deletion of the original occurrence and project the doomed occurrence away from the remainder, which removes the later deletion and its transpositions: at least one operation fewer, a contradiction.
-
-Now take a minimal repair in which, by the persistence claim, every written occurrence survives into $s^*$. By the first fact each surviving character of $s^*$ is accepted by some test, so each written value $c$ belongs to an accepted equivalence class with a representative $\mathrm{rep}(c) \in \Sigma_G$. Rewrite the sequence to write $\mathrm{rep}(c)$ wherever it wrote $c$, leaving all other operations unchanged; drop any substitution that now writes the character already present, and any transposition that now swaps equal characters. The operation count does not increase, every inserted and substituted character lies in $\Sigma_G$, and the final string is $s^*$ with some characters replaced by equivalent ones, which lies in $L(G)$ by the second fact.
-\end{proof}
-
-The representative-per-class construction is not precision for its own sake. For the grammar $S \leftarrow \texttt{!'a'} \; \texttt{!'z'} \; \texttt{[a-z]}$, the characters mentioned by the grammar, the literals \cd{a} and \cd{z} and the boundaries of the class, are exactly the characters the lookaheads forbid, while every member of $L(G)$ lies strictly inside the class interval. An alphabet of literal and boundary characters alone, a natural first implementation, finds no repair at any cost; the class representative between the boundaries is what Lemma~\ref{lem:alphabet} requires, and with it the minimal repair is found immediately.
-
-%----------------------------------------------------------------------
-\subsection{Properties}
-\label{sec:properties}
-%----------------------------------------------------------------------
-
-The results below are about the search space itself, whatever explores it. A state is a string over the finite alphabet $\Sigma_G \cup \mathrm{chars}(s)$, the moves are the four edit operations at unit cost, and the number of distinct states reachable at cost $c$ from $s$ is finite for every $c$, since each edit changes the string's length by at most one and draws from a finite alphabet.
-
-\begin{lemma}[Replay]
-\label{lem:replay}
-Let $u$ be a string that fails to parse, and let $h(u)$ be its horizon. Any single edit of $u$ whose touched positions all exceed $h(u)$ yields a string that fails identically, with the same frontier and horizon.
-\end{lemma}
-
-\begin{proof}
-The parse of $u$ consulted no position beyond $h(u)$, and by the second fact in the proof of Lemma~\ref{lem:alphabet} the parse result is a deterministic function of the consulted test outcomes. A string that agrees with $u$ at every position up to $h(u)$, which any edit strictly beyond $h(u)$ produces, therefore drives every test to the same outcome at the same position, and the parse replays exactly, failing where it failed and reading what it read.
-\end{proof}
-
-Lemma~\ref{lem:replay} invites an appealing but wrong optimization, and the warning belongs here because it is a fact about Definition~\ref{def:repair} rather than about any one search. Since an edit beyond the horizon cannot change the parse, it is tempting to prune such edits from the move set entirely. Under the operation-sequence semantics of Definition~\ref{def:repair}, that pruning is unsound. For the grammar $S \leftarrow \texttt{"a"} \; \texttt{"b"}$ and the input \cd{bca}, the parse fails at position 0, so the horizon is 0, yet the unique 2-operation repair is to delete the \cd{c} at position 1, beyond the horizon, and then transpose the now-adjacent \cd{ba}: every operation sequence whose first edit stays at position 0 needs at least three operations. The first edit changes nothing about the parse; its entire value is that it changes the geometry of the string for the edit after it. Beyond-horizon moves must therefore stay in the move set. What the lemma does license is \emph{ordering}: such a move can never be a repair on its own, so it may safely be examined last.
-
-Completeness and termination follow from the two facts already established. By Lemma~\ref{lem:alphabet} some minimal repair writes only characters of $\Sigma_G$, so the subgraph whose moves are the unit edits writing $\Sigma_G$ characters already contains a parsing state at depth $d(s, L(G))$. For reachability at all, map any witness $t \in L(G)$ pointwise to class representatives: the image $t'$ lies in $L(G) \cap \Sigma_G^*$ by the two facts in that lemma's proof, and deleting all of $s$ and then inserting $t'$ reaches it at cost at most $|s| + |t'|$, finite whenever $L(G) \neq \emptyset$.
-
-\begin{theorem}[Existence and computability of minimal repairs]
-\label{thm:minimality}
-For every PEG $G$ with $L(G) \neq \emptyset$ and every input $s$, a minimal repair of $s$ exists, $d(s, L(G))$ is finite, and both are computable: enumerating the states of the edit graph in nondecreasing cost order and testing each for membership with the unmodified parser halts on a parsing state of cost exactly $d(s, L(G))$, and on no parsing state before it.
-\end{theorem}
-
-\begin{proof}
-Reachability and finiteness are the preceding paragraph. Each cost level is finite, so an enumeration in nondecreasing cost order reaches level $d(s, L(G))$ in finitely many steps, and by completeness some state at that level parses; no state of lower cost parses, by the definition of $d$. A macro move that inserts a whole string, priced at the string's length, cannot lower any path's cost below its unit-edit cost, so admitting such moves changes neither the halting cost nor the result.
-\end{proof}
-
-An implementation is thus free in exactly one dimension, the order in which it enumerates a cost level, and constrained in exactly one, that it must not omit a move: the counterexample above shows that even a move which provably cannot change the current parse can be a necessary prefix of a minimal repair.
-
-Recovery-time complexity separates cleanly by case, independently of search strategy. A valid input pays nothing (Section~\ref{sec:problem}): the repair machinery is invoked only after the ordinary parse has rejected the input, and that parse is the unmodified linear-time parse of Sections~\ref{sec:algorithm} and~\ref{sec:complexity}. An invalid input costs one failed parse plus one parse per candidate examined before a minimal repair is found, each parse linear by Theorem~\ref{thm:reduction}. The number of candidates examined is therefore the only quantity an implementation controls, and it is what distinguishes implementations of Definition~\ref{def:repair} from one another; Section~\ref{sec:hardness} shows that it cannot be made small in general.
+We leave the parser of Sections~\ref{sec:algorithm}--\ref{sec:complexity} untouched and add recovery beside it, as a second descent over the same grammar and the same input, in which a clause that cannot match becomes a priced alternative rather than a dead end. The natural objective for any such search is nearness: repair the invalid input to the closest member of the language. Following Damerau's observation that over 80 percent of human transcription errors are a single insertion, deletion, substitution, or transposition~\cite{damerau1964,levenshtein1966}, nearness is counted in single-character edit operations, and the distance from an input $s$ to the language is
+\begin{equation}
+d(s, L(G)) \;=\; \min_{t \in L(G)} d_{\mathrm{DL}}(s, t),
+\label{eq:dist}
+\end{equation}
+where $d_{\mathrm{DL}}$ is the Damerau-Levenshtein distance between two strings.
 
 %----------------------------------------------------------------------
 \subsection{Hardness of exact minimum-distance repair}
 \label{sec:hardness}
 %----------------------------------------------------------------------
 
-Theorem~\ref{thm:minimality} guarantees that the search \emph{returns} a minimum-distance repair; it makes no promise about how long the search runs. That silence is not an artifact of this particular search. Exact minimum-distance repair is intractable for PEGs in general, and the obstruction is syntactic lookahead: a conjunction of lookaheads constrains characters that a repair must \emph{invent}, and choosing inventions that satisfy all of them simultaneously encodes satisfiability.
+Exact minimization of Eq.~\ref{eq:dist} is intractable for PEGs in general, and the obstruction is syntactic lookahead: a conjunction of lookaheads constrains characters that a repair must \emph{invent}, and choosing inventions that satisfy all of them simultaneously encodes satisfiability.
 
 Define the decision problem \textsc{Min-PEG-Repair}: given a PEG $G$, a string $s$, and an integer $d$, decide whether $d(s, L(G)) \le d$.
 
@@ -694,9 +615,7 @@ Hardness, by reduction from 3-SAT. Let $\varphi$ have variables $x_1, \ldots, x_
 The grammar has size $O(rm)$. On the repaired string $\cd{@}\,w$, each lookahead $\mathop{\&}\mathit{K}_j$ inspects the window $w$ and succeeds precisely when clause $C_j$ is satisfied by the assignment that $w$ spells; $\mathit{Bit}^{\,m}\,\mathop{!}\cd{.}$ forces $w$ to be exactly $m$ bits. So $L(\mathit{Top}) = \{\cd{@}w : w \in \{0,1\}^m \text{ satisfies } \varphi\} \cup \{\cd{@}\cd{\#}^{m+1}\}$. Every member begins with \cd{@} and has length at least $m + 1$, so from the input $s = \cd{@}$ the minimum distance is exactly $m$ (insert a satisfying assignment) when $\varphi$ is satisfiable, and exactly $m + 1$ (insert the fallback) otherwise. Taking $d = m$ decides $\varphi$.
 \end{proof}
 
-Three scoping remarks make the theorem useful rather than merely discouraging. First, the hardness is in \emph{combined} complexity: the grammar carries the formula. For a fixed grammar, the joint state of all pending lookahead decisions ranges over a set whose size depends on $G$ alone, so repair is polynomial in $n$ and $d$ with a grammar-dependent constant; the theorem says only that this constant cannot be uniformly polynomial in $|G|$ unless $\mathrm{P} = \mathrm{NP}$. Second, the reduction needs lookaheads of unbounded \emph{width} ($L_{j,k}$ inspects position $i$ of the invented window). If every lookahead in $G$ inspects a single character, each pending constraint is a character class, the joint state is the closure of those classes under intersection --- a lattice derived from the grammar, finite and typically tiny --- and exact repair is polynomial in combined complexity. The tractability boundary thus falls exactly at lookahead width, which is where an implementation should place its exactness boundary as well: single-character lookahead constraints are carried exactly, and wider lookaheads are handled soundly but approximately, with the returned repair verified by a re-parse so that an approximation can never be reported as exact. Third, the objective itself is untouched: the theorem bounds the cost of \emph{finding} the minimum, not the coherence of defining it.
-
-The theorem also fixes what ``exact under PEG semantics'' can mean for an implementation. Exactness names the target language --- the distance is measured to the committed, possessive interpretation the parser itself accepts, not to a relaxation of it --- and says nothing about running time; the theorem says any such implementation must have super-polynomial worst case (unless $\mathrm{P} = \mathrm{NP}$), not that it must be slow on real inputs. The two coexist the way SAT solvers coexist with the NP-completeness of SAT, and the mechanism is a per-instance certificate: the relaxed engine's cost is a lower bound wherever the relaxation only adds parses, and a relaxed witness that survives re-parsing under true semantics is a matching upper bound, closing the optimality gap in polynomial time for that instance. Exponential work is then confined to instances where no such certificate exists --- which necessarily includes the hard instances of the reduction, whose lookahead structure is statically recognizable --- exactly as the theorem requires.
+Three scoping remarks make the theorem useful rather than merely discouraging. First, the hardness is in \emph{combined} complexity: the grammar carries the formula. For a fixed grammar, the joint state of all pending lookahead decisions ranges over a set whose size depends on $G$ alone, so repair is polynomial in $n$ and $d$ with a grammar-dependent constant; the theorem says only that this constant cannot be uniformly polynomial in $|G|$ unless $\mathrm{P} = \mathrm{NP}$. Second, the difficulty lives entirely in \emph{invented} text: the reduction's instance is the one-character input \cd{@}, and everything the lookaheads jointly constrain is the window $w$ that the repair must conjure out of nothing. A recovery that reports absent text as absent, instead of spelling it, never chooses the contents of $w$, and so never decides the satisfiability question; the intractability attaches to the invention, and only the invention. Third, the objective itself is untouched: the theorem bounds the cost of \emph{finding} the minimum, not the coherence of defining it.
 
 One might hope to sidestep the theorem with a tabulating parser. The pika parser~\cite{hutchison2020}, for instance, parses bottom-up and right to left in linear time for a fixed grammar, and its memo table ends up holding every match of every clause at every position of the input, from which a repair can be assembled by stitching matches across damaged regions. The hope fails on exactly the hard instances, and seeing why is instructive. Any table built over the \emph{given} input, whether top-down or bottom-up, contains facts about the characters that are present; the reduction places the entire difficulty in characters that are \emph{absent} --- the invented window $w$ --- constrained jointly by the conjunction of lookaheads. A per-clause cheapest-completion computation prices each lookahead independently and yields $m$, a lower bound; deciding whether the joint constraints admit that bound \emph{is} the satisfiability question, and no polynomial-size table over the one-character input can carry the answer. Tabulation changes where parsing effort is spent; it does not change what repair must decide.
 
@@ -723,7 +642,7 @@ C_S &\leftarrow P_1 \,/\, P_2 \,/\, \cdots \,/\, P_m,
 and take the input $s = \cd{x}^{2m}$. Substituting \cd{a} at position $2p-1$ repairs $P_p$ at cost one, ending at the even cursor $2p$, precisely when $p \in S$; insertion-based repairs end at odd cursors, so the even cost-one frontier of $C_S$ at position $0$ spells out $S$. On the \emph{given} input every branch fails at position $2p-1$ before its trailing \cd{b} is ever consulted, so the parse behavior a compositional evaluator observes is identical for all $2^m$ subsets. Now the continuation $K_t \leftarrow \cd{x}^{2m-2t}\,\mathop{!}\cd{.}$ makes $d(s,\, L(C_S\, K_t)) \le 1$ hold exactly when $t \in S$: the cost-one member $\cd{x}^{2t-1}\cd{a}\,\cd{x}^{2m-2t}$ exists only for $t \in S$, and every other member differs from $s$ in length or in two characters. Two subsets $S \ne S'$ force different answers for some continuation $K_t$ with $t$ in their symmetric difference, so all $2^m$ subsets need distinct summaries: $\Omega(m)$ bits.
 \end{proof}
 
-The theorem is deliberately scoped to summaries, and its escape hatches are instructive, because each is a known architecture. An algorithm may \emph{recompute} instead of summarize --- enumerate candidate strings in cost order and re-parse each with the unmodified parser; that is exact even under full PEG semantics with constant repair state, at exponential time. It may \emph{specialize}: index repair facts by their continuation, multiplying rule identities rather than enriching values. Or it may \emph{suspend}: retain the parser's continuation itself and resume it as invented characters are bound. Materialized frontiers, specialized facts, suspended continuations, or recomputation --- the information the theorem counts must live in one of these places, and the choice is an engineering trade, not an escape. In practice the generality is nearly free: over the exhaustive single-character mutation battery of \S\ref{sec:evaluation}, the mean frontier holds $1.65$ entries per memoized cell (maximum $39$), while the two-symbol adversarial family above realizes frontiers that grow linearly in the input at a single cell.
+The theorem is deliberately scoped to summaries, and its escape hatches are instructive, because each is a known architecture. An algorithm may \emph{recompute} instead of summarize --- enumerate candidate strings in cost order and re-parse each with the unmodified parser; that is exact even under full PEG semantics with constant repair state, at exponential time. It may \emph{specialize}: index repair facts by their continuation, multiplying rule identities rather than enriching values. Or it may \emph{suspend}: retain the parser's continuation itself and resume it as invented characters are bound. Materialized frontiers, specialized facts, suspended continuations, or recomputation --- the information the theorem counts must live in one of these places, and the choice is an engineering trade, not an escape. The two-symbol adversarial family above realizes frontiers that grow linearly in the input at a single cell.
 
 The classical error-correcting parsers of Aho and Peterson~\cite{aho1972} and Lyon~\cite{lyon1974} compute minimum-distance CFG repair by weighted parsing of a covering grammar --- repair as recognition under a grammar--transducer product --- and the same object has recently been restated for CFGs as language intersection with an edit-distance automaton~\cite{considine2025}. The PEG setting adds the two dimensions bounded in this section: lookahead makes joint constraints on invented text intractable (Theorem~\ref{thm:hardness}), and the frontier is the irreducible currency of any efficient evaluation (Theorem~\ref{thm:frontier}).
 % TODO(verify before asserting): without a derived cost ceiling, exact
@@ -734,6 +653,257 @@ The classical error-correcting parsers of Aho and Peterson~\cite{aho1972} and Ly
 % not an optimization.
 
 %----------------------------------------------------------------------
+\subsection{The recovered parse}
+\label{sec:contract}
+%----------------------------------------------------------------------
+
+Theorems~\ref{thm:hardness} and~\ref{thm:frontier} leave a definite corridor. The intractability of Eq.~\ref{eq:dist} attaches to invented text alone, and any efficient compositional search must carry a set of priced endpoints per clause and position. The implementation therefore changes what recovery returns: a parse of the input as it stands, in which damage is marked rather than mended.
+
+\begin{definition}[Recovered parse]
+\label{def:recovered}
+Given a grammar $G$ and an input $s \notin L(G)$, a \emph{recovered parse} of $s$ is a complete parse tree over $s$ in which every character of $s$ is either consumed by an ordinary match or covered by a \emph{deletion mark}, a syntax-error node spanning characters read as noise, and in which a zero-width \emph{missing mark} stands wherever a clause required something the input does not supply. The \emph{cost} of a recovered parse is the number of characters under deletion marks, plus the number of missing marks before the end of the input, plus one if anything is missing at the end of the input.
+\end{definition}
+
+No character is ever invented. A missing mark records that, say, a digit was required, without choosing which digit; the choice is exactly what Theorem~\ref{thm:hardness} makes intractable, and a chosen digit would in any case show the user a guess. Deletion marks and missing marks correspond to the deletion and insertion operations of $d_{\mathrm{DL}}$ with insertions reported rather than performed; a wrong character is repaired as one deletion paired with one missing mark, and transpositions are not offered. The end of the input is charged once, however many required pieces the cut-off strands, because a truncated document witnesses one fact, that the text stops, and the number of obligations dangling at the cut measures the grammar's shape more than the input's damage. The engine returns a recovered parse of minimal cost under this model.
+
+%----------------------------------------------------------------------
+\subsection{Readings and their judgment}
+\label{sec:readings}
+%----------------------------------------------------------------------
+
+The unit the costed descent manipulates is the priced counterpart of a match. A \emph{reading} of a clause at a position is one way that clause can account for a stretch of input starting there: an end position, the piece of parse tree it contributes, and a bill of five counters: \cd{del}, input characters deleted as noise; \cd{miss}, missing marks before the end of the input; \cd{missEnd}, missing marks at the end of the input; \cd{evid}, \emph{evidence}, the count of characters matched by picky terminals, literals, single characters, and non-inverted character classes, which could only have matched because the input really contains those characters (a wildcard or inverted class accepts almost anything, so its matches prove nothing); and \cd{pen}, penalty points, extra charges that make a reading lose comparisons without ever appearing in the tree or the reported cost. A reading's cost is $\cd{del} + \cd{miss} + [\cd{missEnd} > 0]$, per Definition~\ref{def:recovered}, and its \emph{absorbed} count, judged from a position $q$, is its span from $q$ minus \cd{del} minus \cd{evid}: the characters it consumed without proving anything. A reading with an empty bill is \emph{clean}; a clean reading that also makes exactly the plain parser's greedy choices is \emph{preferred}. Readings are stored as backward-linked chains of steps with the five sums carried alongside, so comparison is constant-time and only the eventual winner's chain is materialized into a tree.
+
+Reading $a$ beats reading $b$, judged from position $q$, by the first of five comparisons that differs:
+\begin{enumerate}
+    \item Lower total charge: cost, plus \cd{pen}, plus an \emph{absorb penalty} of one against a repaired reading whose absorbed count from $q$ exceeds its evidence. A reading that mostly swallowed the input has not explained it. The absorb penalty is recomputed from the reading's own sums at every comparison and never stored, so it cannot compound however many nesting levels judge the same span.
+    \item A preferred reading beats any rival: where the input parses as it stands, the plain parser's reading is the meaning of the document.
+    \item More evidence.
+    \item Later first doubt: each reading carries the position of its first repair (a minimum under chain extension), and the reading that stayed faithful to the input longer wins.
+    \item Fewer missing marks at the end of the input. The cost collapsed those to a single charge; the cardinality it forgot decides here, so a completion stranding two constructs beats one stranding five.
+\end{enumerate}
+A tie after all five keys goes to the \emph{newest} candidate, which is deterministic because candidate generation order is; this comparison completes Definition~\ref{def:recovered}, and recovery is thereby a function of grammar and input.
+
+%----------------------------------------------------------------------
+\subsection{The costed descent}
+\label{sec:descent}
+%----------------------------------------------------------------------
+
+The descent mirrors Section~\ref{sec:algorithm} structurally. For every composite clause and input position there is a \emph{repair cell} holding the best reading for each end position reached, exactly the frontier of Theorem~\ref{thm:frontier} with the theorem's $(e, \omega)$ pairs realized as (end, reading); offering a reading to a cell is also the improvement test, since the offer reports whether it displaced the holder of its ending, and a fixed point is reached when a whole proposal pass displaces nothing.
+
+The search runs in rounds with a repair budget $b = 1, 2, \ldots$, and within a round a reading may accumulate $\cd{del} + \cd{miss} \le b$. The end-of-input counter is excluded from the budget: the budget is split additively down a sequence (each subclause is handed what the partial reading before it has not spent), and the end-of-input charge is idempotent, paid once for the whole parse, so admitting it into the split would re-charge it at every nesting level that touches the end of the input. It is charged globally instead, at the root, and correspondingly a terminal's missing reading is offered at the end of the input even when the budget is spent. No repair can cost more than deleting all $n$ characters and marking the shortest document the grammar accepts as missing, and that shortest length is computable from the grammar, so the ladder is bounded and recovery always terminates. The first round that produces a winner ends the search, which is what makes lightly damaged input cheap: a one-edit error is found at budget 1, whatever the worst case costs.
+
+A budget of zero is the plain parser. A reading that has spent everything can only continue by reading the input exactly as it stands, so a rule reference queried with no budget is answered directly from the plain parser's memo entry of Section~\ref{sec:algorithm}, packaged once as a preferred reading and cached in that entry. This is the single doorway between the two descents: the plain parser is consulted, never modified, which is how recovery coexists with the invariants that Section~\ref{sec:whyhard} showed error tolerance perturbs.
+
+Left recursion needs nothing new. A repair cell carries the same three fields as the parser's memo entry, and the same protocol runs over readings: re-entry into a cell being computed seeds the cycle, the seed is served raw, unfiltered by budget, because the growth must build on the seed's repair-carrying readings; the owning frame re-proposes until a pass improves nothing; and each growth pass bumps a per-position version, so cells computed against the half-grown seed answer again when next consulted. One refinement earns its keep: each cell records whether its computation ever read a growing seed, and only such cells consult the version, since a cell that read no seed cannot be stale, whatever grew; everything else it read is indexed by position, and growth changes only the growing cell.
+
+%----------------------------------------------------------------------
+\subsection{Sequences: where repairs enter}
+\label{sec:slots}
+%----------------------------------------------------------------------
+
+A sequence folds its subclauses left to right over a set of partial readings, and every repair enters the search here, through one of three moves tried for each partial reading $r$ and next subclause $C$:
+\begin{enumerate}
+    \item \emph{Use} $C$'s own readings at $r$'s end, computed under the budget $r$ has not spent. A terminal that matches contributes its match as a reading, with evidence equal to its length if it is picky; a terminal that cannot match contributes the zero-width reading that records it missing. Obligations therefore flow through sequencing with no separate machinery: a sequence whose third element is absent simply carries a missing mark where the third element would have begun.
+    \item \emph{Delete ahead}: where $C$ has no clean reading at $r$'s end, skip characters, one deletion each and only as far as the remaining budget allows, up to the \emph{first} position at which the plain parser reads $C$; the finished parse found there is reused whole, so the skipped span is the entire price of the move.
+    \item \emph{Replace}, inside literals only. A multi-character literal that fails to match whole is itself read as a sequence of its characters by this same fold, which yields partial prefixes and interior deletions with no alignment code, and within a literal one deletion paired with the expected character's missing mark repairs a single wrong character (\cd{i"} reads as the keyword \cd{if} at cost two). The pairing is confined to literals, where the required character is known; offered at every subclause it repaired nothing further and doubled the running time.
+\end{enumerate}
+
+One rule adjudicates between moves 1 and 2 when both apply. If deleting $k$ characters ahead reached a real parse of $C$, then a rival option that stands still and declares $C$ missing, offering no evidence and carrying at least $k$ missing marks, takes one penalty point: at equal price, text read as noise beats constructs declared absent, because the noise is on the page and the absent construct is a guess. Two exemptions are load-bearing. A subclause with only one possible tree shape is exempt, because its absence is unambiguous rather than a guess; and the left-recursive seed is exempt, because the seed's missing reading is the anchor each taller spine of the growth is built on, and penalizing it suppresses the growth itself.
+
+After each subclause, only the best reading per end position survives, judged by the comparison of Section~\ref{sec:readings} applied in a transient cell. The fold therefore carries at most one reading per ending at every step, which is what keeps each round polynomial.
+
+%----------------------------------------------------------------------
+\subsection{Choice, repetition, optional, and lookahead}
+\label{sec:operators}
+%----------------------------------------------------------------------
+
+An ordered choice, matched plainly, takes its first matching alternative. Under repair every alternative contributes candidates, and one rule preserves PEG's commitment: once some alternative has read the input exactly as it stands, the choice is \emph{settled}, and a reading from a later alternative is admitted only if its evidence exceeds its absorbed count, that is, only if it proves more than it swallows, and even then without preferred status. The rule exists because a later alternative able to absorb arbitrary text, a quoted-string rule being the standard case, can otherwise buy the entire remaining document for the price of its two delimiters, re-reading a healthy committed prefix as the interior of a string; the settled test is one notch stricter than the absorb penalty (majority rather than half), because here the challenger is trying to overturn a reading the input already supports.
+
+A repetition's readings are found by a reachability sweep: from the empty reading, extend repeatedly by one occurrence of the body, keeping the best reading per end position, until nothing improves. Every stopping point is a clean reading with only the farthest preferred, so a continuation elsewhere in the grammar may stop a repetition early at no cost, and a one-or-more repetition that matched nothing owes exactly one occurrence, supplied by the body's own missing readings. An optional clause contributes its child's readings and the empty reading, the empty one keeping preferred status only where the child cannot match plainly. A lookahead consumes nothing and admits no repairs inside itself, since input accepted inside an assertion would be input the parse then refuses to consume; it asks only whether a clean reading of its body exists.
+
+%----------------------------------------------------------------------
+\subsection{Rounds, the root, and the winner's tree}
+\label{sec:root}
+%----------------------------------------------------------------------
+
+At each budget, the top rule's readings at position 0 are judged from position 0. A reading that stops short of the end is first extended by a deletion mark spanning the unread tail, the same move as any other deletion, so no separate rule prices trailing garbage. A reading that ends \emph{incomplete}, with a required piece missing exactly at its end and input still ahead of it, is incoherent as an account of the document, and is held aside: it may displace the round's winner only if it costs no more and proves strictly more, which is what lets an unfinished genuine construct followed by noise beat a dubious construct that swallows everything; and if no budget yields a coherent winner, the best incomplete reading is returned rather than nothing. The first round with a winner ends the search.
+
+The winner's chain is then folded into the output tree, with one rule about names: a construct that matched nothing at the very end of the input loses its name, because the input never reached it and naming it would assert a guess, while a zero-width construct mid-document keeps its name, the surrounding matches having proved which construct it must be. The tree's error content equals the winning reading's bill by construction, one syntax-error node per deleted span and per missing mark, so the reported cost and the returned tree cannot disagree.
+
+Figs.~\ref{fig:RecoveryCode} and~\ref{fig:RecoveryCodeSlots} give implementation-level pseudocode in the style and notation of Fig.~\ref{fig:Code}: the reading, the five-key comparison, the repair cell, and the growth loop in the first, and the sequence fold in the second. Candidate generation for the remaining operators follows the descriptions above, and the reference implementation (Section~\ref{sec:software}) is a direct transcription.
+
+\begin{figure}
+\centering
+\begin{subfigure}[t]{.46\linewidth}
+\begin{lstlisting}
+class Reading(int end, int del, int miss,
+    int missEnd, int evid, int doubt,
+    int pen, boolean incomplete,
+    Object piece, Reading prev) {
+  // piece: SyntaxError, Match, or Labeled
+  int cost()  { return del + miss
+                  + (missEnd > 0 ? 1 : 0); }
+  int spent() { return del + miss; }
+  boolean clean()     { return doubt >= CLEAN; }
+  boolean preferred() { return doubt > CLEAN; }
+  int absorbed(int q) {
+    return (end - q) - del - evid; }
+  int absorbPen(int q) {
+    return !clean() && absorbed(q) > evid
+        ? 1 : 0; }
+  Reading then(Reading s) {
+    return new Reading(s.end, del + s.del,
+        miss + s.miss, missEnd + s.missEnd,
+        evid + s.evid, min(doubt, s.doubt),
+        pen + s.pen, s.incomplete
+            || (s.end == end && incomplete),
+        s.piece, this); }
+}
+
+class Labeled(Clause label, int from,
+              Reading inner);
+
+int compare(Reading a, Reading b, int q) {
+  var ca = a.cost() + a.pen + a.absorbPen(q);
+  var cb = b.cost() + b.pen + b.absorbPen(q);
+  if (ca != cb) return ca - cb;
+  if (a.preferred() != b.preferred())
+    return a.preferred() ? -1 : 1;
+  if (a.evid != b.evid) return b.evid - a.evid;
+  if (a.doubt != b.doubt)
+    return b.doubt - a.doubt;
+  return a.missEnd - b.missEnd;
+}
+\end{lstlisting}
+\end{subfigure}
+\hspace{5mm}
+\begin{subfigure}[t]{.46\linewidth}
+\begin{lstlisting}[firstnumber=39]
+class RepairCell {
+  Map<int, Reading> bestByEnd;
+  boolean inRecPath, foundLeftRec, usedSeed;
+  int atBudget = -1, memoVersion;
+  boolean plainKnown; Reading plain;
+
+  boolean add(Reading r, int pos) {
+    var b = bestByEnd[r.end];
+    if (b != null
+        && compare(r, b, pos) > 0)
+      return false;
+    bestByEnd[r.end] = r;  // a tie: newest
+    return b == null
+        || compare(r, b, pos) < 0;
+  }
+  // readings(budget): entries with
+  // spent() <= budget; every preferred
+  // entry except the farthest-ending
+  // is downgraded to merely clean
+}
+
+
+Reading[] grow(Clause c, int pos) {
+  var cell = c.cellFor(pos);
+  if (cell.inRecPath) {   // seed: serve raw
+    cell.foundLeftRec = true;
+    seedWasRead = true;
+    return cell.readings(UNLIMITED);
+  }
+  if (budget == 0 && pos < input.length) {
+    if (!cell.plainKnown) {
+      cell.plainKnown = true;
+      cell.plain = c.cleanReading(pos);
+    }                     // repair IS parsing
+    return cell.plain == null
+        ? [] : [cell.plain];
+  }
+  if (cell.atBudget >= budget
+      && (!cell.usedSeed || cell.memoVersion
+          == repairVersionForPos[pos]))
+    return cell.readings(budget);
+  cell.inRecPath = true;
+  var outer = seedWasRead;
+  seedWasRead = false;
+  while (true) {
+    var improved = false;
+    for (var r : c.propose(pos))
+      improved |= cell.add(r, pos);
+    if (!improved || !cell.foundLeftRec)
+      break;
+    cell.memoVersion =
+        ++repairVersionForPos[pos];
+  }
+  cell.usedSeed = seedWasRead;
+  seedWasRead = outer || seedWasRead;
+  cell.inRecPath = false;
+  cell.atBudget = budget;
+  cell.memoVersion = repairVersionForPos[pos];
+  return cell.readings(budget);
+}
+\end{lstlisting}
+\end{subfigure}
+\caption{Implementation-level pseudocode for the costed descent, in the notation of Fig.~\ref{fig:Code}: the reading with its bill and derived quantities, the five-key comparison, the repair cell, and the growth loop, which serves left-recursive seeds, answers budget-zero queries from the plain parser, and validates cells by budget watermark and growth version.}
+\Description[Recovery pseudocode, part one]{Two columns of pseudocode: the Reading class, the Labeled class, and the compare function on the left; the RepairCell class and the grow function on the right.}
+\label{fig:RecoveryCode}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{subfigure}[t]{.6\linewidth}
+\begin{lstlisting}[firstnumber=100]
+Reading[] readSlots(Clause[] slots,
+    Clause label, int pos, boolean inLit) {
+  var cur = [Reading.empty(pos)];
+  for (var slot : slots) {
+    var next = [];
+    for (var r : cur) {
+      if (r.spent() > budget) continue;
+      var whole = budget;
+      budget = whole - r.spent();
+      var opts = slot.readings(r.end);
+      budget = whole;
+      var clean = opts.any(o -> o.clean());
+      var k = -1;
+      if (!clean) {         // delete ahead
+        for (var j = r.end + 1;
+             j <= r.end + budget - r.cost()
+                 && j <= input.length; j++) {
+          var p = slot.cleanReading(j);
+          if (p == null) continue;
+          next.add(r.then(Reading.deleting(
+              r.end, j)).then(p));
+          k = j - r.end;
+          break;
+        }
+      }
+      var pen = k > 0
+          && !slot.isGrowingSeedAt(r.end)
+          && !slot.hasOneShape();
+      for (var o : opts)     // use
+        next.add(r.then(
+            pen && o.end == r.end
+                && !o.clean() && k <= o.miss
+            ? o.penalized() : o));
+      if (inLit && !clean
+          && r.end < input.length)
+        for (var o : slot.readings(r.end + 1))
+          next.add(r.then(Reading.deleting(
+              r.end, r.end + 1)).then(o));
+    }                        // replace
+    if (next.isEmpty()) return [];
+    cur = bestPerEnd(next, pos);
+  }
+  return [for (var r : bestPerEnd(cur, pos))
+      r.labeled(label, pos)];
+}
+\end{lstlisting}
+\end{subfigure}
+\caption{Implementation-level pseudocode, continued from Fig.~\ref{fig:RecoveryCode}: the sequence fold, with its three repair moves (use, delete ahead, and replace inside literals) and the penalty rule.}
+\Description[Recovery pseudocode, part two]{One column of pseudocode: the readSlots function implementing the sequence fold.}
+\label{fig:RecoveryCodeSlots}
+\end{figure}
+
+
+%----------------------------------------------------------------------
 \section{Evaluation of error recovery}
 \label{sec:evaluation}
 %----------------------------------------------------------------------
@@ -741,15 +911,33 @@ The classical error-correcting parsers of Aho and Peterson~\cite{aho1972} and Ly
 All measurements in this section use the Dart reference implementation (Section~\ref{sec:software}), single-threaded on an AMD Ryzen 9 3950X under Dart 3.12.2.
 
 %----------------------------------------------------------------------
-\subsection{Methodology: exhaustive single-character mutation}
+\subsection{Methodology: an exhaustive mutation battery with frozen expectations}
 \label{sec:methodology}
 %----------------------------------------------------------------------
 
-Recovery quality is easy to overstate with anecdotal examples, so the primary evaluation is exhaustive within its scope, and scored against a ground truth. The subject grammar is the complete JSON grammar of Fig.~\ref{fig:JsonGrammar}, covering objects, arrays, strings with escape sequences, numbers with fraction and exponent parts, booleans, and null. The subject document is the 48-character valid document
-\begin{center}
-\cd{\{"a":1,"bc":[2,33,true],"d":\{"e":null\},"f":"gh"\}}
-\end{center}
-chosen to exercise every construct of the grammar. From it we generate every mutant reachable by one edit operation: deletion of each character (48), transposition of each adjacent unequal pair (47), and insertion and substitution at every position of each character in the probe set \cd{\{Q z \} " , 5\}} (294 insertions, 267 substitutions), the probe set containing an identifier-like character, a lowercase letter, a structural close, a string delimiter, a separator, and a digit. Of the 656 mutants, 137 remain valid JSON, a mutation inside a string literal, for instance, usually yields another valid document, and are excluded, leaving 519 invalid mutants.
+Recovery quality is easy to overstate with anecdotal examples, so the evaluation is exhaustive within its scope and scored against expectations fixed before recovery runs. Three grammars are used: the complete JSON grammar of Fig.~\ref{fig:JsonGrammar}; a statement language with blocks, conditionals, assignments, string literals, and a negative-lookahead keyword guard; and the left-recursive expression grammar of Fig.~\ref{fig:BatteryGrammars}, so that every reading the recovery produces over an expression flows through the left-recursion machinery of Sections~\ref{sec:algorithm} and~\ref{sec:descent}. Over 23 valid documents chosen to exercise every construct of the three grammars, mutants are generated by the operations a person performs on a document: deleting one character, inserting one character, substituting one character, truncating the document, and a miscellaneous class of transpositions and multi-site damage. Every generated mutant that still parses is discarded, since it needs no recovery. Two mutation families are excluded because no recovery could be scored on them fairly: mutations of a binary operator, where both restorations are one edit away and the original is unrecoverable in principle, and truncation stubs of one or two characters, which carry no decidable evidence of the document they came from. The battery holds 2{,}101 mutants: 525 deletions, 525 truncations, 438 insertions, 350 substitutions, and 263 miscellaneous, spanning all three grammars (944 JSON, 856 statement, 301 expression).
+
+The expected result for each mutant is derived from the \emph{frozen} parser, with no reference to the recovery engine: the plain parse tree of the undamaged original, projected to a skeleton over the grammar's named rules. For truncations, the expectation drops constructs whose evidence lies wholly beyond the cut, since no reader of the truncated text could know of them. A recovered parse is scored as the normalized edit similarity between its skeleton and the expected skeleton, 1.0 meaning the recovery restored exactly the tree a reader of the undamaged document would draw; because the expectations come from the plain parser and the scoring is structural, the engine cannot be tuned toward the metric except by recovering well.
+
+\begin{figure}[tbp]
+\begin{lstlisting}[numbers=none,basicstyle=\scriptsize\ttfamily]
+Expr   <- Expr WS AddOp WS Term / Term;        Program <- WS Stmt+ WS;
+Term   <- Term WS MulOp WS Factor / Factor;    Stmt    <- Block / If / Assign;
+Factor <- Num / '(' WS Expr WS ')' / Name;     Block   <- '{' WS Stmt* WS '}' WS;
+AddOp  <- '+' / '-';                           If      <- "if" WS '(' WS Cond WS ')' WS Stmt;
+MulOp  <- '*' / '/';                           Assign  <- Name WS '=' WS Cond WS ';' WS;
+Num    <- [0-9]+;                              Cond    <- Name / Num / Str;
+Name   <- [a-z]+;                              Name    <- !Keyword [a-z]+;
+~WS    <- [ \t\n]*;                            Keyword <- ("if" / "else") !([a-z]);
+                                               Num     <- [0-9]+;
+                                               Str     <- '"' Chr* '"';
+                                               Chr     <- [^"\\] / ('\\' Esc);
+                                               Esc     <- '"' / '\\' / 'n' / 't';
+                                               ~WS     <- [ \t\n]*;
+\end{lstlisting}
+\caption{\label{fig:BatteryGrammars}The left-recursive expression grammar (left) and the statement grammar (right) of the mutation battery, in the notation of the reference implementation; the third grammar is the JSON grammar of Fig.~\ref{fig:JsonGrammar}.}
+\Description[Two grammars]{The left-recursive expression grammar and the lookahead-guarded statement grammar used alongside JSON in the mutation battery.}
+\end{figure}
 
 \begin{figure}[tbp]
 \begin{lstlisting}[numbers=none,basicstyle=\scriptsize\ttfamily]
@@ -774,122 +962,60 @@ Null      <- "null";
 \Description[JSON grammar]{Sixteen PEG rules defining JSON documents, values, objects, members, arrays, strings with escapes, numbers, booleans, null, and whitespace.}
 \end{figure}
 
-Every mutant is, by construction, one inverse edit away from a valid document, so $d(m, L(G)) = 1$ for every tested mutant $m$, and minimality (Definition~\ref{def:repair}) demands that recovery find a cost-1 repair for all 519: the ground truth is exact, not judged. Two further metrics grade repair \emph{quality} beyond minimality. \emph{Exact restoration} asks whether the repaired string is character-for-character the original document. \emph{Structural restoration} asks whether the repaired document's parse tree, projected onto the structural rules \cd{JSON}, \cd{Value}, \cd{Object}, \cd{Array}, \cd{Member}, \cd{String}, \cd{Number}, \cd{Boolean}, and \cd{Null} and compared by shape, ignoring positions and token-internal rules, equals the original's; this is the property an IDE needs so that one typo does not collapse the outline of a file.
-
 %----------------------------------------------------------------------
-\subsection{Mutation results}
-\label{sec:mutationresults}
+\subsection{Results}
+\label{sec:results}
 %----------------------------------------------------------------------
 
-Table~\ref{tab:mutation} summarizes the sweep. Every one of the 519 mutants was repaired, every repair had the provably minimal cost 1, and no repair failed. The repaired string was character-identical to the original document for 338 of 519 mutants (65.1\%), and structurally identical for 490 of 519 (94.4\%). The full sweep of 519 repairs ran 14{,}592 parses (mean 28.1 per mutant, median 5) in 2.35 seconds total, a mean of 4.5\,ms per repair.
+Table~\ref{tab:battery} summarizes the sweep. Over all 2{,}101 mutants the mean skeleton similarity is 0.988, and 84.0\% of recoveries restore the expected skeleton \emph{exactly}. Truncations, which require completing arbitrarily deep construct spines and which defeat failure-point repair by construction, score highest of all classes (0.997). The whole sweep costs about 1.1 seconds of engine time, roughly half a millisecond per damaged document. Valid inputs pay nothing beyond the plain parse, which is the search's own zeroth round. The frontier sets of Theorem~\ref{thm:frontier} stay small in practice: over the 705{,}570 repair-cell computations of the sweep, a cell holds a mean of 1.72 readings when its computation completes, with a maximum of 52.
+
+The imperfect remainder is typified by damage the input cannot decide: after \cd{if (a) \{ b=1; \}} degrades to a bare \cd{i}, nothing distinguishes a truncated \cd{if} statement from an assignment to a variable whose name starts with \cd{i}, both readings cost the same, and the deterministic tie rule sometimes picks the reading the frozen expectation did not. No mutant crashes the engine, and none is left without a complete tree.
 
 \begin{table}[tbp]
 \centering
 {\small
-\begin{tabular}{lrrrr}\toprule
-Mutation class & Tested & Cost-1 repairs & Structural restoration \\\midrule
-Deletion        &  37 &  37 &  34 \\
-Transposition   &  42 &  42 &  41 \\
-Insertion       & 216 & 216 & 211 \\
-Substitution    & 224 & 224 & 204 \\\midrule
-Total           & 519 & 519 (100\%) & 490 (94.4\%) \\\bottomrule
+\begin{tabular}{lrr}\toprule
+Mutation class & Mutants & Mean skeleton similarity \\\midrule
+Truncation      &   525 & 0.997 \\
+Deletion        &   525 & 0.984 \\
+Insertion       &   438 & 0.993 \\
+Substitution    &   350 & 0.988 \\
+Miscellaneous   &   263 & 0.968 \\\midrule
+All             & 2{,}101 & 0.988 \qquad (84.0\% exact) \\\bottomrule
 \end{tabular}
 }
-\caption{\label{tab:mutation}Results over all 519 invalid single-character mutants of the JSON subject document. Every repair achieved the provably minimal cost of 1, and no repair failed.}
+\caption{\label{tab:battery}Recovery quality over the mutation battery: mean normalized similarity between the recovered tree skeleton and the frozen expectation, by mutation class, with the fraction of exactly restored skeletons overall.}
 \end{table}
 
-The 29 mutants whose repair restored a different structure are not recovery failures: each received a cost-1 repair, and cost-1 repairs are not unique. In every one of the 29 cases the search selected a \emph{different} minimal repair than the mutation's inverse, in families with a clear character. A deleted or corrupted string-opening quote is repaired by inserting a backslash before the \emph{next} quote, turning it into an escaped quote inside a longer string, which merges two members into one at the same cost of 1:
-\begin{lstlisting}[numbers=none,basicstyle=\scriptsize\ttfamily]
-{"a:1,"bc":[2,33,true],"d":{"e":null},"f":"gh"}     mutant  (deleted " at 3)
-   ^
-{"a:1,\"bc":[2,33,true],"d":{"e":null},"f":"gh"}    repair  (insert \ at 6)
-      ^
-\end{lstlisting}
-A comma corrupted between digits (\cd{[2z33,} $\rightarrow$ \cd{[2.33,}) is repaired by substituting a decimal point, merging two numbers into one; a trailing comma inserted into an array is repaired by inserting a value after it rather than deleting it. These are exactly the ambiguities a human reader faces with one corrupted character and no further context; the search resolves them deterministically, and reports the edit it chose, so a client can present alternatives if desired.
-
-Under the identical methodology, the earlier in-parser recovery design of Section~\ref{sec:whyhard} recovered the ideal parse for 2\% of mutants and cascaded on 79\%. The architectural inversion, not tuning, accounts for the difference: a repaired input is parsed by the ordinary parser, so a single-edit repair \emph{cannot} cascade, since the repaired document parses cleanly or the candidate is rejected.
-
 %----------------------------------------------------------------------
-\subsection{Oracle-verified minimality and left recursion}
-\label{sec:oracle}
+\subsection{Hard checks the battery cannot express}
+\label{sec:hardchecks}
 %----------------------------------------------------------------------
 
-The JSON ground truth certifies cost-1 cases only, so minimality was additionally verified against a brute-force oracle: a breadth-first enumeration of the Damerau-Levenshtein ball of the input, testing membership in $L(G)$ with the plain parser, which computes $d(s, L(G))$ exactly for small inputs by exhaustion. Across five grammars, sequences, choices, delimiter-separated lists, lookahead grammars, and a left-recursive expression grammar, and randomized mutation batteries over them, every repair returned by the search matched the oracle's minimal cost.
-
-Composition with left recursion was exercised directly on the left-recursive expression grammar
-$E \leftarrow E \; \texttt{'+'} \; T \; / \; E \; \texttt{'-'} \; T \; / \; T$,
-$T \leftarrow T \; \texttt{'*'} \; F \; / \; T \; \texttt{'/'} \; F \; / \; F$,
-$F \leftarrow \texttt{'('} \; E \; \texttt{')'} \; / \; N$,
-$N \leftarrow \texttt{[0-9]+}$:
-all 56 invalid single-character mutants of the input \cd{(12+3)*45-6/(7+89)+1*2} were repaired at cost 1. No part of the recovery module contains any left-recursion-specific code.
-
-%----------------------------------------------------------------------
-\subsection{Recovery performance}
-\label{sec:recoveryperf}
-%----------------------------------------------------------------------
-
-Table~\ref{tab:recoveryperf} reports recovery cost as input size and error count scale. For a single error (a structural comma deleted mid-document) the search parsed 3 to 6 candidates at every size from 500 to 8{,}000 characters: single-error recovery behaves as a small constant number of linear-time parses, as predicted in Section~\ref{sec:properties}. With $k$ errors spread through a 2{,}000-character document, the cost grows linearly in $k$ at roughly one thousand parses per error; that per-error constant is dominated by re-parsing the whole candidate for every state examined, and is the implementation's main cost center (Section~\ref{sec:conclusion}). Pure garbage input, 400 characters matching nothing in the grammar, is repaired in 22\,ms, and the result is instructive: the minimal repair wraps the garbage in two quotation marks, producing a valid JSON string literal at cost 2, which is genuinely the nearest member of $L(G)$ and a faithful application of Definition~\ref{def:repair}.
-
-\begin{table}[tbp]
-\centering
-{\small
-\begin{minipage}{0.45\textwidth}
-\centering
-\begin{tabular}{rrrr}\toprule
-$n$ & parses & time (ms) \\\midrule
-  496 & 3 &  31 \\
-  987 & 3 &  44 \\
-1\,997 & 6 & 123 \\
-3\,993 & 6 & 255 \\
-8\,000 & 3 &  52 \\\bottomrule
-\end{tabular}
-\subcaption{One deleted comma, mid-document, vs.\ input size. Every repair had cost 1.}
-\label{tab:perf_size}
-\end{minipage}
-\hfill
-\begin{minipage}{0.45\textwidth}
-\centering
-\begin{tabular}{rrrr}\toprule
-errors $k$ & cost & parses & time (s) \\\midrule
- 1 &  1 &     3 &   0.06 \\
- 2 &  2 & 1\,443 &   6.6 \\
- 4 &  4 & 4\,106 &  21.6 \\
- 8 &  7 & 8\,233 &  46.8 \\
-16 & 14 & 17\,763 & 115.4 \\\bottomrule
-\end{tabular}
-\subcaption{$k$ deleted commas spread through an $n \approx 2{,}000$ document.}
-\label{tab:perf_errors}
-\end{minipage}
-}
-\caption{\label{tab:recoveryperf}Recovery scaling. Parses counts candidate parses run by the search. In (b), a deleted comma between array elements can be repaired at lower cost than re-insertion (adjacent digits merge into one number), which is why the measured cost at $k = 8$ and $k = 16$ is below $k$: the search found cheaper minimal repairs than the mutation inverses.}
-\end{table}
+An aggregate over mutants cannot enforce a hard requirement, because one violated case moves the mean by half a part per thousand, and it cannot see behavior classes that its own construction excludes. Four independent checks therefore run alongside the battery, and the engine passes all of them. First, the acceptance readings: \cd{,3true} inside an array must be read as \cd{,3,true}, a missing separator between two real values, and never by deleting the digit; \cd{[,2,} must be read by deleting the stray comma, the penalty rule's case, and never by declaring some unknowable value missing in front of it; and in a two-rule grammar whose first element is an undetermined character class, recovery must not delete real matching input to make room for a missing mark. Second, a free-span check: on grammars where a loose alternative covers a span at no cost, recovery must not delete characters from input that already matched to reach a better-\emph{explained} reading, a failure mode the battery cannot contain because every battery case genuinely needs repair; the check demands exact repair costs on five probes. Third, a commitment check of sixteen probes: the construct that a healthy prefix has committed to must still head the recovered tree, including on inputs engineered so that a catch-all alternative could swallow the whole document for the price of one invented delimiter, the settled-choice rule's case. Fourth, cost conformance: recovery must never report cost zero for an input the plain parser rejects, which guards the lookahead paths where a vacuous reading is cheapest, and must report exactly the known minimal cost on six probes over lookahead grammars.
 
 %----------------------------------------------------------------------
 \subsection{Relation to prior recovery approaches}
 \label{sec:relatedrecovery}
 %----------------------------------------------------------------------
 
-The minimum-distance \emph{objective} is the classical one of Aho and Peterson~\cite{aho1972} and Lyon~\cite{lyon1974}. Their realization builds a second parsing engine: the grammar is augmented with error productions and every input, valid or not, is parsed by an Earley-style algorithm in cubic time. The present design reaches the same objective with \emph{no} second engine and no always-on cost: the unmodified linear-time parser is the oracle, the metric lives entirely outside it, and only invalid inputs pay for repair. To our knowledge this pay-only-on-error realization of minimum-distance repair, and its composition with left-recursive PEG parsing, have no precedent.
-
-Burke and Fisher~\cite{burke1987} and CPCT+~\cite{diekmann2020} repair over the parser's configuration at the failure point, at token granularity, for LL/LR automata; CPCT+ shares the minimum-cost criterion, restricted to repair sequences applied at the error state. Searching over inputs rather than configurations removes both restrictions at once: repairs land anywhere in the input, including before the failure frontier (the unclosed-quote family of Section~\ref{sec:whyhard}, repaired routinely in Section~\ref{sec:mutationresults}), and character granularity suits scannerless PEG parsing, where no token stream exists. The permissive-grammar approach of de Jonge et al.~\cite{dejonge2012} and the recovery expressions of Medeiros and Mascarenhas~\cite{medeiros2018,medeiros2020} modify the grammar, automatically or by annotation, and the recovered parse is characterized by the behavior of the added rules; here the grammar is untouched and the recovered parse is characterized by Definition~\ref{def:repair} alone. Swierstra and Duponcheel's error-correcting combinators~\cite{swierstra1996} insert and delete tokens greedily during the parse itself, elegantly for LL grammars, but the correction is again woven into the parser, with the attendant coupling that Section~\ref{sec:whyhard} identifies. Tree-sitter~\cite{treesitter} recovers impressively in practice inside a GLR framework, with heuristics that carry no stated optimality property. The pika parser~\cite{hutchison2020} recovers by virtue of its bottom-up direction, at a large always-on constant factor and without a repair-quality criterion.
-
-In summary, what is new here is not the distance metric, nor search, but the architecture that connects them: the parser is treated as a black-box membership oracle with failure observation bolted onto the \emph{grammar}, which is what lets an unmodified, memoizing, left-recursion-capable parser participate in optimal repair without surrendering any of its invariants.
+The minimum-cost objective is the classical one of Aho and Peterson~\cite{aho1972} and Lyon~\cite{lyon1974}, who realize it by augmenting a context-free grammar with error productions and parsing every input, valid or not, with an Earley-style algorithm in cubic time; their repaired parse also contains invented tokens. The present design prices deletions and absences inside a descent that runs only after the plain linear-time parse has rejected the input, never invents text, and terminates at the first budget that explains the document. Burke and Fisher~\cite{burke1987} and CPCT+~\cite{diekmann2020} repair over the parser's configuration at the failure point, at token granularity, for LL/LR automata; readings compete over the whole document here, so a repair may lie arbitrarily far before the failure frontier, as the unclosed-quote family of Section~\ref{sec:whyhard} requires, and character granularity suits scannerless PEG parsing, where no token stream exists. The labeled-failure recovery of Medeiros and Mascarenhas~\cite{medeiros2018,medeiros2020} and the permissive grammars of de Jonge et al.~\cite{dejonge2012} modify the grammar, by annotation or automatically, and characterize the recovered parse by the added rules' behavior; here the grammar is untouched and the recovered parse is characterized by Definition~\ref{def:recovered} and the five-key comparison alone. Swierstra and Duponcheel's error-correcting combinators~\cite{swierstra1996} insert and delete tokens greedily during the parse itself, which cannot weigh a cheap local correction against a better global one; the whole-document judgment exists precisely because the greedy choice is sometimes wrong (Section~\ref{sec:contract}). Tree-sitter~\cite{treesitter} recovers impressively inside a GLR framework with heuristics that carry no stated criterion; the pika parser~\cite{hutchison2020} recovers by virtue of bottom-up parsing at a large always-on constant factor. What is new here is the combination: an unmodified, memoizing, left-recursion-capable PEG parser as the zero-cost core of a priced descent whose output is a complete tree over the damaged input, with a stated cost model, a deterministic judgment, and structural guarantees checked outside the quality metric.
 
 %----------------------------------------------------------------------
 \section{Reference implementation}
 \label{sec:software}
 %----------------------------------------------------------------------
 
-An MIT-licensed reference implementation of the squirrel parser and the repair search is available at \url{https://github.com/lukehutch/squirrelparser}. The Dart implementation comprises the parser core, a direct transcription of Fig.~\ref{fig:Code}; a metagrammar, so grammars are written in the ASCII notation used throughout this paper; automatic conversion of parse trees to abstract syntax trees, with rules prefixed \cd{\~{}} (as \cd{WS} in Fig.~\ref{fig:JsonGrammar}) elided as syntactically transparent; and the recovery module, which implements the repair search of Section~\ref{sec:repair} and touches no part of the parser core. The test suite contains 308 tests, including the mutation, oracle, and performance batteries of Sections \ref{sec:complexity} and~\ref{sec:evaluation}.
+An MIT-licensed reference implementation of the squirrel parser and the recovery engine is available at \url{https://github.com/lukehutch/squirrelparser}. The Dart implementation comprises the parser core, a direct transcription of Fig.~\ref{fig:Code}; a metagrammar, so grammars are written in the ASCII notation used throughout this paper; automatic conversion of parse trees to abstract syntax trees, with rules prefixed \cd{\~{}} (as \cd{WS} in Fig.~\ref{fig:JsonGrammar}) elided as syntactically transparent; and the recovery engine, a single file transcribing Sections~\ref{sec:contract} through~\ref{sec:root} and Fig.~\ref{fig:RecoveryCode}, which contains its own copy of the plain parsing algorithm and leaves the parser core untouched. The repository also carries the measurement harness behind Sections~\ref{sec:complexity} and~\ref{sec:evaluation}: the mutation battery with its frozen-expectation scoring, the four hard checks, and the performance probes, alongside the parser core's test suite.
 
 %----------------------------------------------------------------------
 \section{Conclusion}
 \label{sec:conclusion}
 %----------------------------------------------------------------------
 
-Three metadata fields on each memo entry of a packrat parser, a recursion-path flag, a found-recursion flag, and a version stamp validated against a per-position counter, suffice to parse every form of left recursion bottom-up from the fixed point of each cycle, reducing exactly to packrat parsing when no cycle is met (Theorem~\ref{thm:reduction}), remaining linear whenever expansion regions are disjoint (Corollary~\ref{cor:linear}), and degrading, like the prior seed-growing approaches, to quadratic on an adversarial nesting of lookahead over left recursion that we exhibit and measure (Table~\ref{tab:adversarial}). Moving error recovery out of the parser and into a search over edited copies of the input gives recovery a declarative semantics, minimum Damerau-Levenshtein distance to the language (Definition~\ref{def:repair}, Theorem~\ref{thm:minimality}), at zero cost to valid inputs, with measured results, 519 of 519 provably minimal repairs and 94.4\% structural restoration on exhaustive JSON mutation (Table~\ref{tab:mutation}), that the fifty-year literature of in-parser recovery heuristics does not offer for recursive descent parsing.
+Three metadata fields on each memo entry of a packrat parser, a recursion-path flag, a found-recursion flag, and a version stamp validated against a per-position counter, suffice to parse every form of left recursion bottom-up from the fixed point of each cycle, reducing exactly to packrat parsing when no cycle is met (Theorem~\ref{thm:reduction}), remaining linear whenever expansion regions are disjoint (Corollary~\ref{cor:linear}), and degrading, like the prior seed-growing approaches, to quadratic on an adversarial nesting of lookahead over left recursion that we exhibit and measure (Table~\ref{tab:adversarial}). Error recovery then costs one more descent: the same recursion, over priced readings instead of matches, with the same three memo fields governing left recursion in both, the plain parser serving every spent-out query unmodified, and a five-key judgment selecting one complete tree over the damaged input at minimum cost (Definition~\ref{def:recovered}). Refusing to invent text is what Theorem~\ref{thm:hardness} exacts for tractability, the set-valued repair cells are what Theorem~\ref{thm:frontier} requires of any efficient compositional search, and the measured result, 84.0\% exact structural restoration over 2{,}101 mutants of three grammars at half a millisecond each (Table~\ref{tab:battery}), with hard structural checks passed outside the metric, is what the fifty-year literature of in-parser recovery heuristics does not offer for recursive descent parsing.
 
-Three open problems follow directly. First, per-candidate re-parsing dominates recovery cost (Table~\ref{tab:recoveryperf}); memo entries whose spans precede a candidate's first edit are unaffected by it, so the version mechanism of Section~\ref{sec:purity} extends naturally to incremental re-parsing across candidates, in the spirit of incremental parsing for LR~\cite{larcheveque1995} and for packrat parsers~\cite{dubroy2017}, and should reduce a round's cost from parses times length toward a single parse. Second, an implementation that consumes errors one at a time, left to right, is exponentially cheaper on inputs with many independent errors but can exceed $d(s, L(G))$ when two errors are coupled, in the sense that the jointly minimal repair differs from the greedy one; how to recover global minimality for all but adversarially entangled errors, without paying the exponential, is open. Third, an input-independent characterization of the grammars on which left-recursive expansion is super-linear (Section~\ref{sec:expansioncost}) remains open, as does the older question of whether PEGs recognize all context-free languages~\cite{ford2004}.
+Three open problems follow directly. First, each budget round recomputes repair cells the previous round already filled; the version mechanism of Section~\ref{sec:purity} extends naturally to reuse across rounds, in the spirit of incremental parsing for LR~\cite{larcheveque1995} and for packrat parsers~\cite{dubroy2017}, and should reduce a multi-error document's cost toward a single priced descent. Second, the judgment's tie rules resolve genuinely ambiguous damage deterministically but blindly; surfacing the tied readings to the client, ranked by the same five keys, would let tooling present alternatives where the input cannot decide. Third, an input-independent characterization of the grammars on which left-recursive expansion is super-linear (Section~\ref{sec:expansioncost}) remains open, as does the older question of whether PEGs recognize all context-free languages~\cite{ford2004}.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{squirrel_parser}
