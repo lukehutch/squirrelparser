@@ -1,26 +1,29 @@
-// c6.dart -- THE STANDING ENGINE (I109): c5's judgment with the way collapsed
-// to A CONS CELL THAT KNOWS ITS SUMS. c5 carried fifteen fields: five judgment
-// scalars, and then a second, parallel account of the same reading -- six
-// fields encoding the winner's tree (leaf/cap/from/link/prev/mark, walked by a
-// bespoke builder), a stored marks count, a stored eof flag, and a root
-// protocol that re-derived del+gap by WALKING THE FINISHED TREE, which is the
-// confession: the scalars were always folds of the chain.
+// c6.dart -- THE STANDING ENGINE, now SELF-CONTAINED: the full squirrel
+// parser folded into the recovery engine. The published library contributes
+// only the interchange types -- the grammar AST that MetaGrammar produces
+// (Clause and its subclasses) and the tree types the harness scores
+// (MatchResult / Match / SyntaxError). Every line of LOGIC is here: the
+// packrat matcher with squirrel's left-recursion algorithm (the memo cell
+// seeds a mismatch on re-entry and grows the seed to a fixed point, with a
+// per-position version so cells computed mid-growth cannot go stale), the
+// costed way-descent, and the judgment.
 //
-// The collapse: a way is one payload (a denied/owed mark, a finished subtree,
-// or a named cap over an inner chain) and one tail. Every quantity is either
-// an additive cache of that list (del, gap, net, fees, oweN) or derived at the
-// point of use (edits, marks, eof, spend, the swallow of I108):
-//   - eof IS an owe at the end of the input (positional, not a flag); its
-//     once-only charge is (oweN > 0 ? 1 : 0) -- I94's collapse made structural;
-//   - the tree IS a fold over the chain, and the cost of the final tree is
-//     del + gap + oweN by construction, so the root's audit walk is gone;
-//   - a frozen read IS a way (one constructor for the parser's own answers);
-//   - the unread tail at the root IS one more skip, not a protocol.
+// The grammar is CONVERTED at construction into an engine-owned node
+// hierarchy (_conv, the one boundary adapter that inspects package types).
+// Each node kind carries its whole behavior as methods -- match (pure),
+// go (recovery ways), freeze (the frozen read as a way), det, fill, pin --
+// so there are no is-chains and no clause dispatchers in the algorithm.
+// Nodes also carry their own memo state (pure cells on rules, way-fronts on
+// composites) as generation-stamped arrays: no hash map sits on the hot
+// path, and a new input resets everything by bumping one counter.
 //
-// Everything else is c5: the derived swallow, the five-key judgment, the tie
-// law, the seed exemption on the D8 fee, eof-is-not-spend, the literal replace
-// edit, the way-front as the memo cell, Warth's involved set, budget-zero
-// parsing.
+// PARSING MODE IS BUDGET ZERO (I101): the pure fiber is the same descent
+// with no edits left, so the frozen cells answer budget-zero queries
+// unconditionally, and each cell caches the net of its finished subtree.
+// Everything else is unchanged: the cons-cell way and its five additive
+// counters (I109-I111), the derived swallow (I108), the five-key judgment,
+// the tie law, the fee and its seed exemption, eof-is-not-spend, the
+// literal replace edit, Warth's involved set, the budget ladder.
 import 'dart:collection';
 
 import 'package:squirrel_parser/squirrel_parser.dart';
@@ -108,7 +111,7 @@ class _Way {
 /// grow-loop stops when no add improves), the order is the map's own
 /// deterministic iteration (no sort, so no unstable-tie livelock), and the
 /// farthest-PEG claim and the budget filter are cached read-time views.
-/// Warth's involved set names the rules that read this front's seed while
+/// Warth's involved set names the nodes that read this front's seed while
 /// it grew -- the only cells growth may invalidate.
 class _Front {
   _Front(this.pos);
@@ -116,7 +119,7 @@ class _Front {
   final Map<int, _Way> _by = {};
   bool inPath = false, foundLR = false;
   int at = -1, tick = 0;
-  Set<Clause>? involved;
+  Set<_N>? involved;
 
   bool add(_Way w) {
     final b = _by[w.end];
@@ -146,38 +149,605 @@ class _Front {
   }
 }
 
-class Squirrel {
-  Squirrel({required Map<String, Clause> rules, required this.topRuleName}) {
-    for (final e in rules.entries) {
-      this.rules[e.key.startsWith('~') ? e.key.substring(1) : e.key] = e.value;
-    }
+/// A pure memo cell: squirrel's left-recursion state plus the finished
+/// subtree and its cached net. [has] distinguishes "computed, mismatch"
+/// from "not yet computed" (a mismatch is stored as res == null).
+class _PCell {
+  MatchResult? res;
+  int? net;
+  bool has = false, inPath = false, foundLR = false;
+  int ver = 0;
+}
+
+// ---------------------------------------------------------------------------
+// The grammar, as engine-owned nodes. Each node carries its source clause
+// (for the trees the harness reads), its analyses, its memo state, and its
+// whole behavior -- pure match and costed ways -- as methods.
+// ---------------------------------------------------------------------------
+
+abstract class _N {
+  _N(this.src);
+
+  /// The package clause this node was converted from: the label every tree
+  /// node and cap carries, so the harness sees the grammar it was given.
+  final Clause src;
+
+  /// The pure fiber: squirrel's own match at [pos], or null for a mismatch.
+  MatchResult? match(Squirrel e, int pos);
+
+  /// The recovery fiber: rival priced readings at [pos].
+  List<_Way> ways(Squirrel e, int pos) => pos > e._n ? const [] : go(e, pos);
+
+  List<_Way> go(Squirrel e, int pos);
+
+  /// The frozen parser's answer as a single peg way, or null: one idiom
+  /// for the deny-scan and budget zero alike.
+  _Way? freeze(Squirrel e, int pos) {
+    final m = match(e, pos);
+    return m == null
+        ? null
+        : _Way(pos + m.len, 0, 0, e._netOf(m), _peg, what: m);
   }
 
-  final Map<String, Clause> rules = {};
+  /// The recovery front at [pos] if one exists this run (never allocates).
+  _Front? peek(Squirrel e, int pos) => null;
+
+  /// Whether every string this node derives yields the same tree shape
+  /// (I36) -- lazily computed once, with the cycle read as false.
+  bool? _det;
+  bool det() {
+    if (_det != null) return _det!;
+    _det = false;
+    return _det = detGo();
+  }
+
+  bool detGo();
+
+  /// The fewest characters any derivation consumes. Path-cut, NOT memoized:
+  /// memoizing under a cycle-cut poisons the count inside LR paths.
+  int fill(Set<_N> path) {
+    if (!path.add(this)) return _never;
+    final v = fillGo(path);
+    path.remove(this);
+    return v;
+  }
+
+  int fillGo(Set<_N> path);
+}
+
+/// A composite: its recovery answers live in a way-front per position,
+/// computed by the engine's grow-loop around this node's [expand].
+abstract class _Comp extends _N {
+  _Comp(super.src);
+
+  List<_Front?>? _row;
+  int _run = -1;
+
+  List<_Front?> row(Squirrel e) {
+    if (_run != e._run) {
+      _row = List<_Front?>.filled(e._n + 2, null);
+      _run = e._run;
+    }
+    return _row!;
+  }
+
+  @override
+  _Front? peek(Squirrel e, int pos) => _run == e._run ? _row![pos] : null;
+
+  @override
+  List<_Way> go(Squirrel e, int pos) => e.grow(this, pos);
+
+  List<_Way> expand(Squirrel e, int pos);
+}
+
+class _Seq extends _Comp {
+  _Seq(super.src, this.subs);
+  final List<_N> subs;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) {
+    final kids = <MatchResult>[];
+    var p = pos;
+    for (final s in subs) {
+      final m = s.match(e, p);
+      if (m == null) return null;
+      kids.add(m);
+      p += m.len;
+    }
+    return kids.isEmpty
+        ? Match(src, pos, 0)
+        : Match(src, 0, 0, subClauseMatches: kids);
+  }
+
+  @override
+  List<_Way> expand(Squirrel e, int pos) => e.fold(subs, src, pos);
+
+  @override
+  bool detGo() => subs.every((s) => s.det());
+
+  @override
+  int fillGo(Set<_N> path) {
+    var v = 0;
+    for (final s in subs) {
+      final f = s.fill(path);
+      v = f >= _never || v >= _never ? _never : v + f;
+    }
+    return v;
+  }
+}
+
+/// An ordered choice: every arm contributes, but once an arm has read the
+/// input as it stands the choice belongs to the document, and a later
+/// arm's repair may outbid it only by explaining STRICTLY more than it
+/// assumes -- hence >=, one notch harder than the swallow's own >.
+class _First extends _Comp {
+  _First(super.src, this.subs);
+  final List<_N> subs;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) {
+    for (final s in subs) {
+      final m = s.match(e, pos);
+      if (m != null) return Match(src, 0, 0, subClauseMatches: [m]);
+    }
+    return null;
+  }
+
+  @override
+  List<_Way> expand(Squirrel e, int pos) {
+    final out = <_Way>[];
+    var settled = false;
+    for (final s in subs) {
+      final ws = s.ways(e, pos);
+      for (final w in ws) {
+        if (settled && !w.free && w.absorbed(pos) >= w.net) continue;
+        out.add(w.capped(src, pos, settled ? _far : _peg));
+      }
+      settled = settled || ws.any((w) => w.peg);
+    }
+    return out;
+  }
+
+  @override
+  bool detGo() => false;
+
+  @override
+  int fillGo(Set<_N> path) {
+    var v = _never;
+    for (final s in subs) {
+      final f = s.fill(path);
+      if (f < v) v = f;
+    }
+    return v;
+  }
+}
+
+/// A repetition as reachability: the same fixpoint the grow-loop closes
+/// for left recursion, computed by a one-pass closure because the general
+/// loop re-expands the whole rule per growth step (measured: growing the
+/// repetition through its own cell, 2,440 ms battery vs 1,535 for this
+/// pass, no accuracy change). A `+` with nothing at all owes exactly one
+/// occurrence, which the body's own fill supplies.
+class _Rep extends _Comp {
+  _Rep(super.src, this.sub, this.plus);
+  final _N sub;
+  final bool plus;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) {
+    final kids = <MatchResult>[];
+    var p = pos;
+    while (p <= e._n) {
+      final m = sub.match(e, p);
+      if (m == null) break;
+      // Never consume more than one zero-length body match (the
+      // pathological `()*` would loop forever).
+      if (m.len == 0) break;
+      kids.add(m);
+      p += m.len;
+    }
+    if (plus && kids.isEmpty) return null;
+    return kids.isEmpty
+        ? Match(src, pos, 0)
+        : Match(src, 0, 0, subClauseMatches: kids);
+  }
+
+  @override
+  List<_Way> expand(Squirrel e, int pos) {
+    final zero = _Way.unit(pos);
+    final best = <int, _Way>{if (!plus) pos: zero};
+    var frontier = <_Way>[zero];
+    while (frontier.isNotEmpty) {
+      final moved = <int>{};
+      for (final w in frontier) {
+        for (final v in sub.ways(e, w.end)) {
+          if (v.end <= w.end) continue;
+          final x = w.then(v);
+          final b = best[x.end];
+          if (b != null && Squirrel._rank(x, b, pos) >= 0) continue;
+          best[x.end] = x;
+          moved.add(x.end);
+        }
+      }
+      frontier = [for (final n in moved) best[n]!];
+    }
+    final all = best.values.toList();
+    if (all.isEmpty) {
+      for (final v in sub.ways(e, pos)) {
+        if (v.end != pos) continue;
+        all.add(zero.then(v).demoted);
+      }
+    }
+    return [for (final w in e._prune(all, pos)) w.capped(src, pos)];
+  }
+
+  @override
+  bool detGo() => plus && sub.det();
+
+  @override
+  int fillGo(Set<_N> path) => plus ? sub.fill(path) : 0;
+}
+
+class _Opt extends _Comp {
+  _Opt(super.src, this.sub);
+  final _N sub;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) {
+    final m = sub.match(e, pos);
+    return m == null
+        ? Match(src, pos, 0)
+        : Match(src, 0, 0, subClauseMatches: [m]);
+  }
+
+  @override
+  List<_Way> expand(Squirrel e, int pos) {
+    final ws = sub.ways(e, pos);
+    return [
+      _Way.unit(pos)
+          .over(Match(src, pos, 0), ws.any((w) => w.peg) ? _far : _peg),
+      for (final w in ws) w.capped(src, pos)
+    ];
+  }
+
+  @override
+  bool detGo() => false;
+
+  @override
+  int fillGo(Set<_N> path) => 0;
+}
+
+/// Both lookaheads: zero-width, and a repair may not live inside one --
+/// input it accepted would be input the assertion does not consume.
+class _Look extends _Comp {
+  _Look(super.src, this.sub, this.positive);
+  final _N sub;
+  final bool positive;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) =>
+      (sub.match(e, pos) != null) == positive ? Match(src, pos, 0) : null;
+
+  @override
+  List<_Way> expand(Squirrel e, int pos) {
+    final ok = sub.ways(e, pos).any((w) => w.free);
+    return positive == ok
+        ? [_Way.unit(pos).over(Match(src, pos, 0))]
+        : const [];
+  }
+
+  @override
+  bool detGo() => true;
+
+  @override
+  int fillGo(Set<_N> path) => 0;
+}
+
+/// A named rule: the body every reference shares, and the PURE memo row --
+/// squirrel's left-recursion algorithm lives here. On re-entry the cell
+/// seeds a mismatch and signals the ancestral frame, which grows the seed
+/// to a fixed point; the per-position version keeps cells computed during
+/// an unfinished growth from surviving it.
+class _Rule {
+  _Rule(this.name);
+  final String name;
+  late _N body;
+
+  List<_PCell?>? _cells;
+  int _run = -1;
+
+  _PCell pure(Squirrel e, int pos) {
+    if (_run != e._run) {
+      _cells = List<_PCell?>.filled(e._n + 2, null);
+      _run = e._run;
+    }
+    final c = _cells![pos] ??= _PCell();
+    if (c.has && (c.inPath || c.ver == e._pver[pos])) return c;
+    if (c.inPath) {
+      c.foundLR = true;
+      c.has = true;
+      c.res = null;
+      return c;
+    }
+    c.inPath = true;
+    do {
+      final m = body.match(e, pos);
+      // A match is never replaced by a mismatch, and the fixed point is
+      // reached when the new attempt did not grow.
+      if (c.has && (m == null || (c.res != null && m.len <= c.res!.len))) {
+        break;
+      }
+      c.res = m;
+      c.net = null;
+      c.has = true;
+      if (!c.foundLR) break;
+      c.ver = ++e._pver[pos];
+    } while (true);
+    c.inPath = false;
+    c.ver = e._pver[pos];
+    return c;
+  }
+}
+
+/// A reference: the only node that recurses through the pure memo, and the
+/// lift point where a rule's readings get their name put on. Refusal of
+/// inventions that explain nothing happens here; the swallow does not (it
+/// is derived at every comparison instead, I108).
+class _Ref extends _N {
+  _Ref(super.src, this.rule);
+  final _Rule rule;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) {
+    if (pos > e._n) return null;
+    final m = rule.pure(e, pos).res;
+    return m == null ? null : Match(src, 0, 0, subClauseMatches: [m]);
+  }
+
+  /// The rule's finished subtree is reused WHOLE, priced at the net its
+  /// cell caches -- computed once per cell however many denials read it.
+  @override
+  _Way? freeze(Squirrel e, int pos) {
+    if (pos > e._n) return null;
+    final c = rule.pure(e, pos);
+    final m = c.res;
+    if (m == null) return null;
+    return _Way(pos + m.len, 0, 0, c.net ??= e._netOf(m), _peg,
+        what: Match(src, 0, 0, subClauseMatches: [m]));
+  }
+
+  @override
+  List<_Way> go(Squirrel e, int pos) {
+    // PARSING MODE IS BUDGET ZERO -- the whole of the mode split. With no
+    // edits left the way-descent IS the pure parser (PEG choice, greedy
+    // repetition, left recursion and all), so the frozen cell's answer is
+    // exactly equivalent, unconditionally: every continuation that has
+    // spent its edits is O(1) from here to the end of the input. The
+    // budget itself marks where repair can no longer reach.
+    if (e._budget == 0 && pos < e._n) {
+      final w = freeze(e, pos);
+      return w == null ? const [] : [w];
+    }
+    // Put the rule's node on and refuse inventions that explain nothing; a
+    // zero-width way is a FILL and passes (its node's fate is decided at
+    // build, I81/I96).
+    return [
+      for (final w in rule.body.ways(e, pos))
+        if (w.net > 0 || w.free || w.end == pos || det()) w.capped(src, pos)
+    ];
+  }
+
+  @override
+  bool detGo() => rule.body.det();
+
+  @override
+  int fillGo(Set<_N> path) => rule.body.fill(path);
+
+  /// Whether this reference is a back-edge into a cell being grown: an LR
+  /// SEED, whose give-up anchors the spine the growth exists to build.
+  bool seedAt(Squirrel e, int pos) => rule.body.peek(e, pos)?.inPath ?? false;
+}
+
+/// A terminal reads the input, or is recorded as one obligation the input
+/// never supplied. Nothing is spelled, so no character of an absent class
+/// is invented. [pin] says whether what it reads is constrained -- the
+/// characters it pins are the way's net.
+abstract class _Term extends _N {
+  _Term(super.src);
+
+  bool get pin;
+
+  @override
+  List<_Way> go(Squirrel e, int pos) {
+    final m = match(e, pos);
+    if (m != null) {
+      return [_Way(pos + m.len, 0, 0, pin ? m.len : 0, _peg, what: m)];
+    }
+    // an owe at the end of the input is offered even with no budget left:
+    // it joins the one standing "the document stopped" claim (I94), and
+    // the afford filters price the single eof edit -- without this, a
+    // truncation's spine dies at its second obligation
+    if (e._budget < 1 && pos < e._n) return const [];
+    final atEof = pos == e._n;
+    return [
+      _Way(pos, 0, atEof ? 0 : 1, 0, pos,
+          oweN: atEof ? 1 : 0,
+          owing: true,
+          what: Match(src, pos, 0,
+              subClauseMatches: [SyntaxError(pos: pos, len: 0)]))
+    ];
+  }
+
+  @override
+  bool detGo() => true;
+
+  @override
+  int fillGo(Set<_N> path) => 1;
+}
+
+class _StrN extends _Term {
+  _StrN(super.src, this.text)
+      : chars = text.length > 1
+            ? [
+                for (final u in text.codeUnits)
+                  _CharN(Char(String.fromCharCode(u)), u)
+              ]
+            : const [];
+  final String text;
+  final List<_N> chars;
+
+  @override
+  bool get pin => true;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) {
+    if (pos + text.length > e._n) return null;
+    for (var i = 0; i < text.length; i++) {
+      if (e._in.codeUnitAt(pos + i) != text.codeUnitAt(i)) return null;
+    }
+    return Match(src, pos, text.length);
+  }
+
+  @override
+  List<_Way> go(Squirrel e, int pos) {
+    if (chars.isEmpty) return super.go(e, pos);
+    final m = match(e, pos);
+    if (m != null) return [_Way(pos + m.len, 0, 0, m.len, _peg, what: m)];
+    if (e._budget < 1 && pos < e._n) return const [];
+    // A LITERAL IS A SEQUENCE: the fold gives it denial, partial prefixes,
+    // completion and the replace edit with no alignment table of its own.
+    // (Routing literals through the memo cell was measured:
+    // judgment-identical, +25% latency -- the front ceremony on every
+    // MATCHING literal costs more than caching failing folds saves.)
+    return e._prune(e.fold(chars, src, pos, lit: true), pos);
+  }
+
+  @override
+  int fillGo(Set<_N> path) => text.length;
+}
+
+class _CharN extends _Term {
+  _CharN(super.src, this.cu);
+  final int cu;
+
+  @override
+  bool get pin => true;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) =>
+      pos < e._n && e._in.codeUnitAt(pos) == cu ? Match(src, pos, 1) : null;
+}
+
+class _SetN extends _Term {
+  _SetN(super.src, this.ranges, this.inverted);
+  final List<(int, int)> ranges;
+  final bool inverted;
+
+  @override
+  bool get pin => !inverted;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) {
+    if (pos >= e._n) return null;
+    final c = e._in.codeUnitAt(pos);
+    var inSet = false;
+    for (final (lo, hi) in ranges) {
+      if (c >= lo && c <= hi) {
+        inSet = true;
+        break;
+      }
+    }
+    return (inverted ? !inSet : inSet) ? Match(src, pos, 1) : null;
+  }
+}
+
+class _AnyN extends _Term {
+  _AnyN(super.src);
+
+  @override
+  bool get pin => false;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) =>
+      pos < e._n ? Match(src, pos, 1) : null;
+}
+
+class _NothingN extends _Term {
+  _NothingN(super.src);
+
+  @override
+  bool get pin => false;
+
+  @override
+  MatchResult? match(Squirrel e, int pos) => Match(src, pos, 0);
+
+  @override
+  int fillGo(Set<_N> path) => 0;
+}
+
+// ---------------------------------------------------------------------------
+// The engine.
+// ---------------------------------------------------------------------------
+
+class Squirrel {
+  Squirrel({required Map<String, Clause> rules, required this.topRuleName}) {
+    final defs = <String, Clause>{
+      for (final e in rules.entries)
+        e.key.startsWith('~') ? e.key.substring(1) : e.key: e.value
+    };
+    for (final name in defs.keys) {
+      _rules[name] = _Rule(name);
+    }
+    for (final e in defs.entries) {
+      _rules[e.key]!.body = _conv(e.value);
+    }
+    _top = _rules[topRuleName]!;
+  }
+
   final String topRuleName;
+  final Map<String, _Rule> _rules = {};
+  late final _Rule _top;
 
   String _in = '';
   int _n = 0;
-  late Parser _ref; // input carrier: terminals are the library's own
-  final Map<Clause, List<_Front?>> _memo = {};
-  final List<(Clause, _Front)> _stack = [];
-  final Map<int, Set<Clause>> _heads = {};
+  int _run = 0;
+  List<int> _pver = const [];
+  final List<(_Comp, _Front)> _stack = [];
+  final Map<int, Set<_N>> _heads = {};
   int _tick = 0;
-  final Map<Clause, bool> _det = {};
-  final Map<Str, List<Clause>> _chars = {};
   int _round = 0, _budget = 0;
   int? _fill;
-  final Map<MatchResult, int> _nets = HashMap.identity();
   int lastCost = 0;
+
+  /// The one boundary adapter: package clauses in, engine nodes out.
+  _N _conv(Clause c) {
+    if (c is Ref) {
+      final r = _rules[c.ruleName];
+      if (r == null) throw ArgumentError('rule "${c.ruleName}" not found');
+      return _Ref(c, r);
+    }
+    if (c is Seq) return _Seq(c, [for (final s in c.subClauses) _conv(s)]);
+    if (c is First) return _First(c, [for (final s in c.subClauses) _conv(s)]);
+    if (c is Repetition) return _Rep(c, _conv(c.subClause), c.requireOne);
+    if (c is Optional) return _Opt(c, _conv(c.subClause));
+    if (c is FollowedBy) return _Look(c, _conv(c.subClause), true);
+    if (c is NotFollowedBy) return _Look(c, _conv(c.subClause), false);
+    if (c is Str) return _StrN(c, c.text);
+    if (c is Char) return _CharN(c, c.char.codeUnitAt(0));
+    if (c is CharSet) return _SetN(c, c.ranges, c.inverted);
+    if (c is AnyChar) return _AnyN(c);
+    if (c is Nothing) return _NothingN(c);
+    throw UnsupportedError('clause kind ${c.runtimeType}');
+  }
 
   // -- ordering: fewest claims (the swallow derived, never stored); PEG's
   // reading; most explained; latest doubt; fewest obligations stranded at
   // the cut. The last key refines EXACTLY what the first collapsed: mid
   // owes are fully priced in the claim count, so recounting them here was
-  // double-representation (measured inert; oweN alone scores the same +1
-  // tie); the boundary claim is priced once however many slots it strands
-  // (I94), so its lost cardinality is restored here (I105, re-confirmed:
-  // collapsing it to a bit costs 2.6 perfect) --
+  // double-representation (measured inert); the boundary claim is priced
+  // once however many slots it strands (I94), so its lost cardinality is
+  // restored here (I105, re-confirmed: collapsing it to a bit costs 2.6
+  // perfect) --
   static int _rank(_Way a, _Way b, int pos) {
     final ea = a.edits + a.fees + a.ate(pos),
         eb = b.edits + b.fees + b.ate(pos);
@@ -197,54 +767,10 @@ class Squirrel {
     return f.ways();
   }
 
-  /// A FROZEN READ IS A WAY: the parser's own finished subtree, priced as
-  /// what its constraining terminals pinned. [net] lets the Ref path cache
-  /// the sum on the library's memoized match, whose identity is stable.
-  _Way _read(MatchResult m, int end, [int? net]) =>
-      _Way(end, 0, 0, net ?? _netOf(m), _peg, what: m);
-
-  // -- the one loop (the LR trick, serving repair unchanged) -----------------
-  List<_Way> _ways(Clause c, int pos) {
-    if (pos > _in.length) return const [];
-    if (c is Ref) {
-      // PARSING MODE IS BUDGET ZERO -- the whole of the mode split. With no
-      // edits left the way-descent IS the pure parser (PEG choice, greedy
-      // repetition, left recursion and all), so the frozen memo's answer is
-      // exactly equivalent, unconditionally: every continuation that has
-      // spent its edits is O(1) from here to the end of the input. The
-      // budget itself marks where repair can no longer reach.
-      if (_budget == 0 && pos < _n) {
-        final m = _frozen(c, pos);
-        if (m == null) return const [];
-        final r = m.subClauseMatches.first;
-        return [_read(m, pos + r.len, _nets[r] ??= _netOf(r))];
-      }
-      return _lift(c, pos, _ways(rules[c.ruleName]!, pos));
-    }
-    if (c is! HasOneSubClause && c is! HasMultipleSubClauses) {
-      if (c is Str && c.text.length > 1) {
-        final m = (c as Terminal).match(_ref, pos);
-        if (!m.isMismatch) return [_read(m, pos + m.len)];
-        if (_budget < 1 && pos < _in.length) return const [];
-        // A LITERAL IS A SEQUENCE: the fold gives it denial, partial
-        // prefixes, completion and the replace edit with no alignment table
-        // of its own. (Routing literals through the memo cell was measured:
-        // judgment-identical, +25% latency -- the front ceremony on every
-        // MATCHING literal costs more than caching failing folds saves.)
-        return _prune(
-            _fold(
-                _chars[c] ??= [
-                  for (final u in c.text.codeUnits) Char(String.fromCharCode(u))
-                ],
-                c,
-                pos,
-                lit: true),
-            pos);
-      }
-      return _prune(_term(c as Terminal, pos), pos);
-    }
-    final row = _memo[c] ??= List<_Front?>.filled(_in.length + 2, null);
-    final e = row[pos] ??= _Front(pos);
+  /// THE GROW-LOOP, serving left recursion and repair unchanged (I100): the
+  /// front machinery around a composite's [expand].
+  List<_Way> grow(_Comp c, int pos) {
+    final e = c.row(this)[pos] ??= _Front(pos);
     if (e.inPath) {
       // a seed was read: everyone above this cell on the path is involved
       // in its growth, and no one else ever goes stale (Warth)
@@ -265,11 +791,11 @@ class Squirrel {
     }
     if (_budget == 0 && e.at < 0 && pos < _n) {
       // parsing mode for composites too: at budget zero the descent is the
-      // pure parser for ANY clause, so the library answers -- cached in the
-      // cell, since the library memoizes only rules
+      // pure parser for ANY node, so the pure fiber answers -- cached in
+      // the front, since pure cells exist only for rules
       e.at = 0;
-      final m = c.match(_ref, pos);
-      if (!m.isMismatch) e.add(_read(m, pos + m.len));
+      final m = c.match(this, pos);
+      if (m != null) e.add(_Way(pos + m.len, 0, 0, _netOf(m), _peg, what: m));
       return e.ways();
     }
     e.inPath = true;
@@ -277,7 +803,7 @@ class Squirrel {
     final saved = _heads[pos];
     while (true) {
       var changed = false;
-      for (final w in _expand(c, pos)) {
+      for (final w in c.expand(this, pos)) {
         if (e.add(w)) changed = true;
       }
       e.at = _budget;
@@ -296,38 +822,12 @@ class Squirrel {
     return e.ways(_budget);
   }
 
-  List<_Way> _expand(Clause c, int pos) {
-    if (c is Seq) return _fold(c.subClauses, c, pos);
-    if (c is First) return _first(c, pos);
-    if (c is Repetition) return _rep(c, pos);
-    if (c is Optional) return _opt(c, pos);
-    if (c is FollowedBy || c is NotFollowedBy) {
-      final sub =
-          c is FollowedBy ? c.subClause : (c as NotFollowedBy).subClause;
-      final ok = _ways(sub, pos).any((w) => w.free);
-      return (c is FollowedBy) == ok
-          ? [_Way.unit(pos).over(Match(c, pos, 0))]
-          : const [];
-    }
-    return _term(c as Terminal, pos);
-  }
-
-  /// Put the rule's node on and refuse inventions that explain nothing; a
-  /// zero-width way is a FILL and passes (its node's fate is decided at
-  /// build, I81/I96). No judgment happens here: the swallow is derived at
-  /// every comparison instead (I108).
-  List<_Way> _lift(Ref c, int pos, List<_Way> ways) => [
-        for (final w in ways)
-          if (w.net > 0 || w.free || w.end == pos || _determined(c))
-            w.capped(c, pos)
-      ];
-
   /// THE FOLD -- the whole of sequencing and the whole of repair. Each slot
-  /// contributes its ways (fills included, since a failing clause's ways ARE
+  /// contributes its ways (fills included, since a failing node's ways ARE
   /// its obligations); where a slot cannot be read as it stands, input may be
   /// denied up to the first place it reads freely; an unspellable fill pays
   /// D8's fee where that denial was no dearer (I72 scoped by I36).
-  List<_Way> _fold(List<Clause> subs, Clause cap, int pos, {bool lit = false}) {
+  List<_Way> fold(List<_N> subs, Clause cap, int pos, {bool lit = false}) {
     var cur = <_Way>[_Way.unit(pos)];
     for (final sub in subs) {
       final next = <_Way>[];
@@ -336,7 +836,7 @@ class Squirrel {
         if (w.spend > _budget) continue;
         final full = _budget;
         _budget = full - w.spend;
-        final here = _ways(sub, w.end);
+        final here = sub.ways(this, w.end);
         _budget = full;
         var clean = false;
         for (final v in here) {
@@ -345,14 +845,14 @@ class Squirrel {
         var k = -1;
         if (!clean) {
           // deny up to the first place the slot reads as the FROZEN parser:
-          // the library's memoized match answers, and its finished subtree is
-          // reused whole -- the skip is the whole price, and the valid work
+          // the pure fiber answers, and its finished subtree is reused
+          // whole -- the skip is the whole price, and the valid work
           // already done is never repeated
           final room = _budget - w.edits;
-          for (var j = w.end + 1; j <= w.end + room && j <= _in.length; j++) {
-            final m = _frozen(sub, j);
-            if (m == null) continue;
-            next.add(w.then(_Way.skip(w.end, j)).then(_read(m, j + m.len)));
+          for (var j = w.end + 1; j <= w.end + room && j <= _n; j++) {
+            final f = sub.freeze(this, j);
+            if (f == null) continue;
+            next.add(w.then(_Way.skip(w.end, j)).then(f));
             k = j - w.end;
             break;
           }
@@ -360,9 +860,8 @@ class Squirrel {
         // a slot that is a back-edge into a cell being grown is an LR
         // seed: its give-up anchors the spine the growth exists to build,
         // and feeing it kills the growth -- the seed is exempt
-        final seed = sub is Ref &&
-            (_memo[rules[sub.ruleName]!]?[w.end]?.inPath ?? false);
-        final fee = k > 0 && !seed && !_determined(sub);
+        final seed = sub is _Ref && sub.seedAt(this, w.end);
+        final fee = k > 0 && !seed && !sub.det();
         for (final v in here) {
           next.add(w.then(
               fee && v.end == w.end && !v.free && k <= v.gap ? v.fee() : v));
@@ -376,7 +875,7 @@ class Squirrel {
         // that family is operator-choice coin flips, not missing machinery
         if (lit && !clean && w.end < _n) {
           final sk = w.then(_Way.skip(w.end, w.end + 1));
-          for (final v in _ways(sub, w.end + 1)) {
+          for (final v in sub.ways(this, w.end + 1)) {
             next.add(sk.then(v));
           }
         }
@@ -387,22 +886,9 @@ class Squirrel {
     return [for (final w in _prune(cur, pos)) w.capped(cap, pos)];
   }
 
-  /// The frozen parser's own answer at (c, p) -- memoized by the library for
-  /// rules -- with its finished subtree, or null where it does not read.
-  MatchResult? _frozen(Clause c, int p) {
-    if (p > _in.length) return null;
-    if (c is Ref) {
-      final m = _ref.match(rules[c.ruleName]!, p);
-      // the library wraps a rule's success in its Ref node on the Ref.match
-      // path; going through Parser.match directly, the wrap is restored here
-      // or every reused subtree loses its rule label
-      return m.isMismatch ? null : Match(c, 0, 0, subClauseMatches: [m]);
-    }
-    final m = c.match(_ref, p);
-    return m.isMismatch ? null : m;
-  }
-
   /// Characters in [m] read by a terminal that constrains what it accepts.
+  /// The one walk over package-typed trees (their leaves carry package
+  /// clauses, hence the type tests at this boundary).
   int _netOf(MatchResult m) {
     if (m.subClauseMatches.isEmpty) {
       final c = m.clause;
@@ -416,88 +902,6 @@ class Squirrel {
       n += _netOf(k);
     }
     return n;
-  }
-
-  /// An ordered choice: every arm contributes, but once an arm has read the
-  /// input as it stands the choice belongs to the document, and a later
-  /// arm's repair may outbid it only by explaining STRICTLY more than it
-  /// assumes -- hence >=, one notch harder than the swallow's own >.
-  List<_Way> _first(First c, int pos) {
-    final out = <_Way>[];
-    var settled = false;
-    for (final s in c.subClauses) {
-      final ws = _ways(s, pos);
-      for (final w in ws) {
-        if (settled && !w.free && w.absorbed(pos) >= w.net) continue;
-        out.add(w.capped(c, pos, settled ? _far : _peg));
-      }
-      settled = settled || ws.any((w) => w.peg);
-    }
-    return out;
-  }
-
-  /// A repetition as reachability: the same fixpoint the grow-loop closes
-  /// for left recursion, computed by a one-pass closure because the general
-  /// loop re-expands the whole rule per growth step (measured: growing the
-  /// repetition through its own cell, 2,440 ms battery vs 1,535 for this
-  /// pass, no accuracy change -- and the c2 rewrite paid the same way). A
-  /// `+` with nothing at all owes exactly one occurrence, which the body's
-  /// own fill supplies.
-  List<_Way> _rep(Repetition c, int pos) {
-    final zero = _Way.unit(pos);
-    final best = <int, _Way>{if (!c.requireOne) pos: zero};
-    var frontier = <_Way>[zero];
-    while (frontier.isNotEmpty) {
-      final moved = <int>{};
-      for (final w in frontier) {
-        for (final v in _ways(c.subClause, w.end)) {
-          if (v.end <= w.end) continue;
-          final x = w.then(v);
-          final b = best[x.end];
-          if (b != null && _rank(x, b, pos) >= 0) continue;
-          best[x.end] = x;
-          moved.add(x.end);
-        }
-      }
-      frontier = [for (final e in moved) best[e]!];
-    }
-    final all = best.values.toList();
-    if (all.isEmpty) {
-      for (final v in _ways(c.subClause, pos)) {
-        if (v.end != pos) continue;
-        all.add(zero.then(v).demoted);
-      }
-    }
-    return [for (final w in _prune(all, pos)) w.capped(c, pos)];
-  }
-
-  List<_Way> _opt(Optional c, int pos) {
-    final ws = _ways(c.subClause, pos);
-    return [
-      _Way.unit(pos).over(Match(c, pos, 0), ws.any((w) => w.peg) ? _far : _peg),
-      for (final w in ws) w.capped(c, pos)
-    ];
-  }
-
-  /// A terminal reads the input, or is recorded as one obligation the input
-  /// never supplied. Nothing is spelled, so no character of an absent class
-  /// is invented; a multi-character literal never reaches here failing.
-  List<_Way> _term(Terminal c, int pos) {
-    final m = c.match(_ref, pos);
-    if (!m.isMismatch) return [_read(m, pos + m.len)];
-    // an owe at the end of the input is offered even with no budget left:
-    // it joins the one standing "the document stopped" claim (I94), and
-    // the afford filters price the single eof edit -- without this, a
-    // truncation's spine dies at its second obligation
-    if (_budget < 1 && pos < _in.length) return const [];
-    final atEof = pos == _in.length;
-    return [
-      _Way(pos, 0, atEof ? 0 : 1, 0, pos,
-          oweN: atEof ? 1 : 0,
-          owing: true,
-          what: Match(c, pos, 0,
-              subClauseMatches: [SyntaxError(pos: pos, len: 0)]))
-    ];
   }
 
   /// THE TREE IS A FOLD OVER THE CHAIN (I109). A mark IS its error, a leaf
@@ -528,77 +932,25 @@ class Squirrel {
         : Match(null, 0, 0, subClauseMatches: kids.reversed.toList());
   }
 
-  /// Whether every string [c] derives yields the same tree shape (I36).
-  bool _determined(Clause c) {
-    final memo = _det[c];
-    if (memo != null) return memo;
-    _det[c] = false;
-    return _det[c] = c is Terminal || c is FollowedBy || c is NotFollowedBy
-        ? true
-        : c is Seq
-            ? c.subClauses.every(_determined)
-            : c is Repetition && c.requireOne
-                ? _determined(c.subClause)
-                : c is Ref
-                    ? _determined(rules[c.ruleName]!)
-                    : false;
-  }
-
-  /// The fewest characters any derivation of [c] consumes -- the ceiling's
-  /// only client. One recursion, a cycle reading as unreachable, computed
-  /// once for the top rule.
-  int _minFill(Clause c, [Set<Clause>? path]) {
-    final p = path ?? <Clause>{};
-    if (!p.add(c)) return _never;
-    int v;
-    if (c is Ref) {
-      v = _minFill(rules[c.ruleName]!, p);
-    } else if (c is Seq) {
-      v = 0;
-      for (final k in c.subClauses) {
-        final f = _minFill(k, p);
-        v = f >= _never || v >= _never ? _never : v + f;
-      }
-    } else if (c is First) {
-      v = _never;
-      for (final k in c.subClauses) {
-        final f = _minFill(k, p);
-        if (f < v) v = f;
-      }
-    } else if (c is Repetition) {
-      v = c.requireOne ? _minFill(c.subClause, p) : 0;
-    } else if (c is Optional ||
-        c is FollowedBy ||
-        c is NotFollowedBy ||
-        c is Nothing) {
-      v = 0;
-    } else if (c is Str) {
-      v = c.text.length;
-    } else {
-      v = 1;
-    }
-    p.remove(c);
-    return v;
-  }
-
   // -- the entry point -------------------------------------------------------
   MatchResult recover(String s) {
     _in = s;
     _n = s.length;
-    _ref = Parser(rules: rules, topRuleName: topRuleName, input: s);
-    final pure = _ref.parse();
-    if (!pure.hasSyntaxErrors) {
+    _run++;
+    _pver = List<int>.filled(_n + 2, 0);
+    _heads.clear();
+    final pure = _top.pure(this, 0).res;
+    if (pure != null && pure.len == _n) {
       lastCost = 0;
-      return pure.root;
+      return pure;
     }
-    _memo.clear();
-    final fill = _fill ??= _minFill(rules[topRuleName]!);
+    final fill = _fill ??= _top.body.fill(<_N>{});
     final ceiling = fill >= _never ? -1 : s.length + fill;
     _Way? best, fall;
     for (_round = 1; _round <= ceiling; _round++) {
       _budget = _round;
       final owed = <_Way>[];
-      for (final w in _ways(rules[topRuleName]!, 0)) {
+      for (final w in _top.body.ways(this, 0)) {
         // THE UNREAD TAIL IS ONE MORE SKIP (I109): a way that stops short is
         // charged for the tail exactly as the fold charges any unreadable
         // span, loses its PEG claim with it (skip's key is its position),
