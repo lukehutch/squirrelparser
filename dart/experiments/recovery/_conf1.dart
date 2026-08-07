@@ -14,18 +14,12 @@
 // so this is a live path on the battery, not a constructed one.
 import 'package:squirrel_parser/squirrel_parser.dart';
 
-import 'm132.dart' as m132;
-import 'm143.dart' as m143;
-import 'r9.dart' as r9;
-import 's1.dart' as s1;
-import 't1.dart' as t1;
 import 'c1.dart' as c1;
 import 'c2.dart' as c2;
 import 'c3.dart' as c3;
 import 'c4.dart' as c4;
 import 'c5.dart' as c5;
 import 'c6.dart' as c6;
-import 's4.dart' as s4;
 
 const negGrammar = '''
 Top <- Item+;
@@ -46,12 +40,6 @@ Word <- [a-z]+;
 typedef Cost = int Function(String) Function(Map<String, Clause>, String);
 
 final engines = <(String, Cost)>[
-  ('m132', (r, t) => m132.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('m143', (r, t) => m143.SuperDot3(rules: r, topRuleName: t).recoverCost),
-  ('r9', (r, t) => r9.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('s1', (r, t) => s1.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('t1', (r, t) => t1.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('s4', (r, t) => s4.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('c1', (r, t) => c1.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('c2', (r, t) => c2.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('c3', (r, t) => c3.Squirrel(rules: r, topRuleName: t).recoverCost),

@@ -3331,3 +3331,91 @@ class of self-deception:
 | `_crashwho.dart` | an aggregate score hiding a **whole-corpus** failure — it splits score and crash count per grammar. This is what showed m22's deficit is entirely `expr` and that m76 scores 0.0000 on it while still aggregating to 0.8262 |
 | `_conf6.dart` | a *pricing* disagreement being read as a *conformance* defect — it asks the frozen parser which repairs of `_conf1`'s only contested probe are in the language, and shows the m-line's cost 2 is reachable only by inventing characters (§3.3) |
 | m144 / m145 | the chart's contribution, separated from I81's |
+
+---
+
+# Era-3 archive (appended 2026-08-06, second attic move)
+
+On 2026-08-06 the non-c engines — s1, s4, r9, m132, m143, t1 — were moved
+into attic/ as well, and LESSONS_LEARNED.md was condensed to the c-series
+record. This section preserves, verbatim, the era-3 material that no longer
+lives there: the last full twelve-engine table, the archived lines' detailed
+accounts, and the per-engine deltas. These numbers are ERA-3 (fair battery)
+and are comparable to the current LESSONS table.
+
+## The last full era-3 table (2026-08-06, one machine, one sweep)
+
+| Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
+|---|---|---|---|---|---|---|---|---|---|---|
+| c6 | 0.9879 | 84.0 | 1490 | 461 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+| c5 | 0.9878 | 83.9 | 1620 | 535 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
+| c4 | 0.9878 | 83.9 | 1687 | 566 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
+| c3 | 0.9829 | 81.2 | 1713 | 515 | all | 0.985 | 0.979 | 0.994 | 0.987 | 0.964 |
+| s1 | 0.9825 | 75.2 | 1773 | 697 | all | 0.987 | 0.980 | 0.994 | 0.981 | 0.963 |
+| c1 | 0.9818 | 78.6 | 1785 | 493 | all | 0.982 | 0.979 | 0.994 | 0.985 | 0.962 |
+| s4 | 0.9818 | 78.6 | 2068 | 480 | all | 0.982 | 0.979 | 0.994 | 0.985 | 0.962 |
+| c2 | 0.9812 | 78.5 | 2354 | 454 | all | 0.981 | 0.979 | 0.994 | 0.985 | 0.961 |
+| r9 | 0.9704 | 72.9 | 2552 | 562 | all | 0.959 | 0.973 | 0.988 | 0.972 | 0.955 |
+| m143 | 0.9658 | 70.5 | 1669 | 628 | recommit 15/16 | 0.932 | 0.978 | 0.988 | 0.981 | 0.953 |
+| m132 | 0.9600 | 65.8 | 1597 | 612 | recommit 15/16 | 0.908 | 0.978 | 0.988 | 0.981 | 0.953 |
+| t1 | 0.9287 | 55.9 | 1170 | 899 | all | 0.946 | 0.946 | 0.976 | 0.870 | 0.860 |
+
+All twelve rows were verified against the RESTORED freespan probes (the
+era-3 curation commit had accidentally emptied `_freespan`'s probe list, so
+freespan "passes" recorded between that commit and the restoration were
+vacuous; on restoration every kept engine passed with the exact costs
+3 3 4 4 1). m143/m132 fail `_recommit` 15/16 on the escape-conjure case.
+
+## The archived lines, in detail (moved verbatim from LESSONS §3)
+
+**dot / m-line (m1–m145; m132, m143 archived with era-3 numbers).** Budgeted
+iterative-deepening repair over the memo table. Taught: the budget is the
+HORIZON — deleting it is ~100x latency (A3, re-proven in the c-line); the
+worklist over cells; per-position generation stamps; and dozens of scoring
+laws. Its ceiling: repairs judged per-round without whole-document rivalry,
+and truncation (0.91–0.93) — it cannot afford deep completion spines.
+m143 still fails `_recommit` on the escape-conjure swallow.
+
+**r-line (r1–r13; r9 archived with era-3 numbers).** The chart engine:
+whole-document rival readings priced simultaneously. Taught: judgment must
+be simultaneous (greedy per-commit repair provably cannot order a cheap fill
+against a dear denial — its correct choice depends on repairs not yet
+made); the give-up exclusion; the swallow toll. Its ceiling: the chart
+re-derives per round what the parse already computed once.
+
+**t/b-lines (t1 archived with era-3 numbers).** t1: recovery walking the
+enriched mismatch tree, memo as repair channel — the latency record
+(1,170 ms) and proof the tree's sideways signal is sound; but the tree
+holds each committed reading's FIRST failure, while recovery's information
+is every REJECTED reading (I98). b1/b2: the explicit two-mode architecture
+(parse until stuck, breadth-first widening, commit, resume) — proved
+classes can decide D8 with no pricing at all, and hit the greedy-commit
+wall at 0.88.
+
+**s-line (s1–s4; s1, s4 archived with era-3 numbers).** The way-algebra:
+one costed descent, every clause returns rival priced readings, a budget
+ladder, a six-part global judgment. s1 = the explicit four-mechanism form
+(I94–I97); s3/s4 = the collapse (fills emerge from the descent; a literal
+is a sequence; a move is a resync at slot 0) at 480 lines. The c-line is
+this algebra rebuilt on better substrate.
+
+## Archived-engine deltas (moved verbatim from LESSONS §5)
+
+- **c1 vs s4**: identical judgment, near-identical results; c1 adds the
+  budget-zero collapse (17% faster at era-2) and the fill-cache. s4 is the
+  smallest s-form; c1 the faster restatement.
+- **s1**: the explicit-mechanism reference (alignment table, spine
+  emitter, owed-slot machinery as separate code). On the fair battery it
+  holds nothing the c-line lacks; its era-2 edge was tie-luck plus
+  over-demanding truncation expectations.
+- **m143/m132**: the budgeted-deepening reference points — fast, sturdy,
+  and structurally unable to afford deep completion spines (truncation
+  0.91–0.93); both fail `_recommit` by one case (the escape-conjure).
+- **t1**: the latency record and the proof of the mismatch-tree channel;
+  concedes ~0.06 score.
+
+## Ledger rows about mechanisms that no longer exist
+
+| Claim | Verdict |
+|---|---|
+| Vouch 0 for anonymous frozen spans | tolls the honest reading, shields the swallow: −25 quote-delete cases (vouch itself was deleted by c5/I108; the general lesson — judge frozen and enumerated spans symmetrically — lives on in the derived swallow) |

@@ -27,18 +27,12 @@
 // Usage: dart run _freespan.dart
 import 'package:squirrel_parser/squirrel_parser.dart';
 
-import 'r9.dart' as r9;
-import 's1.dart' as s1;
-import 't1.dart' as t1;
 import 'c1.dart' as c1;
 import 'c2.dart' as c2;
 import 'c3.dart' as c3;
 import 'c4.dart' as c4;
 import 'c5.dart' as c5;
 import 'c6.dart' as c6;
-import 's4.dart' as s4;
-import 'm132.dart' as m132;
-import 'm143.dart' as m143;
 
 /// The suffix is unmatchable, so every engine must fill it; only what happens
 /// inside `C` is under test. `want` is the cost of those fills alone, which is
@@ -79,12 +73,6 @@ const probes = <Probe>[
 
 int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     switch (name) {
-      'm132' => m132.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'm143' => m143.SuperDot3(rules: rules, topRuleName: top).recoverCost(s),
-      'r9' => r9.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      's1' => s1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      't1' => t1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      's4' => s4.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c1' => c1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c2' => c2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c3' => c3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
@@ -95,12 +83,6 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     };
 
 const engines = [
-  'm132',
-  'm143',
-  'r9',
-  's1',
-  't1',
-  's4',
   'c1',
   'c2',
   'c3',

@@ -35,17 +35,15 @@ E = {
     # Era-3 battery (five operation categories; coin-flip operator mutations
     # and one/two-char truncation stubs curated out; truncation expectations
     # drop LR-wrapper levels the cut removed -- astdiff.dart, LESSONS I107).
-    # Measured 2026-08-06, one machine, one sweep. Engines beyond these ten
-    # live in attic/ with their era-2 numbers in attic/OLD_LESSONS_LEARNED.md.
-    # c6/c5 timed interleaved the same session (medians 1466 vs 1643); c5's
-    # standing sweep number is kept for the rest of the table's scale.
+    # Measured 2026-08-06, one machine, one sweep.
+    # c6/c5 timed interleaved the same session (medians ~1490 vs ~1657); c5's
+    # standing sweep number is kept for the rest of the table's scale. The
+    # non-c engines are archived in attic/ with their last era-3 numbers in
+    # attic/OLD_LESSONS_LEARNED.md.
     'c6': (0.9879, 84.0, 1490),
     'c5': (0.9878, 83.9, 1620),
     'c4': (0.9878, 83.9, 1687), 'c3': (0.9829, 81.2, 1713),
-    's1': (0.9825, 75.2, 1773), 'c1': (0.9818, 78.6, 1785),
-    's4': (0.9818, 78.6, 2068), 'c2': (0.9812, 78.5, 2354),
-    'r9': (0.9704, 72.9, 2552), 'm143': (0.9658, 70.5, 1669),
-    'm132': (0.9600, 65.8, 1597), 't1': (0.9287, 55.9, 1170),
+    'c1': (0.9818, 78.6, 1785), 'c2': (0.9812, 78.5, 2354),
 }
 DQ = {}
 

@@ -132,12 +132,6 @@ void main(List<String> argv) {
   final engines = argv.isNotEmpty
       ? argv
       : const [
-          'm132',
-          'm143',
-          'r9', // the shipped r-engine; without it a bare run checks no r
-          's1',
-          't1',
-          's4',
           'c1',
           'c2',
           'c3',

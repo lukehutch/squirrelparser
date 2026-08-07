@@ -1,12 +1,12 @@
-# PEG Error Recovery — the living record (era 3)
+# PEG Error Recovery — the living record
 
-Sixty-odd engines were built, measured, and mostly archived to reach the ten
-that remain. This file records the yardstick, the standing results, the laws
-that survived measurement, and the refutations that must not be retried. The
-full era-1/era-2 history — every engine account, every intermediate insight
-I1–I107 in long form — is preserved verbatim in
-`dart/experiments/recovery/attic/OLD_LESSONS_LEARNED.md`; its numbers were
-measured on the old battery and are not comparable to the table below.
+Seventy-odd engines across six architectural lines were built, measured, and
+archived to reach the six that remain: the c-series, one algebra refined six
+times. This file records the yardstick, the standing results, the critical
+lessons, and the refutations that must not be retried. Everything else — the
+era-1/era-2 history (insights I1–I107 in long form), the last full
+twelve-engine table, and the archived lines' detailed accounts — is preserved
+in `dart/experiments/recovery/attic/OLD_LESSONS_LEARNED.md`.
 
 ## 1. The problem and the yardstick
 
@@ -15,43 +15,29 @@ complete reading: a tree over the real input, with `SyntaxError` nodes
 marking exactly what was denied (real text judged noise) or owed (text
 judged missing). Directives: no second parse over a repaired string (D1); no
 arbitrary constants (D2); never invent characters of an open class,
-structural completion is fine (D7); the two acceptance readings of D8.
+structural completion is fine (D7); the two acceptance readings of D8
+(`,3true` → `,3,true`; `[,2,` → `[2,`).
 
 **The battery** (`astdiff.dart`): every single-character mutation of every
 corpus document that breaks the parse, plus truncations and two-site damage,
 across three grammars — json, a statement language (blocks/if/assign), and
 left-recursive arithmetic. Expectations come from the frozen parser reading
 the undamaged original, so no engine can be tuned toward them. Scoring is
-Levenshtein distance over named-node skeletons.
+Levenshtein distance over named-node skeletons. Five categories, named by
+the operation a person performed: truncation, deletion, insertion,
+substitution, misc. Curation (I107): operator coin-flips and 1–2-character
+truncation stubs are not generated, and truncation expectations drop
+left-recursion wrappers whose evidence lies beyond the cut — the battery
+asks only questions a human could answer.
 
-**Era-3 curation (I107)** — the battery tests only what a human could
-arguably expect:
-- **Operator mutations are not generated.** Deleting or replacing a binary
-  operator (`3(4-5)`, `2;3`) admits both restorations at the same edit
-  distance; the original is unrecoverable and a test would score tie-luck.
-- **One- and two-character truncation stubs are not generated.** `i` or `{"`
-  carries no decidable evidence; a human could not read it either.
-- **Truncation expectations drop left-recursion wrappers the cut removed.**
-  The old rule kept any node *starting* before the cut, so `a+b*2-(` was
-  expected to know about the `*4` nobody can see. A wrapper whose first
-  named child is the same rule and whose own evidence lies wholly beyond
-  the cut is not expected.
-
-**Five categories, named by the operation** a person performed, weighted by
-coverage (weights are how many cases a category contributes, never a
-multiplier): truncation 3.0, deletion 3.0, insertion 2.5, substitution 2.0,
-misc (transpositions, multi-site) 1.5.
-
-**The gates** (all must pass; the battery cannot see these):
+**The gates** (all must pass; the battery cannot see them by construction):
 - `_accept` — D8's readings: cx2, b1, b2.
-- `_freespan` — may a repair delete real input that already matched? (The
-  battery is blind to this by construction; it once rewarded +0.0020 for
-  exactly that.)
+- `_freespan` — may a repair delete real input that already matched?
 - `_recommit` — does the engine keep a committed construct rather than
   re-reading the healthy prefix as something else?
-- `_conf1` — exact repair-cost conformance on six probes, no free passes.
+- `_conf1` — exact repair-cost conformance, no free passes for predicates.
 
-## 2. The standing table (2026-08-06, one machine, one sweep)
+## 2. The standing table (era-3 battery, 2026-08-06)
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -59,221 +45,196 @@ misc (transpositions, multi-site) 1.5.
 | c5 | 0.9878 | 83.9 | 1620 | 535 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
 | c4 | 0.9878 | 83.9 | 1687 | 566 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
 | c3 | 0.9829 | 81.2 | 1713 | 515 | all | 0.985 | 0.979 | 0.994 | 0.987 | 0.964 |
-| s1 | 0.9825 | 75.2 | 1773 | 697 | all | 0.987 | 0.980 | 0.994 | 0.981 | 0.963 |
 | c1 | 0.9818 | 78.6 | 1785 | 493 | all | 0.982 | 0.979 | 0.994 | 0.985 | 0.962 |
-| s4 | 0.9818 | 78.6 | 2068 | 480 | all | 0.982 | 0.979 | 0.994 | 0.985 | 0.962 |
 | c2 | 0.9812 | 78.5 | 2354 | 454 | all | 0.981 | 0.979 | 0.994 | 0.985 | 0.961 |
-| r9 | 0.9704 | 72.9 | 2552 | 562 | all | 0.959 | 0.973 | 0.988 | 0.972 | 0.955 |
-| m143 | 0.9658 | 70.5 | 1669 | 628 | recommit 15/16 | 0.932 | 0.978 | 0.988 | 0.981 | 0.953 |
-| m132 | 0.9600 | 65.8 | 1597 | 612 | recommit 15/16 | 0.908 | 0.978 | 0.988 | 0.981 | 0.953 |
-| t1 | 0.9287 | 55.9 | 1170 | 899 | all | 0.946 | 0.946 | 0.976 | 0.870 | 0.860 |
 
-Frontier (score/perfect/ms/LOC): **three engines** — c6 (c5's judgment
-case-for-case, 73 lines smaller and 11% faster interleaved; law 16),
-c2 (the size point, 454), t1 (raw latency). c6 dominates the other nine,
-c5 and c4 among them. **s1 and r9 are dominated** — on the fair battery,
-s1's remaining era-2 edge over the c-line dissolves (it was tie-luck on
-coin flips and over-demanding truncation expectations).
+Frontier: **c6 and c2**. c6 dominates the other four; c2 keeps the size
+point by seven lines at −0.0067 score. The best any archived engine ever
+did on this battery: s1 0.9825/75.2 (697 lines), t1 1,170 ms (0.9287),
+s4 0.9818 at 480 lines — all dominated by c6; full table in the attic.
 
-*Correction (2026-08-06):* the era-3 curation commit accidentally emptied
-`_freespan`'s probe list, so freespan "passes" recorded between that
-commit and today were vacuous. The probes are restored and every kept
-engine re-verified against them: all pass with the exact costs
-(3 3 4 4 1). No conclusion changed, but the gap is on the record.
+## 3. The critical lessons
 
-## 3. The lines, and what each one taught
+### The architecture — three discoveries that define the design
 
-**dot / m-line (m1–m145, archived; m132, m143 kept).** Budgeted
-iterative-deepening repair over the memo table. Taught: the budget is the
-HORIZON — deleting it is ~100x latency (A3, re-proven in the c-line); the
-worklist over cells; per-position generation stamps; and dozens of scoring
-laws. Its ceiling: repairs judged per-round without whole-document rivalry,
-and truncation (0.91–0.93) — it cannot afford deep completion spines.
-m143 still fails `_recommit` on the escape-conjure swallow.
+1. **The LR grow-loop IS the recovery loop** (I100, the pivotal insight).
+   A mismatch and a left-recursion seed are the same object: a suspended
+   reading addressed by (clause, position). The memo entry's grow-loop
+   serves left recursion and repair with no second mechanism — left
+   recursion is recovery at cost zero. Everything else in the design is
+   this loop plus a way to price what it grows.
 
-**r-line (r1–r13, archived; r9 kept).** The chart engine: whole-document
-rival readings priced simultaneously. Taught: judgment must be
-simultaneous (greedy per-commit repair provably cannot order a cheap fill
-against a dear denial — its correct choice depends on repairs not yet
-made); the give-up exclusion; the swallow toll. Its ceiling: the chart
-re-derives per round what the parse already computed once.
+2. **Parsing mode IS budget zero** (I101), **and the budget is the
+   horizon** (A3). With no edits left, the costed descent is
+   definitionally the pure parser, so the frozen memo answers
+   unconditionally — every spent-out continuation is O(1) to the end of
+   the input. The budget ladder is not an optimization: deleting it was
+   ~100x latency, twice. The budget marks where repair can no longer
+   reach, and the mode split disappears into it.
 
-**t/b-lines (archived; t1 kept).** t1: recovery walking the enriched
-mismatch tree, memo as repair channel — the latency record (1,170 ms) and
-proof the tree's sideways signal is sound; but the tree holds each
-committed reading's FIRST failure, while recovery's information is every
-REJECTED reading (I98). b1/b2: the explicit two-mode architecture (parse
-until stuck, breadth-first widening, commit, resume) — proved classes can
-decide D8 with no pricing at all, and hit the greedy-commit wall at 0.88.
+3. **Judgment must be whole-document and simultaneous.** The b-line's
+   greedy commit-then-resume architecture has a proven ceiling (0.88):
+   the correct choice between a cheap fill and a dear denial depends on
+   repairs not yet made. Every reading must be priced against every
+   rival over the whole document before anything commits. (The archived
+   chart line achieved simultaneity by re-deriving what the parse knew;
+   the c-line achieves it inside the one descent.)
 
-**s-line (s1–s4; s1, s4 kept).** The way-algebra: one costed descent, every
-clause returns rival priced readings, a budget ladder, a six-part global
-judgment. s1 = the explicit four-mechanism form (I94–I97); s3/s4 = the
-collapse (fills emerge from the descent; a literal is a sequence; a move is
-a resync at slot 0) at 480 lines. The c-line is this algebra rebuilt on
-better substrate.
+### The judgment — what a reading is worth
 
-**c-line (c1–c6, all kept).** c1 (I101): parsing mode IS budget zero — with
-no edits left the descent is definitionally the pure parser, so the frozen
-memo answers unconditionally; the budget itself marks where repair can no
-longer reach. c2 (I102): the four-form normalization (X* is left recursion,
-X? is choice, a literal is a char-sequence, EOI is a slot) — the smallest
-engine, and the proof that grammar rewriting costs accuracy and foreign
-trees. c3 (I103): the way-front — insertion IS the improvement test; the
-sort and its livelock class deleted. c4 (I104–I107): the completed rank and
-the fee's scope. c5 (I108): c4 with the swallow derived instead of stored.
-c6 (I109): the way collapsed to a cons cell that knows its sums — the
-standing engine.
+4. **The rank is one quantity at two resolutions, split at the boundary**
+   (I105 + I111). Five keys, each placed by a named failing case: fewest
+   claims (edits + fees + the derived swallow) → PEG's own reading →
+   most explained (net) → latest doubt → fewest obligations stranded at
+   the cut. Tier 1 prices all wrongness with the boundary claim
+   collapsed to one (I94); the last tier restores exactly the
+   cardinality tier 1 forgot and nothing else — mid-document owes are
+   fully priced up front, and recounting them below was
+   double-representation (measured inert; removed). Ablations: drop
+   latest-doubt −3.4 perfect, drop the stranded count −2.6, collapse the
+   stranded count to a bit −2.6 (identical to dropping the tier: the
+   count IS the tier). The root's admission is the rank's own price.
 
-## 4. The laws (what survived every measurement)
+5. **The swallow is derived, never stored** (I108). A reading that
+   absorbed more of its span than it pinned pays one — computed at every
+   comparison from scalars the way carries (`absorbed > net`, relative
+   to the comparing front's position), accumulated never. Idempotent, so
+   double-charging is unrepresentable; the stored-toll design needed
+   three fields, a judge, symmetry rules, and a root exception, and cost
+   a two-session bug class. The span conservation law underneath:
+   `span = net + absorbed + del`.
 
-1. **The LR loop is the recovery loop** (I100, the pivotal insight of the
-   project): a mismatch and an LR seed are the same object — a suspended
-   reading addressed by (clause, pos); the memo entry's grow-loop serves
-   left recursion and repair with no second mechanism; left recursion is
-   recovery at cost zero.
-2. **Parsing mode is budget zero** (I101): the frozen memo's answer is
-   exactly equivalent wherever edits are spent — except at end of input,
-   where owes must still be offered, because…
-3. **The eof edit is the root's one claim, not local spend** (I94
-   completed): "the document stopped" charges once however many slots it
-   strands; it must not block a fold, fail an afford filter, or freeze a
-   cell. Eof-ways exist only at EOI, so the exclusion needs no conditions.
-4. **The rank is six keys, each placed by a failing case** (I105): fewest
-   edits+toll; PEG's own reading; most explained (net); latest doubt (key);
-   most vouched; fewest marks. Vouch entered when instrumentation showed
-   every materially different rank-tie was the same reading carrying more
-   certified absorption; marks entered when the collapsed eof claim let a
-   five-mark spine tie a two-mark one.
-5. **The tie law**: the latest same-price rival holds the bucket —
-   deterministic, since expansion order is; measured four ways
-   (first-keeps −2.6 to −3.1 perfect). A tie never signals improvement, or
-   rank-equal rivals spin forever.
-6. **A span is judged once** (I97): absorption pays its toll at the
-   construct that saw it; `vouch` records what was already judged (a free
-   span vouches itself, span − net), and a frozen span vouches exactly
-   what its enumerated form would have — asymmetry here hands the
-   escape-conjure swallow whole families.
-7. **The fee and its scope** (I72∩I36 + I106): an unspellable fill pays one
-   where a denial no dearer offered to read — but a slot that is a
-   back-edge into a growing cell is an LR SEED, exempt: its give-up
-   anchors the spine the growth exists to build. The fee lives in the
-   price; ranking it below net breaks the acceptance gate.
-8. **Warth's involved-set is the staleness rule** (I103): only rules that
-   read a growing seed, at that position, during that growth, are ever
-   recomputed. The per-position version bump cold-starts whole positions
-   and cannot survive growth being ubiquitous.
-9. **The literal is a sequence, and its third op is replace** (I95): match,
-   owe, and deny-one-then-owe inside a literal; the replace edit is
-   literal-scoped — universalizing it fixed nothing and doubled latency.
-10. **Names are evidence** (I81/I96): a zero-width completion at end of
-    input loses its name (the construct was never reached); mid-document
-    it keeps it. The grammar-forced spine is emitted only where a unique
-    arm is cheapest.
-11. **The seed is read raw, and re-entry IS left recursion** (I103's
-    porting truths): a budget filter at the seed hides the repair-carrying
-    ways growth must build on; any in-path hit sets foundLR — gating it on
-    a null container silently turns growth off.
+6. **The boundary claim is one, and it is idempotent** (I94 + I110).
+   "The document stopped" charges once however many slots it strands.
+   Structurally: the budget is an ADDITIVE ledger — the fold splits it
+   by `full − spend`, so only quantities that add along `then` may enter
+   spend. Pricing the eof bit into spend re-charges it at every nesting
+   level that touches EOI, and deep truncation spines die at nesting
+   boundaries (−0.0019, truncation 0.997→0.990). Additive: del, gap,
+   net, fees, oweN. Idempotent, derived at use: the eof bit (a theorem:
+   `oweN > 0 ⟺ owing ∧ end == n`), the swallow.
+
+7. **The five counters are the floor** (I111). del and gap are split by
+   the witness antisymmetry — a denial is witnessed by the input, an
+   obligation only by the grammar; they trade 1:1 in the price, but
+   `absorbed` needs denied-chars alone and the fee condition needs the
+   owe count alone. oweN is the boundary cardinality (measured, −2.6 to
+   collapse). net is evidence, orthogonal by the span law. fees is the
+   exchange-rate correction where the two witness-kinds meet at par — an
+   unspellable fill loses to an available denial at equal price
+   (I72∩I36), it must outrank net (gate-pinned), a slot that is a
+   back-edge into a growing cell is an LR seed and exempt (I106), and it
+   can never be an owe: folding it into gap was battery-identical with
+   every gate green and is rejected anyway, because a fee'd way that
+   legitimately wins would report an edit the tree cannot show. A
+   judgment charge must not forge an evidence mark.
+
+8. **The tie law**: the latest same-price rival holds the bucket —
+   deterministic, because expansion order is; measured four ways
+   (first-keeps −2.6 to −3.1 perfect). A tie never signals improvement,
+   or rank-equal rivals spin forever.
+
+9. **Names are evidence** (I81/I96). A zero-width completion at the end
+   of the input loses its name — the construct was never reached;
+   mid-document it keeps it. The audit identity follows: the winner's
+   reported cost equals the errors its tree actually shows.
+
+### The representation — how the search stays cheap and honest
+
+10. **The way is a cons cell that knows its sums** (I109). One payload (a
+    denied/owed mark, a finished subtree, or a name over an inner chain),
+    one tail; every scalar is either an additive cache of that list
+    (del, gap, net, fees, oweN) or derived at the point of use (edits,
+    marks, the eof bit, the swallow). The tree is a fold over the chain;
+    the tree's cost is the way's own sums by construction; a frozen read
+    is one constructor; the unread tail at the root is one more skip,
+    not a protocol. c5's fifteen fields were one reading described three
+    times — the giveaway was the root walking the finished tree to
+    recompute a number the way already carried. Corollary, the method
+    that found it: **derive, don't account** — when a stored quantity
+    needs machinery to prevent double-counting, derive it at use.
+
+11. **The way-front is the memo cell** (I103). One champion per ending,
+    decided at insertion — insertion IS the improvement test, so the
+    grow-loop stops when no add improves; no sort, no unstable-tie
+    livelock. Warth's involved-set is the staleness rule: only rules
+    that read a growing seed, at that position, during that growth, are
+    ever recomputed. The seed is read RAW (a budget filter there hides
+    the repair-carrying ways growth must build on), and any in-path hit
+    is left recursion.
+
 12. **Laziness is load-bearing** (I88, confirmed three times): building
-    trees eagerly per candidate costs 20–31% latency at the tie-refresh
-    volume the tie law requires. The way encodes its tree as a chain;
-    only winners are materialized.
-13. **The size floor is a measurement** (I104): at c4's accuracy every
-    remaining subsystem is pinned by a gate or a battery family; nine
-    collapse attempts each broke a bar by a recorded number. The seam
-    below is c2's 454 lines at −0.0008 (era-2).
-14. **The yardstick is a design object** (I107): a battery that scores
-    coin flips or post-cut structure measures tie-luck; curate mutations
-    to what a human could arguably expect, and put expectation-changes in
-    the open, never silently.
-15. **Derive, don't account** (I108): c4 stored the swallow toll and then
-    needed vouch, a judge, symmetry rules, and a root exception to keep
-    the accumulator honest — three fields and a two-session bug class. The
-    same judgment falls out of one idempotent expression evaluated at
-    every comparison (`absorbed > net`, relative to the comparing front's
-    position): zero differing cases over the battery, 31 fewer lines, 4%
-    faster, and the bug class is unrepresentable. When a stored quantity
-    needs machinery to prevent double-counting, ask whether it can be
-    derived at use instead.
-16. **The way is a cons cell that knows its sums** (I109): c5's fifteen
-    fields were one reading described three times — six fields encoding
-    the winner's tree, a stored marks count, a stored eof flag, and a
-    root that recomputed del+gap by WALKING THE FINISHED TREE (the
-    confession that the scalars were folds of the chain all along). c6:
-    one payload (a mark, a subtree, or a name over an inner chain), one
-    tail; del/gap/net/fees/oweN are additive caches of that list, and
-    everything else is derived at use — eof IS an owe at the end of the
-    input (positional, charged `oweN > 0 ? 1 : 0`, I94 made structural),
-    marks IS gap+oweN, the tree IS a fold over the chain, the tree's cost
-    IS del+marks by construction, a frozen read IS a way, and the unread
-    tail at the root IS one more skip, not a protocol. Judgment-identical
-    to c5 case for case; 462 lines (−73), ~11% faster interleaved
-    (medians 1466 vs 1643 ms), every gate green. Both remaining rank
-    keys re-verified load-bearing post-vouch (drop latest-doubt: −3.4
-    perfect; drop fewest-marks: −2.6).
-17. **The budget is an additive ledger; the boundary claim is idempotent**
-    (I110, the reason law 3 is structural): the fold splits its budget by
-    `full − w.spend`, so only quantities that add along `then` may enter
-    spend. Pricing the eof claim into spend (`spend := edits`) re-charges
-    the bit at every nesting level that touches EOI — an inner fold's own
-    bit draws on a local ledger the outer way's bit already consumed —
-    and deep truncation spines die at nesting boundaries (−0.0019, −0.6
-    perfect, truncation 0.997→0.990). Additive: del, gap, net, fees,
-    oweN. Idempotent, derived at use: the eof bit, the swallow.
-18. **The rank is one quantity at two resolutions, split at the boundary**
-    (I111): tier 1 prices all wrongness with the boundary claim collapsed
-    (I94); tier 5 restores exactly the cardinality tier 1 forgot — and
-    nothing else. Mid-document owes are fully priced in tier 1, so
-    recounting them in tier 5 was double-representation: tier 5 = oweN
-    alone scores the same and a touch better (+0.0001, +0.1 perfect,
-    adopted), while collapsing oweN to a bit costs 2.6 perfect (I105
-    re-confirmed era-3). The root's admission is the rank's own price —
-    the fee-blind admission was inherited, not load-bearing (measured
-    identical, adopted). The five stored counters are the floor: del and
-    gap split by the witness antisymmetry (denial is witnessed by input,
-    obligation only by grammar — absorbed needs del alone, the fee
-    condition gap alone); oweN is the boundary cardinality (E-marks);
-    net is evidence, orthogonal by the span law (span = net + absorbed +
-    del); fees is the exchange-rate correction at par and cannot be an
-    owe (see the ledger).
+    trees eagerly costs 20–31% at the tie-refresh volume the tie law
+    requires; only winners are materialized. Same family: cache on
+    stable identities (caching net on a freshly allocated wrapper never
+    hits and cost 12%), and a literal is a char-sequence run through the
+    ordinary fold (I95) — its replace edit stays literal-scoped, and
+    routing literals through the memo cell was judgment-identical but
+    +25% latency.
 
-## 5. What separates the top engines
+### The method — how the lessons were won
 
-All of s1/s4/c1–c6 share the same judgment core. The deltas:
+13. **The yardstick is a design object** (I107). A battery that scores
+    coin flips or post-cut structure measures tie-luck. Curate mutations
+    to what a human could arguably answer, and make every
+    expectation-change in the open.
 
-- **c6 vs c5**: identical judgment at first landing (zero differing
-  cases); the way is a cons cell — leaf/cap/from/link/prev/mark become
-  what/tail, marks and eof become derivations of one owe count, the
-  root's re-wrap and audit walk are deleted, and one `_read` constructor
-  serves every frozen answer (caching net on the library's memoized
-  match, whose identity is stable — caching on a fresh wrapper never
-  hits and cost ~12%). Revised same day by the pentad audit (laws 17–18):
-  admission = the rank's own price, and tier 5 = oweN alone (+0.0001,
-  +0.1 perfect).
-- **c5 vs c4**: identical judgment (zero differing cases); the swallow is
-  derived at comparison rather than stored and guarded — toll, vouch,
-  `_judge`, and the vouch-symmetry rules deleted.
-- **c4 vs c3**: the six-key rank (vouch, marks), the fee's seed exemption,
-  the literal replace edit, eof-not-spend. Worth +0.0049 score and +2.7
-  perfect on the fair battery — every piece traced to a named family.
-- **c3 vs c1**: the way-front (champion-per-ending; insertion is the
-  improvement test) and Warth's involved-set replacing version stamps.
-  Equal score at era-2; c3 ahead on the fair battery (better convergence).
-- **c1 vs s4**: identical judgment, near-identical results; c1 adds the
-  budget-zero collapse (17% faster at era-2) and the fill-cache. s4 is the
-  smallest s-form; c1 the faster restatement.
-- **c2**: the same algebra after grammar normalization — 454 lines, the
-  size point; pays a small accuracy and latency premium and its trees
-  follow the normalized grammar, not the author's.
-- **s1**: the explicit-mechanism reference (alignment table, spine
-  emitter, owed-slot machinery as separate code). On the fair battery it
-  holds nothing the c-line lacks; its era-2 edge was tie-luck plus
-  over-demanding truncation expectations.
-- **m143/m132**: the budgeted-deepening reference points — fast, sturdy,
-  and structurally unable to afford deep completion spines (truncation
-  0.91–0.93); both fail `_recommit` by one case (the escape-conjure).
-- **t1**: the latency record and the proof of the mismatch-tree channel;
-  concedes ~0.06 score.
+14. **Keep gates the metric cannot see.** The battery is blind by
+    construction to free-span deletion and prefix re-reading — it once
+    rewarded +0.0020 for exactly the behavior `_freespan` exists to
+    forbid. And a gate must be checked to be checking: the era-3
+    curation accidentally emptied freespan's probe list, and every
+    "pass" until the restoration was vacuous. Verify the gate fails for
+    a known-bad engine.
+
+15. **Domination is arithmetic; ablation is measurement.** Compute the
+    frontier (`pareto.py`), never eyeball it — the hand-kept list was
+    wrong twice the same way. Every kept mechanism carries the number
+    that keeps it (the size floor is a measurement, I104); every removed
+    one carries the number that killed it (the ledger below).
+
+## 4. The c-series arc — what each engine taught
+
+- **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
+  repair) is not a feature of the problem, only of earlier designs — the
+  pure parser is the zero fiber of the costed descent. 0.9818, 493 lines.
+- **c2** (I102): the four-form normalization (X* is left recursion, X? is
+  choice, a literal is a char-sequence, EOI is a slot) — the smallest
+  engine ever above 0.98 (454 lines) and the proof that grammar rewriting
+  as a FOUNDATION costs accuracy and produces trees foreign to the
+  author's grammar. The behavioral laws survive; the rewriting does not.
+- **c3** (I103): the way-front as the memo cell; Warth's involved-set;
+  the sort and its livelock class deleted. Porting truths: the seed is
+  read raw; gating foundLR on a null container silently turns growth off.
+- **c4** (I104–I107): the completed rank — every key traced to a family;
+  the fee's seed exemption; the literal replace edit; eof-is-not-spend.
+  The residual then classified: mostly yardstick, not engine (→ era-3
+  curation). Proved the size floor is a measurement: nine collapses below
+  ~511 lines each broke a recorded bar.
+- **c5** (I108): the swallow derived, never stored — toll, vouch, judge,
+  and the vouch-symmetry bug class deleted; judgment bit-identical.
+- **c6** (I109–I111): the way as a cons cell that knows its sums (fifteen
+  fields → ten); the root protocol and audit walk deleted; then the
+  pentad audit — admission is the rank's own price, tier 5 is the
+  stranded count alone, and the five counters are proven the floor.
+  0.9879 / 84.0 / ~1490 ms / 461 lines, every gate exact.
+
+## 5. What the archived lines taught (details in the attic)
+
+- **dot/m-line** (budgeted deepening over the memo): the budget-horizon
+  law; per-round judgment without whole-document rivalry is a ceiling —
+  truncation 0.91–0.93, and one unfixable recommit case.
+- **r-line** (the chart): simultaneity of judgment — its lasting gift to
+  the rank — but the chart re-derives what the parse already knew.
+- **b-line** (two-mode commit): D8 is decidable by classes with no
+  pricing at all, and greedy commit has a proven 0.88 wall.
+- **t-line** (mismatch-tree walking): the latency record (1,170 ms) and
+  the proof that the tree's sideways signal is sound — but the tree
+  holds each reading's FIRST failure, while recovery's information is
+  every REJECTED reading (I98).
+- **s-line** (the way-algebra, explicit form): the direct ancestor — the
+  c-series is this algebra rebuilt on the grow-loop substrate; on the
+  fair battery it holds nothing the c-line lacks.
 
 ## 6. The refutation ledger (do not retry without new evidence)
 
@@ -287,24 +248,25 @@ All of s1/s4/c1–c6 share the same judgment core. The deltas:
 | Ties keep incumbents / PEG-first ties | −2.6 to −3.1 perfect; latest-wins stands (×4) |
 | The fee ranked below net | breaks the acceptance gate: the b2 fill out-nets its denial and must still lose |
 | Universal replace edit (all slots) | zero residual cases fixed, two regressions, 2x latency |
-| Vouch 0 for anonymous frozen spans | tolls the honest reading, shields the swallow: −25 quote-delete cases |
 | Per-position version bump with ubiquitous growth | battery timeout; Warth's involved-set is the rule |
 | Root simplification (drop owed-admission) | recommit fails: the incoherent honest reading must displace the coherent swallow |
 | Prefix-freeze with conditions (non-LR, window, clean) | its consult cost its savings; budget-zero alone is faster |
 | Merging `_determined` and `_minFill` | memoizing under a cycle-cut poisons minFill inside LR paths |
 | Net crediting bare `Match(null)` spans | re-weights every completion's matched prefix; −3 recommit cases |
 | A literal through the memo cell (an anonymous rule) | judgment-identical, +25% latency: front ceremony on every MATCHING literal outweighs caching the failing folds |
-| Rank without latest-doubt / without fewest-marks | −3.4 / −2.6 perfect (re-measured on c6, post-vouch): both keys stand |
-| Tier 5 with eof-owes collapsed to a bit | −0.0017, −2.6 perfect: identical to dropping tier 5 — the eof COUNT is the tier's whole contribution (I105 re-confirmed era-3) |
-| `spend := edits` (eof claim in the budget) | −0.0019, truncation 0.997→0.990: the additive-ledger law (17) |
-| The fee counted as an owe (`fees` into `gap`) | battery-identical, ALL gates green — REJECTED anyway: when a fee'd way legitimately wins (deny-then-repair dearer downstream), recoverCost would report the fee as an edit the tree cannot show; a judgment charge must not forge an evidence mark |
+| Rank without latest-doubt / without the stranded count | −3.4 / −2.6 perfect (re-measured on c6, post-vouch): both keys stand |
+| The stranded count collapsed to a bit | −2.6 perfect, identical to dropping the tier: the count IS the tier (I105, re-confirmed era-3) |
+| `spend := edits` (eof claim in the budget) | −0.0019, truncation 0.997→0.990: the additive-ledger law |
+| The fee counted as an owe (`fees` into `gap`) | battery-identical, ALL gates green — rejected on the audit identity: a winning fee'd way would report an edit the tree cannot show |
 
 ## 7. Where things live
 
-- Engines: `dart/experiments/recovery/{c1..c6,s1,s4,r9,m132,m143,t1}.dart`
+- Engines: `dart/experiments/recovery/{c1..c6}.dart` — c6 is the engine;
+  c1–c5 are its measured ancestors, kept as reference implementations.
 - Battery + scoring: `astdiff.dart`; runner: `_score1.dart <engine> [dump]`
 - Gates: `_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
-  `_conf1.dart`
+  `_conf1.dart` — all cover exactly the c-series.
 - Frontier: `pareto.py`; size: `loc.py`
-- Archive: `attic/` (≈290 files), era-2 record in
-  `attic/OLD_LESSONS_LEARNED.md`
+- Archive: `attic/` (~300 files, including s1/s4/r9/m132/m143/t1); the
+  era-1/era-2 record and the era-3 archive in
+  `attic/OLD_LESSONS_LEARNED.md`.

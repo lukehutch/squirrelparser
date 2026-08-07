@@ -15,12 +15,6 @@ import 'c3.dart' as c3;
 import 'c4.dart' as c4;
 import 'c5.dart' as c5;
 import 'c6.dart' as c6;
-import 'm132.dart' as g132;
-import 'm143.dart' as g143;
-import 'r9.dart' as r9;
-import 's1.dart' as s1;
-import 's4.dart' as s4;
-import 't1.dart' as t1;
 
 typedef Build = MatchResult? Function(String) Function(
     Map<String, Clause>, String);
@@ -32,12 +26,6 @@ const Map<String, Build> engines = {
   'c3': _c3,
   'c2': _c2,
   'c1': _c1,
-  's1': _s1,
-  's4': _s4,
-  'r9': _r9,
-  'm143': _m143,
-  'm132': _m132,
-  't1': _t1,
 };
 
 MatchResult? Function(String) _c4(Map<String, Clause> r, String t) =>
@@ -52,18 +40,6 @@ MatchResult? Function(String) _c2(Map<String, Clause> r, String t) =>
     c2.Squirrel(rules: r, topRuleName: t).recover;
 MatchResult? Function(String) _c1(Map<String, Clause> r, String t) =>
     c1.Squirrel(rules: r, topRuleName: t).recover;
-MatchResult? Function(String) _s1(Map<String, Clause> r, String t) =>
-    s1.Squirrel(rules: r, topRuleName: t).recover;
-MatchResult? Function(String) _s4(Map<String, Clause> r, String t) =>
-    s4.Squirrel(rules: r, topRuleName: t).recover;
-MatchResult? Function(String) _r9(Map<String, Clause> r, String t) =>
-    r9.Squirrel(rules: r, topRuleName: t).recover;
-MatchResult? Function(String) _m143(Map<String, Clause> r, String t) =>
-    g143.SuperDot3(rules: r, topRuleName: t).recover;
-MatchResult? Function(String) _m132(Map<String, Clause> r, String t) =>
-    g132.SuperDot3(rules: r, topRuleName: t).recover;
-MatchResult? Function(String) _t1(Map<String, Clause> r, String t) =>
-    t1.Squirrel(rules: r, topRuleName: t).recover;
 
 Build? resolve(String name) => engines[name];
 
