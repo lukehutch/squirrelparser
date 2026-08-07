@@ -41,8 +41,14 @@ asks only questions a human could answer.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c7** | **0.9879** | **84.0** | **1112** | 692 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
+| **c8** | **0.9879** | **84.0** | ~c7 | 697 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
+| c7 | 0.9879 | 84.0 | 1112 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+
+c8's latency could not be resolved against c7: the measurement session ran
+under external machine load ~33, where paired interleaved ratios read
+1.00 +/- 0.10. Its changes are allocation-neutral-or-better by
+construction; re-time on a quiet machine before quoting a number.
 
 Both rows are the FUSED engine — the full squirrel parser folded in, so
 each is self-contained and its LOC includes the whole parser (~246 lines);
@@ -254,8 +260,19 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   seeds, growth bumps the position's version, and the involved set is a
   single boolean recorded by the unwind; Warth's stack, heads map, tick
   and sets delete. Judgment-identical, 0.9879 / 84.0 / ~1112 ms / 692
-  lines, every gate exact — the standing engine, and the first to hold
-  the accuracy AND latency records at once.
+  lines, every gate exact — the first engine to hold the accuracy AND
+  latency records at once.
+- **c8** (I113): the adversarial audit, and one frozen-answer protocol.
+  Every assumption re-questioned; most held with sharper reasons (the
+  clean-cell rivals are load-bearing — b1's winner SPLITS a purely
+  matching "33"; the pure fiber stays dual code; the ladder stays).
+  What changed: freeze(pos) is the single frozen-answer protocol at
+  every node kind (go = freeze-or-repair; grow's budget zero calls it;
+  a terminal's pin bit is the leaf case of the net walk), and the rule
+  cell owns its frozen way, built once. Judgment-identical, every gate
+  exact — the standing engine. The audit's two new refutations are in
+  the ledger; the design is visibly at a fixed point (c5→c6 cut 73
+  lines, c6→c7 one law, c7→c8 one protocol).
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -297,12 +314,17 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | `spend := edits` (eof claim in the budget) | −0.0019, truncation 0.997→0.990: the additive-ledger law |
 | The fee counted as an owe (`fees` into `gap`) | battery-identical, ALL gates green — rejected on the audit identity: a winning fee'd way would report an edit the tree cannot show |
 | Literals through the FUSED memo, and the naked version rule | both judgment-identical, both slower: literal fronts +25%; the version rule without the dep bit −13% (cold-starts every same-position cell per growth step) |
+| Stateless predicates (delete _Look's front) | judgment-identical, badly slower: the predicate's front was the ONLY cache over its Ref-to-literal sub chain — memo state acts at a distance, and "dead" state can be load-bearing for a different node's latency |
+| Composite freeze cached by allocating a front per probed position | a cache whose MISS allocates a front+map at every deny-scan probe costs more than the structural matches it saves |
+| The front read-view cache | judgment-identical; unresolved under machine load (paired ratios 1.00±0.10) and dropped — a front stays read-only on reads; retry on a quiet machine |
 
 ## 7. Where things live
 
-- The engine: `dart/experiments/recovery/c7.dart` — self-contained (the
+- The engine: `dart/experiments/recovery/c8.dart` — self-contained (the
   full parser folded in; the published library contributes only the
-  interchange types, and `lib/src` performs no recovery).
+  interchange types, and `lib/src` performs no recovery). `c7.dart` is
+  the pre-audit twin, kept until c8's latency parity is confirmed on a
+  quiet machine.
 - The harness: `dart/test/recovery/` — battery + scoring
   (`astdiff.dart`), runner (`_score1.dart <engine> [dump]`), the four
   gates (`_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,

@@ -28,6 +28,7 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 import '../../experiments/recovery/c7.dart' as c7;
+import '../../experiments/recovery/c8.dart' as c8;
 
 /// The suffix is unmatchable, so every engine must fill it; only what happens
 /// inside `C` is under test. `want` is the cost of those fills alone, which is
@@ -69,11 +70,13 @@ const probes = <Probe>[
 int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     switch (name) {
       'c7' => c7.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
+      'c8' => c8.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       _ => null,
     };
 
 const engines = [
   'c7',
+  'c8',
 ];
 
 void main() {
