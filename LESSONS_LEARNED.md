@@ -48,10 +48,10 @@ Both rows are the FUSED engine — the full squirrel parser folded in, so
 each is self-contained and its LOC includes the whole parser (~246 lines);
 the pre-fold, library-dependent c6 measured 461 lines and ~1,500 ms. c7
 dominates c6 (identical judgment, one left-recursion law, 5% faster,
-15 lines smaller). c7 also now holds the all-time latency point: t1's
-1,170 ms record falls, at +0.06 score. The c1–c5 ancestors and every
-other line are archived with their last numbers in the attic
-(`attic/OLD_LESSONS_LEARNED.md`).
+15 lines smaller), so c6 is archived as its measured twin. c7 also now
+holds the all-time latency point: t1's 1,170 ms record falls, at +0.06
+score. The c1–c6 ancestors and every other line are archived with their
+last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 
 ## 3. The critical lessons
 
@@ -300,16 +300,15 @@ other line are archived with their last numbers in the attic
 
 ## 7. Where things live
 
-- Engines: `dart/experiments/recovery/c7.dart` (the engine, self-contained)
-  and `c6.dart` (its measured twin with Warth-style staleness
-  bookkeeping). Both fold the full parser in; the published library
-  contributes only the interchange types, and `lib/src` performs no
-  recovery.
-- Battery + scoring: `astdiff.dart`; runner: `_score1.dart <engine> [dump]`
-- Gates: `_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
-  `_conf1.dart`.
-- Frontier: `pareto.py`; size: `loc.py`
-- Archive: `attic/` (~310 files: c1–c5, s/r/m/t/b lines, probes, and
-  `libsrc_recovery/` — the recovery experiments that once lived in the
-  library); the era-1/era-2 record and the era-3 archive in
+- The engine: `dart/experiments/recovery/c7.dart` — self-contained (the
+  full parser folded in; the published library contributes only the
+  interchange types, and `lib/src` performs no recovery).
+- The harness: `dart/test/recovery/` — battery + scoring
+  (`astdiff.dart`), runner (`_score1.dart <engine> [dump]`), the four
+  gates (`_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
+  `_conf1.dart`), and size (`loc.py`).
+- Archive: `dart/experiments/recovery/attic/` (~320 files: c1–c6, the
+  s/r/m/t/b lines, ~900 scratch probes, `pareto.py` — retired when one
+  engine remained — `libsrc_recovery/`, and the old lib-recovery tests);
+  the era-1/era-2 record and the era-3 archive in
   `attic/OLD_LESSONS_LEARNED.md`.
