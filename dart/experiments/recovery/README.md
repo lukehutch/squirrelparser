@@ -12,9 +12,13 @@ dart --packages=$PWD/.dart_tool/package_config.json experiments/recovery/<file>.
 
 ## What is live
 
-- **`c6.dart` — the engine.** Score 0.9879, 84.0% perfect, ~1.5 s battery,
-  all gates. See `LESSONS_LEARNED.md` at the repository root for the
-  yardstick, the critical lessons, and the refutation ledger.
+- **`c7.dart` — the engine.** Self-contained (the full squirrel parser is
+  folded in; the library contributes only the interchange types). Score
+  0.9879, 84.0% perfect, ~1.1 s battery, all gates. `c6.dart` is its
+  measured twin one step back (Warth-style staleness bookkeeping instead
+  of the one-law version rule). See `LESSONS_LEARNED.md` at the
+  repository root for the yardstick, the critical lessons, and the
+  refutation ledger.
 - `astdiff.dart` — the battery (mutation corpus, expectations, scoring).
 - `_score1.dart <engine> [dump]` — battery runner.
 - `_accept.dart <engine>`, `_conf1.dart`, `_freespan.dart`,

@@ -41,17 +41,17 @@ asks only questions a human could answer.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c6** | **0.9879** | **84.0** | **1490** | 461 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
-| c5 | 0.9878 | 83.9 | 1620 | 535 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
-| c4 | 0.9878 | 83.9 | 1687 | 566 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
-| c3 | 0.9829 | 81.2 | 1713 | 515 | all | 0.985 | 0.979 | 0.994 | 0.987 | 0.964 |
-| c1 | 0.9818 | 78.6 | 1785 | 493 | all | 0.982 | 0.979 | 0.994 | 0.985 | 0.962 |
-| c2 | 0.9812 | 78.5 | 2354 | 454 | all | 0.981 | 0.979 | 0.994 | 0.985 | 0.961 |
+| **c7** | **0.9879** | **84.0** | **1112** | 692 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
+| c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 
-Frontier: **c6 and c2**. c6 dominates the other four; c2 keeps the size
-point by seven lines at −0.0067 score. The best any archived engine ever
-did on this battery: s1 0.9825/75.2 (697 lines), t1 1,170 ms (0.9287),
-s4 0.9818 at 480 lines — all dominated by c6; full table in the attic.
+Both rows are the FUSED engine — the full squirrel parser folded in, so
+each is self-contained and its LOC includes the whole parser (~246 lines);
+the pre-fold, library-dependent c6 measured 461 lines and ~1,500 ms. c7
+dominates c6 (identical judgment, one left-recursion law, 5% faster,
+15 lines smaller). c7 also now holds the all-time latency point: t1's
+1,170 ms record falls, at +0.06 score. The c1–c5 ancestors and every
+other line are archived with their last numbers in the attic
+(`attic/OLD_LESSONS_LEARNED.md`).
 
 ## 3. The critical lessons
 
@@ -172,14 +172,43 @@ s4 0.9818 at 480 lines — all dominated by c6; full table in the attic.
     routing literals through the memo cell was judgment-identical but
     +25% latency.
 
+13. **Fold the parser in; put behavior on the nodes and state on the
+    behavior** (the c6 fusion). The engine converts the grammar once into
+    its own node hierarchy — each clause kind carries match (pure), go
+    (priced), freeze, det, fill and pin as methods, and its own memo rows
+    as generation-stamped arrays, so no type dispatch and no hash map sit
+    on the hot path and a new input resets everything by bumping one
+    counter. Judgment-identical, −20% latency; the one remaining type
+    inspection is the conversion adapter, and the one tree walk
+    (`_netOf`) sits at the package-tree boundary. The pure fiber's seven
+    small match methods are the price of budget-zero answers being O(1) —
+    routing budget-zero through the way machinery is the measured-slower
+    direction.
+
+14. **One left-recursion law for both fibers** (I112, the c7 collapse).
+    Squirrel's rule — re-entry seeds the cell, growth bumps the
+    position's version, a cell is valid only at its stamped version — now
+    governs the priced fiber too. The refinement that made it affordable:
+    a cell whose compute never read a growing seed cannot go stale, and
+    THE INVOLVED SET IS ONE BOOLEAN recorded by the unwind (every
+    enclosing grow when a seed is read is by definition an ancestor on
+    the path), so Warth's recursion stack, heads map, tick counter and
+    per-cell sets delete. Validity: `at ≥ budget && (!dep || ver ==
+    rver[pos])`. Judgment-identical and faster than the machinery it
+    replaced; the version rule WITHOUT the dep bit is sound but −13%
+    (it cold-starts every same-position cell per growth step). The
+    version-bump-refuted-for-recovery result was an artifact of c2's
+    normalize-everything architecture, where every position grew;
+    with repetitions as closures, growth is sparse again.
+
 ### The method — how the lessons were won
 
-13. **The yardstick is a design object** (I107). A battery that scores
+15. **The yardstick is a design object** (I107). A battery that scores
     coin flips or post-cut structure measures tie-luck. Curate mutations
     to what a human could arguably answer, and make every
     expectation-change in the open.
 
-14. **Keep gates the metric cannot see.** The battery is blind by
+16. **Keep gates the metric cannot see.** The battery is blind by
     construction to free-span deletion and prefix re-reading — it once
     rewarded +0.0020 for exactly the behavior `_freespan` exists to
     forbid. And a gate must be checked to be checking: the era-3
@@ -187,7 +216,7 @@ s4 0.9818 at 480 lines — all dominated by c6; full table in the attic.
     "pass" until the restoration was vacuous. Verify the gate fails for
     a known-bad engine.
 
-15. **Domination is arithmetic; ablation is measurement.** Compute the
+17. **Domination is arithmetic; ablation is measurement.** Compute the
     frontier (`pareto.py`), never eyeball it — the hand-kept list was
     wrong twice the same way. Every kept mechanism carries the number
     that keeps it (the size floor is a measurement, I104); every removed
@@ -213,11 +242,20 @@ s4 0.9818 at 480 lines — all dominated by c6; full table in the attic.
   ~511 lines each broke a recorded bar.
 - **c5** (I108): the swallow derived, never stored — toll, vouch, judge,
   and the vouch-symmetry bug class deleted; judgment bit-identical.
-- **c6** (I109–I111): the way as a cons cell that knows its sums (fifteen
-  fields → ten); the root protocol and audit walk deleted; then the
-  pentad audit — admission is the rank's own price, tier 5 is the
-  stranded count alone, and the five counters are proven the floor.
-  0.9879 / 84.0 / ~1490 ms / 461 lines, every gate exact.
+- **c6** (I109–I111, then the fusion): the way as a cons cell that knows
+  its sums (fifteen fields → ten); the root protocol and audit walk
+  deleted; the pentad audit — admission is the rank's own price, tier 5
+  is the stranded count alone, and the five counters are proven the
+  floor (0.9879 / 84.0 / ~1490 ms / 461 lines). Then the whole squirrel
+  parser folded in: an engine-owned node hierarchy with behavior as
+  methods and memo state as stamped arrays on the nodes —
+  judgment-identical and −20% latency, 707 lines all told.
+- **c7** (I112): one left-recursion law for both fibers — re-entry
+  seeds, growth bumps the position's version, and the involved set is a
+  single boolean recorded by the unwind; Warth's stack, heads map, tick
+  and sets delete. Judgment-identical, 0.9879 / 84.0 / ~1112 ms / 692
+  lines, every gate exact — the standing engine, and the first to hold
+  the accuracy AND latency records at once.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -258,15 +296,20 @@ s4 0.9818 at 480 lines — all dominated by c6; full table in the attic.
 | The stranded count collapsed to a bit | −2.6 perfect, identical to dropping the tier: the count IS the tier (I105, re-confirmed era-3) |
 | `spend := edits` (eof claim in the budget) | −0.0019, truncation 0.997→0.990: the additive-ledger law |
 | The fee counted as an owe (`fees` into `gap`) | battery-identical, ALL gates green — rejected on the audit identity: a winning fee'd way would report an edit the tree cannot show |
+| Literals through the FUSED memo, and the naked version rule | both judgment-identical, both slower: literal fronts +25%; the version rule without the dep bit −13% (cold-starts every same-position cell per growth step) |
 
 ## 7. Where things live
 
-- Engines: `dart/experiments/recovery/{c1..c6}.dart` — c6 is the engine;
-  c1–c5 are its measured ancestors, kept as reference implementations.
+- Engines: `dart/experiments/recovery/c7.dart` (the engine, self-contained)
+  and `c6.dart` (its measured twin with Warth-style staleness
+  bookkeeping). Both fold the full parser in; the published library
+  contributes only the interchange types, and `lib/src` performs no
+  recovery.
 - Battery + scoring: `astdiff.dart`; runner: `_score1.dart <engine> [dump]`
 - Gates: `_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
-  `_conf1.dart` — all cover exactly the c-series.
+  `_conf1.dart`.
 - Frontier: `pareto.py`; size: `loc.py`
-- Archive: `attic/` (~300 files, including s1/s4/r9/m132/m143/t1); the
-  era-1/era-2 record and the era-3 archive in
+- Archive: `attic/` (~310 files: c1–c5, s/r/m/t/b lines, probes, and
+  `libsrc_recovery/` — the recovery experiments that once lived in the
+  library); the era-1/era-2 record and the era-3 archive in
   `attic/OLD_LESSONS_LEARNED.md`.

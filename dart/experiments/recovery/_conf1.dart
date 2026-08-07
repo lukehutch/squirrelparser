@@ -15,6 +15,7 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 import 'c6.dart' as c6;
+import 'c7.dart' as c7;
 
 const negGrammar = '''
 Top <- Item+;
@@ -36,6 +37,7 @@ typedef Cost = int Function(String) Function(Map<String, Clause>, String);
 
 final engines = <(String, Cost)>[
   ('c6', (r, t) => c6.Squirrel(rules: r, topRuleName: t).recoverCost),
+  ('c7', (r, t) => c7.Squirrel(rules: r, topRuleName: t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>

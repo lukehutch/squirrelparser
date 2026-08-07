@@ -40,7 +40,10 @@ E = {
     # standing sweep number is kept for the rest of the table's scale. The
     # non-c engines are archived in attic/ with their last era-3 numbers in
     # attic/OLD_LESSONS_LEARNED.md.
-    'c6': (0.9879, 84.0, 1490),
+    # c7/c6 timed interleaved 2026-08-06 (medians ~1112 vs ~1180); both are
+    # the FUSED engine (parser folded in) -- the pre-fold c6 measured ~1500.
+    'c7': (0.9879, 84.0, 1112),
+    'c6': (0.9879, 84.0, 1180),
 }
 DQ = {}
 

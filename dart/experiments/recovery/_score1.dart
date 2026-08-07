@@ -10,16 +10,20 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 
 import 'astdiff.dart';
 import 'c6.dart' as c6;
+import 'c7.dart' as c7;
 
 typedef Build = MatchResult? Function(String) Function(
     Map<String, Clause>, String);
 
 const Map<String, Build> engines = {
+  'c7': _c7,
   'c6': _c6,
 };
 
 MatchResult? Function(String) _c6(Map<String, Clause> r, String t) =>
     c6.Squirrel(rules: r, topRuleName: t).recover;
+MatchResult? Function(String) _c7(Map<String, Clause> r, String t) =>
+    c7.Squirrel(rules: r, topRuleName: t).recover;
 
 Build? resolve(String name) => engines[name];
 
