@@ -323,6 +323,7 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | Stateless predicates (delete _Look's front) | judgment-identical, badly slower: the predicate's front was the ONLY cache over its Ref-to-literal sub chain — memo state acts at a distance, and "dead" state can be load-bearing for a different node's latency |
 | Composite freeze cached by allocating a front per probed position | a cache whose MISS allocates a front+map at every deny-scan probe costs more than the structural matches it saves |
 | The front read-view cache | judgment-identical; unresolved under machine load (paired ratios 1.00±0.10) and dropped — a front stays read-only on reads; retry on a quiet machine |
+| The budget watermark folded into the version array | blocked by analysis: atBudget is a >=-ordered clock holding two fill levels per round (plain-only at budget zero, full at the round budget) and serving every smaller query; the version is an =-checked clock scoped by usedSeed. One counter cannot express both, and unscoping the version is the −13% naked-version design. The absorbable piece — "never computed" as memoVersion == −1 — was absorbed (judgment-identical) |
 
 ## 7. Where things live
 

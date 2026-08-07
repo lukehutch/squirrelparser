@@ -277,13 +277,15 @@ class _RepairCell {
 /// The memo cell for the plain parse: one (rule, position) entry holding
 /// the parse tree (null = did not match), the same tree prepackaged as a
 /// clean [_Reading] for the repair machinery, and the left-recursion
-/// bookkeeping the squirrel algorithm needs. [computed] distinguishes
-/// "computed, and it was a mismatch" from "not computed yet".
+/// bookkeeping the squirrel algorithm needs. "Not computed yet" is
+/// [memoVersion] == -1: a cell that has never been filled was computed
+/// at no version at all, which no real version ever equals. (The repair
+/// cell encodes the same fact the same way, as atBudget == -1.)
 class _ParseCell {
   MatchResult? tree;
   _Reading? reading;
-  bool computed = false, inRecPath = false, foundLeftRec = false;
-  int memoVersion = 0;
+  bool inRecPath = false, foundLeftRec = false;
+  int memoVersion = -1;
 }
 
 // ---------------------------------------------------------------------------
@@ -652,15 +654,17 @@ class _Rule {
       _run = e._runId;
     }
     final cell = _cells![pos] ??= _ParseCell();
-    if (cell.computed &&
+    if (cell.memoVersion >= 0 &&
         (cell.inRecPath || cell.memoVersion == e._parseVersions[pos])) {
       return cell;
     }
     if (cell.inRecPath) {
       // Re-entered while already being computed: a left-recursive cycle.
-      // Seed it with a mismatch and let the outer frame grow it.
+      // Seed it with a mismatch and let the outer frame grow it. (The
+      // stamp only marks the cell as filled; while inRecPath is set, the
+      // hit test above never consults its value.)
       cell.foundLeftRec = true;
-      cell.computed = true;
+      cell.memoVersion = e._parseVersions[pos];
       cell.tree = null;
       return cell;
     }
@@ -669,13 +673,12 @@ class _Rule {
       final m = body.match(e, pos);
       // Fixed point: a match is never replaced by a mismatch, and an
       // attempt that did not consume more than the last one is no better.
-      if (cell.computed &&
+      if (cell.memoVersion >= 0 &&
           (m == null || (cell.tree != null && m.len <= cell.tree!.len))) {
         break;
       }
       cell.tree = m;
       cell.reading = null; // the packaged reading is stale now
-      cell.computed = true;
       if (!cell.foundLeftRec) break;
       cell.memoVersion = ++e._parseVersions[pos];
     } while (true);
@@ -1060,6 +1063,18 @@ class Squirrel {
       _seedWasRead = true;
       return cell.readings();
     }
+    // TWO CLOCKS, DIFFERENT SHAPES -- why neither stamp can absorb the
+    // other. atBudget is a WATERMARK, compared with >=: a cell filled at
+    // a bigger budget serves every smaller query through the read-time
+    // filter, and one cell can legitimately hold two fill levels per
+    // round (the cheap plain-parse fill at budget zero below, upgraded
+    // to a full fill when a budgeted query arrives). memoVersion is a
+    // per-position EQUALITY stamp consulted only by cells that read a
+    // growing seed. Folding the budget clock into the version (bump all
+    // positions each round) would force every cell back onto the
+    // equality check, and growth would again invalidate whole positions
+    // -- the exact design that measured 13% slower before [usedSeed]
+    // scoped it.
     if (cell.atBudget >= _budget &&
         (!cell.usedSeed || cell.memoVersion == _repairVersions[pos])) {
       return cell.readings(_budget);
