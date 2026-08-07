@@ -33,5 +33,5 @@ lines), the era-1/era-2 record (`attic/OLD_LESSONS_LEARNED.md`), and
 `lib/src/recovery/` (the published parser performs no recovery; it only
 marks syntax errors).
 
-Files named `_*.dart` outside the harness are untracked scratch probes;
-many reference archived engines and no longer compile.
+The ~900 untracked scratch probes (`_*.dart`) from the campaign live in
+`attic/` as well; many reference archived engines and no longer compile.
