@@ -14,7 +14,7 @@
 // so this is a live path on the battery, not a constructed one.
 import 'package:squirrel_parser/squirrel_parser.dart';
 
-import '../../experiments/recovery/c8.dart' as c8;
+import '_convert.dart';
 
 const negGrammar = '''
 Top <- Item+;
@@ -35,7 +35,7 @@ Word <- [a-z]+;
 typedef Cost = int Function(String) Function(Map<String, Clause>, String);
 
 final engines = <(String, Cost)>[
-  ('c8', (r, t) => c8.Squirrel(rules: r, topRuleName: t).recoverCost),
+  ('c8', (r, t) => convertC8(r, t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>

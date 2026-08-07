@@ -21,18 +21,21 @@
 // bound is what keeps the search fast. The winning reading is then turned
 // into the output tree.
 //
-// The grammar arrives as the squirrel library's Clause objects and the
-// output tree uses the library's Match/SyntaxError types, so this file
-// interoperates with everything else; but all parsing logic lives here.
-// The library's clause tree is converted once, at construction, into this
-// engine's own node classes (see _convert), and each node kind carries its
-// whole behavior: how to parse plainly, how to propose repairs, and a few
-// precomputed facts about itself.
+// The clause classes here carry the same names as the original squirrel
+// parser (Seq, First, Repetition, Optional, FollowedBy, NotFollowedBy,
+// RuleRef, Str, Char, CharSet, AnyChar, Nothing), because they are the
+// same grammar constructs with the recovery behavior added as methods.
+// The engine is self-contained: the library (imported as `lib`)
+// contributes only the interchange types -- the grammar AST callers hand
+// over (converted to these classes by the harness's _convert.dart) and
+// the Match/SyntaxError tree types callers read back. Every tree node is
+// labeled with the caller's own clause object ([Clause.source]), so
+// callers see trees over the grammar they supplied.
 //
 // The design decisions in this file were each settled by measurement over
 // a large mutation battery; the history and the numbers live in
 // LESSONS_LEARNED.md at the repository root.
-import 'package:squirrel_parser/squirrel_parser.dart';
+import 'package:squirrel_parser/squirrel_parser.dart' as lib;
 
 /// Sentinel values for [_Reading.firstDoubt], both larger than any input
 /// position. A reading whose firstDoubt is a real position has a repair
@@ -42,7 +45,7 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 const int _clean = 1 << 30;
 const int _chosen = _clean + 1;
 
-/// "This grammar node cannot match at all" for [_Node.minChars].
+/// "This grammar node cannot match at all" for [Clause.minChars].
 const int _impossible = 1 << 30;
 
 /// "No budget limit" for [_RepairCell.readings] (larger than any real
@@ -56,8 +59,8 @@ int _min(int a, int b) => a < b ? a : b;
 class _Labeled {
   const _Labeled(this.label, this.from, this.inner);
 
-  /// The grammar clause whose name the finished tree node will carry.
-  final Clause label;
+  /// The caller's clause whose name the finished tree node will carry.
+  final lib.Clause label;
 
   /// The input position where the construct started.
   final int from;
@@ -91,7 +94,7 @@ class _Reading {
   /// A reading that deletes the input from [f] up to [t] as noise. Its
   /// firstDoubt is f -- the deletion is exactly where it became doubtful.
   _Reading.deleting(int f, int t)
-      : this(t, t - f, 0, 0, f, piece: SyntaxError(pos: f, len: t - f));
+      : this(t, t - f, 0, 0, f, piece: lib.SyntaxError(pos: f, len: t - f));
 
   /// Where this reading stops in the input.
   final int end;
@@ -190,7 +193,7 @@ class _Reading {
 
   /// This reading carrying a finished tree [m] as its piece (used for
   /// zero-width results such as an empty optional or a lookahead).
-  _Reading withTree(MatchResult m, [int rank = _chosen]) =>
+  _Reading withTree(lib.MatchResult m, [int rank = _chosen]) =>
       _Reading(end, deleted, missing, evidence, _min(firstDoubt, rank),
           missingAtEnd: missingAtEnd,
           penalties: penalties,
@@ -198,7 +201,7 @@ class _Reading {
           piece: m);
 
   /// This reading wrapped under a construct's name, starting at [from].
-  _Reading labeled(Clause label, int from, [int rank = _chosen]) =>
+  _Reading labeled(lib.Clause label, int from, [int rank = _chosen]) =>
       _Reading(end, deleted, missing, evidence, _min(firstDoubt, rank),
           missingAtEnd: missingAtEnd,
           penalties: penalties,
@@ -298,16 +301,18 @@ class _RepairCell {
 /// at no version at all, which no real version ever equals. (The repair
 /// cell encodes the same fact the same way, as atBudget == -1.)
 class _ParseCell {
-  MatchResult? tree;
+  lib.MatchResult? tree;
   _Reading? reading;
   bool inRecPath = false, foundLeftRec = false;
   int memoVersion = -1;
 }
 
 // ---------------------------------------------------------------------------
-// The grammar, converted into this engine's own node classes. Each node
-// carries the library clause it came from (so tree nodes are labeled with
-// the caller's own grammar objects) and its complete behavior as methods:
+// The grammar, as this engine's own clause classes -- the same constructs,
+// and the same names, as the original squirrel parser, with the recovery
+// behavior added. Each clause carries the caller's source clause (for the
+// trees the caller reads), its analyses, its memo state, and its whole
+// behavior as methods:
 //
 //   match(pos)         parse plainly here; null means "does not match"
 //   readings(pos)      all candidate readings here, repairs included
@@ -315,15 +320,15 @@ class _ParseCell {
 //   picky / hasOneShape / minChars   small static facts, described below
 // ---------------------------------------------------------------------------
 
-abstract class _Node {
-  _Node(this.source);
+abstract class Clause {
+  Clause(this.source);
 
-  /// The library clause this node was converted from. Every tree node and
-  /// label carries it, so callers see trees over their own grammar.
-  final Clause source;
+  /// The caller's clause this one was converted from: the label every
+  /// tree node carries, so the caller sees trees over its own grammar.
+  final lib.Clause source;
 
   /// Parse plainly at [pos] (no repairs). Null means "does not match".
-  MatchResult? match(Squirrel e, int pos);
+  lib.MatchResult? match(Squirrel e, int pos);
 
   /// All candidate readings at [pos], repairs included. The bounds guard
   /// lives here so the per-kind implementations never see an out-of-range
@@ -346,14 +351,14 @@ abstract class _Node {
   }
 
   /// The repair cell at [pos], if one exists for the current input.
-  /// Never allocates; only memoized nodes override this.
+  /// Never allocates; only composite clauses override this.
   _RepairCell? cellAt(Squirrel e, int pos) => null;
 
-  /// Whether this node can produce only ONE possible tree shape, whatever
-  /// input it reads. If so, "it was missing" is unambiguous -- there is
-  /// exactly one thing it could have been -- which matters for the
-  /// penalty rule in _readSlots. Computed once and cached; a recursive
-  /// cycle counts as "no".
+  /// Whether this clause can produce only ONE possible tree shape,
+  /// whatever input it reads. If so, "it was missing" is unambiguous --
+  /// there is exactly one thing it could have been -- which matters for
+  /// the penalty rule in _readSlots. Computed once and cached; a
+  /// recursive cycle counts as "no".
   bool? _oneShape;
   bool hasOneShape() {
     if (_oneShape != null) return _oneShape!;
@@ -363,28 +368,29 @@ abstract class _Node {
 
   bool computeOneShape();
 
-  /// The fewest input characters any successful match of this node can
+  /// The fewest input characters any successful match of this clause can
   /// consume ([_impossible] if it can never match). Used only to bound
   /// the repair search: no repair can need more budget than the whole
   /// input plus the shortest possible document. Deliberately NOT cached:
   /// caching under the cycle-breaker records wrong values inside
   /// recursive grammars, and it is only computed once anyway.
-  int minChars(Set<_Node> path) {
+  int minChars(Set<Clause> path) {
     if (!path.add(this)) return _impossible;
     final v = computeMinChars(path);
     path.remove(this);
     return v;
   }
 
-  int computeMinChars(Set<_Node> path);
+  int computeMinChars(Set<Clause> path);
 }
 
-/// A node whose repair results are memoized: it owns one [_RepairCell]
-/// per input position, filled in by Squirrel._grow around this node's
-/// [proposeReadings]. The cell array is stamped with the run it belongs
-/// to, so starting a new input resets every node by bumping one counter.
-abstract class _MemoNode extends _Node {
-  _MemoNode(super.source);
+/// A composite clause: its repair results are memoized in one
+/// [_RepairCell] per input position, filled in by Squirrel._grow around
+/// this clause's [proposeReadings]. The cell array is stamped with the
+/// run it belongs to, so starting a new input resets every clause by
+/// bumping one counter.
+abstract class Composite extends Clause {
+  Composite(super.source);
 
   List<_RepairCell?>? _cells;
   int _run = -1;
@@ -410,37 +416,37 @@ abstract class _MemoNode extends _Node {
 }
 
 /// A sequence: each part in order (the grammar's juxtaposition).
-class _Sequence extends _MemoNode {
-  _Sequence(super.source, this.parts);
-  final List<_Node> parts;
+class Seq extends Composite {
+  Seq(super.source, this.subClauses);
+  final List<Clause> subClauses;
 
   @override
-  MatchResult? match(Squirrel e, int pos) {
-    final kids = <MatchResult>[];
+  lib.MatchResult? match(Squirrel e, int pos) {
+    final kids = <lib.MatchResult>[];
     var p = pos;
-    for (final part in parts) {
-      final m = part.match(e, p);
+    for (final sub in subClauses) {
+      final m = sub.match(e, p);
       if (m == null) return null;
       kids.add(m);
       p += m.len;
     }
     return kids.isEmpty
-        ? Match(source, pos, 0)
-        : Match(source, 0, 0, subClauseMatches: kids);
+        ? lib.Match(source, pos, 0)
+        : lib.Match(source, 0, 0, subClauseMatches: kids);
   }
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) =>
-      e._readSlots(parts, source, pos);
+      e._readSlots(subClauses, source, pos);
 
   @override
-  bool computeOneShape() => parts.every((p) => p.hasOneShape());
+  bool computeOneShape() => subClauses.every((s) => s.hasOneShape());
 
   @override
-  int computeMinChars(Set<_Node> path) {
+  int computeMinChars(Set<Clause> path) {
     var total = 0;
-    for (final part in parts) {
-      final n = part.minChars(path);
+    for (final sub in subClauses) {
+      final n = sub.minChars(path);
       total =
           n >= _impossible || total >= _impossible ? _impossible : total + n;
     }
@@ -448,27 +454,28 @@ class _Sequence extends _MemoNode {
   }
 }
 
-/// An ordered choice (the grammar's `/`): try each arm in order; plainly,
-/// the first match wins.
+/// An ordered choice (the grammar's `/`): try each alternative in order;
+/// plainly, the first match wins.
 ///
-/// Under repair, every arm contributes candidates -- but once some arm has
-/// read the input exactly as it stands, the choice is considered settled
-/// in that arm's favor, and a LATER arm's repaired reading is admitted
-/// only if it proves more than it swallows. Without that rule, a loose
-/// later arm (say, a quoted-string rule) can "explain" almost anything by
-/// absorbing it, stealing the parse from the arm the document really
-/// used. Note the >=: a settled choice demands the challenger prove
-/// strictly more than half its span, one notch stricter than the general
-/// absorb penalty.
-class _Choice extends _MemoNode {
-  _Choice(super.source, this.arms);
-  final List<_Node> arms;
+/// Under repair, every alternative contributes candidates -- but once
+/// some alternative has read the input exactly as it stands, the choice
+/// is considered settled in that alternative's favor, and a LATER
+/// alternative's repaired reading is admitted only if it proves more
+/// than it swallows. Without that rule, a loose later alternative (say,
+/// a quoted-string rule) can "explain" almost anything by absorbing it,
+/// stealing the parse from the alternative the document really used.
+/// Note the >=: a settled choice demands the challenger prove strictly
+/// more than half its span, one notch stricter than the general absorb
+/// penalty.
+class First extends Composite {
+  First(super.source, this.subClauses);
+  final List<Clause> subClauses;
 
   @override
-  MatchResult? match(Squirrel e, int pos) {
-    for (final arm in arms) {
-      final m = arm.match(e, pos);
-      if (m != null) return Match(source, 0, 0, subClauseMatches: [m]);
+  lib.MatchResult? match(Squirrel e, int pos) {
+    for (final sub in subClauses) {
+      final m = sub.match(e, pos);
+      if (m != null) return lib.Match(source, 0, 0, subClauseMatches: [m]);
     }
     return null;
   }
@@ -477,8 +484,8 @@ class _Choice extends _MemoNode {
   List<_Reading> proposeReadings(Squirrel e, int pos) {
     final out = <_Reading>[];
     var settled = false;
-    for (final arm in arms) {
-      final rs = arm.readings(e, pos);
+    for (final sub in subClauses) {
+      final rs = sub.readings(e, pos);
       for (final r in rs) {
         if (settled && !r.clean && r.absorbed(pos) >= r.evidence) continue;
         out.add(r.labeled(source, pos, settled ? _clean : _chosen));
@@ -492,10 +499,10 @@ class _Choice extends _MemoNode {
   bool computeOneShape() => false;
 
   @override
-  int computeMinChars(Set<_Node> path) {
+  int computeMinChars(Set<Clause> path) {
     var least = _impossible;
-    for (final arm in arms) {
-      final n = arm.minChars(path);
+    for (final sub in subClauses) {
+      final n = sub.minChars(path);
       if (n < least) least = n;
     }
     return least;
@@ -512,17 +519,17 @@ class _Choice extends _MemoNode {
 /// re-proposes everything on every pass, where this sweep only extends
 /// what moved.) A `+` that matched nothing at all still owes one
 /// occurrence; the body's own "it was missing" readings supply that.
-class _Repeat extends _MemoNode {
-  _Repeat(super.source, this.body, this.atLeastOne);
-  final _Node body;
-  final bool atLeastOne;
+class Repetition extends Composite {
+  Repetition(super.source, this.subClause, this.requireOne);
+  final Clause subClause;
+  final bool requireOne;
 
   @override
-  MatchResult? match(Squirrel e, int pos) {
-    final kids = <MatchResult>[];
+  lib.MatchResult? match(Squirrel e, int pos) {
+    final kids = <lib.MatchResult>[];
     var p = pos;
     while (p <= e._len) {
-      final m = body.match(e, p);
+      final m = subClause.match(e, p);
       if (m == null) break;
       // Never take more than one zero-length body match, or a grammar
       // like ()* would loop forever.
@@ -530,21 +537,21 @@ class _Repeat extends _MemoNode {
       kids.add(m);
       p += m.len;
     }
-    if (atLeastOne && kids.isEmpty) return null;
+    if (requireOne && kids.isEmpty) return null;
     return kids.isEmpty
-        ? Match(source, pos, 0)
-        : Match(source, 0, 0, subClauseMatches: kids);
+        ? lib.Match(source, pos, 0)
+        : lib.Match(source, 0, 0, subClauseMatches: kids);
   }
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
     final zero = _Reading.empty(pos);
-    final best = <int, _Reading>{if (!atLeastOne) pos: zero};
+    final best = <int, _Reading>{if (!requireOne) pos: zero};
     var moved = <_Reading>[zero];
     while (moved.isNotEmpty) {
       final changed = <int>{};
       for (final r in moved) {
-        for (final step in body.readings(e, r.end)) {
+        for (final step in subClause.readings(e, r.end)) {
           if (step.end <= r.end) continue;
           final longer = r.then(step);
           final holder = best[longer.end];
@@ -561,7 +568,7 @@ class _Repeat extends _MemoNode {
     if (all.isEmpty) {
       // A `+` with nothing at all: take the body's own zero-width
       // "missing" readings as the one owed occurrence.
-      for (final step in body.readings(e, pos)) {
+      for (final step in subClause.readings(e, pos)) {
         if (step.end != pos) continue;
         all.add(zero.then(step).demoted);
       }
@@ -570,34 +577,35 @@ class _Repeat extends _MemoNode {
   }
 
   @override
-  bool computeOneShape() => atLeastOne && body.hasOneShape();
+  bool computeOneShape() => requireOne && subClause.hasOneShape();
 
   @override
-  int computeMinChars(Set<_Node> path) => atLeastOne ? body.minChars(path) : 0;
+  int computeMinChars(Set<Clause> path) =>
+      requireOne ? subClause.minChars(path) : 0;
 }
 
 /// An optional part (the grammar's `?`): its child, or nothing. The
 /// empty alternative keeps its "parser's own choice" status only if the
 /// child cannot match plainly -- the plain parser always takes the child
 /// when it can.
-class _Maybe extends _MemoNode {
-  _Maybe(super.source, this.child);
-  final _Node child;
+class Optional extends Composite {
+  Optional(super.source, this.subClause);
+  final Clause subClause;
 
   @override
-  MatchResult? match(Squirrel e, int pos) {
-    final m = child.match(e, pos);
+  lib.MatchResult? match(Squirrel e, int pos) {
+    final m = subClause.match(e, pos);
     return m == null
-        ? Match(source, pos, 0)
-        : Match(source, 0, 0, subClauseMatches: [m]);
+        ? lib.Match(source, pos, 0)
+        : lib.Match(source, 0, 0, subClauseMatches: [m]);
   }
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
-    final rs = child.readings(e, pos);
+    final rs = subClause.readings(e, pos);
     return [
-      _Reading.empty(pos).withTree(
-          Match(source, pos, 0), rs.any((r) => r.preferred) ? _clean : _chosen),
+      _Reading.empty(pos).withTree(lib.Match(source, pos, 0),
+          rs.any((r) => r.preferred) ? _clean : _chosen),
       for (final r in rs) r.labeled(source, pos)
     ];
   }
@@ -606,32 +614,32 @@ class _Maybe extends _MemoNode {
   bool computeOneShape() => false;
 
   @override
-  int computeMinChars(Set<_Node> path) => 0;
+  int computeMinChars(Set<Clause> path) => 0;
 }
 
-/// A lookahead (the grammar's `&X` or `!X`): succeeds or fails without
-/// consuming anything. No repair may live inside one -- input a lookahead
+/// A lookahead (`&X` or `!X`): succeeds or fails without consuming
+/// anything. No repair may live inside one -- input a lookahead
 /// "accepted" would be input the parse then refuses to consume -- so its
 /// answer is simply whether any repair-free reading of its child exists.
 /// (It still gets a memo cell like other composites: that cell is also
 /// the only cache over the child's work here, and removing it was
 /// measured to re-run that work far too often.)
-class _Lookahead extends _MemoNode {
-  _Lookahead(super.source, this.child, this.expectMatch);
-  final _Node child;
+abstract class Lookahead extends Composite {
+  Lookahead(super.source, this.subClause, this.expectMatch);
+  final Clause subClause;
   final bool expectMatch;
 
   @override
-  MatchResult? match(Squirrel e, int pos) =>
-      (child.match(e, pos) != null) == expectMatch
-          ? Match(source, pos, 0)
+  lib.MatchResult? match(Squirrel e, int pos) =>
+      (subClause.match(e, pos) != null) == expectMatch
+          ? lib.Match(source, pos, 0)
           : null;
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
-    final ok = child.readings(e, pos).any((r) => r.clean);
+    final ok = subClause.readings(e, pos).any((r) => r.clean);
     return expectMatch == ok
-        ? [_Reading.empty(pos).withTree(Match(source, pos, 0))]
+        ? [_Reading.empty(pos).withTree(lib.Match(source, pos, 0))]
         : const [];
   }
 
@@ -639,7 +647,19 @@ class _Lookahead extends _MemoNode {
   bool computeOneShape() => true;
 
   @override
-  int computeMinChars(Set<_Node> path) => 0;
+  int computeMinChars(Set<Clause> path) => 0;
+}
+
+/// Positive lookahead, the grammar's `&X`.
+class FollowedBy extends Lookahead {
+  FollowedBy(lib.Clause source, Clause subClause)
+      : super(source, subClause, true);
+}
+
+/// Negative lookahead, the grammar's `!X`.
+class NotFollowedBy extends Lookahead {
+  NotFollowedBy(lib.Clause source, Clause subClause)
+      : super(source, subClause, false);
 }
 
 /// A named grammar rule: the body all references share, plus the memo row
@@ -656,10 +676,10 @@ class _Lookahead extends _MemoNode {
 ///     entry filled in against the half-grown seed carries the old
 ///     version and is recomputed when next consulted, instead of serving
 ///     a stale answer.
-class _Rule {
-  _Rule(this.name);
+class Rule {
+  Rule(this.name);
   final String name;
-  late _Node body;
+  late Clause body;
 
   List<_ParseCell?>? _cells;
   int _run = -1;
@@ -704,18 +724,20 @@ class _Rule {
   }
 }
 
-/// A reference to a named rule -- the only node kind that goes through the
-/// plain-parse memo, and the place where a rule's readings get the rule's
-/// name wrapped around them.
-class _RuleRef extends _Node {
-  _RuleRef(super.source, this.rule);
-  final _Rule rule;
+/// A reference to a named rule -- the only clause kind that goes through
+/// the plain-parse memo, and the place where a rule's readings get the
+/// rule's name wrapped around them.
+class RuleRef extends Clause {
+  RuleRef(super.source, this.rule);
+  final Rule rule;
+
+  String get ruleName => rule.name;
 
   @override
-  MatchResult? match(Squirrel e, int pos) {
+  lib.MatchResult? match(Squirrel e, int pos) {
     if (pos > e._len) return null;
     final m = rule.parseCell(e, pos).tree;
-    return m == null ? null : Match(source, 0, 0, subClauseMatches: [m]);
+    return m == null ? null : lib.Match(source, 0, 0, subClauseMatches: [m]);
   }
 
   /// The rule's plain parse as a reading. Built ONCE per (rule, position)
@@ -731,7 +753,7 @@ class _RuleRef extends _Node {
     if (m == null) return null;
     return cell.reading ??= _Reading(
         pos + m.len, 0, 0, e._evidenceIn(m), _chosen,
-        piece: Match(source, 0, 0, subClauseMatches: [m]));
+        piece: lib.Match(source, 0, 0, subClauseMatches: [m]));
   }
 
   @override
@@ -763,7 +785,7 @@ class _RuleRef extends _Node {
   bool computeOneShape() => rule.body.hasOneShape();
 
   @override
-  int computeMinChars(Set<_Node> path) => rule.body.minChars(path);
+  int computeMinChars(Set<Clause> path) => rule.body.minChars(path);
 
   /// Whether this reference points back into a rule whose repair cell is
   /// being computed right now -- i.e. this is the left-recursive re-entry
@@ -772,19 +794,19 @@ class _RuleRef extends _Node {
       rule.body.cellAt(e, pos)?.inRecPath ?? false;
 }
 
-/// A leaf: matches characters directly. If it cannot match, it can
+/// A terminal: matches characters directly. If it cannot match, it can
 /// instead be recorded as MISSING -- a zero-length SyntaxError in the
 /// tree that says "the grammar required this here and the input did not
 /// have it". Nothing is invented: the tree records the absence, never a
 /// made-up character.
-abstract class _Leaf extends _Node {
-  _Leaf(super.source);
+abstract class Terminal extends Clause {
+  Terminal(super.source);
 
-  /// Whether this leaf only accepts specific characters (a literal, an
-  /// exact character, a character class). Picky matches are the
+  /// Whether this terminal only accepts specific characters (a literal,
+  /// an exact character, a character class). Picky matches are the
   /// evidence a reading carries; a wildcard proves nothing. This is
-  /// also exactly what _evidenceIn computes per leaf, known here without
-  /// walking a tree.
+  /// also exactly what _evidenceIn computes per terminal, known here
+  /// without walking a tree.
   bool get picky;
 
   @override
@@ -808,15 +830,15 @@ abstract class _Leaf extends _Node {
     return recordMissing(e, pos);
   }
 
-  /// The reading that records this leaf as missing at [pos].
+  /// The reading that records this terminal as missing at [pos].
   List<_Reading> recordMissing(Squirrel e, int pos) {
     final atEnd = pos == e._len;
     return [
       _Reading(pos, 0, atEnd ? 0 : 1, 0, pos,
           missingAtEnd: atEnd ? 1 : 0,
           endsIncomplete: true,
-          piece: Match(source, pos, 0,
-              subClauseMatches: [SyntaxError(pos: pos, len: 0)]))
+          piece: lib.Match(source, pos, 0,
+              subClauseMatches: [lib.SyntaxError(pos: pos, len: 0)]))
     ];
   }
 
@@ -824,7 +846,7 @@ abstract class _Leaf extends _Node {
   bool computeOneShape() => true;
 
   @override
-  int computeMinChars(Set<_Node> path) => 1;
+  int computeMinChars(Set<Clause> path) => 1;
 }
 
 /// A multi-character literal like "true".
@@ -834,71 +856,71 @@ abstract class _Leaf extends _Node {
 /// partial prefixes ("tru" + one missing), deletions inside it, and the
 /// replace repair (wrong character deleted AND right one recorded
 /// missing) with no special alignment code. Single-character literals
-/// just act as plain leaves. (Giving literals their own memo cells was
-/// measured: identical results, a quarter slower -- the cell ceremony on
-/// every literal that MATCHES costs more than caching the failures
-/// saves.)
-class _Literal extends _Leaf {
-  _Literal(super.source, this.text)
-      : letters = text.length > 1
+/// just act as plain terminals. (Giving literals their own memo cells
+/// was measured: identical results, a quarter slower -- the cell
+/// ceremony on every literal that MATCHES costs more than caching the
+/// failures saves.)
+class Str extends Terminal {
+  Str(super.source, this.text)
+      : chars = text.length > 1
             ? [
                 for (final u in text.codeUnits)
-                  _OneChar(Char(String.fromCharCode(u)), u)
+                  Char(lib.Char(String.fromCharCode(u)), u)
               ]
             : const [];
   final String text;
-  final List<_Node> letters;
+  final List<Clause> chars;
 
   @override
   bool get picky => true;
 
   @override
-  MatchResult? match(Squirrel e, int pos) {
+  lib.MatchResult? match(Squirrel e, int pos) {
     if (pos + text.length > e._len) return null;
     for (var i = 0; i < text.length; i++) {
       if (e._input.codeUnitAt(pos + i) != text.codeUnitAt(i)) return null;
     }
-    return Match(source, pos, text.length);
+    return lib.Match(source, pos, text.length);
   }
 
   @override
-  List<_Reading> recordMissing(Squirrel e, int pos) => letters.isEmpty
+  List<_Reading> recordMissing(Squirrel e, int pos) => chars.isEmpty
       ? super.recordMissing(e, pos)
       : e._bestPerEnd(
-          e._readSlots(letters, source, pos, insideLiteral: true), pos);
+          e._readSlots(chars, source, pos, insideLiteral: true), pos);
 
   @override
-  int computeMinChars(Set<_Node> path) => text.length;
+  int computeMinChars(Set<Clause> path) => text.length;
 }
 
 /// A single exact character.
-class _OneChar extends _Leaf {
-  _OneChar(super.source, this.code);
+class Char extends Terminal {
+  Char(super.source, this.code);
   final int code;
 
   @override
   bool get picky => true;
 
   @override
-  MatchResult? match(Squirrel e, int pos) =>
+  lib.MatchResult? match(Squirrel e, int pos) =>
       pos < e._len && e._input.codeUnitAt(pos) == code
-          ? Match(source, pos, 1)
+          ? lib.Match(source, pos, 1)
           : null;
 }
 
-/// A character class like [a-z], possibly negated like [^"\].
-class _CharClass extends _Leaf {
-  _CharClass(super.source, this.ranges, this.negated);
+/// A character class like [a-z], possibly inverted like [^"\].
+class CharSet extends Terminal {
+  CharSet(super.source, this.ranges, this.inverted);
   final List<(int, int)> ranges;
-  final bool negated;
+  final bool inverted;
 
-  /// A negated class accepts almost anything, so its matches prove
+  /// An inverted class accepts almost anything, so its matches prove
   /// nothing about the input fitting the grammar.
   @override
-  bool get picky => !negated;
+  bool get picky => !inverted;
 
   @override
-  MatchResult? match(Squirrel e, int pos) {
+  lib.MatchResult? match(Squirrel e, int pos) {
     if (pos >= e._len) return null;
     final c = e._input.codeUnitAt(pos);
     var inSet = false;
@@ -908,34 +930,34 @@ class _CharClass extends _Leaf {
         break;
       }
     }
-    return (negated ? !inSet : inSet) ? Match(source, pos, 1) : null;
+    return (inverted ? !inSet : inSet) ? lib.Match(source, pos, 1) : null;
   }
 }
 
 /// The wildcard `.`: any single character.
-class _Wildcard extends _Leaf {
-  _Wildcard(super.source);
+class AnyChar extends Terminal {
+  AnyChar(super.source);
 
   @override
   bool get picky => false;
 
   @override
-  MatchResult? match(Squirrel e, int pos) =>
-      pos < e._len ? Match(source, pos, 1) : null;
+  lib.MatchResult? match(Squirrel e, int pos) =>
+      pos < e._len ? lib.Match(source, pos, 1) : null;
 }
 
 /// Matches the empty string; always succeeds.
-class _Empty extends _Leaf {
-  _Empty(super.source);
+class Nothing extends Terminal {
+  Nothing(super.source);
 
   @override
   bool get picky => false;
 
   @override
-  MatchResult? match(Squirrel e, int pos) => Match(source, pos, 0);
+  lib.MatchResult? match(Squirrel e, int pos) => lib.Match(source, pos, 0);
 
   @override
-  int computeMinChars(Set<_Node> path) => 0;
+  int computeMinChars(Set<Clause> path) => 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -943,40 +965,29 @@ class _Empty extends _Leaf {
 // ---------------------------------------------------------------------------
 
 class Squirrel {
-  Squirrel({required Map<String, Clause> rules, required this.topRuleName}) {
-    // Strip the library's '~' (transparent-rule) markers, set up a _Rule
-    // shell per name, then convert every body; references resolve against
-    // the shells, so rule order and cycles need no special handling.
-    final defs = <String, Clause>{
-      for (final e in rules.entries)
-        e.key.startsWith('~') ? e.key.substring(1) : e.key: e.value
-    };
-    for (final name in defs.keys) {
-      _rules[name] = _Rule(name);
-    }
-    for (final e in defs.entries) {
-      _rules[e.key]!.body = _convert(e.value);
-    }
-    _topRule = _rules[topRuleName]!;
+  /// [rules] must already be in this engine's clause classes; the harness
+  /// file _convert.dart builds them from the library's grammar AST.
+  Squirrel({required this.rules, required this.topRuleName}) {
+    _topRule = rules[topRuleName]!;
   }
 
+  final Map<String, Rule> rules;
   final String topRuleName;
-  final Map<String, _Rule> _rules = {};
-  late final _Rule _topRule;
+  late final Rule _topRule;
 
   /// The input being parsed and its length.
   String _input = '';
   int _len = 0;
 
-  /// Bumped once per [recover] call; node-held memo arrays compare their
-  /// stamp against it, so starting a new input resets everything without
-  /// walking the grammar.
+  /// Bumped once per [recover] call; clause-held memo arrays compare
+  /// their stamp against it, so starting a new input resets everything
+  /// without walking the grammar.
   int _runId = 0;
 
   /// Per-position version counters for left-recursion growth: one for the
   /// plain parse, one for repairs. Bumping a position's counter is how a
   /// growth pass tells memo entries computed against the half-grown seed
-  /// to answer again (see _Rule.parseCell and _grow).
+  /// to answer again (see Rule.parseCell and _grow).
   List<int> _parseVersions = const [], _repairVersions = const [];
 
   /// Set when the reading of a growing cell's seed happens; every
@@ -998,34 +1009,6 @@ class Squirrel {
   /// the end-of-input cut-off counts each stranded piece here (this is
   /// the tree's own error count, unlike [_Reading.cost]'s single charge).
   int lastCost = 0;
-
-  /// The one place that inspects library clause types: convert the
-  /// caller's grammar into this engine's nodes.
-  _Node _convert(Clause c) {
-    if (c is Ref) {
-      final r = _rules[c.ruleName];
-      if (r == null) throw ArgumentError('rule "${c.ruleName}" not found');
-      return _RuleRef(c, r);
-    }
-    if (c is Seq) {
-      return _Sequence(c, [for (final s in c.subClauses) _convert(s)]);
-    }
-    if (c is First) {
-      return _Choice(c, [for (final s in c.subClauses) _convert(s)]);
-    }
-    if (c is Repetition) return _Repeat(c, _convert(c.subClause), c.requireOne);
-    if (c is Optional) return _Maybe(c, _convert(c.subClause));
-    if (c is FollowedBy) return _Lookahead(c, _convert(c.subClause), true);
-    if (c is NotFollowedBy) {
-      return _Lookahead(c, _convert(c.subClause), false);
-    }
-    if (c is Str) return _Literal(c, c.text);
-    if (c is Char) return _OneChar(c, c.char.codeUnitAt(0));
-    if (c is CharSet) return _CharClass(c, c.ranges, c.inverted);
-    if (c is AnyChar) return _Wildcard(c);
-    if (c is Nothing) return _Empty(c);
-    throw UnsupportedError('clause kind ${c.runtimeType}');
-  }
 
   /// Which of two readings is better (negative = [a] wins). Five
   /// tie-breakers, in order:
@@ -1057,23 +1040,23 @@ class Squirrel {
     return cell.readings();
   }
 
-  /// Fill in (or reuse) a node's repair cell at [pos]. This is the same
-  /// fixed-point algorithm as the plain parser's left recursion handling
-  /// in [_Rule.parseCell], applied to priced readings:
+  /// Fill in (or reuse) a composite clause's repair cell at [pos]. This
+  /// is the same fixed-point algorithm as the plain parser's left
+  /// recursion handling in [Rule.parseCell], applied to priced readings:
   ///
   ///   - Re-entry into a cell being computed is the seed of a
   ///     left-recursive cycle. It is answered with the cell's current
   ///     contents, UNFILTERED by budget -- the growth about to happen
   ///     must see the seed's repair-carrying readings to build on them.
-  ///   - The owner keeps re-running [_MemoNode.proposeReadings] until a
+  ///   - The owner keeps re-running [Composite.proposeReadings] until a
   ///     pass improves nothing; each pass bumps the position's version.
   ///   - A cell is trusted only at its stamped budget and, if its
   ///     computation ever read a growing seed ([usedSeed]), its stamped
   ///     version. A cell that read no seed cannot be stale, no matter
   ///     what grew: everything else it read is indexed by position, and
   ///     growth only ever changes the growing cell itself.
-  List<_Reading> _grow(_MemoNode node, int pos) {
-    final cell = node.cells(this)[pos] ??= _RepairCell(pos);
+  List<_Reading> _grow(Composite clause, int pos) {
+    final cell = clause.cells(this)[pos] ??= _RepairCell(pos);
     if (cell.inRecPath) {
       // Re-entered while being computed: the left-recursive seed. It is
       // read RAW -- no budget filter -- because the growth about to
@@ -1093,7 +1076,7 @@ class Squirrel {
     if (_budget == 0 && pos < _len) {
       if (!cell.plainKnown) {
         cell.plainKnown = true;
-        cell.plain = node.cleanReading(this, pos);
+        cell.plain = clause.cleanReading(this, pos);
       }
       final r = cell.plain;
       return r == null ? const [] : [r];
@@ -1120,7 +1103,7 @@ class Squirrel {
     _seedWasRead = false;
     do {
       var improved = false;
-      for (final r in node.proposeReadings(this, pos)) {
+      for (final r in clause.proposeReadings(this, pos)) {
         if (cell.add(r)) improved = true;
       }
       if (!improved || !cell.foundLeftRec) break;
@@ -1165,7 +1148,7 @@ class Squirrel {
   ///
   /// After each slot, only the best reading per end position survives --
   /// that pruning is what keeps this whole search polynomial.
-  List<_Reading> _readSlots(List<_Node> slots, Clause label, int pos,
+  List<_Reading> _readSlots(List<Clause> slots, lib.Clause label, int pos,
       {bool insideLiteral = false}) {
     var sofar = <_Reading>[_Reading.empty(pos)];
     for (final slot in slots) {
@@ -1192,7 +1175,7 @@ class Squirrel {
             break;
           }
         }
-        final seed = slot is _RuleRef && slot.isGrowingAt(this, r.end);
+        final seed = slot is RuleRef && slot.isGrowingAt(this, r.end);
         final penalize = deletedAhead > 0 && !seed && !slot.hasOneShape();
         for (final o in options) {
           next.add(r.then(penalize &&
@@ -1215,14 +1198,17 @@ class Squirrel {
     return [for (final r in _bestPerEnd(sofar, pos)) r.labeled(label, pos)];
   }
 
-  /// Count the characters in tree [m] that were matched by picky leaves
-  /// (see [_Leaf.picky]) -- the evidence a finished subtree contributes.
-  /// This is the one walk over library-typed trees, hence the type tests.
-  int _evidenceIn(MatchResult m) {
+  /// Count the characters in tree [m] that were matched by picky
+  /// terminals (see [Terminal.picky]) -- the evidence a finished subtree
+  /// contributes. This is the one walk over library-typed trees, hence
+  /// the type tests.
+  int _evidenceIn(lib.MatchResult m) {
     if (m.subClauseMatches.isEmpty) {
       final c = m.clause;
       return !m.isMismatch &&
-              (c is Str || c is Char || (c is CharSet && !c.inverted))
+              (c is lib.Str ||
+                  c is lib.Char ||
+                  (c is lib.CharSet && !c.inverted))
           ? m.len
           : 0;
     }
@@ -1240,37 +1226,37 @@ class Squirrel {
   /// "an X was here" would be an invention; the bare marker suffices.
   /// Mid-document, the name is kept: the surroundings prove which
   /// construct it was.
-  MatchResult _treeOf(Object piece, int end) {
-    if (piece is MatchResult) return piece;
+  lib.MatchResult _treeOf(Object piece, int end) {
+    if (piece is lib.MatchResult) return piece;
     final l = piece as _Labeled;
-    final kids = <MatchResult>[];
+    final kids = <lib.MatchResult>[];
     for (_Reading? r = l.inner; r != null; r = r.prev) {
       if (r.piece != null) kids.add(_treeOf(r.piece!, r.end));
     }
     final name = end == l.from && l.from >= _len ? null : l.label;
     return kids.isEmpty
-        ? Match(name, l.from, end - l.from)
-        : Match(name, 0, 0, subClauseMatches: kids.reversed.toList());
+        ? lib.Match(name, l.from, end - l.from)
+        : lib.Match(name, 0, 0, subClauseMatches: kids.reversed.toList());
   }
 
   /// The winner's tree. Only the winning reading is ever materialized;
   /// during the search, readings stay as chains (building trees for
   /// every candidate was measured 20-31% slower).
-  MatchResult _buildTree(_Reading r) {
+  lib.MatchResult _buildTree(_Reading r) {
     if (r.prev == null && r.piece != null) return _treeOf(r.piece!, r.end);
-    final kids = <MatchResult>[];
+    final kids = <lib.MatchResult>[];
     for (_Reading? p = r; p != null; p = p.prev) {
       if (p.piece != null) kids.add(_treeOf(p.piece!, p.end));
     }
     return kids.length == 1
         ? kids.single
-        : Match(null, 0, 0, subClauseMatches: kids.reversed.toList());
+        : lib.Match(null, 0, 0, subClauseMatches: kids.reversed.toList());
   }
 
   // -- the entry point -------------------------------------------------------
 
   /// Parse [s], repairing if needed, and return the best complete tree.
-  MatchResult recover(String s) {
+  lib.MatchResult recover(String s) {
     _input = s;
     _len = s.length;
     _runId++;
@@ -1286,7 +1272,7 @@ class Squirrel {
     // more than deleting the whole input and providing the shortest
     // document, so that bounds the ladder ([-1] = grammar accepts
     // nothing at all).
-    final shortest = _minDocLen ??= _topRule.body.minChars(<_Node>{});
+    final shortest = _minDocLen ??= _topRule.body.minChars(<Clause>{});
     final ceiling = shortest >= _impossible ? -1 : s.length + shortest;
     _Reading? best, fallback;
     for (_round = 1; _round <= ceiling; _round++) {
@@ -1343,7 +1329,9 @@ class Squirrel {
     lastCost = best == null
         ? s.length
         : best.deleted + best.missing + best.missingAtEnd;
-    return best == null ? SyntaxError(pos: 0, len: s.length) : _buildTree(best);
+    return best == null
+        ? lib.SyntaxError(pos: 0, len: s.length)
+        : _buildTree(best);
   }
 
   /// [recover], returning the repair bill instead of the tree.
