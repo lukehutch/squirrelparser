@@ -12,9 +12,8 @@
 // point of use (edits, marks, eof, spend, the swallow of I108):
 //   - eof IS an owe at the end of the input (positional, not a flag); its
 //     once-only charge is (oweN > 0 ? 1 : 0) -- I94's collapse made structural;
-//   - marks IS gap + oweN;
 //   - the tree IS a fold over the chain, and the cost of the final tree is
-//     del + marks by construction, so the root's audit walk is gone;
+//     del + gap + oweN by construction, so the root's audit walk is gone;
 //   - a frozen read IS a way (one constructor for the parser's own answers);
 //   - the unread tail at the root IS one more skip, not a protocol.
 //
@@ -64,7 +63,6 @@ class _Way {
   /// strands (I94): an owe at the end of the input, charged once.
   int get edits => del + gap + (oweN > 0 ? 1 : 0);
   int get spend => del + gap;
-  int get marks => gap + oweN;
   bool get peg => key > _far;
   bool get free => key >= _far;
 
@@ -130,7 +128,7 @@ class _Front {
     if (r > 0) return false;
     // THE TIE LAW, measured four ways now: the LATEST same-price rival
     // holds the bucket (deterministic -- expansion order is). First-keeps
-    // loses 3.1 perfect points even with the marks key ranked; a tie never
+    // loses 3.1 perfect points even with all five keys ranked; a tie never
     // signals improvement, or rank-equal rivals spin forever.
     _by[w.end] = w;
     return r < 0;
@@ -173,7 +171,13 @@ class Squirrel {
   int lastCost = 0;
 
   // -- ordering: fewest claims (the swallow derived, never stored); PEG's
-  // reading; most explained; latest doubt; fewest marks --
+  // reading; most explained; latest doubt; fewest obligations stranded at
+  // the cut. The last key refines EXACTLY what the first collapsed: mid
+  // owes are fully priced in the claim count, so recounting them here was
+  // double-representation (measured inert; oweN alone scores the same +1
+  // tie); the boundary claim is priced once however many slots it strands
+  // (I94), so its lost cardinality is restored here (I105, re-confirmed:
+  // collapsing it to a bit costs 2.6 perfect) --
   static int _rank(_Way a, _Way b, int pos) {
     final ea = a.edits + a.fees + a.ate(pos),
         eb = b.edits + b.fees + b.ate(pos);
@@ -181,7 +185,7 @@ class Squirrel {
     if (a.peg != b.peg) return a.peg ? -1 : 1;
     if (a.net != b.net) return b.net - a.net;
     if (a.key != b.key) return b.key - a.key;
-    return a.marks - b.marks;
+    return a.oweN - b.oweN;
   }
 
   /// One way per end -- the transient view of the same structure the memo
@@ -602,7 +606,7 @@ class Squirrel {
         // chain -- no separate root protocol.
         final tail = s.length - w.end;
         final a = tail == 0 ? w : w.then(_Way.skip(w.end, s.length));
-        if (a.edits + a.ate(0) > _budget) continue;
+        if (a.edits + a.fees + a.ate(0) > _budget) continue;
         if (a.key == _far) continue;
         if (tail > 0 && w.owing) {
           owed.add(a);
@@ -636,7 +640,7 @@ class Squirrel {
     // THE COST IS THE WAY'S OWN SUMS: every denied character and every owe
     // in the winner's chain reaches the tree exactly once, so the audit
     // walk over the finished tree is the same number by construction.
-    lastCost = best == null ? s.length : best.del + best.marks;
+    lastCost = best == null ? s.length : best.del + best.gap + best.oweN;
     return best == null ? SyntaxError(pos: 0, len: s.length) : _build(best);
   }
 

@@ -39,7 +39,7 @@ E = {
     # live in attic/ with their era-2 numbers in attic/OLD_LESSONS_LEARNED.md.
     # c6/c5 timed interleaved the same session (medians 1466 vs 1643); c5's
     # standing sweep number is kept for the rest of the table's scale.
-    'c6': (0.9878, 83.9, 1466),
+    'c6': (0.9879, 84.0, 1490),
     'c5': (0.9878, 83.9, 1620),
     'c4': (0.9878, 83.9, 1687), 'c3': (0.9829, 81.2, 1713),
     's1': (0.9825, 75.2, 1773), 'c1': (0.9818, 78.6, 1785),

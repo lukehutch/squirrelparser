@@ -55,7 +55,7 @@ misc (transpositions, multi-site) 1.5.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c6** | **0.9878** | **83.9** | **1466** | 462 | all | **0.997** | **0.984** | 0.993 | **0.987** | **0.967** |
+| **c6** | **0.9879** | **84.0** | **1490** | 461 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
 | c5 | 0.9878 | 83.9 | 1620 | 535 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
 | c4 | 0.9878 | 83.9 | 1687 | 566 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
 | c3 | 0.9829 | 81.2 | 1713 | 515 | all | 0.985 | 0.979 | 0.994 | 0.987 | 0.964 |
@@ -211,17 +211,45 @@ standing engine.
     (medians 1466 vs 1643 ms), every gate green. Both remaining rank
     keys re-verified load-bearing post-vouch (drop latest-doubt: −3.4
     perfect; drop fewest-marks: −2.6).
+17. **The budget is an additive ledger; the boundary claim is idempotent**
+    (I110, the reason law 3 is structural): the fold splits its budget by
+    `full − w.spend`, so only quantities that add along `then` may enter
+    spend. Pricing the eof claim into spend (`spend := edits`) re-charges
+    the bit at every nesting level that touches EOI — an inner fold's own
+    bit draws on a local ledger the outer way's bit already consumed —
+    and deep truncation spines die at nesting boundaries (−0.0019, −0.6
+    perfect, truncation 0.997→0.990). Additive: del, gap, net, fees,
+    oweN. Idempotent, derived at use: the eof bit, the swallow.
+18. **The rank is one quantity at two resolutions, split at the boundary**
+    (I111): tier 1 prices all wrongness with the boundary claim collapsed
+    (I94); tier 5 restores exactly the cardinality tier 1 forgot — and
+    nothing else. Mid-document owes are fully priced in tier 1, so
+    recounting them in tier 5 was double-representation: tier 5 = oweN
+    alone scores the same and a touch better (+0.0001, +0.1 perfect,
+    adopted), while collapsing oweN to a bit costs 2.6 perfect (I105
+    re-confirmed era-3). The root's admission is the rank's own price —
+    the fee-blind admission was inherited, not load-bearing (measured
+    identical, adopted). The five stored counters are the floor: del and
+    gap split by the witness antisymmetry (denial is witnessed by input,
+    obligation only by grammar — absorbed needs del alone, the fee
+    condition gap alone); oweN is the boundary cardinality (E-marks);
+    net is evidence, orthogonal by the span law (span = net + absorbed +
+    del); fees is the exchange-rate correction at par and cannot be an
+    owe (see the ledger).
 
 ## 5. What separates the top engines
 
 All of s1/s4/c1–c6 share the same judgment core. The deltas:
 
-- **c6 vs c5**: identical judgment (zero differing cases); the way is a
-  cons cell — leaf/cap/from/link/prev/mark become what/tail, marks and
-  eof become derivations of one owe count, the root's re-wrap and audit
-  walk are deleted, and one `_read` constructor serves every frozen
-  answer (caching net on the library's memoized match, whose identity is
-  stable — caching on a fresh wrapper never hits and cost ~12%).
+- **c6 vs c5**: identical judgment at first landing (zero differing
+  cases); the way is a cons cell — leaf/cap/from/link/prev/mark become
+  what/tail, marks and eof become derivations of one owe count, the
+  root's re-wrap and audit walk are deleted, and one `_read` constructor
+  serves every frozen answer (caching net on the library's memoized
+  match, whose identity is stable — caching on a fresh wrapper never
+  hits and cost ~12%). Revised same day by the pentad audit (laws 17–18):
+  admission = the rank's own price, and tier 5 = oweN alone (+0.0001,
+  +0.1 perfect).
 - **c5 vs c4**: identical judgment (zero differing cases); the swallow is
   derived at comparison rather than stored and guarded — toll, vouch,
   `_judge`, and the vouch-symmetry rules deleted.
@@ -267,6 +295,9 @@ All of s1/s4/c1–c6 share the same judgment core. The deltas:
 | Net crediting bare `Match(null)` spans | re-weights every completion's matched prefix; −3 recommit cases |
 | A literal through the memo cell (an anonymous rule) | judgment-identical, +25% latency: front ceremony on every MATCHING literal outweighs caching the failing folds |
 | Rank without latest-doubt / without fewest-marks | −3.4 / −2.6 perfect (re-measured on c6, post-vouch): both keys stand |
+| Tier 5 with eof-owes collapsed to a bit | −0.0017, −2.6 perfect: identical to dropping tier 5 — the eof COUNT is the tier's whole contribution (I105 re-confirmed era-3) |
+| `spend := edits` (eof claim in the budget) | −0.0019, truncation 0.997→0.990: the additive-ledger law (17) |
+| The fee counted as an owe (`fees` into `gap`) | battery-identical, ALL gates green — REJECTED anyway: when a fee'd way legitimately wins (deny-then-repair dearer downstream), recoverCost would report the fee as an edit the tree cannot show; a judgment charge must not forge an evidence mark |
 
 ## 7. Where things live
 
