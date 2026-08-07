@@ -45,6 +45,10 @@ const int _chosen = _clean + 1;
 /// "This grammar node cannot match at all" for [_Node.minChars].
 const int _impossible = 1 << 30;
 
+/// "No budget limit" for [_RepairCell.readings] (larger than any real
+/// budget; distinct in meaning from the firstDoubt sentinels above).
+const int _unlimited = 1 << 30;
+
 int _min(int a, int b) => a < b ? a : b;
 
 /// A grammar construct's name wrapped around the steps that filled it in:
@@ -226,17 +230,29 @@ class _Reading {
 /// in insertion order (a plain map), so iteration is deterministic and no
 /// sorting is ever needed.
 ///
-/// [atBudget] and [memoVersion] record the budget and the position's
-/// version this cell was computed at; the cell is only trusted while both
-/// still hold (see Squirrel._grow). [inRecPath] / [foundLeftRec] play the
-/// same roles as in the plain parser's memo: cycle detection and the
-/// signal that a left-recursive cycle needs growing.
+/// The champion map is filled LAZILY, to the highest budget any query
+/// has yet needed ([atBudget], a watermark); smaller queries are served
+/// by filtering at read time ([readings]). Budget-zero queries never
+/// read the champion map at all -- they get exactly the plain parser's
+/// answer, cached once in [plain] (see Squirrel._grow) -- so the zero
+/// fiber is order-independent by construction.
+///
+/// [atBudget] and [memoVersion] stamp when the cell was filled; the cell
+/// is only trusted while both still hold (see Squirrel._grow).
+/// [inRecPath] / [foundLeftRec] play the same roles as in the plain
+/// parser's memo: cycle detection and the signal that a left-recursive
+/// cycle needs growing.
 class _RepairCell {
   _RepairCell(this.pos);
   final int pos;
   final Map<int, _Reading> _bestByEnd = {};
   bool inRecPath = false, foundLeftRec = false, usedSeed = false;
   int atBudget = -1, memoVersion = 0;
+
+  /// The plain parser's answer here, computed at most once ([plainKnown]
+  /// distinguishes "not asked yet" from "asked, and it was a mismatch").
+  bool plainKnown = false;
+  _Reading? plain;
 
   /// Offer a reading; keep it if it beats (or ties) the current holder of
   /// its end position. Returns true only on a strict improvement.
@@ -262,7 +278,7 @@ class _RepairCell {
   /// preferred status: the plain parser, being greedy, would have chosen
   /// that one; shorter clean readings are real alternatives but must not
   /// claim to be the parser's own choice.
-  List<_Reading> readings([int budget = _clean]) {
+  List<_Reading> readings([int budget = _unlimited]) {
     var farthest = -1;
     for (final r in _bestByEnd.values) {
       if (r.preferred && r.end > farthest) farthest = r.end;
@@ -1059,33 +1075,45 @@ class Squirrel {
   List<_Reading> _grow(_MemoNode node, int pos) {
     final cell = node.cells(this)[pos] ??= _RepairCell(pos);
     if (cell.inRecPath) {
+      // Re-entered while being computed: the left-recursive seed. It is
+      // read RAW -- no budget filter -- because the growth about to
+      // happen must see the seed's repair-carrying readings to build on
+      // them. Reading a seed also marks every computation currently on
+      // the stack as seed-dependent (see [_seedWasRead]).
       cell.foundLeftRec = true;
       _seedWasRead = true;
       return cell.readings();
     }
-    // TWO CLOCKS, DIFFERENT SHAPES -- why neither stamp can absorb the
-    // other. atBudget is a WATERMARK, compared with >=: a cell filled at
-    // a bigger budget serves every smaller query through the read-time
-    // filter, and one cell can legitimately hold two fill levels per
-    // round (the cheap plain-parse fill at budget zero below, upgraded
-    // to a full fill when a budgeted query arrives). memoVersion is a
-    // per-position EQUALITY stamp consulted only by cells that read a
-    // growing seed. Folding the budget clock into the version (bump all
-    // positions each round) would force every cell back onto the
-    // equality check, and growth would again invalidate whole positions
-    // -- the exact design that measured 13% slower before [usedSeed]
-    // scoped it.
+    // NO BUDGET LEFT: repair IS parsing, exactly. A reading that has
+    // spent all its edits can only continue by reading the input as it
+    // stands, so the plain parser's answer -- computed at most once per
+    // cell -- is the whole answer, whatever else the cell holds. (Serving
+    // the champion map's zero-cost view here instead would offer clean
+    // but non-greedy readings the plain parser would never produce.)
+    if (_budget == 0 && pos < _len) {
+      if (!cell.plainKnown) {
+        cell.plainKnown = true;
+        cell.plain = node.cleanReading(this, pos);
+      }
+      final r = cell.plain;
+      return r == null ? const [] : [r];
+    }
+    // TWO CLOCKS, DIFFERENT SHAPES. [atBudget] is a lazy WATERMARK,
+    // compared with >=: the champion map is filled only as deep as anyone
+    // has actually needed this round, and a cell filled at a bigger
+    // budget serves every smaller query through the read-time filter.
+    // (Filling every cell at the round's full budget instead -- which
+    // would also make cell content independent of who asked first -- was
+    // measured 1.6x slower: most cells are only ever reached by readings
+    // that have already spent most of the budget, and the laziness of
+    // never exploring deeper than asked is where that time goes.)
+    // [memoVersion] is a per-position EQUALITY stamp consulted only by
+    // cells whose computation read a growing seed: a cell that read no
+    // seed cannot be stale, whatever grew, and unscoping the version
+    // check was measured 13% slower.
     if (cell.atBudget >= _budget &&
         (!cell.usedSeed || cell.memoVersion == _repairVersions[pos])) {
       return cell.readings(_budget);
-    }
-    if (_budget == 0 && cell.atBudget < 0 && pos < _len) {
-      // No budget: repair IS parsing (see _RuleRef.findReadings), for
-      // composite nodes too. The plain parse is the cell's whole answer.
-      cell.atBudget = 0;
-      final r = node.cleanReading(this, pos);
-      if (r != null) cell.add(r);
-      return cell.readings();
     }
     cell.inRecPath = true;
     final outer = _seedWasRead;

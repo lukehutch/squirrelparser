@@ -132,7 +132,6 @@ void main(List<String> argv) {
   final engines = argv.isNotEmpty
       ? argv
       : const [
-          'c7',
           'c8',
         ];
   final rulesOf = {

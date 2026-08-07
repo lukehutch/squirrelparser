@@ -41,17 +41,17 @@ asks only questions a human could answer.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c8** | **0.9879** | **84.0** | ~c7 | 755 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
-| c7 | 0.9879 | 84.0 | 1112 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+| **c8** | **0.9879** | **84.0** | **1126** | 759 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
+| c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 
-c8's latency could not be resolved against c7: the measurement session ran
-under external machine load ~33, where paired interleaved ratios read
-1.00 +/- 0.10. Its changes are allocation-neutral-or-better by
-construction; re-time on a quiet machine before quoting a number. c8's
-higher line count is the readability rename (section 8): longer names
-wrap more lines; the logic is expression-for-expression identical to the
-pre-rename c8 (verified by a zero-diff battery dump).
+Timing was finally resolved when the machine quieted: three interleaved
+pairs put c8 at ~0.95x c7 -- the strict zero fiber's cached plain answer
+beats the champion-map ceremony it replaced -- so c7 joined the attic
+(c6/c7 rows above are their last measurements). c8's higher line count is
+the readability rename (section 8): longer names wrap more lines; the
+judgment is identical to c5 case-for-case across the whole chain of
+transformations, each verified by a zero-diff battery dump.
 
 Both rows are the FUSED engine — the full squirrel parser folded in, so
 each is self-contained and its LOC includes the whole parser (~246 lines);
@@ -278,7 +278,11 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   lines, c6→c7 one law, c7→c8 one protocol). c8 was then renamed and
   re-documented end to end for readers without this file's history —
   every invented term replaced (section 8), every mechanism explained in
-  plain language in the source, judgment re-verified identical.
+  plain language in the source, judgment re-verified identical — and
+  finished with the strict zero fiber: budget-zero queries always get
+  exactly the plain parser's cached answer, making the zero fiber
+  order-independent and ~5% faster. 0.9879 / 84.0 / ~1126 ms / 759
+  lines, every gate exact, analyzer-clean.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -323,15 +327,15 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | Stateless predicates (delete _Look's front) | judgment-identical, badly slower: the predicate's front was the ONLY cache over its Ref-to-literal sub chain — memo state acts at a distance, and "dead" state can be load-bearing for a different node's latency |
 | Composite freeze cached by allocating a front per probed position | a cache whose MISS allocates a front+map at every deny-scan probe costs more than the structural matches it saves |
 | The front read-view cache | judgment-identical; unresolved under machine load (paired ratios 1.00±0.10) and dropped — a front stays read-only on reads; retry on a quiet machine |
-| The budget watermark folded into the version array | blocked by analysis: atBudget is a >=-ordered clock holding two fill levels per round (plain-only at budget zero, full at the round budget) and serving every smaller query; the version is an =-checked clock scoped by usedSeed. One counter cannot express both, and unscoping the version is the −13% naked-version design. The absorbable piece — "never computed" as memoVersion == −1 — was absorbed (judgment-identical) |
+| The budget watermark folded into the version array | blocked by analysis: atBudget is a >=-ordered clock serving every smaller query; the version is an =-checked clock scoped by usedSeed. One counter cannot express both, and unscoping the version is the −13% naked-version design. The absorbable piece — "never computed" as memoVersion == −1 — was absorbed (judgment-identical) |
+| Canonical cell fills (every fill at the round's full budget) | +0.0001 score, 1.6x latency — declined: most cells are only reached by mostly-spent readings, and never exploring deeper than asked is where the time goes. The lazy watermark is the design, now documented with its price |
+| The strict zero fiber (budget-zero always answers with the cached plain parse, never the champion map's zero-cost view) | ADOPTED: battery-inert, ~5% faster, and the zero fiber becomes order-independent — the last query-order dependence at budget zero is gone |
 
 ## 7. Where things live
 
 - The engine: `dart/experiments/recovery/c8.dart` — self-contained (the
   full parser folded in; the published library contributes only the
-  interchange types, and `lib/src` performs no recovery). `c7.dart` is
-  the pre-audit twin, kept until c8's latency parity is confirmed on a
-  quiet machine.
+  interchange types, and `lib/src` performs no recovery).
 - The harness: `dart/test/recovery/` — battery + scoring
   (`astdiff.dart`), runner (`_score1.dart <engine> [dump]`), the four
   gates (`_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,

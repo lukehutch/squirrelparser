@@ -9,7 +9,6 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 import 'astdiff.dart';
-import '../../experiments/recovery/c7.dart' as c7;
 import '../../experiments/recovery/c8.dart' as c8;
 
 typedef Build = MatchResult? Function(String) Function(
@@ -17,11 +16,8 @@ typedef Build = MatchResult? Function(String) Function(
 
 const Map<String, Build> engines = {
   'c8': _c8,
-  'c7': _c7,
 };
 
-MatchResult? Function(String) _c7(Map<String, Clause> r, String t) =>
-    c7.Squirrel(rules: r, topRuleName: t).recover;
 MatchResult? Function(String) _c8(Map<String, Clause> r, String t) =>
     c8.Squirrel(rules: r, topRuleName: t).recover;
 
