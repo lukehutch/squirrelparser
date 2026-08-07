@@ -14,6 +14,7 @@ import 'c2.dart' as c2;
 import 'c3.dart' as c3;
 import 'c4.dart' as c4;
 import 'c5.dart' as c5;
+import 'c6.dart' as c6;
 import 'm132.dart' as g132;
 import 'm143.dart' as g143;
 import 'r9.dart' as r9;
@@ -25,6 +26,7 @@ typedef Build = MatchResult? Function(String) Function(
     Map<String, Clause>, String);
 
 const Map<String, Build> engines = {
+  'c6': _c6,
   'c5': _c5,
   'c4': _c4,
   'c3': _c3,
@@ -42,6 +44,8 @@ MatchResult? Function(String) _c4(Map<String, Clause> r, String t) =>
     c4.Squirrel(rules: r, topRuleName: t).recover;
 MatchResult? Function(String) _c5(Map<String, Clause> r, String t) =>
     c5.Squirrel(rules: r, topRuleName: t).recover;
+MatchResult? Function(String) _c6(Map<String, Clause> r, String t) =>
+    c6.Squirrel(rules: r, topRuleName: t).recover;
 MatchResult? Function(String) _c3(Map<String, Clause> r, String t) =>
     c3.Squirrel(rules: r, topRuleName: t).recover;
 MatchResult? Function(String) _c2(Map<String, Clause> r, String t) =>

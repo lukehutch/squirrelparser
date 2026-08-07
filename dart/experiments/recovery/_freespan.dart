@@ -35,6 +35,7 @@ import 'c2.dart' as c2;
 import 'c3.dart' as c3;
 import 'c4.dart' as c4;
 import 'c5.dart' as c5;
+import 'c6.dart' as c6;
 import 's4.dart' as s4;
 import 'm132.dart' as m132;
 import 'm143.dart' as m143;
@@ -69,6 +70,11 @@ Str <- '"' [a-z]* '"';
 typedef Probe = (String, String, String, int);
 
 const probes = <Probe>[
+  ('g4', g4, 'xxab', 3),
+  ('g4', g4, 'xyab', 3),
+  ('g5', g5, 'xxab', 4),
+  ('g5', g5, 'xyab', 4),
+  ('g6', g6, 'zzz', 1),
 ];
 
 int? cost(String name, Map<String, Clause> rules, String top, String s) =>
@@ -84,14 +90,13 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
       'c3' => c3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c4' => c4.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c5' => c5.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
+      'c6' => c6.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       _ => null,
     };
 
 const engines = [
-  'm121', 'm126', 'm127', 'm132', 'm136', 'm141', 'm143', // raw cost is the first key
-  // `cost - net` outranks it. m135-m140 are the I79/collapse family, all built
-  // from m134 or m135, so all of them inherit I77 along with everything else.
-  'm129', 'm130', 'm131', 'm133', 'm134', 'm135', 'm137', 'm138', 'm139',
+  'm132',
+  'm143',
   'r9',
   's1',
   't1',
@@ -101,6 +106,7 @@ const engines = [
   'c3',
   'c4',
   'c5',
+  'c6',
 ];
 
 void main() {

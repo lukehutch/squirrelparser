@@ -55,7 +55,8 @@ misc (transpositions, multi-site) 1.5.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c5** | **0.9878** | **83.9** | **1620** | 535 | all | **0.997** | **0.984** | 0.993 | **0.987** | **0.967** |
+| **c6** | **0.9878** | **83.9** | **1466** | 462 | all | **0.997** | **0.984** | 0.993 | **0.987** | **0.967** |
+| c5 | 0.9878 | 83.9 | 1620 | 535 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
 | c4 | 0.9878 | 83.9 | 1687 | 566 | all | 0.997 | 0.984 | 0.993 | 0.987 | 0.967 |
 | c3 | 0.9829 | 81.2 | 1713 | 515 | all | 0.985 | 0.979 | 0.994 | 0.987 | 0.964 |
 | s1 | 0.9825 | 75.2 | 1773 | 697 | all | 0.987 | 0.980 | 0.994 | 0.981 | 0.963 |
@@ -67,13 +68,18 @@ misc (transpositions, multi-site) 1.5.
 | m132 | 0.9600 | 65.8 | 1597 | 612 | recommit 15/16 | 0.908 | 0.978 | 0.988 | 0.981 | 0.953 |
 | t1 | 0.9287 | 55.9 | 1170 | 899 | all | 0.946 | 0.946 | 0.976 | 0.870 | 0.860 |
 
-Frontier (score/perfect/ms/LOC): c5 leads outright (c4's judgment
-bit-identically, 31 lines smaller and 4% faster — see law 15); c4 is
-dominated by its own refinement; c3–c2 form the size
-ladder; t1 keeps raw latency; m143/m132 sit between. **s1 and r9 are
-dominated** — on the fair battery, s1's remaining era-2 edge over the
-c-line dissolves (it was tie-luck on coin flips and over-demanding
-truncation expectations), and c3 beats it on every axis.
+Frontier (score/perfect/ms/LOC): **three engines** — c6 (c5's judgment
+case-for-case, 73 lines smaller and 11% faster interleaved; law 16),
+c2 (the size point, 454), t1 (raw latency). c6 dominates the other nine,
+c5 and c4 among them. **s1 and r9 are dominated** — on the fair battery,
+s1's remaining era-2 edge over the c-line dissolves (it was tie-luck on
+coin flips and over-demanding truncation expectations).
+
+*Correction (2026-08-06):* the era-3 curation commit accidentally emptied
+`_freespan`'s probe list, so freespan "passes" recorded between that
+commit and today were vacuous. The probes are restored and every kept
+engine re-verified against them: all pass with the exact costs
+(3 3 4 4 1). No conclusion changed, but the gap is on the record.
 
 ## 3. The lines, and what each one taught
 
@@ -107,7 +113,7 @@ collapse (fills emerge from the descent; a literal is a sequence; a move is
 a resync at slot 0) at 480 lines. The c-line is this algebra rebuilt on
 better substrate.
 
-**c-line (c1–c5, all kept).** c1 (I101): parsing mode IS budget zero — with
+**c-line (c1–c6, all kept).** c1 (I101): parsing mode IS budget zero — with
 no edits left the descent is definitionally the pure parser, so the frozen
 memo answers unconditionally; the budget itself marks where repair can no
 longer reach. c2 (I102): the four-form normalization (X* is left recursion,
@@ -115,8 +121,9 @@ X? is choice, a literal is a char-sequence, EOI is a slot) — the smallest
 engine, and the proof that grammar rewriting costs accuracy and foreign
 trees. c3 (I103): the way-front — insertion IS the improvement test; the
 sort and its livelock class deleted. c4 (I104–I107): the completed rank and
-the fee's scope. c5 (I108): c4 with the swallow derived instead of stored —
-the standing engine.
+the fee's scope. c5 (I108): c4 with the swallow derived instead of stored.
+c6 (I109): the way collapsed to a cons cell that knows its sums — the
+standing engine.
 
 ## 4. The laws (what survived every measurement)
 
@@ -188,11 +195,33 @@ the standing engine.
     faster, and the bug class is unrepresentable. When a stored quantity
     needs machinery to prevent double-counting, ask whether it can be
     derived at use instead.
+16. **The way is a cons cell that knows its sums** (I109): c5's fifteen
+    fields were one reading described three times — six fields encoding
+    the winner's tree, a stored marks count, a stored eof flag, and a
+    root that recomputed del+gap by WALKING THE FINISHED TREE (the
+    confession that the scalars were folds of the chain all along). c6:
+    one payload (a mark, a subtree, or a name over an inner chain), one
+    tail; del/gap/net/fees/oweN are additive caches of that list, and
+    everything else is derived at use — eof IS an owe at the end of the
+    input (positional, charged `oweN > 0 ? 1 : 0`, I94 made structural),
+    marks IS gap+oweN, the tree IS a fold over the chain, the tree's cost
+    IS del+marks by construction, a frozen read IS a way, and the unread
+    tail at the root IS one more skip, not a protocol. Judgment-identical
+    to c5 case for case; 462 lines (−73), ~11% faster interleaved
+    (medians 1466 vs 1643 ms), every gate green. Both remaining rank
+    keys re-verified load-bearing post-vouch (drop latest-doubt: −3.4
+    perfect; drop fewest-marks: −2.6).
 
 ## 5. What separates the top engines
 
-All of s1/s4/c1–c4 share the same judgment core. The deltas:
+All of s1/s4/c1–c6 share the same judgment core. The deltas:
 
+- **c6 vs c5**: identical judgment (zero differing cases); the way is a
+  cons cell — leaf/cap/from/link/prev/mark become what/tail, marks and
+  eof become derivations of one owe count, the root's re-wrap and audit
+  walk are deleted, and one `_read` constructor serves every frozen
+  answer (caching net on the library's memoized match, whose identity is
+  stable — caching on a fresh wrapper never hits and cost ~12%).
 - **c5 vs c4**: identical judgment (zero differing cases); the swallow is
   derived at comparison rather than stored and guarded — toll, vouch,
   `_judge`, and the vouch-symmetry rules deleted.
@@ -236,10 +265,12 @@ All of s1/s4/c1–c4 share the same judgment core. The deltas:
 | Prefix-freeze with conditions (non-LR, window, clean) | its consult cost its savings; budget-zero alone is faster |
 | Merging `_determined` and `_minFill` | memoizing under a cycle-cut poisons minFill inside LR paths |
 | Net crediting bare `Match(null)` spans | re-weights every completion's matched prefix; −3 recommit cases |
+| A literal through the memo cell (an anonymous rule) | judgment-identical, +25% latency: front ceremony on every MATCHING literal outweighs caching the failing folds |
+| Rank without latest-doubt / without fewest-marks | −3.4 / −2.6 perfect (re-measured on c6, post-vouch): both keys stand |
 
 ## 7. Where things live
 
-- Engines: `dart/experiments/recovery/{c1..c4,s1,s4,r9,m132,m143,t1}.dart`
+- Engines: `dart/experiments/recovery/{c1..c6,s1,s4,r9,m132,m143,t1}.dart`
 - Battery + scoring: `astdiff.dart`; runner: `_score1.dart <engine> [dump]`
 - Gates: `_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
   `_conf1.dart`
