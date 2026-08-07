@@ -41,9 +41,6 @@ E = {
     # non-c engines are archived in attic/ with their last era-3 numbers in
     # attic/OLD_LESSONS_LEARNED.md.
     'c6': (0.9879, 84.0, 1490),
-    'c5': (0.9878, 83.9, 1620),
-    'c4': (0.9878, 83.9, 1687), 'c3': (0.9829, 81.2, 1713),
-    'c1': (0.9818, 78.6, 1785), 'c2': (0.9812, 78.5, 2354),
 }
 DQ = {}
 

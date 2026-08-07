@@ -14,11 +14,6 @@
 // so this is a live path on the battery, not a constructed one.
 import 'package:squirrel_parser/squirrel_parser.dart';
 
-import 'c1.dart' as c1;
-import 'c2.dart' as c2;
-import 'c3.dart' as c3;
-import 'c4.dart' as c4;
-import 'c5.dart' as c5;
 import 'c6.dart' as c6;
 
 const negGrammar = '''
@@ -40,11 +35,6 @@ Word <- [a-z]+;
 typedef Cost = int Function(String) Function(Map<String, Clause>, String);
 
 final engines = <(String, Cost)>[
-  ('c1', (r, t) => c1.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('c2', (r, t) => c2.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('c3', (r, t) => c3.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('c4', (r, t) => c4.Squirrel(rules: r, topRuleName: t).recoverCost),
-  ('c5', (r, t) => c5.Squirrel(rules: r, topRuleName: t).recoverCost),
   ('c6', (r, t) => c6.Squirrel(rules: r, topRuleName: t).recoverCost),
 ];
 

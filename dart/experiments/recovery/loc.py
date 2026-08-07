@@ -25,12 +25,12 @@ import shutil
 import subprocess
 
 D = '/home/luke/Work/squirrelparser/dart/experiments/recovery/'
-LIB = '/home/luke/Work/squirrelparser/dart/lib/src/recovery/'
+LIB = '/home/luke/Work/squirrelparser/dart/experiments/recovery/attic/libsrc_recovery/'
 S = ('/tmp/claude-1001/-home-luke-Work-squirrelparser/'
      '1a737cdf-c369-45bf-956c-1b5bf00d5723/scratchpad/')
 TMP = S + 'fmtn/'
 
-ALIAS = {'dot': LIB + 'dot_recovery.dart', 'v6': D + 'sd6.dart'}
+ALIAS = {'dot': LIB + 'dot_recovery.dart', 'v6': D + 'attic/sd6.dart'}
 
 
 def src_for(name):

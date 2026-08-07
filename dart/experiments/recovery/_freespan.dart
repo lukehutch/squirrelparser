@@ -27,11 +27,6 @@
 // Usage: dart run _freespan.dart
 import 'package:squirrel_parser/squirrel_parser.dart';
 
-import 'c1.dart' as c1;
-import 'c2.dart' as c2;
-import 'c3.dart' as c3;
-import 'c4.dart' as c4;
-import 'c5.dart' as c5;
 import 'c6.dart' as c6;
 
 /// The suffix is unmatchable, so every engine must fill it; only what happens
@@ -73,21 +68,11 @@ const probes = <Probe>[
 
 int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     switch (name) {
-      'c1' => c1.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'c2' => c2.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'c3' => c3.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'c4' => c4.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
-      'c5' => c5.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       'c6' => c6.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       _ => null,
     };
 
 const engines = [
-  'c1',
-  'c2',
-  'c3',
-  'c4',
-  'c5',
   'c6',
 ];
 
