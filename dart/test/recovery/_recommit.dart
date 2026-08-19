@@ -132,7 +132,7 @@ void main(List<String> argv) {
   final engines = argv.isNotEmpty
       ? argv
       : const [
-          'c8',
+          'c9',
         ];
   final rulesOf = {
     for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)

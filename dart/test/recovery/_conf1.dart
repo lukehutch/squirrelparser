@@ -35,7 +35,7 @@ Word <- [a-z]+;
 typedef Cost = int Function(String) Function(Map<String, Clause>, String);
 
 final engines = <(String, Cost)>[
-  ('c8', (r, t) => convertC8(r, t).recoverCost),
+  ('c9', (r, t) => convertC9(r, t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>

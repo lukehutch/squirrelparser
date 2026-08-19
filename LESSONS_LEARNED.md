@@ -37,30 +37,31 @@ asks only questions a human could answer.
   re-reading the healthy prefix as something else?
 - `_conf1` — exact repair-cost conformance, no free passes for predicates.
 
-## 2. The standing table (era-3 battery, 2026-08-06)
+## 2. The standing table (era-3 battery, 2026-08-19)
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c8** | **0.9879** | **84.0** | **1126** | 759 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
+| **c9** | **0.9879** | **84.0** | **561** | 890 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
+| c8 | 0.9879 | 84.0 | 955 | 738 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 
-Timing was finally resolved when the machine quieted: three interleaved
-pairs put c8 at ~0.95x c7 -- the strict zero fiber's cached plain answer
-beats the champion-map ceremony it replaced -- so c7 joined the attic
-(c6/c7 rows above are their last measurements). c8's higher line count is
-the readability rename (section 8): longer names wrap more lines; the
-judgment is identical to c5 case-for-case across the whole chain of
-transformations, each verified by a zero-diff battery dump.
+The c9/c8 ms are the SAME-SESSION paired medians (12 interleaved
+full-battery reps on one warmed VM, 2026-08-19): ratio 0.587, so c9 is
+1.7x faster on bit-identical judgment — every battery tree equal,
+verified by a zero-diff dump, and every gate exact. c8 therefore joins
+the attic. (c8's former table figure of 1,126 ms was the 2026-08-06
+quiet-machine run; the c7/c6 rows keep their own last measurements, so
+ms is only comparable WITHIN a measuring session — the c9:c8 ratio is
+the durable number.) c9's higher line count is the price of its caches;
+c8's LOC is restated at today's normalized count (738; the 759 recorded
+earlier predates the strict-zero-fiber trim).
 
-Both rows are the FUSED engine — the full squirrel parser folded in, so
-each is self-contained and its LOC includes the whole parser (~246 lines);
-the pre-fold, library-dependent c6 measured 461 lines and ~1,500 ms. c7
-dominates c6 (identical judgment, one left-recursion law, 5% faster,
-15 lines smaller), so c6 is archived as its measured twin. c7 also now
-holds the all-time latency point: t1's 1,170 ms record falls, at +0.06
-score. The c1–c6 ancestors and every other line are archived with their
-last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
+All four rows are the FUSED engine — the full squirrel parser folded in,
+so each is self-contained and its LOC includes the whole parser (~246
+lines); the pre-fold, library-dependent c6 measured 461 lines and
+~1,500 ms. The c1–c8 ancestors and every other line are archived with
+their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 
 ## 3. The critical lessons
 
@@ -231,6 +232,36 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
     that keeps it (the size floor is a measurement, I104); every removed
     one carries the number that killed it (the ledger below).
 
+### The machine — what the c9 round measured
+
+18. **Measure the shape before choosing the container** (I115). The
+    histograms came first, the design second: 71% of cell consults see
+    at most one reading (90% at most three), 80% of fold steps hold one
+    partial, and the champion map's key always equaled the stored
+    reading's own `end`. Those three numbers make the map a list, the
+    hash a linear scan, and the rebuilt-per-consult view a cached one —
+    together 1.7x — while every change made WITHOUT a shape measurement
+    behind it (the per-op campaign) was ±5% noise.
+
+19. **The GC owns the allocation ledger** (I116). Under Dart's
+    generational collector, a young object that dies young is nearly
+    free, and a store into an old-space object pays a write barrier the
+    fresh array never does. Both directions were measured: judging a
+    candidate from its component sums BEFORE allocating it lost
+    1.02–1.04x (the guard duplicates the arithmetic on every keep, the
+    allocation it avoids was free), and reusing cell arrays ACROSS runs
+    with epoch stamps and in-place resets lost 1.10x (every store aged).
+    "Avoid allocation" is not an optimization goal; it is a hypothesis
+    the collector usually falsifies.
+
+20. **A ratio is only comparable within its session.** Even the paired
+    in-process interleaved instrument drifts with machine load: a
+    candidate measured 0.938 re-measured 1.033 when the machine
+    lightened (the baseline sped up more than the candidate). Draw
+    conclusions only from same-session pairs, and re-confirm any
+    surprising ratio before acting on it — the c9 round's one false
+    lead was a load artifact, not an engine effect.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
@@ -283,6 +314,30 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   exactly the plain parser's cached answer, making the zero fiber
   order-independent and ~5% faster. 0.9879 / 84.0 / ~1126 ms / 759
   lines, every gate exact, analyzer-clean.
+- **c9** (I115–I116): the same algorithm on the data its measured shape
+  asks for — 1.7x faster (paired ratio 0.587), judgment bit-identical
+  (zero-diff dump), every gate exact. The round began by measuring the
+  SHAPE of the hot structures over the whole battery: 71% of cell
+  consults see at most one reading (90% at most three, max 52); 80% of
+  fold steps hold one partial; and every champion-map insert used the
+  stored reading's own `end` as its key. Three changes follow from
+  those numbers and account for the whole win: the champion map becomes
+  a plain list scanned by `end` (the key was the value's own field);
+  a cell's filtered view is cached between changes, and its object
+  identity — which now changes exactly when content may — lets a rule
+  reference cache its labeled wrapping and revalidate by `identical`;
+  and naming moves from per-fill to per-change, applied as the view is
+  built (with the packaged plain answers — zero-budget reading, its
+  list, a reference's tree wrapper — each built at most once). Two
+  "obvious" moves measured backwards and were reverted: judging a
+  candidate before allocating it (1.02–1.04x) and reusing cell arrays
+  across runs via epoch stamps (1.10x) — Dart's generational GC makes
+  young allocation nearly free and charges a write barrier for
+  old-space stores, so the fresh-arrays-per-run design c6 chose is not
+  a shortcut but the optimum. The per-op campaign around these
+  (indexed loops, fold micro-shapes, terminal tweaks) measured ±5%
+  with unstable sign: on this engine the representation, not the
+  operations, was the lever.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -330,21 +385,29 @@ last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | The budget watermark folded into the version array | blocked by analysis: atBudget is a >=-ordered clock serving every smaller query; the version is an =-checked clock scoped by usedSeed. One counter cannot express both, and unscoping the version is the −13% naked-version design. The absorbable piece — "never computed" as memoVersion == −1 — was absorbed (judgment-identical) |
 | Canonical cell fills (every fill at the round's full budget) | +0.0001 score, 1.6x latency — declined: most cells are only reached by mostly-spent readings, and never exploring deeper than asked is where the time goes. The lazy watermark is the design, now documented with its price |
 | The strict zero fiber (budget-zero always answers with the cached plain parse, never the champion map's zero-cost view) | ADOPTED: battery-inert, ~5% faster, and the zero fiber becomes order-independent — the last query-order dependence at budget zero is gone |
+| Semi-naive evaluation / avoid re-derivation (the fix BOTH outside analyses converged on) | only 29% of fills re-derive an unchanged value; the other 71% are first derivations no delta scheme can skip |
+| Saturation — run each budget's fixed point to completion so rungs start warm | ~7% fewer fills, zero time won: the rung tax is the ladder's shape, not repeated work |
+| Compare-before-allocate (judge a candidate from component sums, allocate only on keep) | 1.02–1.04x SLOWER, measured twice (with and without `@pragma('vm:prefer-inline')`): the avoided young allocation was nearly free, and the guard duplicates the sum arithmetic on every keep |
+| Cross-run cell reuse (grow-only arrays, epoch stamps, in-place reset instead of fresh allocation) | 1.10x SLOWER: stores into old-space objects pay the GC write barrier fresh young arrays never do; c6's fresh-arrays-per-run is the optimum, not a shortcut |
+| The per-op campaign (indexed loops, fold micro-shapes, terminal tweaks) | ±5% with unstable sign under load; representation was the lever (R6–R8, 1.7x), operations were noise |
 
 ## 7. Where things live
 
-- The engine: `dart/experiments/recovery/c8.dart` — self-contained (the
+- The engine: `dart/experiments/recovery/c9.dart` — self-contained (the
   full parser folded in; the published library contributes only the
   interchange types, and `lib/src` performs no recovery).
 - The harness: `dart/test/recovery/` — battery + scoring
   (`astdiff.dart`), runner (`_score1.dart <engine> [dump]`), the four
   gates (`_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
-  `_conf1.dart`), and size (`loc.py`).
-- Archive: `dart/experiments/recovery/attic/` (~320 files: c1–c6, the
+  `_conf1.dart`), size (`loc.py`), and the paired-timing instrument
+  (`_race.dart`).
+- Archive: `dart/experiments/recovery/attic/` (~320 files: c1–c8, the
   s/r/m/t/b lines, ~900 scratch probes, `pareto.py` — retired when one
   engine remained — `libsrc_recovery/`, and the old lib-recovery tests);
   the era-1/era-2 record and the era-3 archive in
-  `attic/OLD_LESSONS_LEARNED.md`.
+  `attic/OLD_LESSONS_LEARNED.md`. `attic/c8.dart` stays importable
+  (`_convert.dart`'s `convertC8`) as the paired-timing and dump
+  baseline.
 
 ## 8. The c7→c8 rename map
 
@@ -353,6 +416,11 @@ file's history, and every mechanism documented in the source in plain
 language. Original squirrel-parser names (Clause, Match, Seq, First, Ref,
 `match`, `inRecPath`, `foundLeftRec`, `memoVersion`, …) were kept or
 mirrored. The logic is expression-for-expression identical.
+
+c9 keeps c8's names unchanged, so this map reads onto it directly; the
+c9-only additions (`_best`, `_view`, `_maxSpent`, `plain`, `asList`,
+`wrapped`, `owner`, `refSrc`/`refView`, `finish`) are documented where
+they live in `c9.dart`.
 
 **Classes**
 

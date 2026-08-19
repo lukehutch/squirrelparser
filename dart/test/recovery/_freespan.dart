@@ -69,11 +69,12 @@ const probes = <Probe>[
 int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     switch (name) {
       'c8' => convertC8(rules, top).recoverCost(s),
+      'c9' => convertC9(rules, top).recoverCost(s),
       _ => null,
     };
 
 const engines = [
-  'c8',
+  'c9',
 ];
 
 void main() {
