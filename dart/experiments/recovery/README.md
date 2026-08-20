@@ -17,11 +17,14 @@ same trees — and the attic of every superseded attempt.
 - **`c10.dart` — the small engine.** The same judgment run as ONE
   machine: the dedicated zero-budget parser c9 carried is deleted, and
   round zero of the costed descent IS the plain parse (three laws in the
-  file header make the collapse exact). Bit-identical trees to c9 over
-  the whole battery, all gates, analyzer parity, 890 -> 714 lines
-  (-20%) at a measured 1.30x paired latency. c9 keeps the latency
-  point; c10 is the statement that the recovery machinery costs ~700
-  lines, not two engines.
+  file header make the collapse exact). Each construct carries two faces
+  of one behavior — `proposePlain`, the classic PEG parse building its
+  tree as it returns, and `proposeReadings`, the costed candidates —
+  filled into the same cells by the same growth loop. Bit-identical
+  trees to c9 over the whole battery, all gates, analyzer parity,
+  890 -> 790 lines (-11%) at a measured ~1.09x paired latency. c9 keeps
+  the latency point; c10 is the statement that the recovery machinery
+  costs ~800 lines, not two engines.
 - **`attic/`** — ~320 superseded engines and probes (the m/r/s/t/b lines
   and c1–c8), the ~900 untracked scratch probes of the campaign, the
   era-1/era-2 record (`attic/OLD_LESSONS_LEARNED.md`), the retired

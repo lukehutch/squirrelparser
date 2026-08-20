@@ -42,7 +42,7 @@ asks only questions a human could answer.
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
 | **c9** | **0.9879** | **84.0** | **561** | 890 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
-| c10 | 0.9879 | 84.0 | 735 | **714** | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+| c10 | 0.9879 | 84.0 | 627 | 790 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c8 | 0.9879 | 84.0 | 955 | 738 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
@@ -57,10 +57,12 @@ ms is only comparable WITHIN a measuring session — the c9:c8 ratio is
 the durable number.) c9's higher line count is the price of its caches;
 c8's LOC is restated at today's normalized count (738; the 759 recorded
 earlier predates the strict-zero-fiber trim). c10 was paired against
-c9 in its own session (6 interleaved full-battery reps, 2026-08-19):
-medians 566/735, ratio 1.30 — its judgment is bit-identical to c9's,
-so its row differs only in ms and LOC. The two are a deliberate
-frontier: c9 the fast point, c10 the small point.
+c9 in its own session (10 interleaved full-battery reps, 2026-08-19):
+medians 577/627, ratio 1.087 — its judgment is bit-identical to c9's,
+so its row differs only in ms and LOC. (Its first cut measured 1.30x
+at 714 lines; the fiber split described under I119 bought the ratio
+down to ~1.09 for 76 lines.) The two are a deliberate frontier: c9
+the fast point, c10 the small point among the live engines.
 
 All four rows are the FUSED engine — the full squirrel parser folded in,
 so each is self-contained and its LOC includes the whole parser (~246
@@ -360,7 +362,7 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   shares the same object — label sharing is observable, so this is
   correctness, not tuning). Bit-identical trees (zero-diff dump plus a
   node-by-node oracle over all 2101 cases), every gate exact,
-  890 → 714 lines (−20%) at a measured 1.30x paired latency — c9
+  890 → 790 lines (−11%) at a measured ~1.09x paired latency — c9
   keeps the latency point. I118 is the boundary of I116's ledger,
   found by compressing past the knee and bisecting back: routing the
   two per-candidate hot paths (the slot walk, the store's view build)
@@ -370,6 +372,31 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   the rules the helpers state. Young allocation is nearly free; a
   per-offer allocation plus invalidation writes in the innermost loop
   is not just allocation.
+- **c10, second pass** (I119): the plain parse is a FACE of each
+  construct, not a mode of the search. c10's first cut ran the zero
+  fiber through the costed machinery's full shape — a memo cell per
+  composite, a list of candidates per consult, a tree translation per
+  serve — and measured 1.30x against c9. Instrumented attribution
+  (stopwatch around every zero-fiber entry) put essentially the WHOLE
+  gap in that fiber: the costed rounds were already at parity. The fix
+  is a fiber split inside each construct: `proposePlain` is the
+  classic PEG parse — one preferred reading, its finished tree built
+  as it returns (`_node`), children consulted through the
+  single-reading `plainReading`, no lists between stores — and
+  `proposeReadings` is the costed candidate generation; `_grow` fills
+  the same cells with whichever face the fiber calls for, and inside a
+  twin fill inline composites skip cells entirely, so the zero fiber
+  memoizes only at rule boundaries, exactly the plain parser's own
+  shape. Readings-with-trees stay sound because in the zero fiber
+  every consult is served at most one preferred reading, so every
+  chain is deterministic and demotion has already discarded whatever
+  the greedy parser would not produce. Bit-identical at every step
+  (four gate-verified stages: lean proposals 1.30 → 1.20, cell bypass
+  → ~1.17, eager trees → ~1.13, single-reading consults → ~1.09);
+  the residual ~9% is the dispatch tax of one machine choosing its
+  fiber per consult, below this VM's run-to-run noise. 714 → 790
+  lines: the second face costs 76 lines and buys back most of the
+  deleted parser's speed.
 
 ## 5. What the archived lines taught (details in the attic)
 

@@ -26,9 +26,13 @@
 // carried TWO engines -- a dedicated plain parser for the zero-budget
 // work, plus the costed search, with laws keeping their answers aligned.
 // c10 deletes the dedicated parser and runs the one machine at every
-// budget: 890 -> 714 lines (-20%), at a measured 1.30x paired latency
-// (c9 keeps the latency point; this file is the small one). Three rules
-// make the collapse exact, to the tree and the label:
+// budget: 890 -> 790 lines (-11%) at a measured ~1.09x paired latency.
+// Each construct keeps two faces of one behavior: proposePlain, the
+// classic PEG parse (one preferred reading, tree built as it returns,
+// no lists between stores), and proposeReadings, the costed candidate
+// generation -- the same cells, the same judging, the same growth loop
+// fill both. Three rules make the collapse exact, to the tree and the
+// label:
 //
 //   * WITH NO BUDGET LEFT, REPAIR IS PARSING. A budget-zero consult
 //     belongs to the plain-parse fiber (see Squirrel._zeroFiber), and its
@@ -101,6 +105,14 @@ const int _impossible = 1 << 30;
 const int _unlimited = 1 << 30;
 
 int _min(int a, int b) => a < b ? a : b;
+
+/// A finished tree node over already-finished children -- the exact shape
+/// [Squirrel._treeOf] gives a labeled chain, built eagerly by the zero
+/// fiber's plain-parse proposals.
+lib.MatchResult _node(lib.Clause name, int from, List<lib.MatchResult> kids) =>
+    kids.isEmpty
+        ? lib.Match(name, from, 0)
+        : lib.Match(name, 0, 0, subClauseMatches: kids);
 
 /// A grammar construct's name wrapped around the steps that filled it in:
 /// the piece of tree that says "these children together form one <label>".
@@ -432,20 +444,27 @@ abstract class Clause {
   /// The per-kind implementation behind [readings].
   List<_Reading> findReadings(Squirrel e, int pos);
 
-  /// The plain parse at [pos] packaged as one clean reading, or null if
-  /// it does not match. There is no separate plain parser: this switches
-  /// the budget to zero and runs the SAME descent, whose one preferred
-  /// reading is the plain answer. Used by the delete-ahead scan in
-  /// _readSlots; terminals override it with a direct character test.
+  /// The zero fiber's own consult: the plain parse of this clause at
+  /// [pos] -- its one preferred reading, carrying a finished tree -- or
+  /// null where it cannot match plainly. The single reading travels up
+  /// bare; lists exist only where readings are stored (cells and the
+  /// cached rule wraps), never on the way between them.
+  _Reading? plainReading(Squirrel e, int pos) =>
+      pos > e._len ? null : Squirrel._preferredOf(findReadings(e, pos));
+
+  /// The plain parse at [pos] asked from a costed frame. There is no
+  /// separate plain parser: this switches the budget to zero and runs
+  /// the SAME descent. Used by the delete-ahead scan in _readSlots;
+  /// terminals override it with a direct character test.
   _Reading? cleanReading(Squirrel e, int pos) {
     final whole = e._budget;
     final probing = e._probing;
     e._budget = 0;
     e._probing = true;
-    final rs = readings(e, pos);
+    final r = plainReading(e, pos);
     e._budget = whole;
     e._probing = probing;
-    return Squirrel._preferredOf(rs);
+    return r;
   }
 
   /// The repair cell at [pos], if one exists for the current input.
@@ -511,15 +530,43 @@ abstract class Composite extends Clause {
   _RepairCell? cellAt(Squirrel e, int pos) =>
       _run == e._runId ? _cells![pos] : null;
 
+  /// Inside a twin fill ([Squirrel._zeroFill]) an inline composite is
+  /// computed directly, with no cell: the plain parse recurses straight
+  /// through a rule's body, memoized only at rule boundaries -- exactly
+  /// the plain parser's own shape. (Rule bodies keep their twins: they
+  /// are the left-recursion anchors, and every cycle in the clause graph
+  /// passes through a rule.) Outside a twin fill, a budget-zero consult
+  /// may need a growing costed cell's seed (see crossSeed in
+  /// [Squirrel._grow]), so it goes through the cell machinery.
   @override
-  List<_Reading> findReadings(Squirrel e, int pos) => e._grow(this, pos);
+  _Reading? plainReading(Squirrel e, int pos) => pos > e._len
+      ? null
+      : e._zeroFill && !isRuleBody
+          ? proposePlain(e, pos)
+          : Squirrel._preferredOf(e._grow(this, pos));
 
-  /// One pass of candidate generation for the cell at [pos]. May be run
-  /// several times when a left-recursive cycle is being grown. Proposals
-  /// arrive finished: each carries the construct's name (or, for the
-  /// zero-width results of an optional or a lookahead, a finished tree)
-  /// already wrapped on. The name changes no comparison key, so the cell
-  /// judges them exactly as it would raw readings.
+  @override
+  List<_Reading> findReadings(Squirrel e, int pos) {
+    if (e._zeroFill && !isRuleBody) {
+      final r = proposePlain(e, pos);
+      return r == null ? const [] : [r];
+    }
+    return e._grow(this, pos);
+  }
+
+  /// The plain parse of this construct: one preferred reading over the
+  /// input exactly as it stands, its tree already built, or null. Every
+  /// consult inside it is served at most one preferred reading, so the
+  /// descent is deterministic -- the classic PEG parse, run by the same
+  /// clause objects.
+  _Reading? proposePlain(Squirrel e, int pos);
+
+  /// One pass of costed candidate generation for the cell at [pos]. May
+  /// be run several times when a left-recursive cycle is being grown.
+  /// Proposals arrive finished: each carries the construct's name (or,
+  /// for the zero-width results of an optional or a lookahead, a
+  /// finished tree) already wrapped on. The name changes no comparison
+  /// key, so the cell judges them exactly as it would raw readings.
   List<_Reading> proposeReadings(Squirrel e, int pos);
 }
 
@@ -527,6 +574,23 @@ abstract class Composite extends Clause {
 class Seq extends Composite {
   Seq(super.source, this.subClauses);
   final List<Clause> subClauses;
+
+  // Plainly: each part in order; any part that cannot match plainly
+  // fails the sequence.
+  @override
+  _Reading? proposePlain(Squirrel e, int pos) {
+    final kids = <lib.MatchResult>[];
+    var p = pos, evidence = 0;
+    for (var i = 0; i < subClauses.length; i++) {
+      final step = subClauses[i].plainReading(e, p);
+      if (step == null) return null;
+      kids.add(step.piece as lib.MatchResult);
+      evidence += step.evidence;
+      p = step.end;
+    }
+    return _Reading(p, 0, 0, evidence, _chosen,
+        piece: _node(source, pos, kids));
+  }
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) =>
@@ -563,6 +627,19 @@ class Seq extends Composite {
 class First extends Composite {
   First(super.source, this.subClauses);
   final List<Clause> subClauses;
+
+  // Plainly the first match wins, and nothing after it is consulted.
+  @override
+  _Reading? proposePlain(Squirrel e, int pos) {
+    for (var i = 0; i < subClauses.length; i++) {
+      final r = subClauses[i].plainReading(e, pos);
+      if (r != null) {
+        return r._packed(
+            _node(source, pos, [r.piece as lib.MatchResult]), _chosen);
+      }
+    }
+    return null;
+  }
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
@@ -613,6 +690,24 @@ class Repetition extends Composite {
   Repetition(super.source, this.subClause, this.requireOne);
   final Clause subClause;
   final bool requireOne;
+
+  // Plainly: greedy munch, stopping at the first non-match or the first
+  // occurrence that consumes nothing.
+  @override
+  _Reading? proposePlain(Squirrel e, int pos) {
+    final kids = <lib.MatchResult>[];
+    var p = pos, evidence = 0;
+    while (true) {
+      final step = subClause.plainReading(e, p);
+      if (step == null || step.end <= p) break;
+      kids.add(step.piece as lib.MatchResult);
+      evidence += step.evidence;
+      p = step.end;
+    }
+    if (kids.isEmpty && requireOne) return null;
+    return _Reading(p, 0, 0, evidence, _chosen,
+        piece: _node(source, pos, kids));
+  }
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
@@ -678,6 +773,15 @@ class Optional extends Composite {
   Optional(super.source, this.subClause);
   final Clause subClause;
 
+  // Plainly: the child when it matches, else nothing.
+  @override
+  _Reading? proposePlain(Squirrel e, int pos) {
+    final r = subClause.plainReading(e, pos);
+    return r == null
+        ? _Reading.empty(pos).withTree(lib.Match(source, pos, 0), _chosen)
+        : r._packed(_node(source, pos, [r.piece as lib.MatchResult]), _chosen);
+  }
+
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
     final rs = subClause.readings(e, pos);
@@ -710,6 +814,15 @@ class Lookahead extends Composite {
   Lookahead(super.source, this.subClause, this.expectMatch);
   final Clause subClause;
   final bool expectMatch;
+
+  // Plainly, "does the child match" IS the child's plain answer: in the
+  // zero fiber every serve is at most one preferred reading, so clean
+  // and preferred coincide.
+  @override
+  _Reading? proposePlain(Squirrel e, int pos) =>
+      expectMatch == (subClause.plainReading(e, pos) != null)
+          ? _Reading.empty(pos).withTree(lib.Match(source, pos, 0))
+          : null;
 
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
@@ -781,8 +894,10 @@ class RuleRef extends Clause {
       final wraps = rule.zeroWraps(e);
       // The body's zero answer: the frozen serve if there is one, else a
       // live consult (which creates and fills the body twin).
-      final raw = rule.body.cellAt(e, pos)?.zeroList ??
-          rule.body.readings(e, pos);
+      var c = rule.body.cellAt(e, pos);
+      final raw = c?.zeroList ?? rule.body.readings(e, pos);
+      // The consult above may have just created the cell.
+      c ??= rule.body.cellAt(e, pos);
       // The content key: the wraps are current exactly while the answer
       // they packaged may still be served. For a composite body that is
       // the body twin's view, whose object identity changes exactly when
@@ -792,7 +907,6 @@ class RuleRef extends Clause {
       // null, never stale. A body that is itself a reference serves the
       // inner rule's wrap, already view-keyed one level down: the list
       // itself is the key.
-      final c = rule.body.cellAt(e, pos);
       final Object? key =
           c != null ? c.zeroTwin?._view : (rule.body is RuleRef ? raw : null);
       final have = wraps[pos];
@@ -806,9 +920,8 @@ class RuleRef extends Clause {
           ? const <_Reading>[]
           : [
               r._packed(
-                  lib.Match(source, 0, 0, subClauseMatches: [
-                    e._treeOf(r.piece!, r.end, keepAll: true)
-                  ]),
+                  lib.Match(source, 0, 0,
+                      subClauseMatches: [r.piece as lib.MatchResult]),
                   _chosen)
             ];
       // Stored even mid-growth: the key retires it the moment the body's
@@ -933,6 +1046,11 @@ class Terminal extends Clause {
         ? null
         : _Reading(pos + m.len, 0, 0, picky ? m.len : 0, _chosen, piece: m);
   }
+
+  // A terminal's plain answer never depends on the budget, so it is the
+  // same direct character test.
+  @override
+  _Reading? plainReading(Squirrel e, int pos) => cleanReading(e, pos);
 
   @override
   List<_Reading> findReadings(Squirrel e, int pos) {
@@ -1198,9 +1316,17 @@ class Squirrel {
       if (!identical(cell, home)) _zeroFill = true;
       do {
         var improved = false;
-        final proposed = clause.proposeReadings(this, pos);
-        for (var i = 0; i < proposed.length; i++) {
-          if (cell.add(proposed[i])) improved = true;
+        // A zero fill runs the plain parse (crossSeed never fills: a
+        // growing home returned its seed above), a costed fill the
+        // repair search; the cell judges both the same way.
+        if (zero) {
+          final r = clause.proposePlain(this, pos);
+          if (r != null && cell.add(r)) improved = true;
+        } else {
+          final proposed = clause.proposeReadings(this, pos);
+          for (var i = 0; i < proposed.length; i++) {
+            if (cell.add(proposed[i])) improved = true;
+          }
         }
         if (!improved || !cell.foundLeftRec) break;
         cell.memoVersion = ++clock[pos];
@@ -1227,13 +1353,11 @@ class Squirrel {
   }
 
   /// The budget-zero serve for a filled cell: its one preferred reading,
-  /// repackaged with its chain materialized to a concrete tree (the
-  /// pieces below are already concrete -- every budget-zero consult
-  /// served concrete trees -- so this closes one level, not a deep walk).
+  /// alone. It is served as stored: a zero-fiber proposal already carries
+  /// its finished tree (see Composite), so there is nothing to translate.
   List<_Reading> _zeroOf(_RepairCell cell) {
     final r = _preferredOf(cell.readings(0));
-    if (r == null) return const [];
-    return [r._packed(_treeOf(r.piece!, r.end, keepAll: true), _chosen)];
+    return r == null ? const [] : [r];
   }
 
   /// Read a list of slots in order -- the engine of both sequences and
@@ -1298,7 +1422,8 @@ class Squirrel {
           for (var j = r.end + 1; j <= r.end + room && j <= _len; j++) {
             final parsed = slot.cleanReading(this, j);
             if (parsed == null) continue;
-            _keepBest(next, r.then(_Reading.deleting(r.end, j)).then(parsed), pos);
+            _keepBest(
+                next, r.then(_Reading.deleting(r.end, j)).then(parsed), pos);
             deletedAhead = j - r.end;
             break;
           }
@@ -1384,7 +1509,7 @@ class Squirrel {
     _round = 0;
     _budget = 0;
     _zeroFill = false;
-    final plain = _preferredOf(_topRule.body.readings(this, 0));
+    final plain = _topRule.body.plainReading(this, 0);
     if (plain != null && plain.end == _len) {
       lastCost = 0;
       return _treeOf(plain.piece!, plain.end, keepAll: true);
