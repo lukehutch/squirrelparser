@@ -35,18 +35,18 @@
 // label:
 //
 //   * WITH NO BUDGET LEFT, REPAIR IS PARSING. A budget-zero consult
-//     belongs to the plain-parse fiber (see Squirrel._zeroFiber), and its
-//     answer is the fiber's one PREFERRED reading: demotion
+//     belongs to the plain parse (see Squirrel._isPlainConsult), and its
+//     answer is the plain parse's one PREFERRED reading: demotion
 //     (Squirrel._greedyOnly) strips "the parser's own choice" status from
 //     every reading the greedy plain parser would not itself produce, so
 //     the preferred survivor IS the plain answer.
-//   * EACH FIBER OWNS ITS STORE. A budget-zero consult fills the cell's
-//     TWIN (_RepairCell.zeroTwin), never the costed cell: fill order and
-//     who-asked-first are observable through label sharing, so the
-//     fibers share machinery -- one growth loop, one version clock --
-//     but never data. Ties in a cell follow the fiber: the costed search
+//   * EACH SIDE OWNS ITS STORE. A plain consult fills the cell's TWIN
+//     (_RepairCell.plainTwin), never the costed cell: fill order and
+//     who-asked-first are observable through label sharing, so the two
+//     sides share machinery -- one growth loop, one version clock --
+//     but never data. Ties in a cell follow the side: the repair search
 //     keeps the newcomer (a later pass is better informed -- measured),
-//     the zero fiber keeps the incumbent (a fixed point discards an
+//     the plain parse keeps the incumbent (a fixed point discards an
 //     equal re-derivation).
 //   * SHARING FOLLOWS THE VIEW. Every packaged answer -- a cell's served
 //     list, a reference's labeled wrapping, the budget-zero tree wrap --
@@ -107,8 +107,8 @@ const int _unlimited = 1 << 30;
 int _min(int a, int b) => a < b ? a : b;
 
 /// A finished tree node over already-finished children -- the exact shape
-/// [Squirrel._treeOf] gives a labeled chain, built eagerly by the zero
-/// fiber's plain-parse proposals.
+/// [Squirrel._treeOf] gives a labeled chain, built eagerly by the
+/// plain-parse proposals.
 lib.MatchResult _node(lib.Clause name, int from, List<lib.MatchResult> kids) =>
     kids.isEmpty
         ? lib.Match(name, from, 0)
@@ -297,7 +297,7 @@ class _Reading {
 /// The champion map is filled LAZILY, to the highest budget any query
 /// has yet needed ([atBudget], a watermark); smaller queries are served
 /// by filtering at read time ([readings]). A budget-zero query is served
-/// the [zeroTwin]'s one PREFERRED reading alone ([zeroList]; see
+/// the [plainTwin]'s one PREFERRED reading alone ([plainServe]; see
 /// Squirrel._grow): demotion has stripped that status from everything
 /// the plain parser would not itself produce, so the zero serve IS the
 /// plain parse, run by the same machinery into the twin's own map.
@@ -308,12 +308,12 @@ class _Reading {
 /// parser's memo: cycle detection and the signal that a left-recursive
 /// cycle needs growing.
 class _RepairCell {
-  _RepairCell(this.pos, {this.zeroCell = false});
+  _RepairCell(this.pos, {this.plainCell = false});
   final int pos;
 
-  /// True for a [zeroTwin]: this cell belongs to the budget-zero fiber.
+  /// True for a [plainTwin]: this cell belongs to the plain parse.
   /// The one behavioral difference is the tie rule in [add].
-  final bool zeroCell;
+  final bool plainCell;
 
   /// Best reading per end position, in first-offer order. A plain list
   /// scanned by each reading's own `end` -- the end IS the key, so a map
@@ -323,13 +323,13 @@ class _RepairCell {
   final List<_Reading> _best = [];
   bool inRecPath = false, foundLeftRec = false, usedSeed = false;
 
-  /// The budget-zero fiber's own store. The plain parse and the costed
-  /// search run the SAME machinery, but they may not share a store: both
-  /// fill order and who-asked-first are observable through label sharing,
-  /// so each fiber gets its own cell and neither ever reads the other's
+  /// The plain parse's own store. The plain parse and the repair search
+  /// run the SAME machinery, but they may not share a store: both fill
+  /// order and who-asked-first are observable through label sharing, so
+  /// each side gets its own cell and neither ever reads the other's
   /// (see Squirrel._grow, which picks the twin whenever the budget is
   /// zero).
-  _RepairCell? zeroTwin;
+  _RepairCell? plainTwin;
   int atBudget = -1, memoVersion = 0;
 
   /// The budget-zero serve: the view's one preferred reading -- the plain
@@ -338,7 +338,7 @@ class _RepairCell {
   /// left-recursive seed below it) and never invalidated: the plain
   /// answer is a fact of the input, whatever later rounds store here,
   /// and freezing keeps every asker sharing one served object.
-  List<_Reading>? zeroList;
+  List<_Reading>? plainServe;
 
   /// The built view, cached between changes. Any budget at or above
   /// [_maxSpent] -- the most any stored reading has spent, kept
@@ -366,11 +366,11 @@ class _RepairCell {
       final holder = _best[i];
       if (holder.end != end) continue;
       final cmp = Squirrel._compare(r, holder, pos);
-      // On an exact tie the fibers differ, each way deliberate. In the
-      // costed search the NEWCOMER takes the slot (measured): tied
+      // On an exact tie the two sides differ, each way deliberate. In
+      // the costed search the NEWCOMER takes the slot (measured): tied
       // readings can differ in details the comparison cannot see, and the
       // later one -- produced by a later, better-informed pass -- is
-      // right more often. In the zero fiber the INCUMBENT keeps it: the
+      // right more often. In the plain parse the INCUMBENT keeps it: the
       // plain parse is deterministic, a growth pass's re-derivation of an
       // equal reading is the same answer re-spelled, and keeping the
       // holder keeps the view -- and every wrap keyed to its identity --
@@ -378,7 +378,7 @@ class _RepairCell {
       // parser's fixed point discards an attempt that consumed no more
       // than the last. Either way a tie reports "no improvement", or two
       // tied rivals would re-trigger each other forever.
-      if (cmp > 0 || (cmp == 0 && zeroCell)) return false;
+      if (cmp > 0 || (cmp == 0 && plainCell)) return false;
       _best[i] = r;
       _view = null;
       if (r.spent > _maxSpent) _maxSpent = r.spent;
@@ -444,7 +444,7 @@ abstract class Clause {
   /// The per-kind implementation behind [readings].
   List<_Reading> findReadings(Squirrel e, int pos);
 
-  /// The zero fiber's own consult: the plain parse of this clause at
+  /// The plain parse's own consult: this clause read plainly at
   /// [pos] -- its one preferred reading, carrying a finished tree -- or
   /// null where it cannot match plainly. The single reading travels up
   /// bare; lists exist only where readings are stored (cells and the
@@ -530,7 +530,7 @@ abstract class Composite extends Clause {
   _RepairCell? cellAt(Squirrel e, int pos) =>
       _run == e._runId ? _cells![pos] : null;
 
-  /// Inside a twin fill ([Squirrel._zeroFill]) an inline composite is
+  /// Inside a twin fill ([Squirrel._inPlainFill]) an inline composite is
   /// computed directly, with no cell: the plain parse recurses straight
   /// through a rule's body, memoized only at rule boundaries -- exactly
   /// the plain parser's own shape. (Rule bodies keep their twins: they
@@ -541,13 +541,13 @@ abstract class Composite extends Clause {
   @override
   _Reading? plainReading(Squirrel e, int pos) => pos > e._len
       ? null
-      : e._zeroFill && !isRuleBody
+      : e._inPlainFill && !isRuleBody
           ? proposePlain(e, pos)
           : Squirrel._preferredOf(e._grow(this, pos));
 
   @override
   List<_Reading> findReadings(Squirrel e, int pos) {
-    if (e._zeroFill && !isRuleBody) {
+    if (e._inPlainFill && !isRuleBody) {
       final r = proposePlain(e, pos);
       return r == null ? const [] : [r];
     }
@@ -712,11 +712,11 @@ class Repetition extends Composite {
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
     final zero = _Reading.empty(pos);
-    // A throwaway cell judges the sweep, with the zero fiber's own tie
+    // A throwaway cell judges the sweep, with the plain parse's own tie
     // rule (incumbent wins): re-deriving an equal reading is the same
     // answer re-spelled, and treating it as "no change" is what
     // terminates the sweep. [add]'s answer drives the worklist.
-    final best = _RepairCell(pos, zeroCell: true);
+    final best = _RepairCell(pos, plainCell: true);
     if (!requireOne) best.add(zero);
     var moved = <_Reading>[zero];
     while (moved.isNotEmpty) {
@@ -816,7 +816,7 @@ class Lookahead extends Composite {
   final bool expectMatch;
 
   // Plainly, "does the child match" IS the child's plain answer: in the
-  // zero fiber every serve is at most one preferred reading, so clean
+  // plain parse every serve is at most one preferred reading, so clean
   // and preferred coincide.
   @override
   _Reading? proposePlain(Squirrel e, int pos) =>
@@ -854,16 +854,16 @@ class Rule {
   /// descent, one for consults that CROSSED to zero from a costed frame.
   /// Two, not one, because each is shared under its own first-asker
   /// label.
-  List<(Object?, List<_Reading>?, List<_Reading>?)?>? _zeroWraps;
-  int _zeroRun = -1;
+  List<(Object?, List<_Reading>?, List<_Reading>?)?>? _plainWraps;
+  int _plainWrapsRun = -1;
 
-  List<(Object?, List<_Reading>?, List<_Reading>?)?> zeroWraps(Squirrel e) {
-    if (_zeroRun != e._runId) {
-      _zeroWraps = List<(Object?, List<_Reading>?, List<_Reading>?)?>.filled(
+  List<(Object?, List<_Reading>?, List<_Reading>?)?> plainWraps(Squirrel e) {
+    if (_plainWrapsRun != e._runId) {
+      _plainWraps = List<(Object?, List<_Reading>?, List<_Reading>?)?>.filled(
           e._len + 2, null);
-      _zeroRun = e._runId;
+      _plainWrapsRun = e._runId;
     }
-    return _zeroWraps!;
+    return _plainWraps!;
   }
 }
 
@@ -890,12 +890,12 @@ class RuleRef extends Clause {
     // larger construct, from round zero on), or at the CROSSING where a
     // costed frame's remaining budget first hits zero (a spent chain's
     // next slot, a delete-ahead probe). Both wrap the same served tree.
-    if (e._zeroFiber(pos)) {
-      final wraps = rule.zeroWraps(e);
+    if (e._isPlainConsult(pos)) {
+      final wraps = rule.plainWraps(e);
       // The body's zero answer: the frozen serve if there is one, else a
       // live consult (which creates and fills the body twin).
       var c = rule.body.cellAt(e, pos);
-      final raw = c?.zeroList ?? rule.body.readings(e, pos);
+      final raw = c?.plainServe ?? rule.body.readings(e, pos);
       // The consult above may have just created the cell.
       c ??= rule.body.cellAt(e, pos);
       // The content key: the wraps are current exactly while the answer
@@ -908,11 +908,11 @@ class RuleRef extends Clause {
       // inner rule's wrap, already view-keyed one level down: the list
       // itself is the key.
       final Object? key =
-          c != null ? c.zeroTwin?._view : (rule.body is RuleRef ? raw : null);
+          c != null ? c.plainTwin?._view : (rule.body is RuleRef ? raw : null);
       final have = wraps[pos];
       final current = have != null && identical(have.$1, key);
       if (current) {
-        final out = e._zeroFill ? have.$2 : have.$3;
+        final out = e._inPlainFill ? have.$2 : have.$3;
         if (out != null) return out;
       }
       final r = Squirrel._preferredOf(raw);
@@ -930,7 +930,7 @@ class RuleRef extends Clause {
       // the one built by the confirmation pass's first asker. A stale
       // record drops BOTH sides: each is rebuilt on its next ask, under
       // that asker's label.
-      wraps[pos] = e._zeroFill
+      wraps[pos] = e._inPlainFill
           ? (key, out, current ? have.$3 : null)
           : (key, current ? have.$2 : null, out);
       return out;
@@ -1116,8 +1116,9 @@ class Squirrel {
   /// Per-position version counters for left-recursion growth. Bumping a
   /// position's counter is how a growth pass tells memo entries computed
   /// against the half-grown seed to answer again (see _grow). One clock
-  /// for both fibers: their stores are disjoint, so a cross-fiber bump
-  /// can at worst force a refill that re-derives the same content.
+  /// for both the plain and the costed stores: they are disjoint, so a
+  /// bump from the other side can at worst force a refill that
+  /// re-derives the same content.
   List<int> _versions = const [];
 
   /// Set when the reading of a growing cell's seed happens; every
@@ -1131,22 +1132,23 @@ class Squirrel {
   /// consult below is part of some construct's plain parse, as opposed to
   /// the crossing where a costed frame first ran out of budget. Rule
   /// wraps are shared separately per side (see RuleRef.findReadings).
-  bool _zeroFill = false;
+  bool _inPlainFill = false;
 
   /// True inside [Clause.cleanReading]: a delete-ahead probe's whole
-  /// descent is a plain parse. Read only by [_zeroFiber], and only at the
-  /// input's end -- with input left, being at budget zero already says so.
+  /// descent is a plain parse. Read only by [_isPlainConsult], and only
+  /// at the input's end -- with input left, being at budget zero already
+  /// says so.
   bool _probing = false;
 
-  /// Whether a budget-zero consult at [pos] belongs to the plain-parse
-  /// fiber. With input left, every one does: repair is parsing, and the
-  /// consult diverts into the plain parse. At the input's end only a
-  /// consult already inside the fiber (a twin fill, a probe's descent)
-  /// stays there; a spent chain's ask at the end is answered by the
-  /// repair machinery like any costed ask, there being nothing left to
-  /// parse plainly.
-  bool _zeroFiber(int pos) =>
-      _budget == 0 && (pos < _len || _zeroFill || _probing);
+  /// Whether a budget-zero consult at [pos] belongs to the plain parse.
+  /// With input left, every one does: repair is parsing, and the consult
+  /// diverts into the plain parse. At the input's end only a consult
+  /// already parsing plainly (a twin fill, a probe's descent) stays
+  /// there; a spent chain's ask at the end is answered by the repair
+  /// machinery like any costed ask, there being nothing left to parse
+  /// plainly.
+  bool _isPlainConsult(int pos) =>
+      _budget == 0 && (pos < _len || _inPlainFill || _probing);
 
   /// The current round's repair budget (see [recover]).
   int _budget = 0;
@@ -1217,7 +1219,7 @@ class Squirrel {
   }
 
   /// Offer [r] to the best-per-end list [best]: the same judging as
-  /// [_RepairCell.add] in the costed fiber (a challenger replaces the
+  /// [_RepairCell.add] in the repair search (a challenger replaces the
   /// holder unless strictly worse -- ties go to the newcomer), without a
   /// cell around it: this runs once per candidate offer, and the cell's
   /// bookkeeping was measured to cost real time here.
@@ -1257,7 +1259,7 @@ class Squirrel {
   ///     what grew: everything else it read is indexed by position, and
   ///     growth only ever changes the growing cell itself.
   List<_Reading> _grow(Composite clause, int pos) {
-    final zero = _zeroFiber(pos);
+    final plain = _isPlainConsult(pos);
     final home = clause.cells(this)[pos] ??= _RepairCell(pos);
     // A budget-zero consult of a growing COSTED cell takes that cell's
     // seed only when it CROSSED from a costed frame straight into a
@@ -1265,21 +1267,22 @@ class Squirrel {
     // part of that growth, not a fresh plain parse. The plain parse
     // proper is independent of costed growth -- a rule body reached
     // through the divert, or anything consulted from inside a twin fill
-    // [_zeroFill], computes its plain answer in the twin as if no search
+    // [_inPlainFill], computes its plain answer in the twin as if no search
     // were running.
     final crossSeed =
-        home.inRecPath && !(zero && (_zeroFill || clause.isRuleBody));
-    // THE ZERO FIBER OWNS ITS OWN STORE. At budget zero this descent IS
-    // the plain parse; it fills and reads the cell's twin, so the two
-    // fibers never share a store. Fill order and who-asked-first are both
-    // observable (label sharing follows the view), and a zero answer
-    // carved from a costed store would wear the costed search's labels.
-    final cell = zero && !crossSeed
-        ? (home.zeroTwin ??= _RepairCell(pos, zeroCell: true))
+        home.inRecPath && !(plain && (_inPlainFill || clause.isRuleBody));
+    // THE PLAIN PARSE OWNS ITS OWN STORE. At budget zero this descent IS
+    // the plain parse; it fills and reads the cell's twin, so the plain
+    // parse and the repair search never share a store. Fill order and
+    // who-asked-first are both observable (label sharing follows the
+    // view), and a plain answer carved from a costed store would wear
+    // the costed search's labels.
+    final cell = plain && !crossSeed
+        ? (home.plainTwin ??= _RepairCell(pos, plainCell: true))
         : home;
     if (cell.inRecPath) {
       // Re-entered while being computed (the crossing above, or either
-      // fiber's own cycle): the left-recursive seed. It is read RAW -- no
+      // side's own cycle): the left-recursive seed. It is read RAW -- no
       // budget filter -- because the growth about to happen must see the
       // seed's repair-carrying readings to build on them. Reading a seed
       // also marks every computation currently on the stack as
@@ -1300,25 +1303,25 @@ class Squirrel {
     // [memoVersion] is a per-position EQUALITY stamp consulted only by
     // cells whose computation read a growing seed: a cell that read no
     // seed cannot be stale, whatever grew, and unscoping the version
-    // check was measured 13% slower. One clock serves both fibers: a
-    // cross-fiber bump can only force a refill that re-derives the same
-    // content (the plain parse is deterministic, and a zero cell keeps
-    // its incumbent on ties), so nothing observable moves.
+    // check was measured 13% slower. One clock serves both stores: a
+    // bump from the other side can only force a refill that re-derives
+    // the same content (the plain parse is deterministic, and a plain
+    // cell keeps its incumbent on ties), so nothing observable moves.
     if (!(cell.atBudget >= _budget &&
         (!cell.usedSeed || cell.memoVersion == _versions[pos]))) {
       cell.inRecPath = true;
       final outer = _seedWasRead;
-      final outerZero = _zeroFill;
+      final outerFill = _inPlainFill;
       _seedWasRead = false;
       // A twin fill is plain-parse territory: every consult below it
-      // belongs to the zero fiber (see [_zeroFill]).
-      if (!identical(cell, home)) _zeroFill = true;
+      // belongs to the plain parse (see [_inPlainFill]).
+      if (!identical(cell, home)) _inPlainFill = true;
       do {
         var improved = false;
-        // A zero fill runs the plain parse (crossSeed never fills: a
-        // growing home returned its seed above), a costed fill the
-        // repair search; the cell judges both the same way.
-        if (zero) {
+        // A plain consult fills with the plain parse (crossSeed never
+        // fills: a growing home returned its seed above), a costed
+        // consult with the repair search; the cell judges both the same.
+        if (plain) {
           final r = clause.proposePlain(this, pos);
           if (r != null && cell.add(r)) improved = true;
         } else {
@@ -1332,7 +1335,7 @@ class Squirrel {
       } while (true);
       cell.usedSeed = _seedWasRead;
       _seedWasRead = outer || _seedWasRead;
-      _zeroFill = outerZero;
+      _inPlainFill = outerFill;
       cell.inRecPath = false;
       cell.atBudget = _budget;
       cell.memoVersion = _versions[pos];
@@ -1342,19 +1345,19 @@ class Squirrel {
     // demotion having stripped that status from every reading the plain
     // parser would not produce -- alone, as a concrete tree. Frozen (on
     // the home cell, where the next consult finds it) once no live seed
-    // could still change it (see [_RepairCell.zeroList]).
+    // could still change it (see [_RepairCell.plainServe]).
     if (!identical(cell, home)) {
-      final out = home.zeroList ?? _zeroOf(cell);
-      if (!cell.usedSeed || !_seedWasRead) home.zeroList ??= out;
+      final out = home.plainServe ?? _plainServeOf(cell);
+      if (!cell.usedSeed || !_seedWasRead) home.plainServe ??= out;
       return out;
     }
     return cell.readings(_budget);
   }
 
   /// The budget-zero serve for a filled cell: its one preferred reading,
-  /// alone. It is served as stored: a zero-fiber proposal already carries
+  /// alone. It is served as stored: a plain proposal already carries
   /// its finished tree (see Composite), so there is nothing to translate.
-  List<_Reading> _zeroOf(_RepairCell cell) {
+  List<_Reading> _plainServeOf(_RepairCell cell) {
     final r = _preferredOf(cell.readings(0));
     return r == null ? const [] : [r];
   }
@@ -1505,7 +1508,7 @@ class Squirrel {
     // Round zero: the plain parse -- the same descent, run with nothing
     // to spend. If its preferred reading explains the whole input, done.
     _budget = 0;
-    _zeroFill = false;
+    _inPlainFill = false;
     final plain = _topRule.body.plainReading(this, 0);
     if (plain != null && plain.end == _len) {
       lastCost = 0;

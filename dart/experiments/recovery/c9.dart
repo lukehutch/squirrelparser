@@ -268,8 +268,8 @@ class _Reading {
 /// has yet needed ([atBudget], a watermark); smaller queries are served
 /// by filtering at read time ([readings]). Budget-zero queries never
 /// read the champion map at all -- they get exactly the plain parser's
-/// answer, cached once in [plain] (see Squirrel._grow) -- so the zero
-/// fiber is order-independent by construction.
+/// answer, cached once in [plain] (see Squirrel._grow) -- so the
+/// budget-zero serve is order-independent by construction.
 ///
 /// [atBudget] and [memoVersion] stamp when the cell was filled; the cell
 /// is only trusted while both still hold (see Squirrel._grow).
@@ -918,8 +918,7 @@ class RuleRef extends Clause {
       final m = cell.tree;
       if (m == null) return const [];
       return cell.asList ??= [
-        cell.reading ??= _Reading(
-            pos + m.len, 0, 0, e._evidenceIn(m), _chosen,
+        cell.reading ??= _Reading(pos + m.len, 0, 0, e._evidenceIn(m), _chosen,
             piece: lib.Match(source, 0, 0, subClauseMatches: [m]))
       ];
     }
@@ -1417,7 +1416,8 @@ class Squirrel {
           for (var j = r.end + 1; j <= r.end + room && j <= _len; j++) {
             final parsed = slot.cleanReading(this, j);
             if (parsed == null) continue;
-            _keepBest(next, r.then(_Reading.deleting(r.end, j)).then(parsed), pos);
+            _keepBest(
+                next, r.then(_Reading.deleting(r.end, j)).then(parsed), pos);
             deletedAhead = j - r.end;
             break;
           }
