@@ -42,7 +42,7 @@ asks only questions a human could answer.
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
 | **c9** | **0.9879** | **84.0** | **561** | 890 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
-| c10 | 0.9879 | 84.0 | 627 | 790 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+| c10 | 0.9879 | 84.0 | 616 | 785 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c8 | 0.9879 | 84.0 | 955 | 738 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
@@ -58,11 +58,13 @@ the durable number.) c9's higher line count is the price of its caches;
 c8's LOC is restated at today's normalized count (738; the 759 recorded
 earlier predates the strict-zero-fiber trim). c10 was paired against
 c9 in its own session (10 interleaved full-battery reps, 2026-08-19):
-medians 577/627, ratio 1.087 — its judgment is bit-identical to c9's,
+medians 574/616, ratio 1.073 — its judgment is bit-identical to c9's,
 so its row differs only in ms and LOC. (Its first cut measured 1.30x
 at 714 lines; the fiber split described under I119 bought the ratio
-down to ~1.09 for 76 lines.) The two are a deliberate frontier: c9
-the fast point, c10 the small point among the live engines.
+down to ~1.07-1.09 — the band this machine's noise spans — for 76
+lines, and the state-space pass under I120 gave back 5 of them.) The
+two are a deliberate frontier: c9 the fast point, c10 the small point
+among the live engines.
 
 All four rows are the FUSED engine — the full squirrel parser folded in,
 so each is self-contained and its LOC includes the whole parser (~246
@@ -397,6 +399,23 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   fiber per consult, below this VM's run-to-run noise. 714 → 790
   lines: the second face costs 76 lines and buys back most of the
   deleted parser's speed.
+- **c10, third pass** (I120): the state a variable holds is only real
+  if some read distinguishes it. A reachability audit of the engine's
+  state cross-product found two collapses and confirmed the rest is
+  load-bearing. Landed: `_round` deleted (written everywhere, read
+  only to copy into `_budget` — the ladder now loops on `_budget`
+  itself), and the per-fiber version clocks merged into ONE
+  (bit-identical, gates, ratio 1.073: a cross-fiber bump can only
+  force a refill that re-derives the same content, because the plain
+  parse is deterministic and a zero cell keeps its incumbent on ties —
+  so the stores must be disjoint but the clock need not be). Refuted
+  by the oracle: one-sided zeroWraps (769/2101 differ — `_r10`
+  compares tree labels by POINTER, so which RuleRef built a shared
+  wrap is observable; the dump text stayed identical, meaning the
+  two-sidedness exists solely to reproduce c9's first-asker choices).
+  That same mechanism analytically refutes deleting the wrap caches,
+  un-sharing refView, and merging `_probing` into `_zeroFill` (both
+  would shift wrap sides/pointers). 790 → 785 lines.
 
 ## 5. What the archived lines taught (details in the attic)
 

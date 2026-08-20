@@ -26,7 +26,7 @@
 // carried TWO engines -- a dedicated plain parser for the zero-budget
 // work, plus the costed search, with laws keeping their answers aligned.
 // c10 deletes the dedicated parser and runs the one machine at every
-// budget: 890 -> 790 lines (-11%) at a measured ~1.09x paired latency.
+// budget: 890 -> 785 lines (-12%) at a measured ~1.07-1.09x paired latency.
 // Each construct keeps two faces of one behavior: proposePlain, the
 // classic PEG parse (one preferred reading, tree built as it returns,
 // no lists between stores), and proposeReadings, the costed candidate
@@ -40,14 +40,14 @@
 //     (Squirrel._greedyOnly) strips "the parser's own choice" status from
 //     every reading the greedy plain parser would not itself produce, so
 //     the preferred survivor IS the plain answer.
-//   * EACH FIBER OWNS ITS STORE AND ITS CLOCK. A budget-zero consult
-//     fills the cell's TWIN (_RepairCell.zeroTwin), never the costed
-//     cell, and each fiber grows left recursion against its own version
-//     clock: fill order and who-asked-first are observable through label
-//     sharing, so the fibers share machinery but never data. Ties in a
-//     cell follow the fiber: the costed search keeps the newcomer (a
-//     later pass is better informed -- measured), the zero fiber keeps
-//     the incumbent (a fixed point discards an equal re-derivation).
+//   * EACH FIBER OWNS ITS STORE. A budget-zero consult fills the cell's
+//     TWIN (_RepairCell.zeroTwin), never the costed cell: fill order and
+//     who-asked-first are observable through label sharing, so the
+//     fibers share machinery -- one growth loop, one version clock --
+//     but never data. Ties in a cell follow the fiber: the costed search
+//     keeps the newcomer (a later pass is better informed -- measured),
+//     the zero fiber keeps the incumbent (a fixed point discards an
+//     equal re-derivation).
 //   * SHARING FOLLOWS THE VIEW. Every packaged answer -- a cell's served
 //     list, a reference's labeled wrapping, the budget-zero tree wrap --
 //     is cached keyed by the IDENTITY of the view it was built over,
@@ -1116,11 +1116,9 @@ class Squirrel {
   /// Per-position version counters for left-recursion growth. Bumping a
   /// position's counter is how a growth pass tells memo entries computed
   /// against the half-grown seed to answer again (see _grow). One clock
-  /// per fiber: growth in one fiber can never stale the other's cells
-  /// (their stores are disjoint), so sharing a clock would only force
-  /// spurious refills across the boundary.
-  List<int> _repairVersions = const [];
-  List<int> _zeroVersions = const [];
+  /// for both fibers: their stores are disjoint, so a cross-fiber bump
+  /// can at worst force a refill that re-derives the same content.
+  List<int> _versions = const [];
 
   /// Set when the reading of a growing cell's seed happens; every
   /// computation on the call stack at that moment depends on the seed and
@@ -1150,9 +1148,8 @@ class Squirrel {
   bool _zeroFiber(int pos) =>
       _budget == 0 && (pos < _len || _zeroFill || _probing);
 
-  /// The current search round and its repair budget (equal by
-  /// construction; see [recover]).
-  int _round = 0, _budget = 0;
+  /// The current round's repair budget (see [recover]).
+  int _budget = 0;
 
   /// Cached: the shortest document the grammar accepts (bounds the search).
   int? _minDocLen;
@@ -1291,7 +1288,7 @@ class Squirrel {
       _seedWasRead = true;
       return cell.readings();
     }
-    // TWO CLOCKS, DIFFERENT SHAPES. [atBudget] is a lazy WATERMARK,
+    // TWO STAMPS, DIFFERENT SHAPES. [atBudget] is a lazy WATERMARK,
     // compared with >=: the champion map is filled only as deep as anyone
     // has actually needed this round, and a cell filled at a bigger
     // budget serves every smaller query through the read-time filter.
@@ -1303,10 +1300,12 @@ class Squirrel {
     // [memoVersion] is a per-position EQUALITY stamp consulted only by
     // cells whose computation read a growing seed: a cell that read no
     // seed cannot be stale, whatever grew, and unscoping the version
-    // check was measured 13% slower.
-    final clock = zero ? _zeroVersions : _repairVersions;
+    // check was measured 13% slower. One clock serves both fibers: a
+    // cross-fiber bump can only force a refill that re-derives the same
+    // content (the plain parse is deterministic, and a zero cell keeps
+    // its incumbent on ties), so nothing observable moves.
     if (!(cell.atBudget >= _budget &&
-        (!cell.usedSeed || cell.memoVersion == clock[pos]))) {
+        (!cell.usedSeed || cell.memoVersion == _versions[pos]))) {
       cell.inRecPath = true;
       final outer = _seedWasRead;
       final outerZero = _zeroFill;
@@ -1329,14 +1328,14 @@ class Squirrel {
           }
         }
         if (!improved || !cell.foundLeftRec) break;
-        cell.memoVersion = ++clock[pos];
+        cell.memoVersion = ++_versions[pos];
       } while (true);
       cell.usedSeed = _seedWasRead;
       _seedWasRead = outer || _seedWasRead;
       _zeroFill = outerZero;
       cell.inRecPath = false;
       cell.atBudget = _budget;
-      cell.memoVersion = clock[pos];
+      cell.memoVersion = _versions[pos];
     }
     // WITH NO BUDGET LEFT, REPAIR IS PARSING: a twin serves its one
     // PREFERRED reading -- the plain parser's own greedy choice,
@@ -1502,11 +1501,9 @@ class Squirrel {
     _input = s;
     _len = s.length;
     _runId++;
-    _repairVersions = List<int>.filled(_len + 2, 0);
-    _zeroVersions = List<int>.filled(_len + 2, 0);
+    _versions = List<int>.filled(_len + 2, 0);
     // Round zero: the plain parse -- the same descent, run with nothing
     // to spend. If its preferred reading explains the whole input, done.
-    _round = 0;
     _budget = 0;
     _zeroFill = false;
     final plain = _topRule.body.plainReading(this, 0);
@@ -1521,8 +1518,7 @@ class Squirrel {
     final shortest = _minDocLen ??= _topRule.body.minChars(<Clause>{});
     final ceiling = shortest >= _impossible ? -1 : s.length + shortest;
     _Reading? best, fallback;
-    for (_round = 1; _round <= ceiling; _round++) {
-      _budget = _round;
+    for (_budget = 1; _budget <= ceiling; _budget++) {
       final incomplete = <_Reading>[];
       final roots = _topRule.body.readings(this, 0);
       for (var ri = 0; ri < roots.length; ri++) {
