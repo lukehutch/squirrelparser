@@ -70,11 +70,13 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
     switch (name) {
       'c8' => convertC8(rules, top).recoverCost(s),
       'c9' => convertC9(rules, top).recoverCost(s),
+      'c10' => convertC10(rules, top).recoverCost(s),
       _ => null,
     };
 
 const engines = [
   'c9',
+  'c10',
 ];
 
 void main() {

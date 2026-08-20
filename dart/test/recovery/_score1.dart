@@ -17,6 +17,7 @@ typedef Build = MatchResult? Function(String) Function(
 const Map<String, Build> engines = {
   'c8': _c8,
   'c9': _c9,
+  'c10': _c10,
 };
 
 MatchResult? Function(String) _c8(Map<String, Clause> r, String t) =>
@@ -24,6 +25,9 @@ MatchResult? Function(String) _c8(Map<String, Clause> r, String t) =>
 
 MatchResult? Function(String) _c9(Map<String, Clause> r, String t) =>
     convertC9(r, t).recover;
+
+MatchResult? Function(String) _c10(Map<String, Clause> r, String t) =>
+    convertC10(r, t).recover;
 
 Build? resolve(String name) => engines[name];
 

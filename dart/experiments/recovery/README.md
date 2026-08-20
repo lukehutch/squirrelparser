@@ -1,9 +1,10 @@
 # The recovery engine
 
 **Not part of the published library.** This directory holds the standing
-error-recovery engine and the attic of every superseded attempt.
+error-recovery engines — a two-point frontier, one fast and one small,
+same trees — and the attic of every superseded attempt.
 
-- **`c9.dart` — the engine.** Self-contained: the full squirrel parser is
+- **`c9.dart` — the fast engine.** Self-contained: the full squirrel parser is
   folded in, and the published library contributes only the interchange
   types (the grammar AST in, `MatchResult` trees out). Score 0.9879,
   84.0% perfect, ~0.6 s battery, all gates, analyzer-clean, documented
@@ -13,6 +14,14 @@ error-recovery engine and the attic of every superseded attempt.
   paired and interleaved. See `LESSONS_LEARNED.md` at the repository
   root for the yardstick, the critical lessons, and the refutation
   ledger.
+- **`c10.dart` — the small engine.** The same judgment run as ONE
+  machine: the dedicated zero-budget parser c9 carried is deleted, and
+  round zero of the costed descent IS the plain parse (three laws in the
+  file header make the collapse exact). Bit-identical trees to c9 over
+  the whole battery, all gates, analyzer parity, 890 -> 714 lines
+  (-20%) at a measured 1.30x paired latency. c9 keeps the latency
+  point; c10 is the statement that the recovery machinery costs ~700
+  lines, not two engines.
 - **`attic/`** — ~320 superseded engines and probes (the m/r/s/t/b lines
   and c1–c8), the ~900 untracked scratch probes of the campaign, the
   era-1/era-2 record (`attic/OLD_LESSONS_LEARNED.md`), the retired

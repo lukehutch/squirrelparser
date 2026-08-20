@@ -42,6 +42,7 @@ asks only questions a human could answer.
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
 | **c9** | **0.9879** | **84.0** | **561** | 890 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
+| c10 | 0.9879 | 84.0 | 735 | **714** | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c8 | 0.9879 | 84.0 | 955 | 738 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
@@ -55,7 +56,11 @@ quiet-machine run; the c7/c6 rows keep their own last measurements, so
 ms is only comparable WITHIN a measuring session — the c9:c8 ratio is
 the durable number.) c9's higher line count is the price of its caches;
 c8's LOC is restated at today's normalized count (738; the 759 recorded
-earlier predates the strict-zero-fiber trim).
+earlier predates the strict-zero-fiber trim). c10 was paired against
+c9 in its own session (6 interleaved full-battery reps, 2026-08-19):
+medians 566/735, ratio 1.30 — its judgment is bit-identical to c9's,
+so its row differs only in ms and LOC. The two are a deliberate
+frontier: c9 the fast point, c10 the small point.
 
 All four rows are the FUSED engine — the full squirrel parser folded in,
 so each is self-contained and its LOC includes the whole parser (~246
@@ -338,6 +343,33 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   (indexed loops, fold micro-shapes, terminal tweaks) measured ±5%
   with unstable sign: on this engine the representation, not the
   operations, was the lever.
+- **c10** (I117–I118): one machine at every budget. The dedicated
+  plain parser c9 still carried for the zero fiber is deleted; a
+  budget-zero consult runs the SAME costed descent with nothing to
+  spend. Three laws make the collapse exact to the tree and the label:
+  WITH NO BUDGET LEFT, REPAIR IS PARSING (the zero fiber's one
+  PREFERRED reading — greedy demotion strips "the parser's own choice"
+  from every reading the greedy parser would not produce — IS the
+  plain answer); EACH FIBER OWNS ITS STORE AND ITS CLOCK (budget-zero
+  fills the cell's twin, each fiber grows left recursion on its own
+  version clock, and ties follow the fiber: the costed search keeps
+  the newcomer, the zero fiber keeps the incumbent, because a fixed
+  point discards an equal re-derivation); SHARING FOLLOWS THE VIEW
+  (every packaged answer is cached by the identity of the view it was
+  built over, so the first asker builds it and every later asker
+  shares the same object — label sharing is observable, so this is
+  correctness, not tuning). Bit-identical trees (zero-diff dump plus a
+  node-by-node oracle over all 2101 cases), every gate exact,
+  890 → 714 lines (−20%) at a measured 1.30x paired latency — c9
+  keeps the latency point. I118 is the boundary of I116's ledger,
+  found by compressing past the knee and bisecting back: routing the
+  two per-candidate hot paths (the slot walk, the store's view build)
+  through the shared judge — an intermediate list per store, a judging
+  cell with its cache bookkeeping per offer — measured 1.18x slower
+  end to end (paired ratio 1.30 → 1.57), so those two sites inline
+  the rules the helpers state. Young allocation is nearly free; a
+  per-offer allocation plus invalidation writes in the innermost loop
+  is not just allocation.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -393,7 +425,8 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 
 ## 7. Where things live
 
-- The engine: `dart/experiments/recovery/c9.dart` — self-contained (the
+- The engines: `dart/experiments/recovery/c9.dart` (fast) and
+  `c10.dart` (small; bit-identical trees) — each self-contained (the
   full parser folded in; the published library contributes only the
   interchange types, and `lib/src` performs no recovery).
 - The harness: `dart/test/recovery/` — battery + scoring
@@ -420,7 +453,9 @@ mirrored. The logic is expression-for-expression identical.
 c9 keeps c8's names unchanged, so this map reads onto it directly; the
 c9-only additions (`_best`, `_view`, `_maxSpent`, `plain`, `asList`,
 `wrapped`, `owner`, `refSrc`/`refView`, `finish`) are documented where
-they live in `c9.dart`.
+they live in `c9.dart`. c10 keeps the same names again (its additions —
+`zeroTwin`, `_zeroFiber`, `_greedyOnly`, the fiber-split version
+clocks — are documented where they live in `c10.dart`).
 
 **Classes**
 

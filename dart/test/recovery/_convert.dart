@@ -6,6 +6,7 @@
 import 'package:squirrel_parser/squirrel_parser.dart' as lib;
 
 import '../../experiments/recovery/attic/c8.dart' as c8;
+import '../../experiments/recovery/c10.dart' as c10;
 import '../../experiments/recovery/c9.dart' as c9;
 
 /// Build a c8 engine (retired to the attic, superseded by c9; kept
@@ -99,4 +100,51 @@ c9.Squirrel convertC9(Map<String, lib.Clause> rules, String topRuleName) {
     built[e.key]!.body = node(e.value);
   }
   return c9.Squirrel(rules: built, topRuleName: topRuleName);
+}
+
+/// Build a c10 engine: c9's judgment run as ONE machine, bit-identical
+/// over the battery (see c10.dart's header). The conversion arms differ
+/// from [convertC9]'s where c10 unified classes: both lookaheads are one
+/// Lookahead, every terminal kind is one Terminal.
+c10.Squirrel convertC10(Map<String, lib.Clause> rules, String topRuleName) {
+  final defs = <String, lib.Clause>{
+    for (final e in rules.entries)
+      e.key.startsWith('~') ? e.key.substring(1) : e.key: e.value
+  };
+  final built = <String, c10.Rule>{
+    for (final name in defs.keys) name: c10.Rule(name)
+  };
+
+  c10.Clause node(lib.Clause c) {
+    if (c is lib.Ref) {
+      final rule = built[c.ruleName];
+      if (rule == null) throw ArgumentError('rule "${c.ruleName}" not found');
+      return c10.RuleRef(c, rule);
+    }
+    if (c is lib.Seq) {
+      return c10.Seq(c, [for (final s in c.subClauses) node(s)]);
+    }
+    if (c is lib.First) {
+      return c10.First(c, [for (final s in c.subClauses) node(s)]);
+    }
+    if (c is lib.Repetition) {
+      return c10.Repetition(c, node(c.subClause), c.requireOne);
+    }
+    if (c is lib.Optional) return c10.Optional(c, node(c.subClause));
+    if (c is lib.FollowedBy) return c10.Lookahead(c, node(c.subClause), true);
+    if (c is lib.NotFollowedBy) {
+      return c10.Lookahead(c, node(c.subClause), false);
+    }
+    if (c is lib.Str) return c10.Terminal(c, c.text);
+    if (c is lib.Char) return c10.Terminal(c, c.char);
+    if (c is lib.CharSet) return c10.Terminal.set(c, c.ranges, c.inverted);
+    if (c is lib.AnyChar) return c10.Terminal.set(c, const [], true);
+    if (c is lib.Nothing) return c10.Terminal(c, '');
+    throw UnsupportedError('clause kind ${c.runtimeType}');
+  }
+
+  for (final e in defs.entries) {
+    built[e.key]!.body = node(e.value);
+  }
+  return c10.Squirrel(rules: built, topRuleName: topRuleName);
 }

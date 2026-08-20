@@ -133,6 +133,7 @@ void main(List<String> argv) {
       ? argv
       : const [
           'c9',
+          'c10',
         ];
   final rulesOf = {
     for (final c in corpora) c.name: MetaGrammar.parseGrammar(c.grammar)
