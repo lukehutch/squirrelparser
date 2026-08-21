@@ -15,6 +15,7 @@
 import 'package:squirrel_parser/squirrel_parser.dart';
 
 import '../../experiments/recovery/c11.dart' as c11;
+import '../../experiments/recovery/c12.dart' as c12;
 import '_convert.dart';
 
 const negGrammar = '''
@@ -39,6 +40,7 @@ final engines = <(String, Cost)>[
   ('c9', (r, t) => convertC9(r, t).recoverCost),
   ('c10', (r, t) => convertC10(r, t).recoverCost),
   ('c11', (r, t) => c11.C11(r, t).recoverCost),
+  ('c12', (r, t) => c12.Squirrel(rules: r, topRuleName: t).recoverCost),
 ];
 
 bool pegAccepts(Map<String, Clause> rules, String top, String s) =>
