@@ -27,6 +27,7 @@
 // Usage: dart run _freespan.dart
 import 'package:squirrel_parser/squirrel_parser.dart';
 
+import '../../experiments/recovery/c11.dart' as c11;
 import '_convert.dart';
 
 /// The suffix is unmatchable, so every engine must fill it; only what happens
@@ -71,12 +72,14 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
       'c8' => convertC8(rules, top).recoverCost(s),
       'c9' => convertC9(rules, top).recoverCost(s),
       'c10' => convertC10(rules, top).recoverCost(s),
+      'c11' => c11.C11(rules, top).recoverCost(s),
       _ => null,
     };
 
 const engines = [
   'c9',
   'c10',
+  'c11',
 ];
 
 void main() {

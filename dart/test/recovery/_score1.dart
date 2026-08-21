@@ -8,6 +8,7 @@
 // imperfect case sorted worst-first.
 import 'package:squirrel_parser/squirrel_parser.dart';
 
+import '../../experiments/recovery/c11.dart' as c11;
 import 'astdiff.dart';
 import '_convert.dart';
 
@@ -18,6 +19,7 @@ const Map<String, Build> engines = {
   'c8': _c8,
   'c9': _c9,
   'c10': _c10,
+  'c11': _c11,
 };
 
 MatchResult? Function(String) _c8(Map<String, Clause> r, String t) =>
@@ -28,6 +30,10 @@ MatchResult? Function(String) _c9(Map<String, Clause> r, String t) =>
 
 MatchResult? Function(String) _c10(Map<String, Clause> r, String t) =>
     convertC10(r, t).recover;
+
+// c11 consumes the library's clause objects natively; no conversion.
+MatchResult? Function(String) _c11(Map<String, Clause> r, String t) =>
+    c11.C11(r, t).recover;
 
 Build? resolve(String name) => engines[name];
 
