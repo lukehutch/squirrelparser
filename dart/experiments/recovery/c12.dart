@@ -104,7 +104,9 @@ class _Reading {
       this.penalties = 0,
       this.endsIncomplete = false,
       this.piece,
-      this.prev});
+      this.prev,
+      int? lastDoubt})
+      : _lastDoubt = lastDoubt;
 
   /// A reading of nothing at all, standing at position [p].
   const _Reading.empty(int p) : this(p, 0, 0, 0, _chosen);
@@ -159,6 +161,15 @@ class _Reading {
   /// The reading up to the previous step.
   final _Reading? prev;
 
+  /// The input position of the LATEST repair (stored only by [then];
+  /// a single-step reading's one repair is at [firstDoubt]). With
+  /// [firstDoubt], this brackets where the trouble lies: between
+  /// otherwise equal readings the one whose trouble is confined
+  /// earliest wins -- edits clustered at the flaw beat a story that
+  /// spreads a second edit into text the input got right.
+  final int? _lastDoubt;
+  int get lastDoubt => _lastDoubt ?? (clean ? -1 : firstDoubt);
+
   /// The total repair bill: deletions, mid-document missing pieces, and
   /// ONE charge for the end of input, no matter how many required pieces
   /// the cut-off stranded. ("The document stopped" is a single fact about
@@ -207,7 +218,8 @@ class _Reading {
       endsIncomplete:
           step.endsIncomplete || (step.end == end && endsIncomplete),
       piece: step.piece,
-      prev: this);
+      prev: this,
+      lastDoubt: lastDoubt > step.lastDoubt ? lastDoubt : step.lastDoubt);
 
   /// This reading's totals under a single new piece (the chain, if any,
   /// is inside the piece, not behind it).
@@ -216,11 +228,13 @@ class _Reading {
           missingAtEnd: missingAtEnd,
           penalties: penalties,
           endsIncomplete: endsIncomplete,
-          piece: piece);
+          piece: piece,
+          lastDoubt: _lastDoubt);
 
   /// This reading carrying a finished tree [m] as its piece (used for
   /// zero-width results such as an empty optional or a lookahead).
-  _Reading withTree(lib.MatchResult m, [int rank = _chosen]) => _tagged(m, rank);
+  _Reading withTree(lib.MatchResult m, [int rank = _chosen]) =>
+      _tagged(m, rank);
 
   /// This reading wrapped under a construct's name, starting at [from].
   _Reading labeled(lib.Clause label, int from, [int rank = _chosen]) =>
@@ -232,7 +246,8 @@ class _Reading {
           penalties: penalties ?? this.penalties,
           endsIncomplete: endsIncomplete,
           piece: piece,
-          prev: prev);
+          prev: prev,
+          lastDoubt: _lastDoubt);
 
   /// A copy carrying one more penalty point.
   _Reading penalized() => _with(penalties: penalties + 1);
@@ -442,25 +457,16 @@ abstract class Clause {
   int minChars(Set<Clause> path) {
     if (!path.add(this)) return _impossible;
     final self = this;
-    var v = 0; // Optional, Lookahead, `*`
-    if (self is Seq) {
-      for (final sub in self.subClauses) {
-        final n = sub.minChars(path);
-        v = n >= _impossible || v >= _impossible ? _impossible : v + n;
-      }
-    } else if (self is First) {
-      v = _impossible;
-      for (final sub in self.subClauses) {
-        final n = sub.minChars(path);
-        if (n < v) v = n;
-      }
-    } else if (self is Repetition && self.requireOne) {
-      v = self.subClause.minChars(path);
-    } else if (self is RuleRef) {
-      v = self.rule.body.minChars(path);
-    } else if (self is Terminal) {
-      v = self.text?.length ?? 1;
-    }
+    final v = switch (self) {
+      Seq() => self.subClauses
+          .fold(0, (int a, s) => _min(_impossible, a + s.minChars(path))),
+      First() => self.subClauses
+          .fold(_impossible, (int a, s) => _min(a, s.minChars(path))),
+      Repetition() when self.requireOne => self.subClause.minChars(path),
+      RuleRef() => self.rule.body.minChars(path),
+      Terminal() => self.text?.length ?? 1,
+      _ => 0, // Optional, Lookahead, `*`
+    };
     path.remove(this);
     return v;
   }
@@ -572,7 +578,7 @@ class First extends Composite {
         // own choice" status here (the label itself goes on at the view).
         out.add(settled ? r.demoted : r);
       }
-      settled = settled || Squirrel._anyPreferred(rs);
+      settled = settled || Squirrel._farthest(rs) >= 0;
     }
     return out;
   }
@@ -589,7 +595,9 @@ class First extends Composite {
 /// what moved.) A `+` that matched nothing at all still owes one
 /// occurrence; the body's own "it was missing" readings supply that.
 class Repetition extends Composite {
-  Repetition(super.source, this.subClause, this.requireOne);
+  Repetition(super.source, Clause sub, this.requireOne) : subClause = sub {
+    if (!requireOne && sub is Terminal) sub.voluntary = true;
+  }
   final Clause subClause;
   final bool requireOne;
 
@@ -627,6 +635,16 @@ class Repetition extends Composite {
         for (var j = 0; j < steps.length; j++) {
           final step = steps[j];
           if (step.end <= r.end) continue;
+          // A repetition never REQUIRES another occurrence, so it may not
+          // manufacture one out of pure noise: a step that proved nothing
+          // and consumed only deleted characters (a bare replace) is
+          // refused. It would also mask the owed-occurrence fallback
+          // below, whose zero-width reading is the left-recursive seed.
+          if (step.evidence == 0 &&
+              step.missing == 0 &&
+              step.end - r.end == step.deleted) {
+            continue;
+          }
           final longer = r.then(step);
           final slot = Squirrel._indexOfEnd(best, longer.end);
           if (slot < 0) {
@@ -672,14 +690,11 @@ class Optional extends Composite {
   @override
   List<_Reading> proposeReadings(Squirrel e, int pos) {
     final rs = subClause.readings(e, pos);
-    final out = <_Reading>[
+    return [
       _Reading.empty(pos).withTree(lib.Match(source, pos, 0),
-          Squirrel._anyPreferred(rs) ? _clean : _chosen)
+          Squirrel._farthest(rs) >= 0 ? _clean : _chosen),
+      for (var i = 0; i < rs.length; i++) rs[i].labeled(source, pos),
     ];
-    for (var i = 0; i < rs.length; i++) {
-      out.add(rs[i].labeled(source, pos));
-    }
-    return out;
   }
 
   @override
@@ -778,7 +793,6 @@ class RuleRef extends Clause {
   RuleRef(super.source, this.rule);
   final Rule rule;
 
-
   @override
   lib.MatchResult? match(Squirrel e, int pos) {
     if (pos > e._len) return null;
@@ -796,8 +810,8 @@ class RuleRef extends Clause {
   _Reading? _pack(Squirrel e, _ParseCell cell, int pos) {
     final m = cell.tree;
     if (m == null) return null;
-    return cell.reading ??= _Reading(pos + m.len, 0, 0, e._evidenceIn(m),
-        _chosen,
+    return cell.reading ??= _Reading(
+        pos + m.len, 0, 0, e._evidenceIn(m), _chosen,
         piece: lib.Match(source, 0, 0, subClauseMatches: [m]));
   }
 
@@ -875,6 +889,14 @@ class Terminal extends Clause with _PerPos<Object> {
       : text = null,
         chars = const [];
   final String? text;
+
+  /// True when this terminal is the whole body of a zero-minimum
+  /// repetition (typically whitespace). Its matches count no evidence:
+  /// a character the grammar accepts in any number, including none,
+  /// could be consumed by EVERY reading, so consuming it distinguishes
+  /// nothing -- and rewarding it lets a dishonest reading buy a tie-
+  /// breaking point by rearranging edits around a space.
+  bool voluntary = false;
   final List<(int, int)> ranges;
   final bool inverted;
 
@@ -934,11 +956,10 @@ class Terminal extends Clause with _PerPos<Object> {
     var v = a[pos];
     if (v == null) {
       final m = match(e, pos);
+      final ev = picky && !voluntary && m != null ? m.len : 0;
       v = a[pos] = m == null
           ? _noMatch
-          : <_Reading>[
-              _Reading(pos + m.len, 0, 0, picky ? m.len : 0, _chosen, piece: m)
-            ];
+          : <_Reading>[_Reading(pos + m.len, 0, 0, ev, _chosen, piece: m)];
     }
     return v is List<_Reading> && !v[0].endsIncomplete ? v[0] : null;
   }
@@ -960,7 +981,7 @@ class Terminal extends Clause with _PerPos<Object> {
     // (so it is recomputed per consult and the slot stays _noMatch).
     if (chars.isNotEmpty) {
       return e._bestPerEnd(
-          e._readSlots(chars, source, pos, insideLiteral: true), pos);
+          e._readSlots(chars, source, pos), pos);
     }
     return v is List<_Reading>
         ? v
@@ -969,7 +990,7 @@ class Terminal extends Clause with _PerPos<Object> {
                 missingAtEnd: pos == e._len ? 1 : 0,
                 endsIncomplete: true,
                 piece: lib.Match(source, pos, 0,
-                    subClauseMatches: [lib.SyntaxError(pos: pos, len: 0)]))
+                    subClauseMatches: [lib.SyntaxError(pos: pos, len: 0)])),
           ]);
   }
 }
@@ -986,7 +1007,8 @@ class Squirrel {
   /// shells, so rule order and cycles need no special handling. Every
   /// converted clause keeps its source clause, so the trees the engine
   /// returns are labeled with the caller's own grammar objects.
-  Squirrel({required Map<String, lib.Clause> rules, required this.topRuleName}) {
+  Squirrel(
+      {required Map<String, lib.Clause> rules, required this.topRuleName}) {
     final defs = <String, lib.Clause>{
       for (final e in rules.entries)
         e.key.startsWith('~') ? e.key.substring(1) : e.key: e.value
@@ -994,10 +1016,7 @@ class Squirrel {
     this.rules = {for (final name in defs.keys) name: Rule(name)};
 
     Clause node(lib.Clause c) => switch (c) {
-          lib.Ref() => RuleRef(
-              c,
-              this.rules[c.ruleName] ??
-                  (throw ArgumentError('rule "${c.ruleName}" not found'))),
+          lib.Ref() => RuleRef(c, this.rules[c.ruleName]!),
           lib.Seq() => Seq(c, [for (final s in c.subClauses) node(s)]),
           lib.First() => First(c, [for (final s in c.subClauses) node(s)]),
           lib.Repetition() => Repetition(c, node(c.subClause), c.requireOne),
@@ -1077,7 +1096,12 @@ class Squirrel {
     if (a.preferred != b.preferred) return a.preferred ? -1 : 1;
     if (a.evidence != b.evidence) return b.evidence - a.evidence;
     if (a.firstDoubt != b.firstDoubt) return b.firstDoubt - a.firstDoubt;
-    return a.missingAtEnd - b.missingAtEnd;
+    if (a.lastDoubt != b.lastDoubt) return a.lastDoubt - b.lastDoubt;
+    if (a.missingAtEnd != b.missingAtEnd) {
+      return a.missingAtEnd - b.missingAtEnd;
+    }
+    return _min(a.deleted, a.missing + a.missingAtEnd) -
+        _min(b.deleted, b.missing + b.missingAtEnd);
   }
 
   /// The index of the reading ending at [end], or -1. Best-per-end lists
@@ -1090,17 +1114,12 @@ class Squirrel {
     return -1;
   }
 
+  static List<_Reading> _listOf(_Reading? r) => r == null ? const [] : [r];
+
   /// Whether any reading in [rs] is repair-free / the parser's own choice.
   static bool _anyClean(List<_Reading> rs) {
     for (var i = 0; i < rs.length; i++) {
       if (rs[i].clean) return true;
-    }
-    return false;
-  }
-
-  static bool _anyPreferred(List<_Reading> rs) {
-    for (var i = 0; i < rs.length; i++) {
-      if (rs[i].preferred) return true;
     }
     return false;
   }
@@ -1177,10 +1196,7 @@ class Squirrel {
     // the champion list's zero-cost view here instead would offer clean
     // but non-greedy readings the plain parser would never produce.)
     if (_budget == 0 && pos < _len) {
-      return cell.plainList ??= switch (clause.cleanReading(this, pos)) {
-        null => const [],
-        final r => [r],
-      };
+      return cell.plainList ??= _listOf(clause.cleanReading(this, pos));
     }
     // TWO CLOCKS, DIFFERENT SHAPES. [atBudget] is a lazy WATERMARK,
     // compared with >=: the champion list is filled only as deep as anyone
@@ -1230,11 +1246,10 @@ class Squirrel {
   ///      stands, skip characters -- charged one each -- up to the FIRST
   ///      position where the plain parser can read the slot, and reuse
   ///      that finished parse whole. (Only as far as the budget allows.)
-  ///   3. REPLACE, inside literals only: delete exactly one character
-  ///      and also record the expected one missing, so "i\"" can be read
-  ///      as the literal "if" for a cost of two. Offering this at every
-  ///      slot was measured twice: it fixed nothing new and doubled the
-  ///      run time.
+  ///   3. REPLACE: when the slot is an exact-text terminal and the
+  ///      prefix so far is the plain parser's own reading, consume the
+  ///      one wrong character as the slot's error span -- substitution
+  ///      as a single edit. (Details at the site below.)
   ///
   /// THE PENALTY RULE. When deleting ahead was possible (some real input
   /// would have satisfied the slot for k deletions), a rival that instead
@@ -1250,8 +1265,7 @@ class Squirrel {
   ///
   /// After each slot, only the best reading per end position survives --
   /// that pruning is what keeps this whole search polynomial.
-  List<_Reading> _readSlots(List<Clause> slots, lib.Clause? label, int pos,
-      {bool insideLiteral = false}) {
+  List<_Reading> _readSlots(List<Clause> slots, lib.Clause? label, int pos) {
     // The fold state is the best-per-end list itself: extensions are
     // judged as they are produced ([_keepBest]), never collected first.
     // Demotion of non-farthest preferred readings -- which _bestPerEnd
@@ -1283,6 +1297,21 @@ class Squirrel {
             deletedAhead = j - r.end;
             break;
           }
+          // REPLACE: the slot satisfied by the one wrong character --
+          // the input had something else where the grammar required this
+          // exact text, so the character is consumed as an error span
+          // and the sequence moves on: substitution as a single edit,
+          // not delete-plus-missing at two. Offered only off a PREFERRED
+          // prefix (the substitution shape: everything before the swap
+          // parsed as the plain parser's own choice), which keeps the
+          // search from spawning replace chains out of every
+          // already-repaired partial. Exact-text slots only: an unpicky
+          // class fails only on a structural delimiter, and a charset's
+          // replace was measured to win nothing.
+          if (r.preferred && r.spent < _budget && r.end < _len &&
+              slot is Terminal && slot.text != null) {
+            _keepBest(next, r.then(_Reading.deleting(r.end, r.end + 1)), pos);
+          }
         }
         final seed = slot is RuleRef && slot.isGrowingAt(this, r.end);
         final penalize = deletedAhead > 0 && !seed && !slot.hasOneShape();
@@ -1297,13 +1326,6 @@ class Squirrel {
                   ? o.penalized()
                   : o),
               pos);
-        }
-        if (insideLiteral && !cleanHere && r.end < _len) {
-          final replaced = r.then(_Reading.deleting(r.end, r.end + 1));
-          final more = slot.readings(this, r.end + 1);
-          for (var k = 0; k < more.length; k++) {
-            _keepBest(next, replaced.then(more[k]), pos);
-          }
         }
       }
       if (next.isEmpty) return const [];
@@ -1325,10 +1347,16 @@ class Squirrel {
   /// the type tests.
   int _evidenceIn(lib.MatchResult m) {
     final kids = m.subClauseMatches;
+    final r = m.clause;
+    if (r is lib.Repetition && !r.requireOne && r.subClause is lib.Terminal) {
+      return 0; // a voluntary terminal's span: see Terminal.voluntary
+    }
     if (kids.isEmpty) {
       final c = m.clause;
       return !m.isMismatch &&
-              (c is lib.Str || c is lib.Char || (c is lib.CharSet && !c.inverted))
+              (c is lib.Str ||
+                  c is lib.Char ||
+                  (c is lib.CharSet && !c.inverted))
           ? m.len
           : 0;
     }
@@ -1424,10 +1452,10 @@ class Squirrel {
         final b = best;
         best = incomplete.fold(
             b,
-            (top, r) => _charge(r, 0) <= _charge(b, 0) &&
-                    r.evidence > top.evidence
-                ? r
-                : top);
+            (top, r) =>
+                _charge(r, 0) <= _charge(b, 0) && r.evidence > top.evidence
+                    ? r
+                    : top);
         break;
       }
       if (fallback == null && incomplete.isNotEmpty) {
