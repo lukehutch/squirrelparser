@@ -980,8 +980,7 @@ class Terminal extends Clause with _PerPos<Object> {
     // multi-character literal, whose repair search depends on the budget
     // (so it is recomputed per consult and the slot stays _noMatch).
     if (chars.isNotEmpty) {
-      return e._bestPerEnd(
-          e._readSlots(chars, source, pos), pos);
+      return e._bestPerEnd(e._readSlots(chars, source, pos), pos);
     }
     return v is List<_Reading>
         ? v
@@ -1156,9 +1155,7 @@ class Squirrel {
   List<_Reading> _bestPerEnd(List<_Reading> rs, int pos) {
     if (rs.length <= 1) return rs;
     final cell = _RepairCell(pos);
-    for (var i = 0; i < rs.length; i++) {
-      cell.add(rs[i]);
-    }
+    rs.forEach(cell.add);
     return cell.readings();
   }
 
@@ -1308,8 +1305,12 @@ class Squirrel {
           // already-repaired partial. Exact-text slots only: an unpicky
           // class fails only on a structural delimiter, and a charset's
           // replace was measured to win nothing.
-          if (r.preferred && r.spent < _budget && r.end < _len &&
-              slot is Terminal && slot.text != null) {
+          if (r.preferred &&
+              r.spent < _budget &&
+              r.end < _len &&
+              slot is Terminal &&
+              slot.text != null &&
+              _resumes(slots, s, r.end + 1)) {
             _keepBest(next, r.then(_Reading.deleting(r.end, r.end + 1)), pos);
           }
         }
@@ -1341,6 +1342,22 @@ class Squirrel {
     return out;
   }
 
+  /// True when the sequence can carry on from [at], the position just
+  /// after a wrong character was consumed in place of slot [s]: some
+  /// later slot reads cleanly there and proves something, or the
+  /// sequence simply ends. A swap the rest of the sequence cannot read
+  /// from is not a substitution, it is a guess -- and every such guess
+  /// opens a position the search would never otherwise visit, which is
+  /// what made this repair expensive when it was offered unconditionally.
+  bool _resumes(List<Clause> slots, int s, int at) {
+    for (var i = s + 1; i < slots.length; i++) {
+      final n = slots[i].cleanReading(this, at);
+      if (n == null || n.end > at) return n != null;
+      at = n.end;
+    }
+    return true;
+  }
+
   /// Count the characters in tree [m] that were matched by picky
   /// terminals (see [Terminal.picky]) -- the evidence a finished subtree
   /// contributes. This is the one walk over library-typed trees, hence
@@ -1353,10 +1370,8 @@ class Squirrel {
     }
     if (kids.isEmpty) {
       final c = m.clause;
-      return !m.isMismatch &&
-              (c is lib.Str ||
-                  c is lib.Char ||
-                  (c is lib.CharSet && !c.inverted))
+      if (m.isMismatch) return 0;
+      return c is lib.Str || c is lib.Char || (c is lib.CharSet && !c.inverted)
           ? m.len
           : 0;
     }
