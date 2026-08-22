@@ -651,7 +651,10 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | The same tax priced only on grammar-literal failures | 0.9859 / 83.4 and ~26x battery time: literal decomposition makes the tax fire per character of every multi-char literal failure |
 | Rank-suspect flags, three refinements (`litEvidence` accounting v1–v3) | 0.9843 / 0.9845 / 0.9847 — all WORSE than baseline: the flag condemns c12's own legitimate delete-quote-and-reassociate account; collateral ≥ the ≤+0.005 gain |
 | Whole-document scope to judge swallows post-hoc | structurally blind: the swallow's absorbed span (16 chars) never exceeds the honest reading's evidence (23), so the comparison cannot separate them |
-| The swallow family itself (charge-1 escape substitution opens a fake string whose `[^"\\]` swallows a member) | worth ≤ +0.005 total; the ladder stops at b=1 so the honest 2-edit reading never competes. Refuted as ATTACKABLE, not as real — see the four rows above |
+| The swallow family itself (charge-1 escape substitution opens a fake string whose `[^"\\]` swallows a member) | RE-DIAGNOSED 2026-08-22 (see §6c): the winning accounts are usually TRUE minimum-cost readings the yardstick penalizes — e.g. deleting one letter makes `""` a legal key at cost 1 where the human's repair costs 2. Not engine failure |
+| Hold the ladder one extra rung past first admission, so costlier rivals reach the root | On all four worst json cases the extra rung's root frontier held only same-key duplicates of the winner — no honest rival exists AT THE ROOT at any single extra rung's depth |
+| Retain exact-seven-key ties beside cell holders (cap 3/end), letting composition see both | As an engine change: WORSE (imperfect 298→330, mean 0.9896). As measurement: even a PERFECT offline oracle judging every collected candidate reaches only 0.9908 (+0.0012); 12 expr-deletion cases hold a perfect reading the comparator cannot see |
+| Price deleted input above inserted text (destruction worse than invention), weights 2 and 3 | 0.9824 / 0.9656 vs 0.9899 — asymmetric pricing collapses insertion AND substitution categories too. Symmetric per-character pricing is strongly optimal under this yardstick |
 
 ## 6b. The mechanism-A autopsy (json string-swallow, 2026-08-22)
 
@@ -684,6 +687,36 @@ edits — counterfactual information that does not exist in the reading's
 own totals. Any detector built from totals prices honest repairs too.
 A correct signal would need to enumerate the alternative edits, which is
 the search itself.
+
+### §6c. The ceiling measurements (2026-08-22)
+
+Three probes bounded what ANY engine under this objective can score:
+
+1. **Extra-rung enumeration**: holding the ladder past first admission
+   on the four worst json cases surfaced no rival — the winner's keys
+   were duplicated, not challenged. The horizon is not hiding better
+   readings one rung up.
+2. **Tie-retention + oracle judgment**: keeping every exact-tie reading
+   alive through composition and judging all collected complete
+   admissions offline: 71 of 330 imperfect cases have a better candidate
+   in hand, 12 hold a perfect one; a perfect oracle over the sets scores
+   0.9908 vs 0.9896 chosen. That +0.0012 is the ENTIRE headroom of
+   arrival-order tie resolution — and it is reachable only with
+   knowledge outside the readings (an oracle), so no engine rule can
+   take it without pricing something in.
+3. **Asymmetric pricing** (deletion costs more than insertion): refuted
+   hard (−0.0075 at weight 2). The yardstick rewards structure, but
+   symmetric per-character pricing is still the right objective.
+
+And the re-diagnosis that closes the family: inspecting the worst json
+cases directly shows the engine returning TRUE minimum-cost accounts.
+`{...,"bc":[2,33,tru],d":{...}}` → deleting `d` makes `""` a legal key:
+one deletion where the human repair needs two insertions. The battery's
+expectation is frequently unreachable at the engine's cost — the residual
+there is the yardstick asking for structure the edit metric does not
+price, not an engine defect. Under this objective and this yardstick,
+c13 sits within about +0.001 of the measurable optimum; further gains
+require changing what is priced, not how the search runs.
 
 ## 7. Where things live
 
