@@ -903,11 +903,11 @@ class Terminal extends Clause with _PerPos<Object> {
   /// A failing multi-character literal is treated as a SEQUENCE of its
   /// characters and run through the general slot machinery: that yields
   /// partial prefixes ("tru" + one missing), deletions inside it, and
-  /// the replace repair (wrong character deleted AND right one recorded
-  /// missing) with no special alignment code. (Giving literals their own
-  /// memo cells was measured: identical results, a quarter slower -- the
-  /// cell ceremony on every literal that MATCHES costs more than caching
-  /// the failures saves.)
+  /// the replace repair (one wrong character consumed in the right
+  /// one's place, a single edit) with no special alignment code.
+  /// (Giving literals their own memo cells was measured: identical
+  /// results, a quarter slower -- the cell ceremony on every literal
+  /// that MATCHES costs more than caching the failures saves.)
   final List<Clause> chars;
 
   /// Whether this terminal only accepts specific characters (a literal,
@@ -1075,7 +1075,7 @@ class Squirrel {
   /// the tree's own error count, unlike [_Reading.cost]'s single charge).
   int lastCost = 0;
 
-  /// Which of two readings is better (negative = [a] wins). Five
+  /// Which of two readings is better (negative = [a] wins). Seven
   /// tie-breakers, in order:
   ///
   ///   1. Lower total charge: repair cost, plus penalties, plus the
@@ -1083,9 +1083,16 @@ class Squirrel {
   ///   2. The plain parser's own reading beats any rival.
   ///   3. More evidence: the reading that PROVED more characters.
   ///   4. Later first doubt: the reading that stayed faithful longer.
-  ///   5. Fewer pieces stranded at the end of the input. (Tie-breaker 1
+  ///   5. Earlier last doubt: among readings whose faith first broke at
+  ///      the same place, edits clustered at the flaw beat a story that
+  ///      spreads a second edit into text the input got right.
+  ///   6. Fewer pieces stranded at the end of the input. (Tie-breaker 1
   ///      charges the cut-off only once however big it is, so this is
   ///      where "missing two things" still beats "missing five".)
+  ///   7. Fewer implied mismatches: min(deleted, missing) pairs up
+  ///      deletions with absences, each pair a tacit claim the input
+  ///      held one thing where the grammar required another; edits of
+  ///      one kind are the plainer story.
   static int _charge(_Reading r, int pos) =>
       r.cost + r.penalties + r.absorbPenalty(pos);
 

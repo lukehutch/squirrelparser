@@ -63,7 +63,7 @@
 \orcid{0000-0002-2937-8619}
 
 \begin{abstract}
-The \emph{squirrel parsing algorithm} extends packrat parsing to directly support all forms of left recursion: direct, indirect, input-dependent, and interwoven left-recursive cycles, to any degree of complexity. The extension consists of adding three metadata fields to each memo table entry and an expansion loop to the memo-table access function, and it reduces exactly to standard packrat parsing whenever no left-recursive cycle is encountered, so its cost on non-left-recursive grammars is negligible. For left-recursive grammars, parsing time remains linear in the length of the input whenever the expansion regions of left-recursive cycles are disjoint, a condition satisfied by every practical grammar we examined; we exhibit an adversarial grammar, nesting syntactic lookahead over a left-recursive rule, for which the algorithm (in common with prior bounded-left-recursion approaches) requires quadratic time. This paper also introduces an error recovery algorithm for PEG parsing that keeps the parser intact and runs the same recursive descent a second time in a costed form: every clause returns a set of candidate \emph{readings} of the input, each pricing the characters it deletes as noise and the required constructs it records as missing, and for each clause, position, and end position only the best-priced reading survives. The search deepens a repair budget one edit at a time and stops at the first budget at which some reading explains the entire input, so recovery returns a complete parse tree over the unmodified input, with damage confined to explicit syntax-error marks, at minimum cost under a stated five-part comparison. The recovery never invents characters: text the grammar requires but the input lacks is reported as missing, never spelled, which is also what keeps the objective tractable, since we prove that exact minimum-distance repair with invented text is NP-hard for PEGs, and that any efficient compositional repairer must carry set-valued summaries. Left recursion is handled inside recovery by the same seed-growing mechanism the parser itself uses. Over an exhaustive mutation battery of 2{,}101 damaged documents across three grammars, including a left-recursive expression grammar, recovery restored the exact tree skeleton a reader of the undamaged document would expect in 84.0\% of cases, with a mean skeleton similarity of 0.988, at about a third of a millisecond per document; valid inputs pay nothing, because the plain parse is the search's own zeroth round.
+The \emph{squirrel parsing algorithm} extends packrat parsing to directly support all forms of left recursion: direct, indirect, input-dependent, and interwoven left-recursive cycles, to any degree of complexity. The extension consists of adding three metadata fields to each memo table entry and an expansion loop to the memo-table access function, and it reduces exactly to standard packrat parsing whenever no left-recursive cycle is encountered, so its cost on non-left-recursive grammars is negligible. For left-recursive grammars, parsing time remains linear in the length of the input whenever the expansion regions of left-recursive cycles are disjoint, a condition satisfied by every practical grammar we examined; we exhibit an adversarial grammar, nesting syntactic lookahead over a left-recursive rule, for which the algorithm (in common with prior bounded-left-recursion approaches) requires quadratic time. This paper also introduces an error recovery algorithm for PEG parsing that keeps the parser intact and runs the same recursive descent a second time in a costed form: every clause returns a set of candidate \emph{readings} of the input, each pricing the characters it deletes as noise and the required constructs it records as missing, and for each clause, position, and end position only the best-priced reading survives. The search deepens a repair budget one edit at a time and stops at the first budget at which some reading explains the entire input, so recovery returns a complete parse tree over the unmodified input, with damage confined to explicit syntax-error marks, at minimum cost under a stated seven-part comparison. The recovery never invents characters: text the grammar requires but the input lacks is reported as missing, never spelled, which is also what keeps the objective tractable, since we prove that exact minimum-distance repair with invented text is NP-hard for PEGs, and that any efficient compositional repairer must carry set-valued summaries. Left recursion is handled inside recovery by the same seed-growing mechanism the parser itself uses. Over an exhaustive mutation battery of 2{,}101 damaged documents across three grammars, including a left-recursive expression grammar, recovery restored the exact tree skeleton a reader of the undamaged document would expect in 85.8\% of cases, with a mean skeleton similarity of 0.990, at about a third of a millisecond per document; valid inputs pay nothing, because the plain parse is the search's own zeroth round.
 \end{abstract}
 
 \begin{CCSXML}
@@ -664,24 +664,26 @@ Theorems~\ref{thm:hardness} and~\ref{thm:frontier} leave a definite corridor. Th
 Given a grammar $G$ and an input $s \notin L(G)$, a \emph{recovered parse} of $s$ is a complete parse tree over $s$ in which every character of $s$ is either consumed by an ordinary match or covered by a \emph{deletion mark}, a syntax-error node spanning characters read as noise, and in which a zero-width \emph{missing mark} stands wherever a clause required something the input does not supply. The \emph{cost} of a recovered parse is the number of characters under deletion marks, plus the number of missing marks before the end of the input, plus one if anything is missing at the end of the input.
 \end{definition}
 
-No character is ever invented. A missing mark records that, say, a digit was required, without choosing which digit; the choice is exactly what Theorem~\ref{thm:hardness} makes intractable, and a chosen digit would in any case show the user a guess. Deletion marks and missing marks correspond to the deletion and insertion operations of $d_{\mathrm{DL}}$ with insertions reported rather than performed; a wrong character is repaired as one deletion paired with one missing mark, and transpositions are not offered. The end of the input is charged once, however many required pieces the cut-off strands, because a truncated document witnesses one fact, that the text stops, and the number of obligations dangling at the cut measures the grammar's shape more than the input's damage. The engine returns a recovered parse of minimal cost under this model.
+No character is ever invented. A missing mark records that, say, a digit was required, without choosing which digit; the choice is exactly what Theorem~\ref{thm:hardness} makes intractable, and a chosen digit would in any case show the user a guess. Deletion marks and missing marks correspond to the deletion and insertion operations of $d_{\mathrm{DL}}$ with insertions reported rather than performed. Substitution is offered exactly where it chooses nothing: where the grammar spells out the required text, one wrong character may be consumed as a deletion mark standing in that text's place, a single edit whose meaning the grammar itself supplies (Section~\ref{sec:slots}). A character class names no single text a wrong character could stand for, so there the wrong character costs a deletion plus a missing mark, and transpositions are not offered. The end of the input is charged once, however many required pieces the cut-off strands, because a truncated document witnesses one fact, that the text stops, and the number of obligations dangling at the cut measures the grammar's shape more than the input's damage. The engine returns a recovered parse of minimal cost under this model.
 
 %----------------------------------------------------------------------
 \subsection{Readings and their judgment}
 \label{sec:readings}
 %----------------------------------------------------------------------
 
-The unit the costed descent manipulates is the priced counterpart of a match. A \emph{reading} of a clause at a position is one way that clause can account for a stretch of input starting there: an end position, the piece of parse tree it contributes, and a bill of five counters: \cd{del}, input characters deleted as noise; \cd{miss}, missing marks before the end of the input; \cd{missEnd}, missing marks at the end of the input; \cd{evid}, \emph{evidence}, the count of characters matched by picky terminals, literals, single characters, and non-inverted character classes, which could only have matched because the input really contains those characters (a wildcard or inverted class accepts almost anything, so its matches prove nothing); and \cd{pen}, penalty points, extra charges that make a reading lose comparisons without ever appearing in the tree or the reported cost. A reading's cost is $\cd{del} + \cd{miss} + [\cd{missEnd} > 0]$, per Definition~\ref{def:recovered}, and its \emph{absorbed} count, judged from a position $q$, is its span from $q$ minus \cd{del} minus \cd{evid}: the characters it consumed without proving anything. A reading with an empty bill is \emph{clean}; a clean reading that also makes exactly the plain parser's greedy choices is \emph{preferred}. Readings are stored as backward-linked chains of steps with the five sums carried alongside, so comparison is constant-time and only the eventual winner's chain is materialized into a tree.
+The unit the costed descent manipulates is the priced counterpart of a match. A \emph{reading} of a clause at a position is one way that clause can account for a stretch of input starting there: an end position, the piece of parse tree it contributes, and a bill of five counters: \cd{del}, input characters deleted as noise; \cd{miss}, missing marks before the end of the input; \cd{missEnd}, missing marks at the end of the input; \cd{evid}, \emph{evidence}, the count of characters matched by picky terminals, literals, single characters, and non-inverted character classes, which could only have matched because the input really contains those characters (a wildcard or inverted class accepts almost anything, so its matches prove nothing; nor do characters matched by a terminal that is the whole body of a repetition permitted to match nothing, whitespace in most grammars, since text every reading may swallow in any number distinguishes none of them); and \cd{pen}, penalty points, extra charges that make a reading lose comparisons without ever appearing in the tree or the reported cost. A reading also records \cd{doubt} and \cd{lastDoubt}, the positions of its first and its latest repair; between them they bracket where its trouble lies. A reading's cost is $\cd{del} + \cd{miss} + [\cd{missEnd} > 0]$, per Definition~\ref{def:recovered}, and its \emph{absorbed} count, judged from a position $q$, is its span from $q$ minus \cd{del} minus \cd{evid}: the characters it consumed without proving anything. A reading with an empty bill is \emph{clean}; a clean reading that also makes exactly the plain parser's greedy choices is \emph{preferred}. Readings are stored as backward-linked chains of steps with these sums carried alongside, so comparison is constant-time and only the eventual winner's chain is materialized into a tree.
 
-Reading $a$ beats reading $b$, judged from position $q$, by the first of five comparisons that differs:
+Reading $a$ beats reading $b$, judged from position $q$, by the first of seven comparisons that differs:
 \begin{enumerate}
     \item Lower total charge: cost, plus \cd{pen}, plus an \emph{absorb penalty} of one against a repaired reading whose absorbed count from $q$ exceeds its evidence. A reading that mostly swallowed the input has not explained it. The absorb penalty is recomputed from the reading's own sums at every comparison and never stored, so it cannot compound however many nesting levels judge the same span.
     \item A preferred reading beats any rival: where the input parses as it stands, the plain parser's reading is the meaning of the document.
     \item More evidence.
-    \item Later first doubt: each reading carries the position of its first repair (a minimum under chain extension), and the reading that stayed faithful to the input longer wins.
+    \item Later first doubt: \cd{doubt} combines as a minimum under chain extension, and the reading that stayed faithful to the input longer wins.
+    \item Earlier last doubt: \cd{lastDoubt} combines as a maximum, and among readings whose faith first broke at the same place, the one whose trouble is confined earliest wins, because edits clustered at the flaw beat an account that spreads a second edit into text the input got right.
     \item Fewer missing marks at the end of the input. The cost collapsed those to a single charge; the cardinality it forgot decides here, so a completion stranding two constructs beats one stranding five.
+    \item Fewer implied mismatches: the smaller of \cd{del} and $\cd{miss} + \cd{missEnd}$ is the number of deletion--absence pairs the account can be read as, each a tacit claim that the input held one thing where the grammar required another; edits of one kind are the plainer story.
 \end{enumerate}
-A tie after all five keys goes to the \emph{newest} candidate, which is deterministic because candidate generation order is; this comparison completes Definition~\ref{def:recovered}, and recovery is thereby a function of grammar and input.
+A tie after all seven keys goes to the \emph{newest} candidate, which is deterministic because candidate generation order is; this comparison completes Definition~\ref{def:recovered}, and recovery is thereby a function of grammar and input.
 
 %----------------------------------------------------------------------
 \subsection{The costed descent}
@@ -692,7 +694,7 @@ The descent mirrors Section~\ref{sec:algorithm} structurally. For every composit
 
 The search runs in rounds with a repair budget $b = 1, 2, \ldots$, and within a round a reading may accumulate $\cd{del} + \cd{miss} \le b$. The end-of-input counter is excluded from the budget: the budget is split additively down a sequence (each subclause is handed what the partial reading before it has not spent), and the end-of-input charge is idempotent, paid once for the whole parse, so admitting it into the split would re-charge it at every nesting level that touches the end of the input. It is charged globally instead, at the root, and correspondingly a terminal's missing reading is offered at the end of the input even when the budget is spent. No repair can cost more than deleting all $n$ characters and marking the shortest document the grammar accepts as missing, and that shortest length is computable from the grammar, so the ladder is bounded and recovery always terminates. The first round that produces a winner ends the search, which is what makes lightly damaged input cheap: a one-edit error is found at budget 1, whatever the worst case costs.
 
-A budget of zero is the plain parser. A reading that has spent everything can only continue by reading the input exactly as it stands, so a rule reference queried with no budget is answered directly from the plain parser's memo entry of Section~\ref{sec:algorithm}, packaged once as a preferred reading and cached in that entry. This is the single doorway between the two descents: the plain parser is consulted, never modified, which is how recovery coexists with the invariants that Section~\ref{sec:whyhard} showed error tolerance perturbs.
+A budget of zero is the plain parser. A reading that has spent everything can only continue by reading the input exactly as it stands, so a clause queried with no budget is answered directly by the plain parser of Section~\ref{sec:algorithm}, packaged once as a preferred reading and cached beside the memo entry that produced it. This is the single doorway between the two descents: the plain parser is consulted, never modified, which is how recovery coexists with the invariants that Section~\ref{sec:whyhard} showed error tolerance perturbs.
 
 Left recursion needs nothing new. A repair cell carries the same three fields as the parser's memo entry, and the same protocol runs over readings: re-entry into a cell being computed seeds the cycle, the seed is served raw, unfiltered by budget, because the growth must build on the seed's repair-carrying readings; the owning frame re-proposes until a pass improves nothing; and each growth pass bumps a per-position version, so cells computed against the half-grown seed answer again when next consulted. One refinement earns its keep: each cell records whether its computation ever read a growing seed, and only such cells consult the version, since a cell that read no seed cannot be stale, whatever grew; everything else it read is indexed by position, and growth changes only the growing cell.
 
@@ -705,32 +707,33 @@ A sequence folds its subclauses left to right over a set of partial readings, an
 \begin{enumerate}
     \item \emph{Use} $C$'s own readings at $r$'s end, computed under the budget $r$ has not spent. A terminal that matches contributes its match as a reading, with evidence equal to its length if it is picky; a terminal that cannot match contributes the zero-width reading that records it missing. Obligations therefore flow through sequencing with no separate machinery: a sequence whose third element is absent simply carries a missing mark where the third element would have begun.
     \item \emph{Delete ahead}: where $C$ has no clean reading at $r$'s end, skip characters, one deletion each and only as far as the remaining budget allows, up to the \emph{first} position at which the plain parser reads $C$; the finished parse found there is reused whole, so the skipped span is the entire price of the move.
-    \item \emph{Replace}, inside literals only. A multi-character literal that fails to match whole is itself read as a sequence of its characters by this same fold, which yields partial prefixes and interior deletions with no alignment code, and within a literal one deletion paired with the expected character's missing mark repairs a single wrong character (\cd{i"} reads as the keyword \cd{if} at cost two). The pairing is confined to literals, where the required character is known; offered at every subclause it repaired nothing further and doubled the running time.
+    \item \emph{Substitute}: where $C$ is an exact-text terminal, a literal or a single character, one wrong character may be consumed as a deletion mark standing in $C$'s place, the single-edit substitution of Section~\ref{sec:contract}. Two gates keep the move from degenerating into a guess. It is offered only when the partial reading before it is the plain parser's own, so substitutions never chain off already-repaired text; and only when the sequence \emph{resumes} just past the swap: the remaining subclauses are read with the plain parser from the next position, the first that consumes input confirms the move, a failure vetoes it, and a sequence with nothing left to read is confirmation as well. A swap the rest of the sequence cannot read from is not a substitution but a guess, and each one opens a position the search would never otherwise visit.
 \end{enumerate}
+A multi-character literal that fails to match whole is itself read as a sequence of its characters by this same fold, yielding partial prefixes, interior deletions, and single-character substitutions with no alignment code: \cd{i"} reads as the keyword \cd{if} at cost one.
 
 One rule adjudicates between moves 1 and 2 when both apply. If deleting $k$ characters ahead reached a real parse of $C$, then a rival option that stands still and declares $C$ missing, offering no evidence and carrying at least $k$ missing marks, takes one penalty point: at equal price, text read as noise beats constructs declared absent, because the noise is on the page and the absent construct is a guess. Two exemptions are load-bearing. A subclause with only one possible tree shape is exempt, because its absence is unambiguous rather than a guess; and the left-recursive seed is exempt, because the seed's missing reading is the anchor each taller spine of the growth is built on, and penalizing it suppresses the growth itself.
 
-After each subclause, only the best reading per end position survives, judged by the comparison of Section~\ref{sec:readings} applied in a transient cell. The fold therefore carries at most one reading per ending at every step, which is what keeps each round polynomial.
+After each subclause, only the best reading per end position survives, judged by the comparison of Section~\ref{sec:readings}. The fold therefore carries at most one reading per ending at every step, which is what keeps each round polynomial.
 
 %----------------------------------------------------------------------
-\subsection{Choice, repetition, optional, and lookahead}
+\subsection{The remaining operators}
 \label{sec:operators}
 %----------------------------------------------------------------------
 
 An ordered choice, matched plainly, takes its first matching alternative. Under repair every alternative contributes candidates, and one rule preserves PEG's commitment: once some alternative has read the input exactly as it stands, the choice is \emph{settled}, and a reading from a later alternative is admitted only if its evidence exceeds its absorbed count, that is, only if it proves more than it swallows, and even then without preferred status. The rule exists because a later alternative able to absorb arbitrary text, a quoted-string rule being the standard case, can otherwise buy the entire remaining document for the price of its two delimiters, re-reading a healthy committed prefix as the interior of a string; the settled test is one notch stricter than the absorb penalty (majority rather than half), because here the challenger is trying to overturn a reading the input already supports.
 
-A repetition's readings are found by a reachability sweep: from the empty reading, extend repeatedly by one occurrence of the body, keeping the best reading per end position, until nothing improves. Every stopping point is a clean reading with only the farthest preferred, so a continuation elsewhere in the grammar may stop a repetition early at no cost, and a one-or-more repetition that matched nothing owes exactly one occurrence, supplied by the body's own missing readings. An optional clause contributes its child's readings and the empty reading, the empty one keeping preferred status only where the child cannot match plainly. A lookahead consumes nothing and admits no repairs inside itself, since input accepted inside an assertion would be input the parse then refuses to consume; it asks only whether a clean reading of its body exists.
+A repetition's readings are found by a reachability sweep: from the empty reading, extend repeatedly by one occurrence of the body, keeping the best reading per end position, until nothing improves, refusing any step that proves nothing, misses nothing, and consumes only deleted characters, because a repetition never requires another occurrence and so may not manufacture one out of noise. Every stopping point is a clean reading with only the farthest preferred, so a continuation elsewhere in the grammar may stop a repetition early at no cost, and a one-or-more repetition that matched nothing owes exactly one occurrence, supplied by the body's own missing readings. An optional clause contributes its child's readings and the empty reading, the empty one keeping preferred status only where the child cannot match plainly. A lookahead consumes nothing and admits no repairs inside itself, since input accepted inside an assertion would be input the parse then refuses to consume; it asks only whether a clean reading of its body exists. A rule reference wraps the rule's name around its body's readings and refuses one kind: a repaired reading that consumed input without proving a character of it, which asserts the rule's presence on no evidence at all. A reading that consumed nothing passes, being an honest missing marker, and so does any reading of a rule with only one possible tree shape, whose presence, as in the penalty rule's exemption, is no guess.
 
 %----------------------------------------------------------------------
 \subsection{Rounds, the root, and the winner's tree}
 \label{sec:root}
 %----------------------------------------------------------------------
 
-At each budget, the top rule's readings at position 0 are judged from position 0. A reading that stops short of the end is first extended by a deletion mark spanning the unread tail, the same move as any other deletion, so no separate rule prices trailing garbage. A reading that ends \emph{incomplete}, with a required piece missing exactly at its end and input still ahead of it, is incoherent as an account of the document, and is held aside: it may displace the round's winner only if it costs no more and proves strictly more, which is what lets an unfinished genuine construct followed by noise beat a dubious construct that swallows everything; and if no budget yields a coherent winner, the best incomplete reading is returned rather than nothing. The first round with a winner ends the search.
+At each budget, the top rule's readings at position 0 are judged from position 0. A reading that stops short of the end is first extended by a deletion mark spanning the unread tail, the same move as any other deletion, so no separate rule prices trailing garbage. A repair-free reading that is not the plain parser's own is discarded at the root: the plain parser has already rejected the input, so such a reading, reachable only through choices the parser would not make, is an artifact of the search, and returning it would price a rejected document at zero. A reading that ends \emph{incomplete}, with a required piece missing exactly at its end and input still ahead of it, is incoherent as an account of the document, and is held aside: it may displace the round's winner only if it costs no more and proves strictly more, which is what lets an unfinished genuine construct followed by noise beat a dubious construct that swallows everything; and if no budget yields a coherent winner, the best incomplete reading is returned rather than nothing. The first round with a winner ends the search.
 
 The winner's chain is then folded into the output tree, with one rule about names: a construct that matched nothing at the very end of the input loses its name, because the input never reached it and naming it would assert a guess, while a zero-width construct mid-document keeps its name, the surrounding matches having proved which construct it must be. The tree's error content equals the winning reading's bill by construction, one syntax-error node per deleted span and per missing mark, so the reported cost and the returned tree cannot disagree.
 
-Figs.~\ref{fig:RecoveryCode} and~\ref{fig:RecoveryCodeSlots} give implementation-level pseudocode in the style and notation of Fig.~\ref{fig:Code}: the reading, the five-key comparison, the repair cell, and the growth loop in the first, and the sequence fold in the second. Candidate generation for the remaining operators follows the descriptions above, and the reference implementation (Section~\ref{sec:software}) is a direct transcription.
+Figs.~\ref{fig:RecoveryCode} and~\ref{fig:RecoveryCodeSlots} give implementation-level pseudocode in the style and notation of Fig.~\ref{fig:Code}: the reading, the seven-key comparison, the repair cell, and the growth loop in the first, and the sequence fold in the second. Candidate generation for the remaining operators follows the descriptions above, and the reference implementation (Section~\ref{sec:software}) is a direct transcription.
 
 \begin{figure}
 \centering
@@ -738,9 +741,12 @@ Figs.~\ref{fig:RecoveryCode} and~\ref{fig:RecoveryCodeSlots} give implementation
 \begin{lstlisting}
 class Reading(int end, int del, int miss,
     int missEnd, int evid, int doubt,
-    int pen, boolean incomplete,
+    int lastDoubt, int pen,
+    boolean incomplete,
     Object piece, Reading prev) {
   // piece: SyntaxError, Match, or Labeled
+  // lastDoubt: -1 if clean, else the
+  // site of the latest repair
   int cost()  { return del + miss
                   + (missEnd > 0 ? 1 : 0); }
   int spent() { return del + miss; }
@@ -755,6 +761,7 @@ class Reading(int end, int del, int miss,
     return new Reading(s.end, del + s.del,
         miss + s.miss, missEnd + s.missEnd,
         evid + s.evid, min(doubt, s.doubt),
+        max(lastDoubt, s.lastDoubt),
         pen + s.pen, s.incomplete
             || (s.end == end && incomplete),
         s.piece, this); }
@@ -772,13 +779,18 @@ int compare(Reading a, Reading b, int q) {
   if (a.evid != b.evid) return b.evid - a.evid;
   if (a.doubt != b.doubt)
     return b.doubt - a.doubt;
-  return a.missEnd - b.missEnd;
+  if (a.lastDoubt != b.lastDoubt)
+    return a.lastDoubt - b.lastDoubt;
+  if (a.missEnd != b.missEnd)
+    return a.missEnd - b.missEnd;
+  return min(a.del, a.miss + a.missEnd)
+      - min(b.del, b.miss + b.missEnd);
 }
 \end{lstlisting}
 \end{subfigure}
 \hspace{5mm}
 \begin{subfigure}[t]{.46\linewidth}
-\begin{lstlisting}[firstnumber=39]
+\begin{lstlisting}[firstnumber=49]
 class RepairCell {
   Map<int, Reading> bestByEnd;
   boolean inRecPath, foundLeftRec, usedSeed;
@@ -841,19 +853,20 @@ Reading[] grow(Clause c, int pos) {
 }
 \end{lstlisting}
 \end{subfigure}
-\caption{Implementation-level pseudocode for the costed descent, in the notation of Fig.~\ref{fig:Code}: the reading with its bill and derived quantities, the five-key comparison, the repair cell, and the growth loop, which serves left-recursive seeds, answers budget-zero queries from the plain parser, and validates cells by budget watermark and growth version.}
+\caption{Implementation-level pseudocode for the costed descent, in the notation of Fig.~\ref{fig:Code}: the reading with its bill and derived quantities, the seven-key comparison, the repair cell, and the growth loop, which serves left-recursive seeds, answers budget-zero queries from the plain parser, and validates cells by budget watermark and growth version.}
 \Description[Recovery pseudocode, part one]{Two columns of pseudocode: the Reading class, the Labeled class, and the compare function on the left; the RepairCell class and the grow function on the right.}
 \label{fig:RecoveryCode}
 \end{figure}
 
 \begin{figure}
 \centering
-\begin{subfigure}[t]{.6\linewidth}
-\begin{lstlisting}[firstnumber=100]
+\begin{subfigure}[t]{.46\linewidth}
+\begin{lstlisting}[firstnumber=110]
 Reading[] readSlots(Clause[] slots,
-    Clause label, int pos, boolean inLit) {
+    Clause label, int pos) {
   var cur = [Reading.empty(pos)];
-  for (var slot : slots) {
+  for (var s = 0; s < slots.length; s++) {
+    var slot = slots[s];
     var next = [];
     for (var r : cur) {
       if (r.spent() > budget) continue;
@@ -863,8 +876,8 @@ Reading[] readSlots(Clause[] slots,
       budget = whole;
       var clean = opts.any(o -> o.clean());
       var k = -1;
-      if (!clean) {         // delete ahead
-        for (var j = r.end + 1;
+      if (!clean) {
+        for (var j = r.end + 1; // delete ahead
              j <= r.end + budget - r.cost()
                  && j <= input.length; j++) {
           var p = slot.cleanReading(j);
@@ -874,21 +887,23 @@ Reading[] readSlots(Clause[] slots,
           k = j - r.end;
           break;
         }
+        if (r.preferred()       // substitute
+            && r.spent() < budget
+            && r.end < input.length
+            && slot.isExactText()
+            && resumes(slots, s, r.end + 1))
+          next.add(r.then(Reading.deleting(
+              r.end, r.end + 1)));
       }
       var pen = k > 0
           && !slot.isGrowingSeedAt(r.end)
           && !slot.hasOneShape();
-      for (var o : opts)     // use
+      for (var o : opts)        // use
         next.add(r.then(
             pen && o.end == r.end
                 && !o.clean() && k <= o.miss
             ? o.penalized() : o));
-      if (inLit && !clean
-          && r.end < input.length)
-        for (var o : slot.readings(r.end + 1))
-          next.add(r.then(Reading.deleting(
-              r.end, r.end + 1)).then(o));
-    }                        // replace
+    }
     if (next.isEmpty()) return [];
     cur = bestPerEnd(next, pos);
   }
@@ -897,8 +912,23 @@ Reading[] readSlots(Clause[] slots,
 }
 \end{lstlisting}
 \end{subfigure}
-\caption{Implementation-level pseudocode, continued from Fig.~\ref{fig:RecoveryCode}: the sequence fold, with its three repair moves (use, delete ahead, and replace inside literals) and the penalty rule.}
-\Description[Recovery pseudocode, part two]{One column of pseudocode: the readSlots function implementing the sequence fold.}
+\hspace{5mm}
+\begin{subfigure}[t]{.46\linewidth}
+\begin{lstlisting}[firstnumber=159]
+boolean resumes(Clause[] slots,
+    int s, int at) {
+  for (var i = s + 1; i < slots.length; i++) {
+    var n = slots[i].cleanReading(at);
+    if (n == null || n.end > at)
+      return n != null;
+    at = n.end;
+  }
+  return true; // the sequence simply ends
+}
+\end{lstlisting}
+\end{subfigure}
+\caption{Implementation-level pseudocode, continued from Fig.~\ref{fig:RecoveryCode}: the sequence fold, with its three repair moves (use, delete ahead, and substitute), the penalty rule, and the resumption check that gates substitution.}
+\Description[Recovery pseudocode, part two]{One column of pseudocode: the readSlots function implementing the sequence fold, and the resumes function that gates substitution.}
 \label{fig:RecoveryCodeSlots}
 \end{figure}
 
@@ -967,7 +997,7 @@ Null      <- "null";
 \label{sec:results}
 %----------------------------------------------------------------------
 
-Table~\ref{tab:battery} summarizes the sweep. Over all 2{,}101 mutants the mean skeleton similarity is 0.988, and 84.0\% of recoveries restore the expected skeleton \emph{exactly}. Truncations, which require completing arbitrarily deep construct spines and which defeat failure-point repair by construction, score highest of all classes (0.997). The whole sweep costs about 0.6 seconds of engine time, roughly a third of a millisecond per damaged document. Valid inputs pay nothing beyond the plain parse, which is the search's own zeroth round. The frontier sets of Theorem~\ref{thm:frontier} stay small in practice: over the 705{,}570 repair-cell computations of the sweep, a cell holds a mean of 1.72 readings when its computation completes, with a maximum of 52.
+Table~\ref{tab:battery} summarizes the sweep. Over all 2{,}101 mutants the mean skeleton similarity is 0.990, and 85.8\% of recoveries restore the expected skeleton \emph{exactly}. Truncations, which require completing arbitrarily deep construct spines and which defeat failure-point repair by construction, tie with substitutions, which the engine reads as single edits (Section~\ref{sec:slots}), for the highest class score (0.997). The whole sweep costs about 0.6 seconds of engine time, roughly a third of a millisecond per damaged document. Valid inputs pay nothing beyond the plain parse, which is the search's own zeroth round. The frontier sets of Theorem~\ref{thm:frontier} stay small in practice: over the 622{,}697 repair-cell computations of the sweep, a cell holds a mean of 1.71 readings when its computation completes, with a maximum of 52.
 
 The imperfect remainder is typified by damage the input cannot decide: after \cd{if (a) \{ b=1; \}} degrades to a bare \cd{i}, nothing distinguishes a truncated \cd{if} statement from an assignment to a variable whose name starts with \cd{i}, both readings cost the same, and the deterministic tie rule sometimes picks the reading the frozen expectation did not. No mutant crashes the engine, and none is left without a complete tree.
 
@@ -979,9 +1009,9 @@ Mutation class & Mutants & Mean skeleton similarity \\\midrule
 Truncation      &   525 & 0.997 \\
 Deletion        &   525 & 0.984 \\
 Insertion       &   438 & 0.993 \\
-Substitution    &   350 & 0.988 \\
-Miscellaneous   &   263 & 0.968 \\\midrule
-All             & 2{,}101 & 0.988 \qquad (84.0\% exact) \\\bottomrule
+Substitution    &   350 & 0.997 \\
+Miscellaneous   &   263 & 0.969 \\\midrule
+All             & 2{,}101 & 0.990 \qquad (85.8\% exact) \\\bottomrule
 \end{tabular}
 }
 \caption{\label{tab:battery}Recovery quality over the mutation battery: mean normalized similarity between the recovered tree skeleton and the frozen expectation, by mutation class, with the fraction of exactly restored skeletons overall.}
@@ -999,23 +1029,23 @@ An aggregate over mutants cannot enforce a hard requirement, because one violate
 \label{sec:relatedrecovery}
 %----------------------------------------------------------------------
 
-The minimum-cost objective is the classical one of Aho and Peterson~\cite{aho1972} and Lyon~\cite{lyon1974}, who realize it by augmenting a context-free grammar with error productions and parsing every input, valid or not, with an Earley-style algorithm in cubic time; their repaired parse also contains invented tokens. The present design prices deletions and absences inside a descent that runs only after the plain linear-time parse has rejected the input, never invents text, and terminates at the first budget that explains the document. Burke and Fisher~\cite{burke1987} and CPCT+~\cite{diekmann2020} repair over the parser's configuration at the failure point, at token granularity, for LL/LR automata; readings compete over the whole document here, so a repair may lie arbitrarily far before the failure frontier, as the unclosed-quote family of Section~\ref{sec:whyhard} requires, and character granularity suits scannerless PEG parsing, where no token stream exists. The labeled-failure recovery of Medeiros and Mascarenhas~\cite{medeiros2018,medeiros2020} and the permissive grammars of de Jonge et al.~\cite{dejonge2012} modify the grammar, by annotation or automatically, and characterize the recovered parse by the added rules' behavior; here the grammar is untouched and the recovered parse is characterized by Definition~\ref{def:recovered} and the five-key comparison alone. Swierstra and Duponcheel's error-correcting combinators~\cite{swierstra1996} insert and delete tokens greedily during the parse itself, which cannot weigh a cheap local correction against a better global one; the whole-document judgment exists precisely because the greedy choice is sometimes wrong (Section~\ref{sec:contract}). Tree-sitter~\cite{treesitter} recovers impressively inside a GLR framework with heuristics that carry no stated criterion; the pika parser~\cite{hutchison2020} recovers by virtue of bottom-up parsing at a large always-on constant factor. What is new here is the combination: an unmodified, memoizing, left-recursion-capable PEG parser as the zero-cost core of a priced descent whose output is a complete tree over the damaged input, with a stated cost model, a deterministic judgment, and structural guarantees checked outside the quality metric.
+The minimum-cost objective is the classical one of Aho and Peterson~\cite{aho1972} and Lyon~\cite{lyon1974}, who realize it by augmenting a context-free grammar with error productions and parsing every input, valid or not, with an Earley-style algorithm in cubic time; their repaired parse also contains invented tokens. The present design prices deletions and absences inside a descent that runs only after the plain linear-time parse has rejected the input, never invents text, and terminates at the first budget that explains the document. Burke and Fisher~\cite{burke1987} and CPCT+~\cite{diekmann2020} repair over the parser's configuration at the failure point, at token granularity, for LL/LR automata; readings compete over the whole document here, so a repair may lie arbitrarily far before the failure frontier, as the unclosed-quote family of Section~\ref{sec:whyhard} requires, and character granularity suits scannerless PEG parsing, where no token stream exists. The labeled-failure recovery of Medeiros and Mascarenhas~\cite{medeiros2018,medeiros2020} and the permissive grammars of de Jonge et al.~\cite{dejonge2012} modify the grammar, by annotation or automatically, and characterize the recovered parse by the added rules' behavior; here the grammar is untouched and the recovered parse is characterized by Definition~\ref{def:recovered} and the seven-key comparison alone. Swierstra and Duponcheel's error-correcting combinators~\cite{swierstra1996} insert and delete tokens greedily during the parse itself, which cannot weigh a cheap local correction against a better global one; the whole-document judgment exists precisely because the greedy choice is sometimes wrong (Section~\ref{sec:contract}). Tree-sitter~\cite{treesitter} recovers impressively inside a GLR framework with heuristics that carry no stated criterion; the pika parser~\cite{hutchison2020} recovers by virtue of bottom-up parsing at a large always-on constant factor. What is new here is the combination: an unmodified, memoizing, left-recursion-capable PEG parser as the zero-cost core of a priced descent whose output is a complete tree over the damaged input, with a stated cost model, a deterministic judgment, and structural guarantees checked outside the quality metric.
 
 %----------------------------------------------------------------------
 \section{Reference implementation}
 \label{sec:software}
 %----------------------------------------------------------------------
 
-An MIT-licensed reference implementation of the squirrel parser and the recovery engine is available at \url{https://github.com/lukehutch/squirrelparser}. The Dart implementation comprises the parser core, a direct transcription of Fig.~\ref{fig:Code}; a metagrammar, so grammars are written in the ASCII notation used throughout this paper; automatic conversion of parse trees to abstract syntax trees, with rules prefixed \cd{\~{}} (as \cd{WS} in Fig.~\ref{fig:JsonGrammar}) elided as syntactically transparent; and the recovery engine, a single file transcribing Sections~\ref{sec:contract} through~\ref{sec:root} and Fig.~\ref{fig:RecoveryCode}, which contains its own copy of the plain parsing algorithm and leaves the parser core untouched. The repository also carries the measurement harness behind Sections~\ref{sec:complexity} and~\ref{sec:evaluation}: the mutation battery with its frozen-expectation scoring, the four hard checks, and the performance probes, alongside the parser core's test suite.
+An MIT-licensed reference implementation of the squirrel parser and the recovery engine is available at \url{https://github.com/lukehutch/squirrelparser}. The Dart implementation comprises the parser core, a direct transcription of Fig.~\ref{fig:Code}; a metagrammar, so grammars are written in the ASCII notation used throughout this paper; automatic conversion of parse trees to abstract syntax trees, with rules prefixed \cd{\~{}} (as \cd{WS} in Fig.~\ref{fig:JsonGrammar}) elided as syntactically transparent; and the recovery engine, a single file transcribing Sections~\ref{sec:contract} through~\ref{sec:root} and Figs.~\ref{fig:RecoveryCode} and~\ref{fig:RecoveryCodeSlots}, which consumes the parser core's grammar objects directly, so recovered trees are labeled with the caller's own grammar, carries its own copy of the plain parsing algorithm, and leaves the parser core untouched. The repository also carries the measurement harness behind Sections~\ref{sec:complexity} and~\ref{sec:evaluation}: the mutation battery with its frozen-expectation scoring, the four hard checks, and the performance probes, alongside the parser core's test suite.
 
 %----------------------------------------------------------------------
 \section{Conclusion}
 \label{sec:conclusion}
 %----------------------------------------------------------------------
 
-Three metadata fields on each memo entry of a packrat parser, a recursion-path flag, a found-recursion flag, and a version stamp validated against a per-position counter, suffice to parse every form of left recursion bottom-up from the fixed point of each cycle, reducing exactly to packrat parsing when no cycle is met (Theorem~\ref{thm:reduction}), remaining linear whenever expansion regions are disjoint (Corollary~\ref{cor:linear}), and degrading, like the prior seed-growing approaches, to quadratic on an adversarial nesting of lookahead over left recursion that we exhibit and measure (Table~\ref{tab:adversarial}). Error recovery then costs one more descent: the same recursion, over priced readings instead of matches, with the same three memo fields governing left recursion in both, the plain parser serving every spent-out query unmodified, and a five-key judgment selecting one complete tree over the damaged input at minimum cost (Definition~\ref{def:recovered}). Refusing to invent text is what Theorem~\ref{thm:hardness} exacts for tractability, the set-valued repair cells are what Theorem~\ref{thm:frontier} requires of any efficient compositional search, and the measured result, 84.0\% exact structural restoration over 2{,}101 mutants of three grammars at a third of a millisecond each (Table~\ref{tab:battery}), with hard structural checks passed outside the metric, is what the fifty-year literature of in-parser recovery heuristics does not offer for recursive descent parsing.
+Three metadata fields on each memo entry of a packrat parser, a recursion-path flag, a found-recursion flag, and a version stamp validated against a per-position counter, suffice to parse every form of left recursion bottom-up from the fixed point of each cycle, reducing exactly to packrat parsing when no cycle is met (Theorem~\ref{thm:reduction}), remaining linear whenever expansion regions are disjoint (Corollary~\ref{cor:linear}), and degrading, like the prior seed-growing approaches, to quadratic on an adversarial nesting of lookahead over left recursion that we exhibit and measure (Table~\ref{tab:adversarial}). Error recovery then costs one more descent: the same recursion, over priced readings instead of matches, with the same three memo fields governing left recursion in both, the plain parser serving every spent-out query unmodified, and a seven-key judgment selecting one complete tree over the damaged input at minimum cost (Definition~\ref{def:recovered}). Refusing to invent text is what Theorem~\ref{thm:hardness} exacts for tractability, the set-valued repair cells are what Theorem~\ref{thm:frontier} requires of any efficient compositional search, and the measured result, 85.8\% exact structural restoration over 2{,}101 mutants of three grammars at a third of a millisecond each (Table~\ref{tab:battery}), with hard structural checks passed outside the metric, is what the fifty-year literature of in-parser recovery heuristics does not offer for recursive descent parsing.
 
-Three open problems follow directly. First, each budget round recomputes repair cells the previous round already filled; the version mechanism of Section~\ref{sec:purity} extends naturally to reuse across rounds, in the spirit of incremental parsing for LR~\cite{larcheveque1995} and for packrat parsers~\cite{dubroy2017}, and should reduce a multi-error document's cost toward a single priced descent. Second, the judgment's tie rules resolve genuinely ambiguous damage deterministically but blindly; surfacing the tied readings to the client, ranked by the same five keys, would let tooling present alternatives where the input cannot decide. Third, an input-independent characterization of the grammars on which left-recursive expansion is super-linear (Section~\ref{sec:expansioncost}) remains open, as does the older question of whether PEGs recognize all context-free languages~\cite{ford2004}.
+Three open problems follow directly. First, each budget round recomputes repair cells the previous round already filled; the version mechanism of Section~\ref{sec:purity} extends naturally to reuse across rounds, in the spirit of incremental parsing for LR~\cite{larcheveque1995} and for packrat parsers~\cite{dubroy2017}, and should reduce a multi-error document's cost toward a single priced descent. Second, the judgment's tie rules resolve genuinely ambiguous damage deterministically but blindly; surfacing the tied readings to the client, ranked by the same seven keys, would let tooling present alternatives where the input cannot decide. Third, an input-independent characterization of the grammars on which left-recursive expansion is super-linear (Section~\ref{sec:expansioncost}) remains open, as does the older question of whether PEGs recognize all context-free languages~\cite{ford2004}.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{squirrel_parser}
