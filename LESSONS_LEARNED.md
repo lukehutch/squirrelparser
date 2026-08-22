@@ -2,8 +2,8 @@
 
 Seventy-odd engines across six architectural lines were built, measured, and
 archived to reach the c-series: one algebra refined engine by engine, ending
-at c12 — the first to beat the long c6–c10 judgment plateau, and the only one
-that is smaller and faster than its predecessors at the same time. This file
+at c13 — which stands on c12's substitution breakthrough (the first to beat
+the long c6–c10 judgment plateau) and adds one rule of its own. This file
 records the yardstick, the standing results, the critical
 lessons, and the refutations that must not be retried. Everything else — the
 era-1/era-2 history (insights I1–I107 in long form), the last full
@@ -43,7 +43,8 @@ asks only questions a human could answer.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c12** | **0.9896** | **85.8** | **624** | **784** | all | 0.997 | 0.984 | 0.993 | **0.997** | **0.969** |
+| **c13** | **0.9899** | **85.8** | 626 | **786** | all | 0.997 | 0.985 | 0.993 | 0.997 | 0.969 |
+| c12 | 0.9896 | 85.8 | 624 | 784 | all | 0.997 | 0.984 | 0.993 | **0.997** | **0.969** |
 | c9 | 0.9879 | 84.0 | 633 | 890 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c10 | 0.9879 | 84.0 | 737 | 785 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c11 | 0.9874 | 84.7 | ~1,926,000 | 815 | all | — | — | — | — | — |
@@ -51,13 +52,14 @@ asks only questions a human could answer.
 | c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 
-**c12 is the standing engine**: it is the only row that beats the long
-c6–c10 plateau on judgment (+0.0017 score, +1.8 perfect, substitution
-0.988 → 0.997), and it does so while being the smallest and, on the
-paired clock, the fastest. Its four gate results are exact: `_accept`
-ok cx2=1 b1=1 b2=1, `_freespan` PASS, `_conf1` costs `0 1 1 0 2 3`,
-`_recommit` 16/16 — all re-run on 2026-08-21 for c9, c10, c11 and c12
-together, and all four engines pass all four.
+**c13 is the standing engine**: c12's substitution breakthrough plus one
+rule of its own (the last-slot jurisdiction exemption, §4). It beats the
+long c6–c10 plateau on judgment (+0.0020 score, +1.8 perfect) while being
+the smallest and, on the paired clock, at-or-below c9 on both input kinds.
+Its four gate results are exact: `_accept` ok cx2=1 b1=1 b2=1, `_freespan`
+PASS (probe costs identical to c12), `_conf1` costs `0 1 1 0 2 3`,
+`_recommit` 16/16 — re-run for c13 on 2026-08-22, with c9/c10/c11/c12
+all green from 2026-08-21.
 
 The c9/c10/c12 ms in the table are same-session single battery runs
 (2026-08-21); the durable numbers are the paired ones below. c11's
@@ -78,6 +80,16 @@ battery):
 | c9 | 1.000 | 1.000 |
 | c10 | 2.43x, 2.55x | 1.130x, 1.129x |
 | **c12** | **0.949x, 0.982x** | **0.977x, 0.978x** |
+| **c13** | bit-identical to c12 (0.993 head-to-head) | 1.010 vs c12 ≈ **0.98x c9** |
+
+c13's row is measured differently on purpose: a four-engine interleaved
+rotation gave unstable per-engine ratios (JIT/code-cache interference,
+lesson 21 again), so c13 was paired two-arm against c12 alone — the code
+is identical on clean input except for one boolean in a penalty rule, and
+the head-to-head confirmed it (clean c13/c12 = 0.993). The damaged
+head-to-head read 1.010; combined with c12's 0.977–0.978 that puts c13 at
+roughly 0.98x c9 on damaged input — still under on both paths, which is
+the bar.
 
 This split corrects a figure this file carried since 2026-08-19. c10's
 cost against c9 was recorded as a single blended 1.073 from full-battery
@@ -562,6 +574,20 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   condensation. Note what the score does NOT say: c12's trees are no
   longer bit-identical to c9's — that invariant ended here, deliberately,
   because c9's substitution reading was the thing being improved on.
+- **c13** (the standing engine): c12 plus one rule — the noise-vs-absence
+  penalty (a demonstrated deletion nearby prices the "something was
+  missing" reading) is EXEMPT at a sequence's LAST slot. The reason is
+  jurisdiction: at the last slot, the question of what stood there belongs
+  to the enclosing context — the parent's next slot may want exactly the
+  character the deletion would consume — and the fold cannot see that far,
+  so pricing the absence locally is a guess charged as knowledge. Net
+  +0.511 pts over 14 battery cases (10 fixed, 4 broken): 0.9899 / 85.8,
+  all four gates, clean path bit-identical, damaged 1.010 vs c12, 786
+  lines (+2). The same window attacked the OTHER half of the residual —
+  the json string-swallow family (mechanism A) — seven ways and refuted
+  the whole line (see the ledger): the swallow signal is not reliably
+  computable from reading totals at proposal time, and every detection
+  policy fired on the engine's own legitimate accounts.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -621,13 +647,50 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | `(end, guess)` as the per-end pruning key | battery timed out past 600 s (from 0.6 s): two survivors per end is not a refinement, it is a second search |
 | Gate the substitution on `slot.text?.length == 1` | holds the record score, but a reproducible ~15% slowdown on the CLEAN path in an A/B/A test, for no damaged gain — the check runs where nothing is damaged |
 | Gate the substitution on `deletedAhead < 0` | 85.7 perfect: cheaper than `_resumes` to evaluate and strictly worse at telling a swap from a guess |
+| Detect the json string-swallow from reading totals (construct-boundary tax) | 0.9893 / 85.2 + 45 uncovered: the detector fires on intermediate search chains — a chain that later resolves is not evidence |
+| The same tax priced only on grammar-literal failures | 0.9859 / 83.4 and ~26x battery time: literal decomposition makes the tax fire per character of every multi-char literal failure |
+| Rank-suspect flags, three refinements (`litEvidence` accounting v1–v3) | 0.9843 / 0.9845 / 0.9847 — all WORSE than baseline: the flag condemns c12's own legitimate delete-quote-and-reassociate account; collateral ≥ the ≤+0.005 gain |
+| Whole-document scope to judge swallows post-hoc | structurally blind: the swallow's absorbed span (16 chars) never exceeds the honest reading's evidence (23), so the comparison cannot separate them |
+| The swallow family itself (charge-1 escape substitution opens a fake string whose `[^"\\]` swallows a member) | worth ≤ +0.005 total; the ladder stops at b=1 so the honest 2-edit reading never competes. Refuted as ATTACKABLE, not as real — see the four rows above |
+
+## 6b. The mechanism-A autopsy (json string-swallow, 2026-08-22)
+
+The residual class: a single substitution inside a json string opens a
+fake string literal whose repetition `[^"\\]` then swallows the rest of
+the member — including the comma and next key — at charge 1. The honest
+reading needs two edits (close the fake string, re-open the swallowed
+one), so it costs more and loses the round race; the ladder stops at
+budget 1 and never sees it. Root dumps confirmed this exact shape.
+
+Four attack classes, all measured, all rejected:
+
+1. **Tax where the swallow is proposed** (construct-boundary or
+   grammar-literal-scoped): fires on intermediate search chains that a
+   later budget rung legitimately resolves, or per-character via literal
+   decomposition; both cost more than they fix.
+2. **Rank suspects below clean readings** (three `litEvidence`
+   refinements): cannot distinguish "this reading was reached through a
+   swap" from "this reading was reached through an honest deletion" —
+   c12's own best account for one damaged case carries the same mark.
+3. **Judge whole-document after search** (absorbed-vs-evidence): the
+   quantities do not separate — absorbed 16 < evidence 23 on the very
+   case that motivates the fix.
+4. **Let the ladder climb further**: the general latency problem, already
+   measured (c11); not a targeted fix.
+
+The durable lesson is about SIGNALS, not swallows: whether a reading is
+a swallow is a property of what its subtree COULD have been under other
+edits — counterfactual information that does not exist in the reading's
+own totals. Any detector built from totals prices honest repairs too.
+A correct signal would need to enumerate the alternative edits, which is
+the search itself.
 
 ## 7. Where things live
 
-- The engine: `dart/experiments/recovery/c12.dart` — the published
+- The engine: `dart/experiments/recovery/c13.dart` — the published
   library untouched (`lib/src` performs no recovery) plus this one
   recovery module, which consumes the library's clause objects
-  natively.
+  natively. `c12.dart` is kept as the pre-exemption reference.
 - Kept for comparison: `c9.dart` (fast) and `c10.dart` (small), each
   self-contained with the full parser folded in and each reachable only
   through `_convert.dart`'s adapters; `c11.dart` with its design
@@ -660,7 +723,8 @@ they live in `c9.dart`. c10 keeps the same names again (its additions —
 `zeroTwin`, `_zeroFiber`, `_greedyOnly`, the fiber-split version
 clocks — are documented where they live in `c10.dart`). c12 keeps them
 once more, and adds `Terminal.picky`, `_readSlots`, `_resumes`,
-`preferred` and `spent`, each documented at its definition.
+`preferred` and `spent`, each documented at its definition; c13 keeps
+c12's names unchanged (its one addition is a local boolean).
 
 **Classes**
 
