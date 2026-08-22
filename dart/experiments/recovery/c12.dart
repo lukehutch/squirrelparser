@@ -46,16 +46,21 @@
 //
 // The design decisions inherited from the c-line were each settled by
 // measurement over the mutation battery; the history and the numbers live
-// in LESSONS_LEARNED.md at the repository root.
+// in LESSONS_LEARNED.md at the repository root. The recovery half of
+// paper/squirrel_parser.tex describes exactly this engine, in the same
+// vocabulary the comments below use: readings and their bill, evidence,
+// clean and preferred, delete ahead and substitute, settled choices,
+// repair cells and budgets.
 import 'package:squirrel_parser/squirrel_parser.dart' as lib;
 
 /// Sentinel values for [_Reading.firstDoubt], both larger than any input
 /// position. A reading whose firstDoubt is a real position has a repair
-/// there; `_clean` means "no repairs, but not the plain parser's own
-/// choice"; `_chosen` means "no repairs, and this is exactly what the
-/// plain parser would do". Bigger is more trustworthy.
+/// there; `_clean` marks a CLEAN reading (no repairs, but not the plain
+/// parser's own choices); `_preferred` marks a PREFERRED one (no repairs,
+/// and exactly the plain parser's greedy choices). Bigger is more
+/// trustworthy.
 const int _clean = 1 << 30;
-const int _chosen = _clean + 1;
+const int _preferred = _clean + 1;
 
 /// "This grammar node cannot match at all" for [Clause.minChars].
 const int _impossible = 1 << 30;
@@ -109,7 +114,7 @@ class _Reading {
       : _lastDoubt = lastDoubt;
 
   /// A reading of nothing at all, standing at position [p].
-  const _Reading.empty(int p) : this(p, 0, 0, 0, _chosen);
+  const _Reading.empty(int p) : this(p, 0, 0, 0, _preferred);
 
   /// A reading that deletes the input from [f] up to [t] as noise. Its
   /// firstDoubt is f -- the deletion is exactly where it became doubtful.
@@ -132,15 +137,16 @@ class _Reading {
   /// [missing] because it is billed differently: see [cost].
   final int missingAtEnd;
 
-  /// How many input characters were matched by PICKY matchers -- literals,
-  /// exact characters, character classes -- which could only have matched
-  /// because the input really contained those characters. This is the
-  /// reading's evidence that it fits the document. (Characters consumed by
-  /// wildcards or negated classes prove nothing and do not count.)
+  /// How many input characters were matched by PICKY terminals -- literals,
+  /// exact characters, non-inverted character classes -- which could only
+  /// have matched because the input really contains those characters. This
+  /// is the reading's evidence that it fits the document. (Characters
+  /// consumed by wildcards or inverted classes prove nothing and do not
+  /// count; nor do a voluntary terminal's, see [Terminal.voluntary].)
   final int evidence;
 
   /// The input position of this reading's first repair, or a sentinel
-  /// (`_clean` / `_chosen`) if it has none. Combining readings keeps the
+  /// (`_clean` / `_preferred`) if it has none. Combining readings keeps the
   /// minimum, i.e. the earliest doubt. Used as a tie-breaker: between
   /// otherwise equal readings, the one that stayed faithful LONGER wins.
   final int firstDoubt;
@@ -165,7 +171,7 @@ class _Reading {
   /// a single-step reading's one repair is at [firstDoubt]). With
   /// [firstDoubt], this brackets where the trouble lies: between
   /// otherwise equal readings the one whose trouble is confined
-  /// earliest wins -- edits clustered at the flaw beat a story that
+  /// earliest wins -- edits clustered at the flaw beat an account that
   /// spreads a second edit into text the input got right.
   final int? _lastDoubt;
   int get lastDoubt => _lastDoubt ?? (clean ? -1 : firstDoubt);
@@ -193,7 +199,7 @@ class _Reading {
 
   /// How many characters this reading consumed WITHOUT evidence, seen
   /// from [from]: its span, minus deletions, minus evidence. These were
-  /// swallowed by loose matchers (wildcards, negated classes) that would
+  /// swallowed by loose matchers (wildcards, inverted classes) that would
   /// have accepted anything.
   int absorbed(int from) => (end - from) - deleted - evidence;
 
@@ -233,11 +239,11 @@ class _Reading {
 
   /// This reading carrying a finished tree [m] as its piece (used for
   /// zero-width results such as an empty optional or a lookahead).
-  _Reading withTree(lib.MatchResult m, [int rank = _chosen]) =>
+  _Reading withTree(lib.MatchResult m, [int rank = _preferred]) =>
       _tagged(m, rank);
 
   /// This reading wrapped under a construct's name, starting at [from].
-  _Reading labeled(lib.Clause label, int from, [int rank = _chosen]) =>
+  _Reading labeled(lib.Clause label, int from, [int rank = _preferred]) =>
       _tagged(_Labeled(label, from, this), rank);
 
   _Reading _with({int? firstDoubt, int? penalties}) =>
@@ -252,8 +258,8 @@ class _Reading {
   /// A copy carrying one more penalty point.
   _Reading penalized() => _with(penalties: penalties + 1);
 
-  /// A copy stripped of "the plain parser's own choice" status (it stays
-  /// clean if it was clean, but no longer outranks rivals on that alone).
+  /// A copy stripped of PREFERRED status (it stays clean if it was
+  /// clean, but no longer outranks rivals on that alone).
   _Reading get demoted => _with(firstDoubt: _min(firstDoubt, _clean));
 }
 
@@ -266,10 +272,10 @@ class _Reading {
 /// in insertion order, so iteration is deterministic and no sorting is
 /// ever needed.
 ///
-/// The champion list is filled LAZILY, to the highest budget any query
-/// has yet needed ([atBudget], a watermark); smaller queries are served
-/// by filtering at read time ([readings]). Budget-zero queries never
-/// read the champion list at all -- they get exactly the plain parser's
+/// The best-per-end list is filled LAZILY, to the highest budget any
+/// query has yet needed ([atBudget], a watermark); smaller queries are
+/// served by filtering at read time ([readings]). Budget-zero queries
+/// never read the list at all -- they get exactly the plain parser's
 /// answer, cached once in [plain] (see Squirrel._grow) -- so the
 /// budget-zero serve is order-independent by construction.
 ///
@@ -298,7 +304,7 @@ class _RepairCell {
 
   /// The built view, cached between changes. Any budget at or above
   /// [_maxSpent] -- the most any stored reading has spent, kept
-  /// conservatively high across replacements -- filters nothing, so ONE
+  /// conservatively high across displacements -- filters nothing, so ONE
   /// cached list serves every such query; smaller budgets (rare) build
   /// fresh. Any store invalidates it, which also gives the view a useful
   /// property: its object identity changes exactly when its content may
@@ -415,12 +421,13 @@ abstract class Clause {
   /// The plain parse at [pos] packaged as one clean reading, or null if
   /// it does not match. This is the ONE doorway through which repair
   /// work consults the plain parser -- used when the budget is spent,
-  /// and by the delete-ahead scan in _readSlots.
+  /// and by the delete-ahead scan and the resumption check ([_resumes])
+  /// in _readSlots.
   _Reading? cleanReading(Squirrel e, int pos) {
     final m = match(e, pos);
     return m == null
         ? null
-        : _Reading(pos + m.len, 0, 0, e._evidenceIn(m), _chosen, piece: m);
+        : _Reading(pos + m.len, 0, 0, e._evidenceIn(m), _preferred, piece: m);
   }
 
   /// The repair cell at [pos], if one exists for the current input.
@@ -574,8 +581,8 @@ class First extends Composite {
       for (var j = 0; j < rs.length; j++) {
         final r = rs[j];
         if (settled && !r.clean && r.absorbed(pos) >= r.evidence) continue;
-        // A later alternative under a settled choice loses its "parser's
-        // own choice" status here (the label itself goes on at the view).
+        // A later alternative under a settled choice loses PREFERRED
+        // status here (the label itself goes on at the view).
         out.add(settled ? r.demoted : r);
       }
       settled = settled || Squirrel._farthest(rs) >= 0;
@@ -625,9 +632,9 @@ class Repetition extends Composite {
     var moved = <_Reading>[zero];
     while (moved.isNotEmpty) {
       // Indices into [best] that changed this round; an index is stable
-      // (append + in-place replace only), so this is the same set, in the
-      // same first-change order, as tracking end positions. Deduplicated
-      // by a scan -- it is as tiny as the cells are.
+      // (append + in-place displacement only), so this is the same set,
+      // in the same first-change order, as tracking end positions.
+      // Deduplicated by a scan -- it is as tiny as the cells are.
       final changed = <int>[];
       for (var i = 0; i < moved.length; i++) {
         final r = moved[i];
@@ -636,8 +643,8 @@ class Repetition extends Composite {
           final step = steps[j];
           if (step.end <= r.end) continue;
           // A repetition never REQUIRES another occurrence, so it may not
-          // manufacture one out of pure noise: a step that proved nothing
-          // and consumed only deleted characters (a bare replace) is
+          // manufacture one out of noise: a step that proves nothing,
+          // misses nothing, and consumed only deleted characters is
           // refused. It would also mask the owed-occurrence fallback
           // below, whose zero-width reading is the left-recursive seed.
           if (step.evidence == 0 &&
@@ -672,9 +679,8 @@ class Repetition extends Composite {
 }
 
 /// An optional part (the grammar's `?`): its child, or nothing. The
-/// empty alternative keeps its "parser's own choice" status only if the
-/// child cannot match plainly -- the plain parser always takes the child
-/// when it can.
+/// empty alternative keeps PREFERRED status only where the child cannot
+/// match plainly -- the plain parser always takes the child when it can.
 class Optional extends Composite {
   Optional(super.source, this.subClause);
   final Clause subClause;
@@ -692,7 +698,7 @@ class Optional extends Composite {
     final rs = subClause.readings(e, pos);
     return [
       _Reading.empty(pos).withTree(lib.Match(source, pos, 0),
-          Squirrel._farthest(rs) >= 0 ? _clean : _chosen),
+          Squirrel._farthest(rs) >= 0 ? _clean : _preferred),
       for (var i = 0; i < rs.length; i++) rs[i].labeled(source, pos),
     ];
   }
@@ -767,7 +773,7 @@ class Rule with _PerPos<_ParseCell> {
     cell.inRecPath = true;
     do {
       final m = body.match(e, pos);
-      // Fixed point: a match is never replaced by a mismatch, and an
+      // Fixed point: a match is never downgraded to a mismatch, and an
       // attempt that did not consume more than the last one is no better.
       if (cell.memoVersion >= 0 &&
           (m == null || (cell.tree != null && m.len <= cell.tree!.len))) {
@@ -811,7 +817,7 @@ class RuleRef extends Clause {
     final m = cell.tree;
     if (m == null) return null;
     return cell.reading ??= _Reading(
-        pos + m.len, 0, 0, e._evidenceIn(m), _chosen,
+        pos + m.len, 0, 0, e._evidenceIn(m), _preferred,
         piece: lib.Match(source, 0, 0, subClauseMatches: [m]));
   }
 
@@ -835,10 +841,10 @@ class RuleRef extends Clause {
     }
     // Wrap the rule's name around the body's readings. One filter: a
     // repaired reading that consumed input yet proved NONE of it (no
-    // evidence) is an invention that explains nothing, and is refused --
-    // unless the rule has only one possible shape (then "it was missing"
-    // is unambiguous), or the reading consumed nothing (a pure "missing"
-    // marker, which is honest).
+    // evidence) asserts the rule's presence on no evidence at all, and
+    // is refused -- unless the rule has only one possible shape (then
+    // "it was missing" is unambiguous), or the reading consumed nothing
+    // (an honest missing marker).
     //
     // The wrapped list is cached on the body's own cell, keyed by the
     // IDENTITY of the body's view (which changes exactly when the cell
@@ -903,8 +909,9 @@ class Terminal extends Clause with _PerPos<Object> {
   /// A failing multi-character literal is treated as a SEQUENCE of its
   /// characters and run through the general slot machinery: that yields
   /// partial prefixes ("tru" + one missing), deletions inside it, and
-  /// the replace repair (one wrong character consumed in the right
-  /// one's place, a single edit) with no special alignment code.
+  /// single-character substitutions (one wrong character consumed in
+  /// the required one's place, a single edit) with no special alignment
+  /// code.
   /// (Giving literals their own memo cells was measured: identical
   /// results, a quarter slower -- the cell ceremony on every literal
   /// that MATCHES costs more than caching the failures saves.)
@@ -959,7 +966,7 @@ class Terminal extends Clause with _PerPos<Object> {
       final ev = picky && !voluntary && m != null ? m.len : 0;
       v = a[pos] = m == null
           ? _noMatch
-          : <_Reading>[_Reading(pos + m.len, 0, 0, ev, _chosen, piece: m)];
+          : <_Reading>[_Reading(pos + m.len, 0, 0, ev, _preferred, piece: m)];
     }
     return v is List<_Reading> && !v[0].endsIncomplete ? v[0] : null;
   }
@@ -1080,19 +1087,20 @@ class Squirrel {
   ///
   ///   1. Lower total charge: repair cost, plus penalties, plus the
   ///      absorb penalty judged from the comparing cell's position.
-  ///   2. The plain parser's own reading beats any rival.
+  ///   2. A PREFERRED reading -- the plain parser's own -- beats any
+  ///      rival.
   ///   3. More evidence: the reading that PROVED more characters.
   ///   4. Later first doubt: the reading that stayed faithful longer.
   ///   5. Earlier last doubt: among readings whose faith first broke at
-  ///      the same place, edits clustered at the flaw beat a story that
-  ///      spreads a second edit into text the input got right.
+  ///      the same place, edits clustered at the flaw beat an account
+  ///      that spreads a second edit into text the input got right.
   ///   6. Fewer pieces stranded at the end of the input. (Tie-breaker 1
   ///      charges the cut-off only once however big it is, so this is
   ///      where "missing two things" still beats "missing five".)
-  ///   7. Fewer implied mismatches: min(deleted, missing) pairs up
-  ///      deletions with absences, each pair a tacit claim the input
-  ///      held one thing where the grammar required another; edits of
-  ///      one kind are the plainer story.
+  ///   7. Fewer implied mismatches: min(deleted, missing + missingAtEnd)
+  ///      pairs up deletions with absences, each pair a tacit claim the
+  ///      input held one thing where the grammar required another; edits
+  ///      of one kind are the plainer story.
   static int _charge(_Reading r, int pos) =>
       r.cost + r.penalties + r.absorbPenalty(pos);
 
@@ -1122,7 +1130,7 @@ class Squirrel {
 
   static List<_Reading> _listOf(_Reading? r) => r == null ? const [] : [r];
 
-  /// Whether any reading in [rs] is repair-free / the parser's own choice.
+  /// Whether any reading in [rs] is clean (repair-free).
   static bool _anyClean(List<_Reading> rs) {
     for (var i = 0; i < rs.length; i++) {
       if (rs[i].clean) return true;
@@ -1197,15 +1205,16 @@ class Squirrel {
     // spent all its edits can only continue by reading the input as it
     // stands, so the plain parser's answer -- computed at most once per
     // cell -- is the whole answer, whatever else the cell holds. (Serving
-    // the champion list's zero-cost view here instead would offer clean
-    // but non-greedy readings the plain parser would never produce.)
+    // the best-per-end list's zero-cost view here instead would offer
+    // clean but non-greedy readings the plain parser would never produce.)
     if (_budget == 0 && pos < _len) {
       return cell.plainList ??= _listOf(clause.cleanReading(this, pos));
     }
     // TWO CLOCKS, DIFFERENT SHAPES. [atBudget] is a lazy WATERMARK,
-    // compared with >=: the champion list is filled only as deep as anyone
-    // has actually needed this round, and a cell filled at a bigger
-    // budget serves every smaller query through the read-time filter.
+    // compared with >=: the best-per-end list is filled only as deep as
+    // anyone has actually needed this round, and a cell filled at a
+    // bigger budget serves every smaller query through the read-time
+    // filter.
     // (Filling every cell at the round's full budget instead -- which
     // would also make cell content independent of who asked first -- was
     // measured 1.6x slower: most cells are only ever reached by readings
@@ -1250,7 +1259,7 @@ class Squirrel {
   ///      stands, skip characters -- charged one each -- up to the FIRST
   ///      position where the plain parser can read the slot, and reuse
   ///      that finished parse whole. (Only as far as the budget allows.)
-  ///   3. REPLACE: when the slot is an exact-text terminal and the
+  ///   3. SUBSTITUTE: when the slot is an exact-text terminal and the
   ///      prefix so far is the plain parser's own reading, consume the
   ///      one wrong character as the slot's error span -- substitution
   ///      as a single edit. (Details at the site below.)
@@ -1301,17 +1310,19 @@ class Squirrel {
             deletedAhead = j - r.end;
             break;
           }
-          // REPLACE: the slot satisfied by the one wrong character --
+          // SUBSTITUTE: the slot satisfied by the one wrong character --
           // the input had something else where the grammar required this
           // exact text, so the character is consumed as an error span
           // and the sequence moves on: substitution as a single edit,
-          // not delete-plus-missing at two. Offered only off a PREFERRED
-          // prefix (the substitution shape: everything before the swap
-          // parsed as the plain parser's own choice), which keeps the
-          // search from spawning replace chains out of every
-          // already-repaired partial. Exact-text slots only: an unpicky
-          // class fails only on a structural delimiter, and a charset's
-          // replace was measured to win nothing.
+          // not delete-plus-missing at two. Two gates keep the move from
+          // degenerating into a guess: it is offered only off a
+          // PREFERRED prefix (the substitution shape: everything before
+          // the swap parsed as the plain parser's own choice), so
+          // substitutions never chain off already-repaired text -- and
+          // only when the sequence RESUMES just past the swap (see
+          // [_resumes]). Exact-text slots only: an unpicky class fails
+          // only on a structural delimiter, and a charset's substitution
+          // was measured to win nothing.
           if (r.preferred &&
               r.spent < _budget &&
               r.end < _len &&
@@ -1392,10 +1403,10 @@ class Squirrel {
   /// Turn one piece into a tree node. A _Labeled piece walks its chain
   /// (backwards, then reversed) and puts the construct's name on -- with
   /// one exception: a construct that matched NOTHING at the very end of
-  /// the input loses its name. The input never reached it, so claiming
-  /// "an X was here" would be an invention; the bare marker suffices.
-  /// Mid-document, the name is kept: the surroundings prove which
-  /// construct it was.
+  /// the input loses its name. The input never reached it, so naming it
+  /// would assert a guess; the bare marker suffices. Mid-document, the
+  /// name is kept: the surrounding matches prove which construct it
+  /// must be.
   lib.MatchResult _treeOf(Object piece, int end) {
     if (piece is lib.MatchResult) return piece;
     final l = piece as _Labeled;
@@ -1438,10 +1449,10 @@ class Squirrel {
       lastCost = 0;
       return plain;
     }
-    // Otherwise, search with a rising repair budget. No repair can need
-    // more than deleting the whole input and providing the shortest
-    // document, so that bounds the ladder ([-1] = grammar accepts
-    // nothing at all).
+    // Otherwise, search with a rising repair budget. No repair can cost
+    // more than deleting the whole input and marking the shortest
+    // document the grammar accepts as missing, so that bounds the ladder
+    // ([-1] = grammar accepts nothing at all).
     final shortest = _minDocLen ??= _topRule.body.minChars(<Clause>{});
     final ceiling = shortest >= _impossible ? -1 : s.length + shortest;
     _Reading? best, fallback;
@@ -1457,10 +1468,15 @@ class Squirrel {
         final tail = s.length - r.end;
         final whole = tail == 0 ? r : r.then(_Reading.deleting(r.end, _len));
         if (_charge(whole, 0) > _budget) continue;
+        // A repair-free reading that is not the plain parser's own is
+        // discarded at the root: round zero already rejected the input,
+        // so this reading -- reachable only through choices the parser
+        // would not make -- is an artifact of the search, and returning
+        // it would price a rejected document at zero.
         if (whole.firstDoubt == _clean) continue;
         if (tail > 0 && r.endsIncomplete) {
           // It stopped mid-thought with input still ahead: incoherent as
-          // a story about the document. Held aside rather than discarded:
+          // an account of the document. Held aside rather than discarded:
           incomplete.add(whole);
           continue;
         }
@@ -1468,8 +1484,8 @@ class Squirrel {
       }
       // An incomplete reading may still displace the winner, but only if
       // it costs no more AND proves strictly more of the input. (This is
-      // what lets "an unfinished real construct plus noise" beat "a
-      // dubious construct that happens to swallow everything".)
+      // what lets an unfinished genuine construct followed by noise beat
+      // a dubious construct that swallows everything.)
       if (best != null) {
         final b = best;
         best = incomplete.fold(
@@ -1480,6 +1496,9 @@ class Squirrel {
                     : top);
         break;
       }
+      // If no budget ever yields a coherent winner, the best incomplete
+      // reading (from the first round that had one) is returned rather
+      // than nothing.
       if (fallback == null && incomplete.isNotEmpty) {
         fallback = incomplete.reduce((f, r) => _compare(r, f, 0) < 0 ? r : f);
       }
