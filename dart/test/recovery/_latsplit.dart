@@ -1,4 +1,4 @@
-// _latsplit.dart -- paired, interleaved c9 / c10 / c12 timing, split by
+// _latsplit.dart -- paired, interleaved c9 / c10 / c12 / c13 timing, split by
 // input kind: clean documents (the plain-parse path) vs the damaged
 // battery cases. A blended full-battery median hides the difference --
 // c10 costs 1.13x on damaged input but 2.4-2.6x on clean input, because
@@ -11,6 +11,7 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import 'astdiff.dart';
 import '_convert.dart';
 import '../../experiments/recovery/c12.dart' as c12x;
+import '../../experiments/recovery/c13.dart' as c13x;
 
 void main(List<String> argv) {
   final rounds = argv.isEmpty ? 21 : int.parse(argv[0]);
@@ -27,6 +28,10 @@ void main(List<String> argv) {
   final c12 = <String, MatchResult? Function(String)>{
     for (final c in corpora)
       c.name: c12x.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top).recover
+  };
+  final c13 = <String, MatchResult? Function(String)>{
+    for (final c in corpora)
+      c.name: c13x.Squirrel(rules: rulesOf[c.name]!, topRuleName: c.top).recover
   };
 
   // (grammar, input) lists: clean = every corpus document; damaged = battery.
@@ -54,20 +59,24 @@ void main(List<String> argv) {
     run(c9, clean, 5);
     run(c10, clean, 5);
     run(c12, clean, 5);
+    run(c13, clean, 5);
     run(c9, damaged, 1);
     run(c10, damaged, 1);
     run(c12, damaged, 1);
+    run(c13, damaged, 1);
   }
 
-  final t9c = <int>[], t10c = <int>[], t12c = <int>[];
-  final t9d = <int>[], t10d = <int>[], t12d = <int>[];
+  final t9c = <int>[], t10c = <int>[], t12c = <int>[], t13c = <int>[];
+  final t9d = <int>[], t10d = <int>[], t12d = <int>[], t13d = <int>[];
   for (var r = 0; r < rounds; r++) {
     t9c.add(run(c9, clean, 20));
     t10c.add(run(c10, clean, 20));
     t12c.add(run(c12, clean, 20));
+    t13c.add(run(c13, clean, 20));
     t9d.add(run(c9, damaged, 1));
     t10d.add(run(c10, damaged, 1));
     t12d.add(run(c12, damaged, 1));
+    t13d.add(run(c13, damaged, 1));
   }
   int med(List<int> xs) {
     final s = [...xs]..sort();
@@ -76,7 +85,9 @@ void main(List<String> argv) {
 
   String r(List<int> x, List<int> b) => (med(x) / med(b)).toStringAsFixed(3);
   print('clean   c9=${med(t9c)}us c10=${med(t10c)}us c12=${med(t12c)}us '
-      'c10/c9=${r(t10c, t9c)} c12/c9=${r(t12c, t9c)}');
+      'c13=${med(t13c)}us '
+      'c10/c9=${r(t10c, t9c)} c12/c9=${r(t12c, t9c)} c13/c9=${r(t13c, t9c)}');
   print('damaged c9=${med(t9d)}us c10=${med(t10d)}us c12=${med(t12d)}us '
-      'c10/c9=${r(t10d, t9d)} c12/c9=${r(t12d, t9d)}');
+      'c13=${med(t13d)}us '
+      'c10/c9=${r(t10d, t9d)} c12/c9=${r(t12d, t9d)} c13/c9=${r(t13d, t9d)}');
 }

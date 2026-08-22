@@ -29,6 +29,7 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 
 import '../../experiments/recovery/c11.dart' as c11;
 import '../../experiments/recovery/c12.dart' as c12;
+import '../../experiments/recovery/c13.dart' as c13;
 import '_convert.dart';
 
 /// The suffix is unmatchable, so every engine must fill it; only what happens
@@ -75,6 +76,7 @@ int? cost(String name, Map<String, Clause> rules, String top, String s) =>
       'c10' => convertC10(rules, top).recoverCost(s),
       'c11' => c11.C11(rules, top).recoverCost(s),
       'c12' => c12.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
+      'c13' => c13.Squirrel(rules: rules, topRuleName: top).recoverCost(s),
       _ => null,
     };
 
@@ -83,6 +85,7 @@ const engines = [
   'c10',
   'c11',
   'c12',
+  'c13',
 ];
 
 void main() {
