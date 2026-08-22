@@ -1,8 +1,10 @@
 # PEG Error Recovery — the living record
 
 Seventy-odd engines across six architectural lines were built, measured, and
-archived to reach the six that remain: the c-series, one algebra refined six
-times. This file records the yardstick, the standing results, the critical
+archived to reach the c-series: one algebra refined engine by engine, ending
+at c12 — the first to beat the long c6–c10 judgment plateau, and the only one
+that is smaller and faster than its predecessors at the same time. This file
+records the yardstick, the standing results, the critical
 lessons, and the refutations that must not be retried. Everything else — the
 era-1/era-2 history (insights I1–I107 in long form), the last full
 twelve-engine table, and the archived lines' detailed accounts — is preserved
@@ -37,15 +39,59 @@ asks only questions a human could answer.
   re-reading the healthy prefix as something else?
 - `_conf1` — exact repair-cost conformance, no free passes for predicates.
 
-## 2. The standing table (era-3 battery, 2026-08-19)
+## 2. The standing table (era-3 battery, 2026-08-21)
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c9** | **0.9879** | **84.0** | **561** | 890 | all | **0.997** | **0.984** | 0.993 | **0.988** | **0.968** |
-| c10 | 0.9879 | 84.0 | 616 | 785 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+| **c12** | **0.9896** | **85.8** | **624** | **784** | all | 0.997 | 0.984 | 0.993 | **0.997** | **0.969** |
+| c9 | 0.9879 | 84.0 | 633 | 890 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+| c10 | 0.9879 | 84.0 | 737 | 785 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+| c11 | 0.9874 | 84.7 | ~1,926,000 | 815 | all | — | — | — | — | — |
 | c8 | 0.9879 | 84.0 | 955 | 738 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
+
+**c12 is the standing engine**: it is the only row that beats the long
+c6–c10 plateau on judgment (+0.0017 score, +1.8 perfect, substitution
+0.988 → 0.997), and it does so while being the smallest and, on the
+paired clock, the fastest. Its four gate results are exact: `_accept`
+ok cx2=1 b1=1 b2=1, `_freespan` PASS, `_conf1` costs `0 1 1 0 2 3`,
+`_recommit` 16/16 — all re-run on 2026-08-21 for c9, c10, c11 and c12
+together, and all four engines pass all four.
+
+The c9/c10/c12 ms in the table are same-session single battery runs
+(2026-08-21); the durable numbers are the paired ones below. c11's
+figure is not a typo and was not re-measured here: its battery takes
+about 1,926 SECONDS, three orders of magnitude off the others, so the
+run was cut short deliberately (see the c11 entry in §4 — the cost is
+a ~30-case cap-out tail, and it is why c11 is a study, not a candidate).
+c11's category columns are left blank for the same reason; its recorded
+score and coverage come from its own session.
+
+**Paired latency, split by input kind** (`_c12lat.dart 21`, all three
+engines interleaved on one warmed VM, two consecutive samples, medians;
+clean = every corpus document parsed 20x, damaged = one pass over the
+battery):
+
+| Engine | clean vs c9 | damaged vs c9 |
+|---|---|---|
+| c9 | 1.000 | 1.000 |
+| c10 | 2.43x, 2.55x | 1.130x, 1.129x |
+| **c12** | **0.949x, 0.982x** | **0.977x, 0.978x** |
+
+This split corrects a figure this file carried since 2026-08-19. c10's
+cost against c9 was recorded as a single blended 1.073 from full-battery
+reps; measured by input kind it is not one tax but two very different
+ones — 1.13x on damaged input, but **2.4–2.6x on clean input**, where
+c10's one-machine design pays dispatch on every consult that c9's
+dedicated plain parser answered directly. The blended median hid it
+because the damaged battery dominates the wall clock. c12 is at or
+below c9 on both kinds, which is the first time any engine in the
+series has been smaller AND faster than c9 rather than trading one for
+the other. (Measured two-arm, without c10 interleaved, c12's clean
+ratio reads lower still — 0.81–0.93x across samples; this machine's
+noise band is wide, so the safe claim is "at or below c9 on both", not
+a precise speedup.)
 
 The c9/c8 ms are the SAME-SESSION paired medians (12 interleaved
 full-battery reps on one warmed VM, 2026-08-19): ratio 0.587, so c9 is
@@ -63,13 +109,31 @@ so its row differs only in ms and LOC. (Its first cut measured 1.30x
 at 714 lines; the fiber split described under I119 bought the ratio
 down to ~1.07-1.09 — the band this machine's noise spans — for 76
 lines, and the state-space pass under I120 gave back 5 of them.) The
-two are a deliberate frontier: c9 the fast point, c10 the small point
-among the live engines.
+c9/c10 pair was for two days a deliberate frontier — c9 the fast point,
+c10 the small point — and c12 has since collapsed it: it is left of
+both on every axis, so the frontier is one engine again.
 
-All four rows are the FUSED engine — the full squirrel parser folded in,
-so each is self-contained and its LOC includes the whole parser (~246
-lines); the pre-fold, library-dependent c6 measured 461 lines and
-~1,500 ms. The c1–c8 ancestors and every other line are archived with
+The c6–c10 rows are the FUSED engine — the full squirrel parser folded
+in, so each is self-contained and its LOC includes the whole parser
+(~246 lines); the pre-fold, library-dependent c6 measured 461 lines and
+~1,500 ms. c11 and c12 return to the published library untouched plus a
+separate recovery module, so their LOC is NOT the same quantity as
+c6–c10's. Two corrections in opposite directions, both worth knowing
+before the LOC column is read as a ranking:
+
+- c11/c12 do not carry the ~246 folded-in parser lines, which flatters
+  them against c6–c10;
+- c9 and c10 cannot be run at all without `_convert.dart`, a 120-line
+  adapter that translates library clauses into each engine's own node
+  classes and lives in the harness rather than the engine. c11 and c12
+  consume the library's clause objects natively and need no adapter, so
+  the honest totals are c9 ≈ 890+, c10 ≈ 785+, against c12's 784 flat.
+
+The two effects do not cancel exactly and no attempt is made here to
+net them; the durable claim is the narrower one, that **c12 is smaller
+than c11 (815) and than c10 (785) counted the same way, by the same
+script, in the same session**, which is the comparison the c12 brief
+asked for. The c1–c8 ancestors and every other line are archived with
 their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 
 ## 3. The critical lessons
@@ -271,6 +335,46 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
     surprising ratio before acting on it — the c9 round's one false
     lead was a load artifact, not an engine effect.
 
+21. **A blended ratio can hide two opposite taxes** (the c10 correction,
+    2026-08-21). c10's cost against c9 was carried for two days as a
+    single 1.073 from full-battery reps. Split by input kind it is 1.13x
+    on damaged input and 2.4–2.6x on CLEAN input: the damaged battery
+    dominates the wall clock, so the blended median all but erased a
+    2.5x regression on the path most real documents take. Whenever an
+    engine has two paths with different volumes, time them separately
+    or the cheap-but-frequent one goes unmeasured.
+
+### The repair — what a substitution must prove (the c12 round)
+
+22. **A swap the rest of the sequence cannot read from is a guess, not a
+    substitution** (I121). The replace repair consumes one wrong
+    character in place of an exact-text slot. Offered unconditionally it
+    is also the entire damaged-latency cost of the c12 design: compiled
+    out, c12 was already cheaper than c9 on every hot damaged case. It
+    is expensive for a structural reason, not a constant-factor one —
+    each swap resumes at `end + 1`, a position the search would
+    otherwise never visit, so the memo misses cascade downstream (2.8x
+    the propose calls on the worst case), and because per-end pruning
+    picks its survivor with a LOCAL comparator, a swap-derived reading
+    can evict the chain that would have finished more cheaply and buy a
+    whole extra budget round. The gate is the price of belief:
+    `_resumes` requires the remaining slots to read cleanly from just
+    after the swap and prove something, or the sequence to end there.
+    −27% `then` calls, battery bit-identical, damaged 1.06x → 0.98x.
+    The general form: a repair that opens a position no clean reading
+    reaches must justify that position, or it pays for the whole
+    subtree the search then has to explore.
+
+23. **Where a repair is OFFERED is a design axis, not a detail.** The
+    same substitution rule, unchanged in what it costs or what it
+    accepts, measured 1.198x, 1.110x, 1.06x and 0.98x purely by moving
+    and gating its offer site: from `Terminal.findReadings` (fired at
+    every failing picky terminal) into `_readSlots`; then restricted to
+    a clean prefix; then to a PREFERRED prefix with budget room; then
+    to slots the sequence can resume past. Every one of those four
+    tightenings held the battery bit-identical. A repair's expense lives
+    in how often it is proposed, not in what it does when it wins.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
@@ -416,6 +520,48 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   That same mechanism analytically refutes deleting the wrap caches,
   un-sharing refView, and merging `_probing` into `_zeroFill` (both
   would shift wrap sides/pointers). 790 → 785 lines.
+- **c11** (the code-space study, `c11_study.md`): the pure parser re-run
+  under directive sets — uniform-cost search over restarts, no chart,
+  the library untouched. It scores 0.9874 / 84.7 with all four gates:
+  −0.0005 on score, **+0.7 on coverage** against the c9/c10 plateau,
+  which is why it is in the record at all. One structural zero remains
+  (i=168, same-cell left recursion — the repair consults (Value,0) while
+  that cell is in progress; only a chart serves it). Its veto
+  (challenge) directive is free in charge but pays one unit of QUEUE
+  ORDER — free in both is a random walk, priced in both loses ties the
+  evidence key should decide — with sites read off the returned tree and
+  `run.discarded` only where an enclosing match ends at the failure
+  frontier, cuts of one repetition never composing, no two consecutive
+  vetoes (which bounds vetoes at edits+1 and keeps the charge bands
+  finite), and rings admitted in bulk because per-level draining starves
+  the far family. Its search needs TWO clocks over one frontier, found
+  only after three full batteries: queue-cost bands with the furthest
+  parent frontier first before a candidate exists (greedy, so capped
+  multi-error searches complete something), charge bands FIFO within
+  after one does (the only starvation-free rival hunt — both frontier
+  extremes livelocked, 18 regressions near-end and 22 far-end). The
+  verdict is the closing sentence of the study: **a restart engine
+  re-derives what a chart holds.** Its battery takes ~1,926 seconds
+  against c9's 0.6, all of it in a ~30-case cap-out tail. c11 is kept
+  as a study and as the source of c12's architecture, not as a
+  candidate.
+- **c12** (I121, the standing engine): the best of c9, c10 and c11 in
+  one file. From c11 it takes the architecture — the published library
+  untouched, a separate recovery module consuming library clauses
+  natively, so no `_convert.dart` adapter exists for it. From c10 it
+  takes the one-machine design and the state-space discipline. From c9
+  it takes the measured containers of I115 and the caches that make the
+  clean path fast. It is the first engine to break the c6–c10 judgment
+  plateau: **0.9896 / 85.8**, substitution 0.988 → 0.997 and misc
+  0.968 → 0.969, all four gates exact, 784 lines, and on the paired
+  clock at or below c9 on both clean and damaged input. The judgment
+  gain is the substitution repair (a wrong character consumed as an
+  error span for an exact-text slot); the latency was won back by
+  gating where that repair is offered (lessons 22 and 23 above), which
+  cost ten lines for the `_resumes` helper against five recovered by
+  condensation. Note what the score does NOT say: c12's trees are no
+  longer bit-identical to c9's — that invariant ended here, deliberately,
+  because c9's substitution reading was the thing being improved on.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -468,18 +614,29 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | Compare-before-allocate (judge a candidate from component sums, allocate only on keep) | 1.02–1.04x SLOWER, measured twice (with and without `@pragma('vm:prefer-inline')`): the avoided young allocation was nearly free, and the guard duplicates the sum arithmetic on every keep |
 | Cross-run cell reuse (grow-only arrays, epoch stamps, in-place reset instead of fresh allocation) | 1.10x SLOWER: stores into old-space objects pay the GC write barrier fresh young arrays never do; c6's fresh-arrays-per-run is the optimum, not a shortcut |
 | The per-op campaign (indexed loops, fold micro-shapes, terminal tweaks) | ±5% with unstable sign under load; representation was the lever (R6–R8, 1.7x), operations were noise |
+| Drop the substitution repair entirely (c12) | 0.9885 / 84.4 — fails the perfect bar. The repair is required; only its offer site was negotiable |
+| A non-evicting substitution (keep the swap reading beside the incumbent instead of pruning against it) | 0.9895 / 85.6 and no operation count won: eviction was not the cost, the newly opened position was |
+| The substitution offered `.penalized()` | 0.9886 / 84.6 — a penalty is not a ranking-only hint; it counts into charge, so it changes what the budget can afford |
+| A ranking-only `guess` bit marking swap-derived readings (tried as an early key, a late key, and cleared at construct boundaries) | 0.9891–0.9895 / 85.4–85.6: a large operation cut, but it loses six mid-array-delimiter substitutions that are EXACT ties, which is precisely where a tiebreak bit does damage |
+| `(end, guess)` as the per-end pruning key | battery timed out past 600 s (from 0.6 s): two survivors per end is not a refinement, it is a second search |
+| Gate the substitution on `slot.text?.length == 1` | holds the record score, but a reproducible ~15% slowdown on the CLEAN path in an A/B/A test, for no damaged gain — the check runs where nothing is damaged |
+| Gate the substitution on `deletedAhead < 0` | 85.7 perfect: cheaper than `_resumes` to evaluate and strictly worse at telling a swap from a guess |
 
 ## 7. Where things live
 
-- The engines: `dart/experiments/recovery/c9.dart` (fast) and
-  `c10.dart` (small; bit-identical trees) — each self-contained (the
-  full parser folded in; the published library contributes only the
-  interchange types, and `lib/src` performs no recovery).
+- The engine: `dart/experiments/recovery/c12.dart` — the published
+  library untouched (`lib/src` performs no recovery) plus this one
+  recovery module, which consumes the library's clause objects
+  natively.
+- Kept for comparison: `c9.dart` (fast) and `c10.dart` (small), each
+  self-contained with the full parser folded in and each reachable only
+  through `_convert.dart`'s adapters; `c11.dart` with its design
+  account in `c11_study.md`.
 - The harness: `dart/test/recovery/` — battery + scoring
   (`astdiff.dart`), runner (`_score1.dart <engine> [dump]`), the four
   gates (`_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
-  `_conf1.dart`), size (`loc.py`), and the paired-timing instrument
-  (`_race.dart`).
+  `_conf1.dart`), the c9/c10 adapters (`_convert.dart`), size
+  (`loc.py`), and the paired-timing instrument (`_race.dart`).
 - Archive: `dart/experiments/recovery/attic/` (~320 files: c1–c8, the
   s/r/m/t/b lines, ~900 scratch probes, `pareto.py` — retired when one
   engine remained — `libsrc_recovery/`, and the old lib-recovery tests);
@@ -501,7 +658,9 @@ c9-only additions (`_best`, `_view`, `_maxSpent`, `plain`, `asList`,
 `wrapped`, `owner`, `refSrc`/`refView`, `finish`) are documented where
 they live in `c9.dart`. c10 keeps the same names again (its additions —
 `zeroTwin`, `_zeroFiber`, `_greedyOnly`, the fiber-split version
-clocks — are documented where they live in `c10.dart`).
+clocks — are documented where they live in `c10.dart`). c12 keeps them
+once more, and adds `Terminal.picky`, `_readSlots`, `_resumes`,
+`preferred` and `spent`, each documented at its definition.
 
 **Classes**
 
