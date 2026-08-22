@@ -837,6 +837,21 @@ nearest famous algorithm.
   gates (`_accept.dart <engine>`, `_freespan.dart`, `_recommit.dart`,
   `_conf1.dart`), the c9/c10 adapters (`_convert.dart`), size
   (`loc.py`), and the paired-timing instrument (`_race.dart`).
+- The paper's frontier statistics are reproduced with a two-step
+  recipe rather than a tracked instrumented engine (which would be a
+  duplicate of `c13.dart` and would rot). Make the instrumented copy:
+
+      sed -e 's|^  int _budget = 0;|  int _budget = 0;\n  static int instCells = 0;\n  static int instReadings = 0;\n  static int instMax = 0;|' \
+          -e 's|^    cell.atBudget = _budget;|    instCells++;\n    instReadings += cell._best.length;\n    if (cell._best.length > instMax) instMax = cell._best.length;\n    cell.atBudget = _budget;|' \
+          c13.dart > _c13inst.dart
+
+  then run `test/recovery/_frontier13.dart`, which sweeps the battery
+  through it and prints the score alongside the counts. The score MUST
+  come back 0.9899/85.8, which is what makes the counts trustworthy.
+  Measured 2026-08-22 for c13: 622,025 repair-cell computations, mean
+  1.71 readings at completion, max 52 (c12 read 622,697 / 1.71 / 52 --
+  the exemption changes which readings survive in 14 cases, so the cell
+  count moves slightly and the shape statistics do not).
 - Archive: `dart/experiments/recovery/attic/` (~320 files: c1–c8, the
   s/r/m/t/b lines, ~900 scratch probes, `pareto.py` — retired when one
   engine remained — `libsrc_recovery/`, and the old lib-recovery tests);
