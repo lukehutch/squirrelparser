@@ -852,6 +852,19 @@ nearest famous algorithm.
   1.71 readings at completion, max 52 (c12 read 622,697 / 1.71 / 52 --
   the exemption changes which readings survive in 14 cases, so the cell
   count moves slightly and the shape statistics do not).
+- The battery's *composition* is likewise reproduced rather than
+  tracked: a throwaway that calls `buildBattery()` and `weighted()` and
+  tallies both by category prints it. Measured 2026-08-22: generation
+  yields **13,241** breaking mutants (deletion 527, truncation 620,
+  insertion 5,662, substitution 5,224, misc 1,208; json 5,631, stmt
+  5,703, expr 1,907), and `weighted()` samples that down to the scored
+  **2,101** (525/525/438/350/263; json 944, stmt 856, expr 301). The
+  sampling unit is 175 cases per weight point and is set by the
+  SCARCEST supply — deletion, 527/3.0 = 175.7 — not by `misc`. Worth
+  knowing because the raw pool is ~10x richer in insertions and
+  substitutions than in deletions (9 insert characters per position vs
+  1 deletion), so scoring the raw pool would hand the aggregate to the
+  two classes that are merely cheapest to generate.
 - Archive: `dart/experiments/recovery/attic/` (~320 files: c1–c8, the
   s/r/m/t/b lines, ~900 scratch probes, `pareto.py` — retired when one
   engine remained — `libsrc_recovery/`, and the old lib-recovery tests);
