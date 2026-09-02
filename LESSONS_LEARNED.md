@@ -692,10 +692,9 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   policy fired on the engine's own legitimate accounts.
 - **c14** (the standing engine, 2026-09-02): c13's judgment on a bounded
   machine. The round set out to find a revolutionary engine and
-  scored fourteen candidates first (locality and per-region rungs,
-  a scalar min-charge chart, a two-sided parse, key reorderings,
-  an evidence memo on rule wrappers, the library's own memo as the
-  plain fiber, a per-budget view cache, and the two changes kept). Every
+  scored its candidates first (per-region rungs, key reorderings, an
+  evidence memo on rule wrappers, the library's own memo as the plain
+  fiber, and the two changes kept; the ledger records each result). Every
   candidate that touched the judgment scored below c13 — the seven-key
   comparison and the single global frontier are, by the ledger's count,
   at a strict local optimum of this yardstick (§6c's perfect-oracle
