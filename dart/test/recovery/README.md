@@ -1,7 +1,8 @@
 # The recovery measurement harness
 
-Measures the engines in `../../experiments/recovery/` (`c9.dart`,
-`c10.dart`). Run from the `dart/` directory:
+Measures the engines in `../../experiments/recovery/` (`c14.dart` is
+the standing engine; `c13.dart`, `c12.dart`, `c9.dart`, `c10.dart` are
+kept for comparison). Run from the `dart/` directory:
 
 ```sh
 dart --packages=$PWD/.dart_tool/package_config.json test/recovery/<file>.dart

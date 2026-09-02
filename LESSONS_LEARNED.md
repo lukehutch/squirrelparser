@@ -2,8 +2,11 @@
 
 Seventy-odd engines across six architectural lines were built, measured, and
 archived to reach the c-series: one algebra refined engine by engine, ending
-at c13 — which stands on c12's substitution breakthrough (the first to beat
-the long c6–c10 judgment plateau) and adds one rule of its own. This file
+at c14 — c13's judgment (c12's substitution breakthrough, the first to beat
+the long c6–c10 judgment plateau, plus c13's one rule) on a machine whose
+recursion depth and per-end scans are bounded by the grammar rather than by
+the document, so a 100,000-character input is read in about two seconds
+where c13 overflowed the stack. This file
 records the yardstick, the standing results, the critical
 lessons, and the refutations that must not be retried. Everything else — the
 era-1/era-2 history (insights I1–I107 in long form), the last full
@@ -43,7 +46,8 @@ asks only questions a human could answer.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **c13** | **0.9899** | **85.8** | 626 | **786** | all | 0.997 | 0.985 | 0.993 | 0.997 | 0.969 |
+| **c14** | **0.9899** | **85.8** | 572 | 807 | all | 0.997 | 0.985 | 0.993 | 0.997 | 0.969 |
+| c13 | 0.9899 | 85.8 | 637 | **786** | all | 0.997 | 0.985 | 0.993 | 0.997 | 0.969 |
 | c12 | 0.9896 | 85.8 | 624 | 784 | all | 0.997 | 0.984 | 0.993 | **0.997** | **0.969** |
 | c9 | 0.9879 | 84.0 | 633 | 890 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c10 | 0.9879 | 84.0 | 737 | 785 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
@@ -52,7 +56,20 @@ asks only questions a human could answer.
 | c7 | 0.9879 | 84.0 | 1181 | 692 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 | c6 | 0.9879 | 84.0 | 1180 | 707 | all | 0.997 | 0.984 | 0.993 | 0.988 | 0.968 |
 
-**c13 is the standing engine**: c12's substitution breakthrough plus one
+**c14 is the standing engine** (2026-09-02): c13's judgment, bit-identical
+(the per-case dump diff against c13 is empty; every gate result below is
+reproduced exactly), on a machine with two changes — the repetition sweep
+hands each step only the budget its prefix has not yet spent, and the
+best-per-end list is indexed once it grows past a scan's worth (§3,
+lessons 24–27; §4). The c14/c13 ms above are a same-session pair
+(2026-09-02, single battery runs each; c13's earlier 626 was 2026-08-22);
+the durable figures are the paired ones below and the scaling table in
+§4. c14 is 21 lines larger than c13 (786 → 807, +2.7%): +28 for the
+`_Front` container with its comment, −10 for the `_indexOfEnd` helper it
+replaces, +7 for the budget handoff and its comment.
+
+**c13 was the standing engine from 2026-08-22 to 2026-09-02** and remains
+the judgment reference: c12's substitution breakthrough plus one
 rule of its own (the last-slot jurisdiction exemption, §4). It beats the
 long c6–c10 plateau on judgment (+0.0020 score, +1.8 perfect) while being
 the smallest and, on the paired clock, at-or-below c9 on both input kinds.
@@ -86,6 +103,15 @@ battery):
 | c10 | 2.43x, 2.55x | 1.130x, 1.129x |
 | **c12** | **0.949x, 0.982x** | **0.977x, 0.978x** |
 | **c13** | bit-identical to c12 (0.993 head-to-head) | 1.010 vs c12 ≈ **0.98x c9** |
+| **c14** | **0.880x, 0.822x vs c13** | **0.725x, 0.728x vs c13** ≈ **0.71x c9** |
+
+c14's row is a two-arm pairing against c13 (`_latsplit14.dart 21`, two
+consecutive runs of 21 interleaved reps on one warmed VM, medians). The
+damaged figure is the budget handoff: the battery's worst cases are the
+ones whose repetition steps were being explored a rung deeper than any
+reading through them could afford. The clean figure sits inside this
+machine's noise band (0.82–0.88 across the two runs); the clean path never
+proposes a costed reading, so the honest claim is "at or below c13".
 
 c13's row is measured differently on purpose: a four-engine interleaved
 rotation gave unstable per-engine ratios (JIT/code-cache interference,
@@ -392,6 +418,77 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
     tightenings held the battery bit-identical. A repair's expense lives
     in how often it is proposed, not in what it does when it wins.
 
+### The machine, second look — what the c14 round measured
+
+24. **Every fold hands its children the budget its prefix has not
+    spent, and a fold that forgets is a bug the battery cannot see.**
+    `_readSlots` has always handed each slot `whole − r.spent`. The
+    repetition sweep did not: it asked every step at the round's whole
+    budget, so a step whose prefix had already spent an edit was
+    explored one rung deeper than any reading through it could afford.
+    The battery was bit-identical either way — the extra readings are
+    all pruned at the parent — so nothing in the judgment measured it.
+    What measured it was recursion depth: `_grow` nested 107, 464 and
+    1,159 frames deep on json documents of 1.4k, 6k and 24k characters
+    with one error (1,568 at 6k/4), because each over-deep step
+    re-entered the sweep at the next member. With the four-line
+    handoff (save the budget, hand `whole − r.spent`, restore) depth is
+    27–47 frames at every length: the nesting of the grammar, not of
+    the document. Work at 24k/1 fell from about 990 ms to 420 ms; at
+    6k/4 from 18.6 s to 0.7 s; at 24k/4 c13 could not be timed at all
+    (a cold, unoptimized first call overflowed the Dart stack at
+    6k chars / 2 errors). The rule: wherever a reading continues
+    through a child, the child is asked at the reading's remaining
+    budget, never the round's.
+
+25. **Recursion depth is a measurement, not an implementation
+    detail.** A depth that grows with the input says a bound is
+    missing — the grammar's nesting is the only legitimate source of
+    depth in a memoized engine, and it is constant per grammar. The
+    instrument is a wrapper around `_grow` that records the deepest
+    chain (`_depth.dart` over an instrumented copy). Two consequences
+    for the harness: any timing run that includes a pre-c14 engine must
+    warm on a small document first (the JIT-compiled frames are smaller
+    than the interpreter's, so the same call overflows cold and
+    succeeds warm — an "intermittent" crash that is not intermittent),
+    and a scaling table must be read alongside the depth, since a
+    superlinear time curve and a linear depth curve have the same cause.
+
+26. **Whether a best-per-end list should be scanned or indexed depends
+    on the construct's width, so the container decides at runtime.**
+    A repair cell keeps one best reading per end position. Under the
+    battery (documents of tens of characters) a construct holds a
+    handful of ends and a linear scan is the cheapest thing there is —
+    the c9 round's lesson stands. But a repetition over a
+    3,000-member json object holds a reading per member boundary, and
+    the scan is then quadratic in the document. `_Front` scans while it
+    holds at most 32 entries and builds an end→slot map the moment it
+    grows past that; it is the only `Map` in the engine (every slot
+    structure is a `List`). On top of the budget handoff, indexing
+    alone is worth 2.2x at 100k/1 (5.03 → 2.27 s), 1.8x at 24k/2 and
+    3.7x at 24k/4 (92.7 → 25.1 s); on the battery it is neither
+    measurable nor charged (the threshold is never crossed). A scan
+    limit of 8 lost to 32 at 6k chars, where the map's construction
+    cost is paid for constructs that would have finished scanning; both
+    read the same at 24k.
+
+27. **The cost of a recovery scales with the position of the error,
+    not the length of the document.** Instrumented fills on json with
+    one error: 304 fills for an error at character 79, 59,000 for an
+    error at 15,317, about 3.9 fills per character BEFORE the failure
+    point and none after it. The reason is exactness, not waste: the
+    failure point is not the error point (a deleted comma is noticed
+    at the next key), so the budget-b pass must explore the b-edit
+    variants of every construct before the failure, which is where the
+    error might be. After the failure everything is read at budget
+    zero, from the plain memo, once. This is the shape of the engine's
+    cost and it is the right shape — an engine that explored only near
+    the failure would be locality, and locality was refuted a third
+    time this round (ledger: per-region rungs score exactly c11's
+    number, because the frontier is one number and the lower-rung
+    reading that died one character short of a wrong family's reach can
+    hold the next rung's winner anywhere).
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
@@ -593,6 +690,69 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
   the whole line (see the ledger): the swallow signal is not reliably
   computable from reading totals at proposal time, and every detection
   policy fired on the engine's own legitimate accounts.
+- **c14** (the standing engine, 2026-09-02): c13's judgment on a bounded
+  machine. The round set out to find a revolutionary engine and
+  scored fourteen candidates first (locality and per-region rungs,
+  a scalar min-charge chart, a two-sided parse, key reorderings,
+  an evidence memo on rule wrappers, the library's own memo as the
+  plain fiber, a per-budget view cache, and the two changes kept). Every
+  candidate that touched the judgment scored below c13 — the seven-key
+  comparison and the single global frontier are, by the ledger's count,
+  at a strict local optimum of this yardstick (§6c's perfect-oracle
+  bound of +0.0012 is the headroom that remains and none of it is
+  reachable by an ordering change). What the round found instead was a
+  bound the battery could not see: the repetition sweep was asking
+  each step at the round's whole budget (lesson 24). c14 =
+  c13 + that four-line handoff + `_Front` (lesson 26). Battery
+  `0.9899 / 85.8`, dump diff against c13 empty, `_accept` ok cx2=1 b1=1
+  b2=1, `_freespan` PASS, `_recommit` 16/16, `_conf1` `0 1 1 0 2 3`;
+  807 lines (+21); damaged 0.73x c13 paired. Scaling on generated json
+  (`_scale14.dart`, `members/errors`, min of two warm runs, ms):
+
+  | chars / errors | c13 | c14 |
+  |---|---|---|
+  | 354 / 1 (the edit landed harmlessly: cost 0, a clean parse) | 0.47 ms | 0.48 ms |
+  | 717 / 1 | 111 ms | 4.9 ms |
+  | 1,445 / 1 (two runs) | 1,142 ms; 1,388 ms | 6.9 ms; 7.7 ms |
+  | 2,927 / 1 | 16,238 ms | 10.6 ms |
+  | 5,962 / 1 | > 300 s (timed out) | 3.6 ms |
+  | 24,193 / 1 | > 300 s | 415 ms |
+  | 100,075 / 1 | not attempted | 2,497 ms |
+  | 1,444 / 2 | 6,306 ms | 21 ms |
+  | 5,961 / 2 | > 300 s | 53 ms |
+  | 24,192 / 2 | not attempted | 3,326 ms |
+  | 100,074 / 2 | not attempted | 2,905 ms |
+  | 1,442 / 4 | 112,763 ms | 176 ms |
+  | 5,959 / 4 | > 300 s | 728 ms |
+  | 24,190 / 4 | not attempted | 28,497 ms |
+  | 1,438 / 8 | > 300 s | 3,890 ms |
+
+  Each row is one process per engine pair (`timeout 300`), one warm-up
+  call and then the mean over up to 20 calls or one second; "> 300 s"
+  means the process was killed before the warm-up call and one timed
+  call finished. c13's curve between 717 and 2,927 characters is a
+  factor of 10–12 per doubling of length (about n^3.5); the committed
+  c13 had no bound on the sweep at all, so the `_c13b` variant timed
+  during the round (a step cap, 990 ms at 24k/1) was already far ahead
+  of it and is not what the c13 column shows. c14's time tracks the
+  error position rather than the length (lesson 27): 5,962/1 is
+  cheaper than 1,445/1 because its edit fell earlier in the document.
+
+  and the ablation on top of the budget handoff (four variants
+  interleaved, `_scale3.dart`, min of 2):
+
+  | doc | handoff only | + index | + evidence memo | + both |
+  |---|---|---|---|---|
+  | 100,075 chars / 1 error | 5,031 | 2,269 | 5,129 | 2,012 |
+  | 24,192 / 2 | 5,894 | 3,279 | 5,342 | 2,545 |
+  | 24,190 / 4 | 92,700 | 25,100 | 87,200 | 26,900 |
+  | 5,959 / 4 | 1,032 | 823 | 879 | 951 |
+
+  The evidence memo (a lazy per-wrapper `evidence` field on a `_Node`
+  subclass of the library's `Match`) reads within noise of the handoff
+  alone in every row and was dropped; its clean-path cost was 1.0–1.09x
+  in the wrapper-only form and 1.1–1.3x when every node carried it.
+  What c14 does NOT change: no key, no price, no offer site, no gate.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -660,6 +820,12 @@ their last numbers in the attic (`attic/OLD_LESSONS_LEARNED.md`).
 | Hold the ladder one extra rung past first admission, so costlier rivals reach the root | On all four worst json cases the extra rung's root frontier held only same-key duplicates of the winner — no honest rival exists AT THE ROOT at any single extra rung's depth |
 | Retain exact-seven-key ties beside cell holders (cap 3/end), letting composition see both | As an engine change: WORSE (imperfect 298→330, mean 0.9896). As measurement: even a PERFECT offline oracle judging every collected candidate reaches only 0.9908 (+0.0012); 12 expr-deletion cases hold a perfect reading the comparator cannot see |
 | Price deleted input above inserted text (destruction worse than invention), weights 2 and 3 | 0.9824 / 0.9656 vs 0.9899 — asymmetric pricing collapses insertion AND substitution categories too. Symmetric per-character pricing is strongly optimal under this yardstick |
+| Local rungs / per-region budgets (c14 round: each failing region climbs its own ladder, the rest stays at zero) | 0.9875 / 84.7 — to four digits c11's restart number (0.9874 / 84.7), from a different design; a lower-rung reading that died one character short of a wrong family's reach holds the next rung's winner anywhere, so the frontier must be one number. Third refutation of locality; do not retry |
+| Swap the order of the seven comparison keys (evidence before cost, and cost before evidence with charge first) | −0.0033 either way |
+| An evidence memo on rule wrappers (`_Node extends lib.Match` with a lazy `evidence` field) | ≤11% and inconsistent in sign after the budget handoff; clean 1.00–1.09x (noise); every-node form 1.10–1.32x SLOWER on the clean path. Dropped from c14 |
+| The library's parser memo as the plain fiber (consult `lib` for budget-zero answers instead of the engine's own plain memo) | 2.71x slower: the library's memo is keyed for its own left-recursion protocol and answers through a wrapper per consult |
+| A per-budget view cache | no effect (the c12 round; re-confirmed as unnecessary once the sweep handoff removed the over-deep fills it would have cached) |
+| `_Front` scan limit 8 instead of 32 | slower at 6k chars (map built for constructs that finish scanning), equal at 24k; 32 kept |
 
 ## 6b. The mechanism-A autopsy (json string-swallow, 2026-08-22)
 
@@ -824,10 +990,11 @@ nearest famous algorithm.
 
 ## 7. Where things live
 
-- The engine: `dart/experiments/recovery/c13.dart` — the published
+- The engine: `dart/experiments/recovery/c14.dart` — the published
   library untouched (`lib/src` performs no recovery) plus this one
   recovery module, which consumes the library's clause objects
-  natively. `c12.dart` is kept as the pre-exemption reference.
+  natively. `c13.dart` is kept as the judgment reference (bit-identical
+  trees, unbounded sweep) and `c12.dart` as the pre-exemption reference.
 - Kept for comparison: `c9.dart` (fast) and `c10.dart` (small), each
   self-contained with the full parser folded in and each reachable only
   through `_convert.dart`'s adapters; `c11.dart` with its design
@@ -839,19 +1006,26 @@ nearest famous algorithm.
   (`loc.py`), and the paired-timing instrument (`_race.dart`).
 - The paper's frontier statistics are reproduced with a two-step
   recipe rather than a tracked instrumented engine (which would be a
-  duplicate of `c13.dart` and would rot). Make the instrumented copy:
+  duplicate of `c14.dart` and would rot). Make the instrumented copy
+  (c14's best-per-end list lives behind `_Front`, hence `.list`):
 
       sed -e 's|^  int _budget = 0;|  int _budget = 0;\n  static int instCells = 0;\n  static int instReadings = 0;\n  static int instMax = 0;|' \
-          -e 's|^    cell.atBudget = _budget;|    instCells++;\n    instReadings += cell._best.length;\n    if (cell._best.length > instMax) instMax = cell._best.length;\n    cell.atBudget = _budget;|' \
-          c13.dart > _c13inst.dart
+          -e 's|^    cell.atBudget = _budget;|    instCells++;\n    instReadings += cell._best.list.length;\n    if (cell._best.list.length > instMax) instMax = cell._best.list.length;\n    cell.atBudget = _budget;|' \
+          c14.dart > _c14inst.dart
 
-  then run `test/recovery/_frontier13.dart`, which sweeps the battery
+  then run `test/recovery/_frontier14.dart`, which sweeps the battery
   through it and prints the score alongside the counts. The score MUST
   come back 0.9899/85.8, which is what makes the counts trustworthy.
-  Measured 2026-08-22 for c13: 622,025 repair-cell computations, mean
-  1.71 readings at completion, max 52 (c12 read 622,697 / 1.71 / 52 --
-  the exemption changes which readings survive in 14 cases, so the cell
-  count moves slightly and the shape statistics do not).
+  Measured 2026-09-02 for c14: **421,550** repair-cell computations,
+  mean **1.68** readings at completion, max **46**, with the score
+  reproduced. c13 read 622,025 / 1.71 / 52 on 2026-08-22 (recipe over
+  `c13.dart` with `cell._best.length` and no `.list`, runner
+  `_frontier13.dart`) and c12 622,697 / 1.71 / 52: the exemption changes
+  which readings survive in 14 cases, so the cell count moves slightly
+  and the shape statistics do not. The c13→c14 drop of 32% in
+  computations is the budget handoff — every cell the over-deep sweep
+  used to fill at a rung its reading could not afford is a computation
+  the sweep no longer asks for — and the same trees come out.
 - The battery's *composition* is likewise reproduced rather than
   tracked: a throwaway that calls `buildBattery()` and `weighted()` and
   tallies both by category prints it. Measured 2026-08-22: generation

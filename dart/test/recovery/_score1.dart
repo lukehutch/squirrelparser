@@ -11,6 +11,7 @@ import 'package:squirrel_parser/squirrel_parser.dart';
 import '../../experiments/recovery/c11.dart' as c11;
 import '../../experiments/recovery/c12.dart' as c12;
 import '../../experiments/recovery/c13.dart' as c13;
+import '../../experiments/recovery/c14.dart' as c14;
 import 'astdiff.dart';
 import '_convert.dart';
 
@@ -24,6 +25,7 @@ const Map<String, Build> engines = {
   'c11': _c11,
   'c12': _c12,
   'c13': _c13,
+  'c14': _c14,
 };
 
 MatchResult? Function(String) _c8(Map<String, Clause> r, String t) =>
@@ -46,6 +48,11 @@ MatchResult? Function(String) _c12(Map<String, Clause> r, String t) =>
 // c13 = c12 with the last-slot jurisdiction exemption in the penalty rule.
 MatchResult? Function(String) _c13(Map<String, Clause> r, String t) =>
     c13.Squirrel(rules: r, topRuleName: t).recover;
+
+// c14 = c13 with the repetition sweep handing each step only the budget its
+// prefix has not spent, and an indexed best-per-end list; judgment-identical.
+MatchResult? Function(String) _c14(Map<String, Clause> r, String t) =>
+    c14.Squirrel(rules: r, topRuleName: t).recover;
 
 Build? resolve(String name) => engines[name];
 
