@@ -75,6 +75,11 @@ measurements do not change the yardstick or promote a replacement engine.
 The c18 row was measured on Codex's `_c18.dart`; the rebuilt `_c18.dart`
 (lesson 55) returns the same tree and cost on all 13,241 raw cases, and the
 audit's own same-day timings for c14, c17 and c18 are in lesson 55.
+**c20 is deliberately absent from these tables.** It was measured a day
+later with the session's own drivers (`_research18.dart battery ... compare`
+and `_time20.dart`), not with this comparison's worker harness, so its
+numbers are not comparable row-for-row; they are in lesson 58 and the c20
+paragraph that follows it.
 
 #### Timings and memory — measured, not estimates
 
@@ -1210,6 +1215,83 @@ parser and c17's approximate two-unit windows.
     (0.76x c17's time, 0.8x its memory, one better cost) at 1.8x c14 on
     the battery's short inputs, so promotion remains the workload call.
 
+### c20 — the relation on the real parser, and the stops the input dictates (2026-09-07)
+
+56. **The cost of a Pareto front is the number of insertions, not the
+    price of one comparison.** The 100k profile put `_Front.add` at 23.5%
+    inclusive, and two attempts to make the scan itself cheaper both
+    failed: splitting the buckets by the front's two equality-class heads
+    (`incomplete`, `missing == 0`) gave identical trees and no speedup,
+    because the map traffic cost what the skipped comparisons saved, and
+    reordering `cover` to test those two heads first changed nothing.
+    Attribution by site then found a single sequence slot iterating over
+    **118,911** alternative readings on one 100k input, which is where the
+    time actually was.
+
+57. **After one repair inside a repetition, every later item end is a
+    distinct reading the front cannot compare away.** `_repeat` returns
+    one prefix per iteration end, and the sequence around it reads its
+    next slot at every one of them. The front separates readings by where
+    they end and never compares two that end apart, so a bill that has
+    paid once is carried unchanged to every subsequent stop and none of
+    them dominates another. Of 848,478 readings reaching the prune,
+    **91% were kept only because they had already paid for a repair.**
+    This is the mechanism behind the c19 line's memory and latency, not
+    the enumeration of repairs itself.
+
+58. **Keep the stops the input dictated, and the prune is exact.** Record
+    the positions where the walk *ran out* — the body could not be read
+    again from there, so the walker stopped because the input told it to —
+    and keep exactly those, plus every position under doubt, plus the
+    farthest the walk got. A block's statements stop where the closing
+    brace is because no further statement can be read there, and that is
+    the stop the enclosing sequence needs. Front insertions fall from
+    7.89M to 2.79M, 79% of repetition readings are dropped, the worst
+    slot's alternatives fall from 118,911 to 28,233, and 100k goes from
+    5,208 ms / 1,042 MB to 2,778 ms / 899 MB — with the battery trees
+    bit-identical to the unpruned engine (both `treeDiff` 1882,
+    `costDiff` 1 against the c17 reference). Four cheaper criteria were
+    measured first and each cost accuracy: all short stops on closed
+    ground (0.9895 / 85.7, fastest at 1,862 ms), the farthest stop per
+    bill (0.9898 / 86.0), both ends of each bill's stop range (0.9900 /
+    86.1). The four cases that separated them were all `stmt`, all a stray
+    character inside a nested block, and each needed an *interior* stop on
+    closed ground — the repetition has to be allowed to end where the
+    enclosing block's closing brace sits.
+
+59. **`treeDiff` and `costDiff` print 0/0 unless the literal word
+    `compare` is on the command line.** Without it the battery driver
+    never loads the reference dump and reports no differences at all,
+    which reads exactly like a tree-identical result. Every "identical
+    trees" claim in this round was re-taken with the argument present;
+    against the c17 reference, c18 is 41/1, c19 is 1888/1 and c20 is
+    1882/1, so a large `treeDiff` here means "differs from c17", not
+    "differs from its own unpruned form".
+
+**c20 as measured.** c19's repair relation (a Pareto front of numerically
+incomparable bills per end position) attached to the real `peg.Parser`,
+plus c18's locality windows, so a repair is tried only at open positions
+inside a window over the round's farthest death, plus lesson 58's prune.
+Battery **0.9901 / 86.3** in 1,471–1,496 ms, the highest accuracy of any
+engine measured (c18 0.9900 / 86.0 in 986–989 ms; c19 0.9900 / 86.1 in
+1,628 ms). All four gates: accept `cx2=1 b1=1 b2=1`, freespan `3 3 4 4 1`,
+recommit 16/16, conformance `0 1 1 0 2 3`, `cleanTreeDiff=0`; 2,728
+property checks with 0 violations; `_pred18` cost 1, falseAssertions 0
+(matching c18, where c14 and c17 each have 1); `_dominance18` equal to c18
+on all three arms including the `xabcdY` eviction that c14 and c17 fail.
+Rungs, same machine, one process per rung, peak RSS from `/usr/bin/time`,
+c18 first and c20 second: 24k seed 1 509 ms / 325 MB / cost 3 against
+650 ms / 354 MB / cost 5; 24k seed 7 847 / 320 / 4 against 615 / 339 / 4;
+100k seed 2 2,225 / 711 / 4 against 2,702 / 898 / 4; 150k seed 7 2,755 /
+813 / 4 against 2,142 / 797 / 4; 200k seed 7 3,812 / 1,210 / 4 against
+3,466 / 1,257 / 4. The cost-5 result at 24k seed 1 is the same before the
+prune and is a property of the c19 lineage, not a regression from it.
+Lines: c19 470 → c20 **886** normalized (+416, +88.5%), which is 0.74x
+c18's 1,194 and 0.67x c17's 1,330, and 1.10x c14's 806. An alternative
+that quantizes doubt to the left edge of its open run (`qf` inside
+`cover`) reaches 2,073 ms / 760 MB at 100k but costs the tie-breaks:
+0.9901 / 86.0 with `treeDiff` 1916. It is not the installed engine.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
@@ -1524,6 +1606,22 @@ parser and c17's approximate two-unit windows.
   promoted: the same workload call as c15–c17 (short inputs pay 1.8x
   c14); the user decides.
 
+- **c19** (scratch `_c19.dart`, Codex 2026-09-05; not the standing
+  engine): the repair relation as a small addition to the real library
+  parser — `Recovery(parser).recover()`, repair bills in side maps keyed
+  by MemoEntry identity, no engine-owned plain interpreter. 0.9900 /
+  86.1, all gates, **470 lines**, the smallest engine ever at that score.
+  But enumeration without locality: 1.9x c18 on the battery and it does
+  not finish 24k in 150 s / 7.7 GB. Lessons 49–52.
+- **c20** (scratch `_c20.dart`, 2026-09-07; not the standing engine):
+  c19's relation on the real parser, c18's windows, and the repetition
+  stop prune of lesson 58. 0.9901 / 86.3 — the highest accuracy measured
+  — all gates and extra checks, 886 lines (+88.5% over c19, 0.74x c18),
+  1.5x c18 on the battery, and 0.9x c18's time at 150k and 200k where c19
+  does not run at all. Lessons 56–59. Why it is not promoted: the same
+  workload call as c15–c18, short inputs pay about 1.5x c18 and 2.9x c14;
+  the user decides.
+
 ## 5. What the archived lines taught (details in the attic)
 
 - **dot/m-line** (budgeted deepening over the memo): the budget-horizon
@@ -1614,6 +1712,14 @@ parser and c17's approximate two-unit windows.
 | Skip the end-of-input death's window (c17) | 0.9840 / 83.7, 74 cases worse: that walk finds the repair inside a string that swallowed the rest of the input |
 | Skip the end death's re-run when the winner has missingAtEnd 0 (c17) | 0.9897, 157 diff lines; the re-run stays |
 | Also refuted in the c17 session before the per-frame walk: K other than 2, innermost-walker ownership of the walk, death = no offers, accepting a winner before opening the window, min over frame proposals, a slot as one unit, re-runs without the beam reset, a full reset per window | each lost battery cases or was O(E·n); details in the session transcript named at the top of this file |
+
+| Bucket the repair front by its two equality-class heads (c20) | identical trees, no speedup: battery 1,481 → 1,517 ms, 100k 5,208 → 5,266 ms; the map traffic costs what the skipped comparisons save |
+| Reorder `cover` to test the equality-class heads first (c20) | no change (1,495 ms battery, 5,229 at 100k); the cost is the number of insertions, not the price of one (lesson 56) |
+| Prune a repetition to its clean stops only (c20) | no effect at all: every reading the prune would have dropped was already clean |
+| Prune all short stops on closed ground (c20) | fastest of the criteria (1,862 ms at 100k) but 0.9895 / 85.7 with `costDiff` 8 |
+| Keep only the farthest stop per bill (c20) | 0.9898 / 86.0, `costDiff` 8; both ends of the range gives 0.9900 / 86.1 and still loses four `stmt` cases that need an interior stop (lesson 58) |
+| Collapse a sequence's equal-end readings and re-run the same budget (c20) | 0.9891–0.9892 and slower on every rung, with or without doubt quantization |
+| A separate rule for an absent optional (c20) | no measurable gain on any rung; excluded as unused code |
 
 ## 6b. The mechanism-A autopsy (json string-swallow, 2026-08-22)
 
