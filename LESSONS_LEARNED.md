@@ -22,7 +22,12 @@ recursion depth and per-end scans are bounded by the grammar rather than by
 the document, so a 100,000-character input is read in about two seconds
 where c13 overflowed the stack. This file
 records the yardstick, the standing results, the critical
-lessons, and the refutations that must not be retried. Everything else — the
+lessons, and the refutations that must not be retried. (A refutation is a
+measurement under a stated protocol, and one of them was itself wrong:
+lesson 46 refutes the retained-width bound of lesson 33. A retry under a
+different premise or protocol is a new experiment, not a repeat.) The
+c1–c19 comparison of 2026-09-06 is in §2 beside the standing table; the
+c18/c19 round and its audit are lessons 44–55. Everything else — the
 era-1/era-2 history (insights I1–I107 in long form), the last full
 twelve-engine table, and the archived lines' detailed accounts — is preserved
 in `dart/experiments/recovery/attic/OLD_LESSONS_LEARNED.md`.
@@ -50,13 +55,204 @@ left-recursion wrappers whose evidence lies beyond the cut — the battery
 asks only questions a human could answer.
 
 **The gates** (all must pass; the battery cannot see them by construction):
+
 - `_accept` — D8's readings: cx2, b1, b2.
 - `_freespan` — may a repair delete real input that already matched?
 - `_recommit` — does the engine keep a committed construct rather than
   re-reading the healthy prefix as something else?
 - `_conf1` — exact repair-cost conformance, no free passes for predicates.
 
-## 2. The standing table (era-3 battery, 2026-08-21)
+## 2. The standing table (era-3 battery, 2026-08-21) and the c-series comparison (2026-09-06)
+
+### Full c-series comparison (2026-09-06; measured by Codex, audited the same day)
+
+**Confirmed measurements:** c1–c19 and the c18 envelope variant, current
+worktree at HEAD `1059d8e`, Dart 3.12.2 stable (linux_x64), AMD Ryzen 9 3950X.
+The same current `weighted(buildBattery())` supplies **2,101 damaged cases**
+across JSON, statements and left-recursive expressions; scoring uses the
+frozen parser and the existing `expectedFor` truncation adjustment. These
+measurements do not change the yardstick or promote a replacement engine.
+The c18 row was measured on Codex's `_c18.dart`; the rebuilt `_c18.dart`
+(lesson 55) returns the same tree and cost on all 13,241 raw cases, and the
+audit's own same-day timings for c14, c17 and c18 are in lesson 55.
+
+#### Timings and memory — measured, not estimates
+
+Timings are separated from accuracy so they remain visible without scrolling
+a wide table. Damaged battery time is the **total for 2,101 cases**, median of
+three warmed passes with scoring outside the stopwatch. Clean time is **per
+document**, derived from the median of three rounds of 4,600 parses (the 23
+corpus documents repeated 200 times). There is a full damaged warmup and a
+clean warmup. Engines run serially in fresh workers; timed workers are never
+concurrent. Grammar/engine construction and VM startup are excluded from
+stopwatch timings; construction performed inside `recover()` is included.
+Small timing differences are not claims of statistical significance.
+
+The two rightmost columns use a separate, identical workload:
+`makeDoc(256, 4, Random(7))`, **5,959 characters with four deletions**.
+They measure one recovery in a fresh process, not a warmed median.
+
+| Engine | Damaged battery (ms) | Clean (µs/document) | 5,959-char recovery (ms) | Peak RSS (MiB) |
+| --- | ---: | ---: | ---: | ---: |
+| c1 | 1765 | 21.46 | timeout | — |
+| c2 | 2472 | 45.51 | 7177 | 1058.1 |
+| c3 | 1764 | 22.59 | timeout | — |
+| c4 | 1724 | 21.97 | timeout | — |
+| c5 | 1688 | 22.61 | timeout | — |
+| c6 | 1054 | 9.06 | timeout | — |
+| c7 | 1016 | 8.18 | timeout | — |
+| c8 | 1017 | 9.03 | timeout | — |
+| c9 | 582 | 7.82 | timeout | — |
+| c10 | 645 | 19.70 | timeout | — |
+| c11 | timeout† | 40.50 | timeout | — |
+| c12 | 543 | 8.62 | timeout | — |
+| c13 | 552 | 8.40 | timeout | — |
+| c14 | 370 | 7.57 | 792 | 430.2 |
+| c15 | 1744 | 8.34 | 1480 | 741.1 |
+| c16 | 642 | 29.11 | 716 | 441.5 |
+| c17 | 1011 | 17.13 | 575 | 333.3 |
+| c18 | 806 | 14.47 | 430 | 296.5 |
+| c19 | 1539 | 21.57 | 2361 | 599.7 |
+| c18-envelope | 1383 | 14.02 | 861 | 342.3 |
+
+† c11's scored battery exceeded the **60-second worker wall limit**. Its
+historical battery time is approximately **1,926,000 ms (32 minutes)**,
+recorded in `dart/experiments/recovery/c11_study.md`; it was **not reproduced**
+in this comparison. Its clean timing and all gates were measured afresh.
+The standalone clean run uses the same clean warmup/repeats but could not
+follow a completed damaged warmup.
+
+Every timeout in the 5,959-character column is a **15-second worker wall
+limit**, including startup, not a proof of nontermination or an exact
+recovery-only time bound. Every completed large-input run covered the whole
+input and reported four edits; its tree was not AST-scored. This single
+common rung establishes neither a scaling exponent nor a general bound.
+
+Peak RSS is **whole-process resident memory**, including runtime/harness,
+not retained recovery heap or incremental overhead. All workers load the
+same imports; before-recovery current RSS for completed probes is roughly
+230–237 MiB. Exact before/peak bytes are in the raw results.
+
+#### Accuracy, category means and normalized size
+
+| Engine | LOC | Score | Perfect % | Truncation | Deletion | Insertion | Substitution | Misc |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| c1 | 493 | 0.981778 | 78.63 | 0.9817 | 0.9792 | 0.9938 | 0.9851 | 0.9624 |
+| c2 | 454 | 0.981188 | 78.53 | 0.9806 | 0.9786 | 0.9939 | 0.9850 | 0.9614 |
+| c3 | 515 | 0.982942 | 81.15 | 0.9846 | 0.9794 | 0.9937 | 0.9867 | 0.9638 |
+| c4 | 566 | 0.987815 | 83.86 | 0.9972 | 0.9843 | 0.9935 | 0.9873 | 0.9675 |
+| c5 | 535 | 0.987815 | 83.86 | 0.9972 | 0.9843 | 0.9935 | 0.9873 | 0.9675 |
+| c6 | 707 | 0.987902 | 84.01 | 0.9972 | 0.9843 | 0.9935 | 0.9877 | 0.9676 |
+| c7 | 692 | 0.987902 | 84.01 | 0.9972 | 0.9843 | 0.9935 | 0.9877 | 0.9676 |
+| c8 | 738 | 0.987902 | 84.01 | 0.9972 | 0.9843 | 0.9935 | 0.9877 | 0.9676 |
+| c9 | 890 | 0.987902 | 84.01 | 0.9972 | 0.9843 | 0.9935 | 0.9877 | 0.9676 |
+| c10 | 785 | 0.987902 | 84.01 | 0.9972 | 0.9843 | 0.9935 | 0.9877 | 0.9676 |
+| c11 | 815 | 0.9874† | 84.7† | 0.995† | 0.981† | 0.993† | 0.998† | 0.962† |
+| c12 | 784 | 0.989627 | 85.77 | 0.9972 | 0.9843 | 0.9934 | 0.9972 | 0.9689 |
+| c13 | 786 | 0.989869 | 85.82 | 0.9972 | 0.9853 | 0.9931 | 0.9972 | 0.9691 |
+| c14 | 807 | 0.989869 | 85.82 | 0.9972 | 0.9853 | 0.9931 | 0.9972 | 0.9691 |
+| c15 | 1021 | 0.989864 | 85.82 | 0.9974 | 0.9854 | 0.9932 | 0.9973 | 0.9683 |
+| c16 | 1016 | 0.989869 | 85.82 | 0.9972 | 0.9853 | 0.9931 | 0.9972 | 0.9691 |
+| c17 | 1330 | 0.989965 | 86.01 | 0.9972 | 0.9853 | 0.9933 | 0.9972 | 0.9697 |
+| c18 | 1194 | 0.989965 | 86.01 | 0.9972 | 0.9853 | 0.9933 | 0.9972 | 0.9697 |
+| c19 | 470 | 0.990033 | 86.15 | 0.9974 | 0.9853 | 0.9931 | 0.9978 | 0.9692 |
+| c18-envelope | 1219 | 0.990169 | 86.24 | 0.9974 | 0.9853 | 0.9933 | 0.9974 | 0.9707 |
+
+† c11's accuracy/category cells retain their **historical** values and
+precision from `c11_study.md`, not results imputed from its unfinished run.
+All **19 completed batteries** have **0 crashes, 0 uncovered cases, 0
+reported-bill discrepancies and 0 zero-cost damaged cases**. The bill audit
+compares the reported piece count with emitted SyntaxError marks/spans; it
+does not prove minimum repair cost. Equal scores do not establish equal trees.
+
+LOC is freshly normalized with `dart format --output=show --summary=none
+--language-version=3.0`, excluding blank and whole-line `//` comment lines;
+no formatting is written to the engines. It counts each engine file, **not
+uniformly added LOC over the native parser**: c6–c10 contain their folded-in
+parser, while c8–c10 exclude the external `_convert.dart` adapters.
+
+Configurations: c15 is **W=8, K=0**, not its effectively unlimited source
+default; c16/c17 use **W=8, REFILL=false**. c17, c18 and c18-envelope retain
+**back=2 windows**; c18/envelope have no origin beam. c19 uses neither beam
+nor window. Instrumented and ablation-only variants are not additional
+entries in this comparison.
+
+#### Ordinary gates and additional counterexamples
+
+**Confirmed:** every engine, including c11, passes `_accept` **3/3**,
+`_freespan` **5/5**, `_recommit` **16/16**, and `_conf1` **6/6** (costs
+`0 1 1 0 2 3`). The four historical groups do not include every audit:
+
+| Engines | Four ordinary gate groups | Separate committed-prefix check | Extra greedy-predicate probe |
+|---|---|---|---|
+| c1, c3–c10, c12–c14, c16–c17 | PASS | PASS | FAIL |
+| c2 | PASS | FAIL | FAIL |
+| c11 | PASS | FAIL | PASS |
+| c15, c18, c19, c18-envelope | PASS | PASS | PASS |
+
+The committed-prefix probe is `Top <- Chunk 'z'; Chunk <- 'a'* 'b';` on
+`abab`. c2/c11 return errors **[1..2, 4..4]**, deleting within the already
+matched Chunk at 0..2. c1/c3–c10 return **[2..2, 2..4]**; c12–c19 and
+c18-envelope return **[2..3, 3..4]**, without that overlap.
+
+The extra predicate probe is `S <- &('a'* 'a') 'b';` on `a`: greedy PEG
+makes the assertion fail. Each FAIL engine returns **one false assertion**.
+c2 rewrites its predicate to reference synthetic rule `#0`; auditing that
+rewritten clause against the original rules throws a rule-lookup error.
+That is **not an engine crash**. Auditing the original assertion at the
+returned position demonstrates the actual bug: `_compare_c2_pred.dart`
+prints `returned positive assertion at 0 len=0` and
+`original assertion mismatch=true`. The common audit checks the original
+assertion's meaning for every engine.
+
+The comparison's library run prints **+284: All tests passed!**, not the
+historical +308. Underscore-prefixed recovery probes are not discovered by
+that suite. The three comparison Dart drivers analyze with **No issues
+found!** These are finite checks, not universal conformance proofs.
+
+#### Conclusions and reproduction
+
+**Confirmed in this comparison:** c19 is **470 versus c18's 1,194 lines**
+(724 fewer), with **1,810 versus 1,807 perfect cases** out of 2,101. It loses
+on insertion/misc category means while gaining on substitution/truncation.
+c19/c18 is **1.91×** on the warmed battery, **5.49×** on the 5,959-character
+recovery and **2.02×** on that probe's peak RSS. It is the smallest entry
+passing the four ordinary groups and both extra audits, but remains above
+400 lines and is **not an all-criteria winner**. c14 has the lowest measured
+battery time but fails the extra predicate probe; c18-envelope has the
+highest measured score, not the smallest implementation.
+
+Do not combine these serial fresh-worker medians with older interleaved
+paired samples as if they were one experiment. The larger c19 timeout and
+deep-LR measurements remain in lessons 50/52; this common rung does not
+supersede them.
+
+Reproduce from the repository root (the parent enforces the limits above):
+
+```sh
+pushd dart
+recovery_dart=/opt/flutter/bin/cache/dart-sdk/bin/dart
+$recovery_dart --packages=.dart_tool/package_config.json experiments/recovery/_compare_c_all.dart battery
+$recovery_dart --packages=.dart_tool/package_config.json experiments/recovery/_compare_c_all.dart clean c11
+$recovery_dart --packages=.dart_tool/package_config.json experiments/recovery/_compare_c_all.dart gates
+$recovery_dart --packages=.dart_tool/package_config.json experiments/recovery/_compare_c_all.dart scale
+$recovery_dart --packages=.dart_tool/package_config.json experiments/recovery/_compare_c2_pred.dart
+$recovery_dart test --reporter expanded
+popd
+```
+
+The full report is `dart/experiments/recovery/_C_SERIES_COMPARISON.md`;
+`_compare_c_results.json` holds all timing samples, full-precision scores,
+exact RSS, gates, source paths and SHA-256s. These underscore files are
+untracked scratch artifacts; the tables and findings above are recorded
+here so the durable record does not depend solely on their survival.
+
+### The standing table (era-3 battery, 2026-08-21)
+
+This is the standing table: the scored engines under the protocol of §1,
+and c14 remains the standing engine. “All gates” below means the four gate
+groups of §1, not the extra checks above; its timings are from the sessions
+named in the notes that follow it.
 
 | Engine | Score | Perfect% | ms | LOC | Gates | truncation | deletion | insertion | substitution | misc |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -637,9 +833,10 @@ PASS, `_recommit` 16/16, `_conf1` `0 1 1 0 2 3`).
     most W=8 origins, judged on the bill of the WHOLE document prefix
     (`ctx.plus(r)`, the context handed down the stack); a newcomer
     replaces the worst only when strictly better, and an origin
-    already in the row updates its bill in place. Same bound as c15
-    (at most W live readings per (state, end) per budget, so
-    O(|G|·W·n) per rung), 1.38x on the battery instead of 3.75x
+    already in the row updates its bill in place. This was claimed to give
+    the same bound as c15, O(|G|·W·n) per rung; the c18 audit refutes the
+    retained-origin premise (lesson 46). The measured result was 1.38x
+    on the battery instead of 3.75x
     (c14 500 ms, c16 683–701 ms, three same-session pairs), and the
     battery is bit-identical at W=8, W=16 and W=∞; W=4 changes it
     (0.9890 / 85.3, 333 diff lines), as in c15.
@@ -682,8 +879,12 @@ PASS, `_recommit` 16/16, `_conf1` `0 1 1 0 2 3`).
     refills vs 8.8 s without; 24k seed 1: 13.3 vs 8.0; 100k seed 2:
     106 vs 32 s). Off by default, `-DREFILL=true` restores it.
 
-38. **At fixed budget c16 is bounded linear in the input, and the
-    constant is set by the error configuration, not by n.** json
+38. **c16's rungs grow about linearly with n at fixed budget, but the
+    bound argued for it is refuted.** The O(|G|·W·n) argument rested on
+    at most W retained origins per (state, end); lesson 46 measures 13
+    with W=8, so the linear growth in the table is an observation over
+    these instances, not a proven bound, and its constant varies strongly
+    with the error configuration. json
     `makeDoc` documents, four errors, one process per rung, peak RSS
     from `/usr/bin/time`, same session:
 
@@ -790,8 +991,13 @@ gates (`_accept17` ok cx2=1 b1=1 b2=1, `_freespan17` all clear,
     Clearing the beam rows touched instead of reallocating the beam
     per window saved 50 ms of the battery.
 
-43. **At fixed budget c17 is linear in the input with a small
-    constant, and the peak memory is the plain parse's.** json
+43. **c17 substantially improves the measured long-input rungs.**
+    Neither a worst-case linear bound nor equality with plain-parser peak
+    memory follows from these measurements. The plain parser alone (the
+    frozen library, `_plainrss.dart`, 2026-09-06) peaks at 230 MB of RSS
+    at 24k, 100k and 200k alike, the VM's floor, in 31–43 ms, so c17's
+    0.4–1.5 GB is recovery memory; the retained-origin audit is lesson
+    46. json
     `makeDoc` documents, four errors, one process per rung, peak RSS
     from `/usr/bin/time`, same session:
 
@@ -816,6 +1022,193 @@ gates (`_accept17` ok cx2=1 b1=1 b2=1, `_freespan17` all clear,
     put it at 165527, the latest point that still parses (the
     later-doubt preference, both cost 4) — a window cannot reach the
     position c14 prefers, and the generator's own position is c17's.
+
+### The machine, sixth look — c18's falsification round (2026-09-05)
+
+The experiment and reproduction commands are in
+`dart/experiments/recovery/_C18_FINDINGS.md`. Starting HEAD: `1059d8e`.
+The frozen library and existing engines were not edited. c18 is a useful
+candidate, not the requested minimal addition: it still has its own plain
+parser and c17's approximate two-unit windows.
+
+44. **A local winner needs a replacement law, not just a comparator.**
+    The earlier warning in §6d remains live in c14/c17. With
+    `Top <- A 'd' 'e' 'Y'; A <- P / Q; P <- 'a' . .;`
+    `Q <- 'u' 'v' . . 'b' 'c';`, input `xabcdY` costs 3 via Q,
+    although P gives a two-edit reading. P's temporary absorption charge
+    loses locally and disappears after the shared suffix supplies evidence.
+    `_dominance18.dart` prints the original and forced-P trees. c18 applies
+    absorption only to complete comparisons and returns cost 2. This fixes
+    that eviction, not every possible continuation-dependent comparison.
+
+45. **A free recovery reading is not proof of a PEG predicate.**
+    `S <- &('a'* 'a') 'b';` on `a` produces `falseAssertions=1` in
+    c14/c17: non-greedy recovery can satisfy the assertion's body, but greedy
+    PEG cannot. `_pred18.dart` checks each returned assertion with the real
+    library matcher. c18 asks the ordinary PEG verdict and returns an
+    error-only tree (`falseAssertions=0`). Empty-input fallback must also
+    cost one zero-width error mark, not zero. These are correctness fixes,
+    not oracle preferences.
+
+46. **Admission width is not retained width.** `_beam18.dart 64 7` finds
+    13 retained c16 origins for repetition 39, end 374, budget 3, with W=8:
+    `[29,62,98,116,149,203,237,294,328,354,364,365,366]`. All precede
+    the end. Replacing an admission-row member does not remove old readings
+    from other memo cells. This refutes the retained-width premise of
+    lesson 33, not by itself every possible linear bound. A separate
+    no-beam c18 control is full-tree-and-cost identical to c17 on all
+    13,241 raw battery cases; that is not equivalence on all inputs.
+
+47. **Retaining incomparable bills buys accuracy, not yet compactness.**
+    The indexed `_envelope18.dart` admits conservative numeric alternatives
+    per end. Its absorption inequality uses `deleted + 2*evidence` because
+    `absorbed > evidence` iff `span > deleted + 2*evidence`; 2 is algebra,
+    not a tuning coefficient. Final-memo census: 669,957 readings in
+    438,949 end buckets, maximum width 50. This is not a peak-heap count or
+    a minimal Pareto set, and windows still constrain candidate discovery.
+
+    | Engine | Weighted score / perfect | Normalized code lines | Paired damaged latency / c17 |
+    |---|---|---:|---:|
+    | c17 | 0.9900 / 86.0% | 1330 | 1.000 |
+    | c18 | 0.9900 / 86.0% | 1194 | 0.785 |
+    | envelope | 0.9902 / 86.2% | 1219 | 1.362 |
+
+    Five interleaved rounds after warmup; full methodology in the findings.
+    Raw scores: c18 0.9914 / 87.7%, envelope 0.9915 / 87.7%. Both have
+    zero crashes, uncovered cases, or error-cost audit failures. Both pass
+    acceptance, freespan `3 3 4 4 1`, recommit 16/16, conformance
+    `0 1 1 0 2 3`, clean-tree equality and 2,728 additional grammar/input
+    property checks. The current library suite has 284 passing tests.
+    At 201,260 chars / four errors / seed 7, fresh-process c17/c18 are
+    4854/3640 ms and 1,646,927,872/1,308,446,720 bytes peak process RSS.
+    Envelope's 100,060-char seed-2 rung regresses to 14,949 ms; no general
+    speed or worst-case complexity win is claimed for it.
+
+48. **Laziness needs a demand rule; deleting mechanisms is not enough.**
+    Freezing every successful plain subtree outside windows loses score
+    (0.9880 / 85.0%). Replacing the ambiguous-missing penalty by rejection
+    passes the old gates but loses `xb` under
+    `S <- A 'x' 'b'; A <- 'a' / 'b';` (cost 3 instead of 1).
+    Removing windows from the envelope fails freespan (`4 4 5 5 1`).
+    Each is retained as a rejected control. The architectural next step
+    is to keep the ordinary PEG verdict and attach a lazy recovery relation
+    to existing memo machinery, sharing clean trees and repair backpointers.
+    Predicate truth and other hard coherence conditions must be distinct
+    from final preference; pruning needs continuation-compatible dominance.
+    At the close of c18 this was a hypothesis; c19's implementation and
+    measurements follow below.
+
+### c19 — attach the relation, keep the ordinary verdict (2026-09-05)
+
+49. **The architecture can be a small addition to the actual library.**
+    `_c19.dart` implements `Recovery(existingParser).recover()` with repair
+    relations in side maps keyed by real MemoEntry identity. Ordinary answers, assertions and terminal
+    matching use that same Parser and unchanged input. A repair relation has
+    its own growth/version clock: the frozen scalar MemoEntry loop cannot
+    hold a set of ends/bills in its `result`. Clean input returns the original
+    root object with zero recovery relations. Unchanged subtrees are shared;
+    no engine-owned plain interpreter or converted clause hierarchy remains.
+    Size: **470 normalized code lines**, versus c18's 1194; not yet under 400.
+
+50. **Lazy attachment is not selective demand within a relation.** c19
+    delays expansion until a `(clause, position, budget)` asks, then still
+    enumerates that budget's alternatives. No window or beam is used.
+    Weighted 0.9900 / 86.1%; raw 0.9916 / 87.8%, all crash/coverage/bill audits
+    zero. Acceptance, freespan, recommit 16/16 and conformance pass, as do
+    the three c18 counterexamples and 2728 property checks, now including
+    preservation of the ordinary memo verdict. The archived charge check
+    gives `0 0 0`; committed gives `[2..3, 3..4] OK` (substitution plus tail
+    deletion, not the old r-series error list). Native same-end successes
+    exclude repaired rivals as a freespan **policy**, not a dominance theorem.
+
+    Five-round paired damaged latency is **1.892x c18 / 1.487x c17**.
+    Clean c19/native is 0.999 in a separate paired control: attachment itself
+    adds no resolved cost in that sample, although c19 is ~1.54x c18/c17 on
+    their different plain interpreters. At 5959 chars / four errors / seed 7,
+    c18/c19 take 447/2443 ms and 316538880/629432320 bytes peak process RSS.
+    Final c19 times out at **45 seconds on 24190 characters**; the audit let
+    it run, over 150 s and 7.7 GB peak RSS (lesson 55). This establishes
+    a code-size reduction, not the sought scalable recovery algorithm.
+
+51. **An ordinary match is safe proof, not automatically a safe repair seed.**
+    `_c19seed.dart` starts the repair fixed point with the complete native
+    match. Gates pass, but weighted score falls to 0.9898 / 85.9%. The selected
+    c19 keeps proof and repair seed separate. The inferred issue is that
+    choice admission observes the preferred readings already present; the
+    full operator is not made monotone by a numeric Pareto front. The next
+    unresolved mechanism is end/continuation-specific demand with a justified
+    exclusion law, not merely another container for all affordable readings.
+    `_C19_FINDINGS.md` records implementation anchors, controls, limitations
+    and reproduction commands. No existing engine was replaced.
+
+52. **Inspecting a native LR tree must not restore input-depth recursion.**
+    c19 initially overflowed at 8193 characters in `_ev`, the evidence walk,
+    not in the frozen parser. An explicit postorder stack fixes that probe:
+    cost 1, full coverage, 17716 ms / 1640722432 B peak process RSS. It adds
+    12 normalized lines (458 to 470). The high time/memory still indicts
+    enumeration; fixing a tree visitor does not establish scalable recovery.
+
+### Cross-series audit — distinct objectives and explicit test sets (2026-09-06)
+
+53. **A smaller engine is not necessarily a faster or lighter engine.**
+    The common c1–c19 comparison in §2 confirms c19's 724-line reduction
+    against c18 and three extra perfect cases, but also 1.91× battery time,
+    5.49× time and 2.02× peak process RSS on the common 5,959-character probe.
+    c14 is the short-battery speed point; c18-envelope is the measured
+    accuracy point; neither fact establishes the requested all-criteria
+    optimum. Keep accuracy, clean/damaged latency, size, memory and
+    conformance separate. A single memory rung is not a complexity bound.
+
+54. **“All gates pass” must name the test set and the grammar being checked.**
+    All twenty entries pass the four ordinary groups, yet c2/c11 fail the
+    separate committed-prefix check, and only c11/c15/c18/c19/envelope pass
+    the extra greedy-predicate example. c2's normalized `#0` references
+    also expose an audit trap: a frozen-parser lookup error on a foreign
+    clause is not evidence that recovery crashed. The original predicate
+    is demonstrably false where c2's returned tree claims it. Check
+    original-grammar meaning, distinguish harness errors from engine
+    failures, and retain counterexamples beyond the scored battery.
+
+### Audit of the Codex round (2026-09-06)
+
+55. **A scored dump that agrees is not a tree that agrees, and a driver
+    that prints UNKNOWN has not run.** Codex's c18 was rebuilt from
+    `_c17.dart` by seventeen asserted text replacements (`mk18.py` in the
+    session scratchpad) so that c17's documentation survives and the
+    class names stay public (`Squirrel`, `Clause`, `rules`); Codex's file
+    is kept as `_c18codex.dart`. `_treecmp18.dart` walks both engines'
+    trees (clause, position, length, children) plus `lastCost` over all
+    13,241 raw cases: rebuilt c18 against Codex's, 0 tree and 0 cost
+    differences; c18 against c17, 146 trees and 5 costs differ (41 of the
+    2,101 weighted cases, every one at equal score), and all five costs
+    are c18 = 1 against c17 = 2: the single deletion in
+    `["epsilon"},"zeta"]` and its kin, which c17 lost while the absorb
+    penalty was still charged inside the sequence (inferred from the
+    change list; not traced case by case). The earlier record that
+    "c18's dump equals c17's" compared only the scored dump, which prints
+    cases scoring below 1.0. `_recommit17.dart` and `_recommit18.dart`
+    imported `_score16.dart`'s resolver, so they printed UNKNOWN for c17
+    and c18: the "0 of 1" recorded for c17 was never a run. With the
+    import fixed, c17 and c18 each pass 16/16. Gates on the rebuilt c18:
+    accept ok cx2=1 b1=1 b2=1, freespan pass, recommit 16/16, conf1
+    `0 1 1 0 2 3`, 2,728 property checks with 0 violations, `_pred18`
+    falseAssertions=0 at cost 1, `xabcdY` cost 2 (c14 and c17: 3).
+    Same-day timings, one process per rung, peak RSS from
+    `/usr/bin/time` (this machine ran about 10% slower than in the c17
+    session): battery c18 1,059–1,099 ms, c17 1,350, c14 601; 24k seed 1
+    0.57 s / 330 MB, cost 3; 100k seed 2 2.75 s / 713 MB, cost 4; 200k
+    seed 7 4.71 s / 1.22 GB, cost 4 (c17 in its own session: 0.62 s /
+    397 MB, 3.28 s / 922 MB, 5.37 s / 1.53 GB). Lines: c17 1,330 → c18
+    1,194 (−136, −10.2%); c14 807 → 1,194 (+387, +48.0%).
+    `loc.normalised` returns (raw, normalized) pairs, as its docstring
+    says; reading them the other way round produced a false "c19 is 388
+    lines" during the audit. c19 is 470 normalized (388 raw: `dart
+    format` unwraps its long lines). Envelope at 100k seed 2: 15.4 s /
+    1.08 GB, and on a 2.5M-character document 62.6 s / 13.3 GB; c19 at
+    24k seed 7: over 150 s and 7.7 GB. Standing: c14 stays the standing
+    engine; c18 replaces c17 as the scratch candidate for long inputs
+    (0.76x c17's time, 0.8x its memory, one better cost) at 1.8x c14 on
+    the battery's short inputs, so promotion remains the workload call.
 
 ## 4. The c-series arc — what each engine taught
 
@@ -1108,6 +1501,28 @@ gates (`_accept17` ok cx2=1 b1=1 b2=1, `_freespan17` all clear,
   Why it is not promoted: the same workload call as c15 (short inputs
   pay 1.38x) and the memory per character is still tens of KB; the
   user decides.
+- **c17** (scratch `_c17.dart`, 2026-09-04; not the standing engine):
+  c16 with repairs allowed only inside windows opened over the round's
+  farthest death, each window walked two evidenced units back per frame,
+  and the same budget re-run after every window. 0.9900 / 86.0 (11
+  equal-cost tie-break deviations from c14), all gates (recommit 16/16
+  once its driver resolved c17, lesson 55), 1,330 lines (+315, +31%
+  over c16), 2.3x c14 on the battery; 24k 0.6–1.1 s / 0.4 GB, 100k
+  2.3–3.1 s / 0.9 GB, 200k 5.4 s / 1.5 GB. Lessons 39–43. Superseded
+  as the scratch candidate by c18.
+- **c18** (scratch `_c18.dart`, Codex 2026-09-05, rebuilt with c17's
+  documentation 2026-09-06; the scratch candidate, not the standing
+  engine): c17 minus the origin beam, with the absorb penalty charged
+  only at the root comparison, the plain PEG verdict for predicates, a
+  memoized repetition's evidence read off its chain, and a zero-width
+  error mark for empty input. Same score (0.9900 / 86.0); 41 weighted
+  trees differ from c17 at equal score and five raw cases cost one less;
+  all gates and the extra checks; 1,194 lines (−136, −10.2% vs c17;
+  +387, +48.0% vs c14); 0.76x c17 on the battery and 1.8x c14; 24k
+  0.57 s / 330 MB, 100k 2.75 s / 713 MB, 200k 4.71 s / 1.22 GB, where
+  the plain parser alone is 230 MB. Lessons 44–48 and 55. Why it is not
+  promoted: the same workload call as c15–c17 (short inputs pay 1.8x
+  c14); the user decides.
 
 ## 5. What the archived lines taught (details in the attic)
 
@@ -1362,6 +1777,28 @@ score-neutral rebuild and was off by 0.48. Name the mechanism, not the
 nearest famous algorithm.
 
 ## 7. Where things live
+
+- Full c-series comparison (2026-09-06): the durable tables and caveats are
+  in §2. Scratch `dart/experiments/recovery/_C_SERIES_COMPARISON.md` adds the
+  per-engine gate matrix and detailed methodology; `_compare_c_results.json`
+  preserves raw timing samples and source hashes. `_compare_c.dart` runs
+  one engine; `_compare_c_all.dart` runs fresh workers serially with explicit
+  wall limits; `_compare_c2_pred.dart` isolates the normalization/audit trap.
+
+- c18/c19 investigation: `dart/experiments/recovery/_C18_FINDINGS.md` and
+  `_C19_FINDINGS.md`; selected experiments `_c18.dart`, `_envelope18.dart`,
+  `_c19.dart`. `_c18.dart` is the rebuilt file (lesson 55) and Codex's
+  original is `_c18codex.dart`; in `dart/test/recovery/`,
+  `_treecmp18.dart <a> <b> [raw]` compares two engines' trees and costs
+  over the battery, `_show18.dart` prints both trees for raw indices,
+  `_score18`/`_rung18`/`_accept18`/`_freespan18`/`_recommit18`/`_conf118`
+  are the c18 drivers, and `_plainrss.dart` is the plain-parser RSS
+  control. `_research18.dart` runs shared gates, score, paired latency and
+  generated scaling rungs; `_properties18.dart` runs the extra grammar/input
+  properties. `_memo19.dart` tests attaching to an existing Parser;
+  `_audit19.dart` runs charge/committed; `_native_latency19.dart` isolates clean
+  attachment cost. The underscore engines and controls are experiments, not
+  replacements for the standing engine or imports for tracked production code.
 
 - The c15 frontier engine (scratch, untracked): `dart/experiments/recovery/_c15.dart`;
   drivers in `dart/test/recovery/`: `_score15.dart` (battery, `c15 dump`,

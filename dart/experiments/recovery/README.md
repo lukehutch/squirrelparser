@@ -1,10 +1,21 @@
 # The recovery engine
 
 **Not part of the published library.** This directory holds the standing
-error-recovery engines — a two-point frontier, one fast and one small,
-same trees — and the attic of every superseded attempt.
+error-recovery engine, its tracked predecessors, and the attic of every
+superseded attempt.
 
-- **`c9.dart` — the fast engine.** Self-contained: the full squirrel parser is
+- **`c14.dart` — the standing engine** (2026-09-02): c13's judgment on a
+  machine whose recursion depth and per-end scans are bounded by the
+  grammar rather than by the document. Score 0.9899, 85.8% perfect, all
+  gates, 807 lines. `c11.dart`–`c13.dart` are its tracked predecessors
+  (`c11_study.md` records the restart engine). The untracked scratch
+  `_c18.dart` is the candidate for long inputs: repairs confined to
+  windows over the farthest failure, about 0.6 s at 24k characters and
+  4.7 s / 1.2 GB at 200k where c14 takes 26–55 s at 24k and 70 s / 13 GB
+  at 100k, at 1.8x c14 on short inputs. See `LESSONS_LEARNED.md` §2, §4
+  and lessons 24–55.
+- **`c9.dart` — the fast engine of the c9/c10 pair** (superseded by c14).
+  Self-contained: the full squirrel parser is
   folded in, and the published library contributes only the interchange
   types (the grammar AST in, `MatchResult` trees out). Score 0.9879,
   84.0% perfect, ~0.6 s battery, all gates, analyzer-clean, documented
@@ -14,7 +25,8 @@ same trees — and the attic of every superseded attempt.
   paired and interleaved. See `LESSONS_LEARNED.md` at the repository
   root for the yardstick, the critical lessons, and the refutation
   ledger.
-- **`c10.dart` — the small engine.** The same judgment run as ONE
+- **`c10.dart` — the small engine of the pair** (superseded by c14). The
+  same judgment run as ONE
   machine: the dedicated zero-budget parser c9 carried is deleted, and
   round zero of the costed descent IS the plain parse (three laws in the
   file header make the collapse exact). Each construct carries two faces
