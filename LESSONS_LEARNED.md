@@ -1350,14 +1350,56 @@ from `/usr/bin/time`, boundary walk first and stack walk second:
     5.6 s at 64, 64 s / 4 GB at 256), so it is a bound on the search,
     not a tuning knob.
 
-**62. Both window mechanisms have inputs they cannot finish, and they
-    are not the same inputs.** On six json rungs the stack walk fails to
-    finish two (147k seeds 1 and 7: over 400 s, 11–15 GB) and the capped
-    boundary walk fails none, but on 147k seed 3 the boundary walk pays
-    5.6 s and cost 6 where the stack walk pays 2.9 s and cost 4. The
-    blowup is a property of the ladder — re-running a budget under a
-    window wide enough to hold many repairs — and not of either walk.
-    Neither engine bounds it in general.
+**62. The cost grows with the number of repairs, not the length of the
+    input, and that is an unsolved problem, not a property to accept.**
+    Measured on the installed engine with `_time20.dart`: at four errors
+    the document length is nearly free — `1000/4/1` (23,568 characters)
+    0.44 s, `8000/4/7` (196,515) 3.7 s — while at fixed length the error
+    count is not: `1000/4/1` 0.44 s, `1000/8/1` 10.2 s, `1000/12/1` no
+    answer in 120 s. Per rung of the ladder on `1000/12/1` the round
+    times are 70, 57, 73, 155, 180, 477, 1250, 3148, 20157, 25094 ms,
+    about a factor of 2.5 to 3 per rung, so the whole run is roughly the
+    fourth to fifth power of the number of repairs. Instrumented, the
+    fills per round stay near 30,000 and the open positions grow
+    linearly (144 to 988), but the readings proposed per fill go 0.7,
+    1.3, 3, 2, 9, 23, 35, 125, 240, 370: the growth is entirely in how
+    many readings a cell hands back, not in how often it is asked.
+    Inside the widest bucket at rung 10 (377 bills reaching one
+    position) there are 59 distinct cost tuples, 113 distinct pairs of
+    doubt positions and 10 distinct evidence values.
+
+    Five attacks on that growth, all measured, none sufficient:
+    (a) a hard ceiling on how many bills one end position keeps (8, by
+    the acceptance order) leaves the battery bit-identical and cuts the
+    work 30 % — the buckets are rarely that wide, so it is not the
+    exponent; evicting a bill AFTER inserting it also stops `_read`'s
+    fixed point from ever settling, because the evicted bill is proposed
+    again on the next pass and reports progress forever, and every scale
+    rung then spins at flat memory. (b) Dropping the doubt positions
+    from the covering relation cuts the widest bucket from 377 to 115
+    and makes `1000/12/1` finish in 103 s, but 16 errors still do not,
+    and it costs two points of perfect. (c) Quantizing the doubt
+    positions to the window they fall in gives 0.9894 / 85.4 and no
+    scale gain. (d) Giving each window its own spending allowance,
+    clamped inside the sequence fold, prices 54 cases wrong, because a
+    cell filled under a clamp is cached as if it were complete; making
+    the allowance a second ladder inside the budget instead keeps every
+    price (`costDiff` 1, as it must: no complete reading exists one rung
+    down, so every winner of the accepting rung is charged exactly the
+    budget and the inner ladder can only choose among equals) but pays
+    for the extra rounds — 8 errors 22 s against 10 s. (e) Confining the
+    `_stops` prune's open-position exemption to the window the reading's
+    own doubt lies in is bit-identical on the battery and gains nothing
+    at scale.
+
+    What the measurements say the fix must be: the front carries the
+    running totals for the WHOLE document, so the number of ways to
+    divide those totals grows with the number of errors, wherever they
+    sit. No local prune changes that. Bounding it means not carrying
+    global totals — pricing a window and committing it before moving on
+    — which is a different engine and revives the greedy-commit family
+    refuted at c1/b2 (0.8826), now with windows and deaths available
+    that generation did not have.
 
 **63. A rung recorded as "150k seed 7" is not a rung anyone can re-run.**
     The c20 figures below were written with the document size as a
@@ -1369,6 +1411,22 @@ from `/usr/bin/time`, boundary walk first and stack walk second:
     the record says cost 5. So the recorded specification does not
     identify the input. Every rung in this section from here on is
     written as the literal argument passed to the driver.
+
+**64. Three of the eight heads in the covering relation were doing no
+    work.** Folding `owed` and `fee` into one head, and then `missing`
+    with them, leaves the battery BIT-IDENTICAL (0.9899 / 86.1,
+    `treeDiff` 1888, `costDiff` 1) — the four currencies were never four.
+    Separately, `first` is two things at once: at or above `_clean` it is
+    the reading's rank, below it the position where doubt began. Keeping
+    only the rank, and letting the position decide between bills that
+    cover one another both ways (the relation's existing "equal
+    summaries replace the tree" rule, unchanged), scores 0.9901 / 86.0
+    against 0.9899 / 86.1 — a better score for a smaller relation, all
+    four gates, 2,728 property cases 0 violations, and the same rung
+    times. Which rule breaks the tie is worth 2.4 points of perfect on
+    its own: keeping the incumbent gives 83.6, choosing by the
+    acceptance order 84.1, choosing by the position rule directly 84.1,
+    and replacing gives 86.0.
 
 ## 4. The c-series arc — what each engine taught
 
