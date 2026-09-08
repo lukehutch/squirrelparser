@@ -1292,6 +1292,84 @@ that quantizes doubt to the left edge of its open run (`qf` inside
 `cover`) reaches 2,073 ms / 760 MB at 100k but costs the tie-breaks:
 0.9901 / 86.0 with `treeDiff` 1916. It is not the installed engine.
 
+**c20 after the size round (2026-09-07).** The stack walk is gone; the
+window's left edge counts back `back` = 4 marks in `_bound` (where the
+repair search finished an evidenced, non-lexical repetition occurrence)
+and may not reach past `wide` = 64 marks in `_plainBound` (where the
+ordinary parse finished one). A death is an `int`. Lines **886 → 742**
+normalized (−144, −16.3%; 677 raw code lines, 232 comment lines), which
+is 1.58x c19's 470. Battery **0.9899 / 86.1** in 1,364–1,395 ms against
+the walk's 0.9901 / 86.3 in 1,500 ms, `costDiff` 1 for both against the
+c17 reference; case by case, 7 worse and 4 better, all 11 at equal cost.
+All four gates: accept `cx2=1 b1=1 b2=1`, freespan `3 3 4 4 1`, recommit
+16/16, conformance `0 1 1 0 2 3`, `cleanTreeDiff=0`; 2,728 property
+checks, 0 violations; `_pred18` cost 1, falseAssertions 0. Rungs, written
+as the driver argument `nodes/errors/seed`, one process each, peak RSS
+from `/usr/bin/time`, boundary walk first and stack walk second:
+`1000/4/1` (23,568 chars) 440 ms / 311 MB / cost 4 against 503 / 329 / 4;
+`4000/4/2` (97,688) 1,359 / 624 / 4 against 1,534 / 647 / 4; `6000/4/1`
+(147,054) 2,642 / 957 / 4 against no answer in 400 s at 14.9 GB;
+`6000/4/3` (147,078) 5,646 / 1,467 / 6 against 2,913 / 1,003 / 4;
+`6000/4/7` (147,105) 2,647 / 925 / 4 against no answer in 400 s at
+11.2 GB; `8000/4/1` (196,441) 3,253 / 1,117 / 4 against 3,599 / 1,230 / 4;
+`8000/4/7` (196,515) 3,724 / 1,263 / 6 against 4,111 / 1,303 / 6.
+
+**60. The window's left edge is a count of finished occurrences, so it
+    does not need the stack that produced them.** c20's window walked
+    back through the live frames when a reading died: `_claim` unwound
+    `back` evidenced units, `_units` descended into finished pieces,
+    `_fresh` re-entered a piece that ended at the death with its own
+    count, and `_atomic`/`_atomicPiece` decided per piece representation
+    what counted as a unit — 227 raw lines and two copies of the same
+    logic, one per piece representation. The only thing that walk
+    computes is a position: where the last few proven occurrences began.
+    A repetition already knows when it has finished an occurrence, so
+    marking `_bound[end]` there and counting back over the marks gives
+    the same edge without the stack. That deletes `_claim`, `_units`,
+    `_fresh`, `_atomic`, `_atomicPiece`, `_startOf` and the `_Death`
+    class (a death is now an `int`), and costs nothing on price: against
+    the walk, 7 battery cases score lower and 4 score higher, every one
+    of the 11 at identical repair cost — a tie-break in tree shape, not
+    a worse repair.
+
+**61. Marks made only by the repair search are marks only where doubt
+    has already been.** The first boundary build marked `_bound` solely
+    in `_repeat`, so the marks lay wherever the search had iterated. Text
+    the ordinary parse read cleanly is answered from a memoized cell and
+    never iterated, so it carries no marks at all. When the death then
+    moves to a region the search has not walked, the four nearest marks
+    can be a whole document behind it: measured, a window of 47,618
+    characters at budget 2 on a 147k input, which does not terminate in
+    400 s. Clearing the marks each round does not help — the gap is
+    inside one round, not across rounds. The fix is a second array,
+    `_plainBound`, marked from the ordinary parse's own occurrences,
+    which is complete everywhere; the walk may not reach back past
+    `wide` of them. `wide` is the smallest value that leaves the
+    battery's repair cost unchanged: 32 gives `costDiff` 3, 64 and 128
+    give 1, and the scale cost rises with it (147k seed 3: 4.3 s at 32,
+    5.6 s at 64, 64 s / 4 GB at 256), so it is a bound on the search,
+    not a tuning knob.
+
+**62. Both window mechanisms have inputs they cannot finish, and they
+    are not the same inputs.** On six json rungs the stack walk fails to
+    finish two (147k seeds 1 and 7: over 400 s, 11–15 GB) and the capped
+    boundary walk fails none, but on 147k seed 3 the boundary walk pays
+    5.6 s and cost 6 where the stack walk pays 2.9 s and cost 4. The
+    blowup is a property of the ladder — re-running a budget under a
+    window wide enough to hold many repairs — and not of either walk.
+    Neither engine bounds it in general.
+
+**63. A rung recorded as "150k seed 7" is not a rung anyone can re-run.**
+    The c20 figures below were written with the document size as a
+    character count and the generator arguments left out. `_time20.dart`
+    takes `nodes/errors/seed` and `makeDoc(6000, 4, 7)` produces 147,105
+    characters, but the engine that produced the battery figures
+    recorded here (verified: it still scores 0.9901 / 86.3) cannot
+    finish that rung in 400 s, and at `1000/4/1` it answers cost 4 where
+    the record says cost 5. So the recorded specification does not
+    identify the input. Every rung in this section from here on is
+    written as the literal argument passed to the driver.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
@@ -1643,6 +1721,16 @@ that quantizes doubt to the left edge of its open run (`qf` inside
 
 | Claim | Verdict |
 |---|---|
+| A point window at the death, no walk at all | 0.9665 / 77.5 at 733 lines: the walk is worth 0.0236 and 8.8 perfect |
+| Widen the window by doubling on a failed round | 0.9867 / 0.9874 at 742 / 758 lines — better than a point, still short of the walk |
+| Walk the frame chain without descending into finished pieces | keeps 0.9900 / 86.1 but the first window is (0, 4077) not (4037, 4077): 24k does not finish |
+| Drop `_fresh` (re-enter the piece that ends at the death) | battery IMPROVES to 0.9903 / 86.5, and 150k goes 2.1 s / 797 MB → 29.0 s / 6.3 GB; the battery is short inputs and cannot see it |
+| Mark a boundary at every repetition occurrence, lexical included | 0.9805: a per-character scan marks every position, so the window is four characters wide |
+| Mark a boundary at each sequence slot end | 0.9893; at each whole-sequence end, `costDiff` 3; at each repetition START, `costDiff` 2 |
+| Widen the boundary count instead of capping it | score plateaus at 0.9900 / 86.1 from `back` = 6 and costs 28% more time; the residual gap to the walk is not window width |
+| Boundaries from the ordinary parse ALONE, counting back `back` of them | 0.9797 at `back` = 4, 0.9884 at 16, 0.9900 at 64 — and 64 costs 3.7x the time at 24k and 4.5x at 200k |
+| Clear the boundary marks each round to keep them local | battery unchanged, and the 47,618-character window survives: the gap is inside one round |
+| Enter a death at the granularity of the scan that ends there | battery unchanged, blowup unchanged: the death was not at a scan's end |
 | Delete the budget; compute cells once | ~100x latency; the budget is the horizon (A3, twice) |
 | Grammar rewriting as the engine's foundation | −0.0008, foreign trees, and the library's LR does the same work (c2) |
 | Repetition through its own memo cell | 2,440 vs 1,535 ms, no accuracy change (twice) |
