@@ -1428,6 +1428,705 @@ from `/usr/bin/time`, boundary walk first and stack walk second:
     acceptance order 84.1, choosing by the position rule directly 84.1,
     and replacing gives 86.0.
 
+### c21 investigation — scheduling, tariffs, and a counterexample (2026-09-08)
+
+**65. A bounded window is a heuristic, not a completeness argument.**
+CONFIRMED by `dart/experiments/recovery/_window21.dart`, against the current
+c19, c20 and the new c21 scheduling experiment:
+
+```
+S <- P / A;
+P <- '(' Item* ')';
+A <- Item*;
+Item <- 'a';
+```
+
+For input consisting of n `a` characters followed by `)`, c19 keeps the
+parenthesized reading, marking the absent opener, at n=1,4,8,16,64,256.
+C20 agrees at n=1 and 4. At n=8 it instead selects A and deletes the real
+closer: the window is [(4,8)], excluding the opener at zero. At n=256 its
+window is [(252,256)] and the same divergence occurs. All these readings
+cost one; this is loss of an available same-priced structural explanation,
+not a claim that the damaged text uniquely determines its author's intent.
+C21 inherits the failure.
+
+Source: c20 `_window` at 859 and `back=4 / wide=64` at 301/303.
+This refutes the universal proximity justification for those boundaries.
+The wording in lesson 61 that a battery-selected bound is “not a tuning
+knob” must not be read as satisfying a no-arbitrary-heuristics requirement.
+It also does not separately refute every aspect of lesson 58's stop prune.
+
+**66. Repetition has an acyclic scheduling problem; ordinary left recursion
+does not disappear with it.** CONFIRMED: the repeat step explicitly requires
+`step.end > r.end`. The new `_c21.dart:704` processes input positions in
+order, combining incoming prefixes before expanding each position. It is a
+small alternative to c20's queue of individual histories, not a new Parser,
+not Dijkstra by repair charge, and not a minimum-repair certificate.
+
+Measured against current c20, using the same current oracle:
+
+| Engine | Weighted score | Perfect / 2,101 | Raw score | Perfect / 13,241 |
+|---|---:|---:|---:|---:|
+| c20 | .990135 | 1806 | .991224 | 11464 |
+| c21 scheduling | .990198 | 1808 | .991424 | 11502 |
+
+There are 14 weighted / 156 raw full-tree differences and **zero** cost
+differences. This is an aggregate improvement, not casewise dominance.
+CONFIRMED commands: `_research21.dart battery c21 compare`,
+`_research21.dart battery c21 compare raw`, and
+`_research21.dart battery c20 raw`.
+
+Scheduling is observably part of the policy: `_Front.cover` ignores actual
+first-doubt positions below the clean sentinel, and mutual coverage replaces
+the tree with the newest arrival (c21:86,127). The final comparator still
+reads first doubt (c21:870). Hence a scheduling or packed-representation
+rewrite cannot be called tree-neutral by numeric-summary reasoning alone.
+
+**67. The best accuracy experiment was not a dramatic performance or size
+win; the much faster prune regressed accuracy.** CONFIRMED, with timing
+methodology and all exploratory controls in
+[`_C21_FINDINGS.md`](dart/experiments/recovery/_C21_FINDINGS.md):
+
+- Three warmed, interleaved battery rounds: c20 median 1177.785 ms;
+  c21 1220.141 ms (3.6% slower). Clean timings were noisy and did not establish
+  a clean-path improvement.
+- Fresh serial `1000/8/1` workers: c20 8452 ms / 891.5 MiB peak RSS;
+  c21 7665 ms / 871.3 MiB; tariff control 4272 ms / 632.8 MiB.
+  These are single cold samples, not medians or recovery-only heap sizes.
+- The tariff control scored .990080, 1805 perfect, with 11 different trees
+  and no changed costs. It is not score-neutral and is not promoted.
+- At `1000/12/1`, tariff finished in 40113 ms / 1701.0 MiB, cost 11;
+  current c20 and c21 each exceeded a 50-second worker cap (exit 124).
+  These timeouts establish neither nontermination nor a completed-run ratio.
+- Normalized LOC: c20 743, c21 745, tariff 771. The sub-400 goal is unmet.
+
+More than twenty executable controls were tried: price-profile and scalar
+dominance, EOF specializations, evidence/position ordering, incurred-penalty
+budgets, shared deterministic corridors, stale-work skipping, native closed
+span shortcuts, view caches, budget-exhaustion certificates, and a smaller
+window-free natural-stop engine. None delivered the requested combination.
+Some passed every ordinary gate while losing substantial battery accuracy.
+
+CONFIRMED c21 validation: acceptance 3/3 (including the exact b1 fixture),
+freespan 5/5, recommit 16/16, conformance 6/6, false predicates 0; committed
+errors [2..3,3..4], identical to current c20 and disjoint from the accepted
+0..2 chunk; 2,728 property cases with zero violations; 34 existing-parser
+attachment/memo checks passed. Weighted crashes, uncovered, mischarges and
+invalid zero-cost results were all zero. `dart test` is currently **+284**,
+all passing, not the historical +308. The original engines and dart/lib
+were not edited.
+
+**68. Sharing choices does not require committing choices.** INFERRED
+architectural direction, **not an implemented breakthrough**: attach a
+packed recovery forest to the existing parser, retaining AND nodes for
+concatenation and OR nodes for alternatives, then request completions under
+the actual continuation's budget and coherence conditions. Native memo
+verdicts remain the ordinary PEG verdicts. Only recursive grammar dependencies
+need a recovery fixed point; repetition can use position order.
+
+For k independent reconverging binary repairs, an AND of k OR nodes has
+O(k) representation without enumerating 2^k combinations. That factorable
+example does not establish a universal complexity bound or describe c20's
+measured exponent. It does show why lesson 62's measurements do not establish
+that greedy window commitment is the only alternative to whole-history bills.
+
+An admissible search can initially relax nonnegative penalties and use
+deleted+missing as a lower bound, strengthening it with known clean fragments.
+Coherence filters, evidence bounds for tied costs, EOF obligations,
+zero-progress cycles and stable preference order must still be implemented.
+C20's incomplete-root override and evidence-erasing lexical scans prevent
+calling a simple scalar Viterbi substitution equivalent. This proposed packed,
+continuation-demanded engine was **not built in this round**; the executable
+c21 contains only the scheduling change and retains the heuristic windows.
+Neither experiment is promoted as satisfying the original full brief.
+
+
+### c22, round 1 — packed histories, eager recognition (2026-09-08)
+
+**69. A packed forest is implemented; packing alone is not a performance
+solution.** `_c22eager.dart` preserves this round's executable. It attaches
+AND/OR recovery relations to actual native memo entries, with budget-indexed
+cells and no windows or beams. It does not create a second Parser, alter the
+input, or replace ordinary PEG verdicts. Discrete relation keys contain end,
+spent edits, fee, EOF-owed flag, clean rank, and incomplete flag. Evidence,
+deletion/missing split, first/last error positions and concrete histories are
+not recognition keys.
+
+The implemented selection factors non-additive pricing into queries. Fixing
+the deletion count makes support filters monotone in evidence. First-error
+and last-error bounds constrain every error leaf; three passes maximize
+evidence/first, constrain first and minimize last, then constrain both and
+apply a stable owed/count/canonical-tree preference. The final mixed-edit
+tie-break is applied at the root. Optional direct-terminal repetition is
+the evidence-erasing case; here evidence before erasure is fixed by consumed
+span minus deletion count. This is an algebraic argument for this engine's
+specific filters, not a proof for arbitrary recovery policies.
+
+CONFIRMED initial checks (run from `dart/` with
+`/opt/flutter/bin/cache/dart-sdk/bin/dart run experiments/recovery/…`):
+
+- `_compare22.dart gates c22`: A=3, F=5, R=16, C=6, committed=true,
+  committedErrors=[2..3,3..4], falsePredicates=0, failures=[], errors={}.
+- `_properties22.dart c22`: 2,728 cases, 60 clean, zero violations.
+- `_memo22.dart`: 34 checks passed, including unchanged Parser/MemoEntry
+  identities, ordinary verdicts, input and clock, and shared clean subtrees.
+- `_research22.dart battery c22 compare`: 2,101 cases, score .989836,
+  1,800 perfect (85.7%), zero crashes/uncovered/mischarges/invalid-zero;
+  2,020 raw-tree differences and zero cost differences from c20. The large
+  raw-tree count includes label differences on clean EOF subtrees, not 2,020
+  changed AST skeletons. This is below c20's .990135 / 1,806 perfect.
+  Timed recovery total was 3,862 ms (single JIT run, not a warmed median).
+- `_packed22.dart scale 1000 4 1`: length 23,568, cost=edits=4,
+  covered=true; **43,890 ms / 11,774.3 MiB process peak RSS**, 31,663,803
+  nodes, 13,593,328 groups, 332,412 budget cells. Only 25,155 query states
+  were needed. This timing overlapped short audit workers; it is not a
+  controlled speed ratio. The allocation count itself establishes failure.
+
+This round is rejected as a performance candidate. Histories are shared,
+but eager enumeration of repetition endpoints still builds an enormous
+relation that its actual continuation scarcely uses. The next experiment
+must share continuation/suffix work, not merely the prefixes that lead to it.
+`dart/lib` and the pre-existing engines were not edited.
+
+### c22, round 2 — a completion lower bound (2026-09-08)
+
+**70. Regular relaxation prunes some recognition, not enough.**
+`_c22bound.dart` preserves the variant. It compiles grammar entry/exit
+states into a regular over-approximation: calls may return through any
+caller, assertions are ignored, and terminal substitutions are permitted
+more broadly than the real engine. A backward edit-distance table on
+state × input-position provides a necessary completion-cost bound. EOF
+holes are free in this bound; real fees and coherence are still checked
+by packed selection. It never constructs a repaired input or Match tree.
+INFERRED admissibility: every real repair has a path in this relaxation;
+the converse is deliberately false. It is a lower-bound analysis, not a
+second ordinary Parser or a distance/proximity heuristic.
+
+CONFIRMED `_packed22.dart schedule` on round 1: 2,101 cases, **zero tree
+or cost changes when OR traversal is reversed**, 8,142 ms total for both
+orders. This tests selection-order independence, not all possible fixed-point
+schedulers.
+
+CONFIRMED intermediate bound-at-cell-exit battery: .989836 / 1,800 perfect,
+zero crashes/uncovered/mischarges/invalid-zero, zero cost differences from
+c20, 4,044 ms single-run timed recovery (`_research22.dart battery c22 compare`).
+With the bound also used at entry and sequence prefixes,
+`_packed22.dart scale 1000 4 1` printed cost=edits=4, covered=true,
+**29,951 ms / 8,571.4 MiB**, 23,510,004 nodes, 10,044,280 groups,
+268,166 budget cells and 25,155 query states. This was a fresh serial worker.
+The bound removed roughly one quarter of the eager forest nodes; that is
+still far worse than the c20/c21 controls. It is not promoted as a speed win.
+
+The next round shares a relation across budget rounds rather than rebuilding
+its zero/low-cost structure in separate budget cells. This change must be
+tested, not assumed tree-neutral: guards and seed invalidation also observe
+the available budget.
+
+### c22, round 3 — incremental budget sharing (2026-09-08)
+
+**71. Sharing across budgets saves storage, but not this workload's time.**
+`_c22shared.dart` preserves this round. One relation per native MemoEntry
+grows to the largest requested budget; lower-budget views filter paid cost.
+Packed OR edges propagate newly found same-summary choices without replacing
+old witnesses. The ordinary PEG memo clock is separate and untouched.
+
+CONFIRMED `_research22.dart battery c22 compare`: .989836 / 1,800 perfect,
+zero crashes/uncovered/mischarges/invalid-zero and zero cost differences
+from c20, 3,619 ms single-run recovery total. `_properties22.dart c22`:
+2,728 cases, 60 clean, zero violations. The final round-2 entry/prefix-bound
+variant had the same score and counts (3,737 ms) and passed all current
+gates (A3/F5/R16/C6, committed=true, falsePredicates=0).
+
+CONFIRMED fresh serial `_packed22.dart scale 1000 4 1`: length 23,568,
+cost=edits=4, covered=true; **33,671 ms / 7,182.4 MiB**, 20,094,898 nodes,
+8,449,773 groups, 165,361 cells, 285,516 expansions, 2,070,148 bound prunes.
+Fewer stored nodes did not make this sample faster than round 2.
+`scale 200 4 1 census`: 315 ms / 345.9 MiB, 77,539 nodes. Changing document
+size changes the seeded damage sites, so these two samples are **not** a
+scaling-exponent measurement.
+
+**72. Sharing without commitment is now directly executable.**
+`_packed22.dart independent 4 tree` uses
+`S <- Item*; Item <- ('a' 'x' / 'y' 'a') ';';` on `a;a;a;a;`.
+Each site can mark the missing `x` after `a` or the missing `y` before it.
+It constructs one forest, then restricts permitted error positions in the
+selection query to request every combination. CONFIRMED: **16 combinations,
+16 distinct full trees, zero extra forest nodes and zero extra recognition
+expansions**. Initial recovery: cost=edits=4, 232 nodes, 92 groups, 21 cells,
+31 ms / 282.9 MiB (single cold worker). Every selected tree covers the input
+and has exactly the requested four diagnostic positions. This is stronger
+than observing fewer frontier entries: earlier choices have not been lost.
+It does not yet establish linear total query cost or arbitrary-grammar
+complexity. A deletion-count query currently tries impossible splits even
+when all repairs in a subtree are known to be holes; the next round derives
+that query domain from the forest itself.
+
+### c22, round 4 — demand only queries that can still win (2026-09-08)
+
+**73. Non-additive selection can be bounded without collapsing its choices.**
+`_c22query.dart` preserves this round. A scalar fixed point derives each
+packed node's possible deletion-count interval. Selection asks candidate
+roots incrementally, using paid+EOF as a cost lower bound and input length
+minus deletions as an evidence upper bound. After cost/evidence and first
+error have been fixed, later passes request only roots/counts still able
+to attain those optima. The special incomplete-root override is retained.
+No error-location combinations are replaced by one locally chosen history.
+
+CONFIRMED `_packed22.dart independent 8` on the preceding shared variant:
+**256 distinct combinations** recovered from the same 444-node forest,
+zero extra forest nodes/expansions. With deletion domains alone,
+`independent 64` used 3,412 nodes, 27,603 query states, 260 ms / 329.0 MiB.
+After incremental root bounds and pass-to-pass restriction, the same probe
+used **3,412 nodes, 6,147 query states, 134 ms / 296.8 MiB**. It selected four
+different 64-site combinations, all correctly diagnosed and covered, without
+new recognition. Times are fresh single JIT workers, not warmed medians.
+The grammar factors into independent binary choices; exhaustive selection
+has been checked through eight sites, not through all 2^64 combinations.
+
+CONFIRMED weighted battery after the final query changes: .989836 / 1,800
+perfect, zero crashes/uncovered/mischarges/invalid-zero, zero cost changes
+from c20, 3,811 ms single-run total (`_research22.dart battery c22 compare`).
+Before that last query optimization, reversing both relation-view order and
+OR traversal gave **zero tree/cost changes in 2,101 cases**, 8,261 ms total.
+`window 1024` returned cost=edits=1, covered=true, 4,125 nodes, 64 ms /
+287.8 MiB. The driver is being strengthened to assert the actual `P` arm,
+not merely cost, before claiming the distant-opener counterexample resolved.
+
+The general recognition bottleneck is still present. These results establish
+choice retention and cheaper selection, not the requested tiny, universally
+fast recovery engine. The next round removes choice wrappers only from
+preferred unrepaired prefixes, whose trajectory is fixed by ordinary PEG;
+nonpreferred clean alternatives must still retain their OR nodes.
+
+### c22, round 5 — ordinary prefixes need no choice wrapper (2026-09-08)
+
+**74. Most of the bad allocation is not clean PEG bookkeeping.**
+`_c22atom.dart` preserves this variant. Preferred unrepaired prefixes are
+stored directly; repaired and nonpreferred clean groups retain their OR
+nodes. On `_packed22.dart scale 1000 4 1 census` this removed only 187,897
+nodes from round 3's 20,094,898. CONFIRMED: **33,737 ms / 7,117.2 MiB**,
+19,907,001 nodes, 8,261,876 groups, cost=edits=4, covered=true. Query work
+is now only 9,237 states/relaxations. Object sequences account for 1,820,416
+stored groups; member-list repetition 1,455,813; its enclosing sequence
+1,427,856. Another singleton-storage tweak will not fix this.
+
+This is evidence for the next distinction: a query can be lazy about
+**which history** wins while recognition is still eager about **where the
+construct ends**. A continuation supplies endpoint restrictions as well as
+score restrictions. The next experiment propagates conservative endpoint
+ranges backward through following slots; these ranges must be derived from
+the grammar and remaining edit budget, not an input-distance constant.
+
+### c22, round 6 — continuation-derived endpoint ranges (2026-09-08)
+
+**75. Narrowing the root is not the same as demanding nested completions.**
+`_c22demand.dart` preserves the rejected variant. It propagates a conservative
+endpoint range backward through each sequence's remaining slots. Finite
+terminals contribute length plus available edit budget; direct-terminal
+repetitions use indexed positions of nonmatching characters; unbounded or
+recursive shapes relax to the start of input. Memo relations are indexed by
+the demanded range. Native left-recursive entries relax the range at their
+seed boundary, avoiding a new input-depth recursion through shrinking ranges.
+These are grammar/budget-derived bounds, not a new fixed-size window.
+
+CONFIRMED initial weighted run: .989836 / 1,800 perfect, zero crashes,
+uncovered, mischarges, invalid-zero and changed costs vs c20, 4,164 ms
+(`_research22.dart battery c22 compare`). After correcting the one-or-more
+fallback to test whether any advancing prefix exists, rather than whether
+an advancing prefix remains inside the demanded range,
+`_packed22.dart scale 1000 4 1 census` gave **33,758 ms / 7,092.1 MiB**,
+19,712,844 nodes, cost=edits=4 and complete coverage. JSON-root groups
+fell from 13,331 to 7, but Object still had 1,790,253, member-list repetition
+1,470,922 and its enclosing sequence 1,406,532. The constrained root barely
+affected the unbounded intermediate relations. This variant was rejected
+for extra code/cache complexity without a substantial performance gain;
+it has not received the final broad validation of `_c22.dart`.
+
+The active `_c22.dart` is restored to the smaller round-5 packed/query
+prototype, not promoted over c20/c21. Round 5's weighted run was .989836 /
+1,800 perfect, 3,689 ms, zero crashes/uncovered/mischarges/invalid-zero and
+changed costs. Its full current gates passed (A3/F5/R16/C6, committed=true,
+falsePredicates=0). Final comparative timing and audits follow below.
+
+### c22, final audit and a separate clean-path control (2026-09-08)
+
+**76. Stable preference includes grammar identity, not allocation order.**
+Before the final audit, synthetic character clauses inside multi-character
+literals were moved into the grammar-indexing pass. Allocating their
+canonical IDs at the first recovery failure was an avoidable dependence
+on exploration order, even though the raw-order test had not exposed it.
+The final policy is charge, evidence, latest first error, earliest last
+error, EOF mark count, mixed-edit tie, node count, canonical preorder with
+depth. The incomplete-root exception is resolved explicitly before the
+position/tie passes. Node count makes unproductive recursive wrapping lose.
+
+CONFIRMED before that ID fix: `_packed22.dart schedule raw` compared
+13,241 cases with both relation-view and OR traversal reversed: **zero
+different trees or costs**, 47,005 ms for both orders combined. Final
+post-fix validation is recorded below; this earlier run is not substituted
+for it.
+
+Final-source timing (`_timing22.dart 3`): one warm-up, three measured rounds,
+rotating c20/c21/c22 order in one process, no other benchmark worker running.
+Clean columns time 200 repetitions of the entire undamaged corpus; damaged
+columns time one complete weighted 2,101-case battery. These are medians,
+in milliseconds, not per-document latency:
+
+| Engine | Clean corpus × 200 | Damaged battery |
+|---|---:|---:|
+| c20 | 192.896 | 1154.875 |
+| c21 | 188.153 | 1182.747 |
+| c22 packed/query | 103.731 | 3337.049 |
+
+The damaged path is **2.89× slower than c20** here. The clean path avoids
+recovery grammar setup altogether. A separate `_c20defer.dart` control moves
+only `_site(top)` below c20's already-successful ordinary-parse return; its
+validation and timing follow below. This is not a solution to damaged-input
+search, and the original c20 is unchanged.
+
+Physical nonblank, non-`//` lines (`awk` count; **not** the normalized LOC
+used in older tables): c20 **677**, c21 **679**, c22 **804** (including the
+one-line lower-bound API shared by the ablation controls). C22 is larger,
+and does not meet the sub-400 target. No formatter or code golfing was used.
+
+CONFIRMED fresh serial `_family22.dart ENGINE SITES` on the independently
+ambiguous `a;` family (each result cost=edits=sites, Item count=sites,
+covered=true):
+
+| Sites | c20 ms / peak MiB | c22 ms / peak MiB |
+|---|---:|---:|
+| 8 | 20 / 280.3 | 38 / 285.6 |
+| 32 | 94 / 289.6 | 72 / 285.2 |
+| 64 | 242 / 286.6 | 125 / 290.2 |
+| 256 | 21435 / 444.6 | 282 / 313.5 |
+| 1024 | 30-second cap, exit 124 | 823 / 354.1 |
+
+These are cold single workers, not medians or isolated recovery heap.
+The family isolates independent ambiguity; it does not stand in for the
+JSON battery or contradict c22's poor 23.6 KB JSON result.
+
+At 256 sites the completed-run ratio is 76×. The 1,024-site timeout is
+not a completed-run ratio or evidence of nontermination. A follow-up
+ablation puts the same regular lower bound into the **old** c20: eagerly
+(`_c20floor.dart`) or only after budget 1 has genuinely failed
+(`_c20guided.dart`). This is needed before attributing the family speedup
+to packing: avoiding futile budget rounds is a separate effect.
+
+CONFIRMED at 256 sites: eager c20+floor **10,638 ms / 446.1 MiB**;
+lazy-after-budget-1 c20+floor **10,812 ms / 329.4 MiB**. Both returned
+cost=edits=Item count=256 with full coverage. The lower bound roughly halved
+c20's time, but did **not** explain the whole 21,435→282 ms difference.
+A further all-positions-open control checks the cost of the window-opening
+ladder itself before assigning the remaining difference to representation.
+
+That control **refutes a packing-only speedup claim**: `_family22.dart
+openfloor 256` returned the same cost, Item count and coverage in **256 ms /
+295.5 MiB**, versus packed c22's 282 ms / 313.5 MiB. The old engine plus the
+same lower bound, with every repair position open initially, removes the
+window-opening ladder and is just as fast on this family. The 76× headline
+is a real control-to-candidate measurement, but is **not evidence that
+packing itself caused that speedup**. Packing's separately demonstrated
+benefit is retaining and reselecting the combinations, not this ratio.
+The all-open control retains c20's tie policy. Its `_stops` code remains,
+but `_openAt(w.end)` is always true, so it cannot prune an endpoint in
+this control. General accuracy/scaling must be checked independently.
+
+CONFIRMED `_research22.dart latency defer 3 c20`: clean median
+**112.401 vs 206.735 ms** (45.6% lower for the deferred-setup control);
+damaged median **1175.366 vs 1198.933 ms**. The 2% damaged difference is
+not claimed as a speed improvement. It is a one-statement relocation;
+tree equivalence is tested separately below. This is an isolated clean-path
+win and does not fix c20's arbitrary windows.
+
+Final control validation (`_research22.dart battery ENGINE compare [raw]`):
+
+| Control | Battery | Score | Perfect count | Tree / cost differences vs c20 |
+|---|---|---:|---:|---:|
+| deferred clean-path setup | raw 13,241 | .991224 | 11,464 | 0 / 0 |
+| floor only after budget 1 fails | weighted 2,101 | .990135 | 1,806 | 0 / 0 |
+| floor + all positions open | weighted 2,101 | .989986 | 1,803 | 26 / 0 |
+
+All three had zero crashes/uncovered/mischarges/invalid-zero. The deferred
+control also passed `_compare22.dart gates defer`: A3/F5/R16/C6,
+committed=true, errors=[2..3,3..4], falsePredicates=0, failures=[], errors={}.
+These final audit workers overlapped other correctness workers; their times
+are not substituted for the isolated timing results above. The all-open
+control changes policy, not just scheduling overhead, and does not dominate
+c20 on the weighted battery.
+
+**77. Final c22 validation, without substituting an earlier variant.**
+HEAD remained `3074b20`; toolchain was Dart 3.12.2 stable, linux_x64.
+All commands use `/opt/flutter/bin/cache/dart-sdk/bin/dart` from `dart/`.
+After deterministic indexing of literal-character clauses:
+
+- `_packed22.dart schedule raw`: **13,241 cases, zero tree/cost differences**
+  under reversed relation-view and OR traversal (46,854 ms for both orders).
+- `_research22.dart battery c22 compare`: **.989836 / 1800 perfect** of
+  2,101; zero crashes/uncovered/mischarges/invalid-zero, zero changed costs.
+- The raw counterpart: **.991321 / 11527 perfect** of 13,241; zero
+  crashes/uncovered/mischarges/invalid-zero, **three** changed costs and
+  12,159 raw-tree differences from c20. Raw score/exact improve on c20;
+  weighted score/exact regress. This is not a casewise improvement.
+- `_compare22.dart gates c22`: A3/F5/R16/C6, committed=true,
+  errors=[2..3,3..4], falsePredicates=0, failures=[], errors={}.
+- `_properties22.dart c22` and `c22reverse`: each 2,728 cases, 60 clean,
+  zero violations, including ordinary-verdict, coverage, charge, predicate
+  and positive-width terminal checks.
+- `_memo22.dart`: 34 attachment/verdict/sharing checks passed.
+- `_audit22.dart`: `committed errors=[2..3, 3..4] OK`;
+  `charge invalid=2101: 0 0 0`.
+- `dart test -r expanded`: **+284, all pass**. An initial invocation with
+  `--no-pub` was rejected as an unsupported test option and was rerun
+  correctly; that rejected invocation is not counted as a test pass.
+- Targeted `dart analyze`: no issues found.
+- `_packed22.dart independent 8`: 436 nodes, 747 query states; all 256
+  combinations distinct, correctly billed/covered/positioned, zero extra
+  forest nodes or recognition expansions. At 256 sites: 13,332 nodes,
+  23,811 query states; four full-width BigInt-selected combinations passed
+  the same checks. These runs validate retention, not exhaustive 2^256
+  selection. Test timings overlapped an audit and are not benchmark ratios.
+- `_packed22.dart window 1024`: cost=edits=1, covered=true, **P=true**,
+  3,099 nodes; the distant-opener case is checked by arm, not only cost.
+
+The raw cost differences are not all desirable. For
+`{"n":[0,-7,1.5,2e],t":[true,false,null]}`, c20 costs 2; c22 costs 1 by
+marking a missing backslash at position 3, treating the already-present
+closing quote as an escaped quote, and swallowing the damaged first value
+into a longer key. The real terminals still come from input and the bill is
+honest, but it loses intended structure. `_costdiff22.dart trees` prints
+the actual trees. This illustrates the distinction between a cheaper edit
+and a coherent interpretation; it is not a reason to report lower cost as
+an unconditional improvement.
+
+The complete raw cost-difference list, confirmed by `_costdiff22.dart`, is:
+
+| Input | c20 edits | c22 edits |
+|---|---:|---:|
+| `{"n":[0,-7,1.5,2e],t":[true,false,null]}` | 2 | 1 |
+| `[{"x":[1,2,]"y":{"z":3}},{"x":[],"y":{}}]` | 3 | 2 |
+| `{"p":[1,2,3],"q":[4,5,6,"r":[7,8,9],"s":[0,-1]` | 2 | 4 |
+
+The driver printed `cost differences=3`. In particular, retained choices
+and a stable preference do not imply lower reported edit counts casewise.
+
+### c23 trial — clause-local prefix conservation (2026-09-08)
+
+The next trial, `_c23.dart`, propagates an error-position floor equal to
+the ordinary successful clause's end. New repairs **inside that clause**
+may extend its accepted prefix but may not alter it. Clean shorter
+alternatives remain possible (needed for splitting a greedy lexical match),
+and the floor does not leak back to the caller after a child returns.
+Relations include this inherited floor in their memo identity. This is a
+new coherence policy, **not** a semantics-neutral packing optimization or
+a claim that the policy is universally right: e.g. an unescaped quote may
+require editing a quote the ordinary parser already accepted. It is being
+tested against both the gates and the battery before any recommendation.
+
+CONFIRMED c23 trial: gates A3/F5/R16/C6, committed=true, falsePredicates=0,
+but weighted score **.978147 / 1715 perfect**, 124 changed costs versus c20,
+zero crashes/uncovered/mischarges/invalid-zero (`_research22.dart battery
+c23 compare`, 3,046 ms). Removing the initial `{` from the first JSON
+document changes c20's cost 1 into c23's **44**: the ordinary parser's
+speculative String prefix is protected against the correct Object repair.
+On `1000/4/1`, c23 took 3,388 ms / 811.7 MiB, but cost **6** instead of 4.
+Its physical nonblank/non-`//` count is **807** lines. This is a rejected
+accuracy tradeoff, not an improvement.
+
+**78. Feasibility is not preference either.** Code inspection of c22 found
+that the Ref, ordered-choice and repetition support filters remain opaque
+during recognition. Consequently, a doomed zero-evidence branch can acquire
+large enclosing relations before selection finally rejects it. The next
+trial hoists conservative support bounds into monotone node annotations,
+while retaining OR alternatives and leaving the final preference in the
+query. This is distinct from c23's premature commitment: rejecting an
+infeasible relation is not choosing among feasible histories. Its cyclic
+updates must participate in the recovery fixed point; a one-time cached
+"no evidence" answer would be unsound when a seed later gains evidence.
+
+CONFIRMED `_c24.dart` trial, with assertions enabled: gates
+A3/F5/R16/C6, committed=true, falsePredicates=0; weighted **.989836 / 1800
+perfect**, zero crashes/uncovered/mischarges/invalid-zero or changed costs
+vs c20 (4,724 ms single run). Each forest node propagates upper bounds on
+E and D+2E and a lower bound on D. Impossible support filters prevent a
+node from entering a frontier; later OR growth can wake the same-position
+recovery clock. Budget-indexed cells are restored so a larger-budget
+relation cannot retroactively change a smaller-budget support result.
+
+This did **not** deliver the anticipated performance win:
+`_compare22.dart scale c24 1000/4/1` returned cost=edits=4, covered=true,
+**48,326 ms / 10,003.1 MiB peak RSS**. The annotation/dependency machinery
+and duplicated budget cells cost more than the pruning saved on this
+sample. Because both changed, this is not an isolated estimate of the cost
+of early support checks. The monotonicity assertions and weighted/gate runs
+passed; this is not yet a proof of every cyclic grammar or a promoted engine.
+
+Final `_properties22.dart c24` and `c24reverse`, both run with
+`dart run --enable-asserts`, each printed `cases=2728 clean=60 violations=0`.
+Targeted analysis of the current c22/c23/c24 engines, four c20 controls and
+their drivers printed `No issues found!`. This broadens the c24 correctness
+audit, not its performance claim or its validation to the whole raw battery.
+The c24 physical nonblank/non-`//` count is **848** lines. A final rerun of
+`dart test -r expanded` again completed with **+284, all tests passed**.
+
+For comparison, the all-open legacy control on the same JSON shape,
+`_research22.dart scale openfloor 1000/4/1`, returned cost=edits=4,
+covered=true in **13,409 ms / 2,961.9 MiB**. Removing the window ladder helps
+the independent family but loses the advantage of bounded search on JSON.
+Neither control satisfies the combined size/latency/memory/accuracy brief.
+
+**79. The two previously proposed mechanisms are now executable, but they
+are not the missing performance solution by themselves.** In `_c22.dart`,
+AND/OR relations retain alternatives behind existing ordinary memo entries;
+selection does not replace those alternatives with its winner. Non-additive
+ranking is handled by fixing deletion count D in the query, maximizing
+evidence E, and recomputing under error-position constraints. For a dirty
+root the ranked charge is
+`D + missing + fee + hasEOFOwed + (inputLength - D > 2*E ? 1 : 0)`;
+`missing` here counts the paid, non-EOF holes. The reported edit count instead
+includes every EOF mark and excludes fees.
+The incomplete-root exception is explicit, not silently dropped to make
+the charge additive. Support filters are applied inside query composition.
+
+CONFIRMED implementation/experiments: 256 independently selected combinations
+from one forest without new recognition; zero changed trees/costs across
+13,241 inputs under reversed relation-view and OR order. INFERRED limitation:
+this is not a confluence proof for every grammar-generation scheduler. In
+particular, recognition still contains guards based on the presence of clean
+options while seeds grow. Such a proof would also have to establish that
+generation produces the same admissible graph, not merely that selection
+on a fixed graph is stable.
+
+The measured failures distinguish three tasks: storing histories compactly,
+rejecting impossible histories, and avoiding construction of irrelevant
+endpoints. C22 does the first and delays the final choice; its large JSON
+forest shows that this does not automatically do the third. C23 commits to
+ordinary prefixes too early; c24's attempted early impossibility checks cost
+more than they save. The all-open legacy ablation explains the dramatic
+independent-family speedup without packing. None of these measurements proves
+a lower bound on the size of a better algorithm or that the ideal is
+impossible. They do rule out promoting these particular implementations as
+the tiny, fast, low-memory answer.
+
+The accepted isolated optimization is the clean-path setup deferral, preserved
+in `_c20defer.dart`; the original engine remains available as its control.
+The packed prototype, rejected variants, probe programs and per-round results
+are retained for reproducibility. No frozen-library or original-engine source
+was changed. A final repository-wide `git diff --check` found only the existing
+trailing whitespace in the user's `dart/test/recovery/_one.dart`; that unrelated
+edit was left alone.
+
+### c25 — the admissible floor prunes the rung, and the call site is what makes a bracket cost (2026-09-08)
+
+c25 is c20 (the c19 relation on the real parser, `back=4` windows,
+`_stops`) plus three changes. It is installed as
+`dart/experiments/recovery/_c20.dart`, so every harness name is still
+`c20`.
+
+**1. Deferred clean-path setup.** `_site(top)` moves below the early
+return taken when the ordinary parse already covers the input. This is
+Codex's `_c20defer` finding, confirmed: on a clean document the recovery
+grammar is never built.
+
+**2. A regular lower bound, used inside the rung, not only to choose it.**
+`_Bound` is an NFA over-approximation of the grammar with a backward
+edit-distance table `distance[at][state]`, giving `after(c, at)` (from a
+clause's exit) and `before(c, at)` (from its entry): an admissible lower
+bound on what completing the document costs from there. Two prunes:
+
+```dart
+if (r.spent + _floor(c, r.end) > _budget) { pruned = true; continue; }
+```
+
+on every proposed bill, and
+
+```dart
+if (_bnd != null && _bnd!.before(c, pos) > _budget) return const [];
+```
+
+on the whole cell before it is filled. Cells that read no open position
+are cached at `_unlimited` and reused at every higher budget, so a cell in
+which anything was pruned must be recorded at the current budget instead:
+that is what the `pruned` flag is for. Without it the prune silently drops
+bills that are valid one rung up. The bound is built once the ladder
+reaches budget `_guide = 3`; below that the rungs are cheap and the ~500 ms
+build does not pay for itself.
+
+Codex's `_c20guided` used the same bound only to pick the ladder's
+starting rung. That is the weaker half: the floor is small relative to the
+rungs that dominate, and a separate control (`_c20.start.dart`) that jumps
+the ladder start measured 4,640 ms against 4,591 ms for no jump — no gain.
+The win is entirely in pruning **within** a rung.
+
+**3. The call site is what makes an unclosed bracket cost anything.**
+Codex's relaxation lets a call return through ANY caller
+(`eps(end_R, b)` for every caller of `R`). On a 23,560-character json
+document with 12 real errors that relaxation's floor is **2**: merging
+callers destroys exactly the bracket structure that makes json damage
+expensive, so an unclosed brace is nearly free. Unfolding each call per
+call site, and tying the knot only where the grammar is genuinely
+recursive (`onPath`), raises the floor to **7** for 1.75x the states
+(220 → 384, 19 → 34 MiB, ~300 → ~500 ms). The engine's cells carry no
+call site, so a clause's bound is the least over its copies — still below
+every real completion, whichever context the cell is in.
+
+**Unfolding deeper is refuted.** With an unfold depth `k` (a recursive
+clause gets `k` fresh copies before the knot is tied), on the same
+`1000/12/1` document:
+
+| k | states | build ms | table MiB | floor |
+|---:|---:|---:|---:|---:|
+| 1 | 384 | 584 | 34 | 7 |
+| 2 | 1,856 | 2,404 | 166 | 7 |
+| 3 | 7,744 | 16,026 | 696 | 7 |
+
+The floor does not move while cost grows 20x. The remaining slack in the
+bound is not call depth; it is the other two relaxations — assertions are
+ignored and a substitution is allowed at every terminal. Driver:
+`_boundstat3.dart`.
+
+**Measured.** Battery bit-identical to the c20 base: `0.9901 / 86.0`,
+treeDiff 1919, costDiff 1 against the c20 dump, for every bound variant
+tried. All four gates pass; `_properties18 c20` 2,728 cases / 0
+violations; `_pred18` falseAssertions 0; the repository suite is 284/284.
+Rungs are single fresh workers, `_time20.dart`, json `makeDoc`:
+
+| Rung (nodes/errors/seed) | chars | c20 base | c25 |
+|---|---:|---|---|
+| 1000/4/1 | 23,560 | 452 ms / 305 MB | 891 ms / 286 MB |
+| 1000/8/1 | 23,560 | 8,938 ms / 871 MB | **1,045 ms / 362 MB** |
+| 1000/12/1 | 23,560 | **never finished** (>500 s, 2.6 GB) | **1,691 ms / 439 MB** |
+| 1000/16/1 | 23,560 | never finished | 4,146 ms / 483 MB |
+| 1000/24/1 | 23,560 | never finished | 54,348 ms / 1,133 MB |
+| 1000/32/1 | 23,560 | never finished | **still never finishes** (>400 s) |
+| 4000/4/2 | 97,700 | 1,392 ms | 3,190 ms |
+| 8000/4/7 | 196,500 | 3,668 ms / 1,204 MB, cost 6 | 6,682 ms / 987 MB, **cost 4** |
+
+The bound is **not** output-neutral. An earlier claim in this session that
+it was a pure speed knob is wrong: at `8000/4/7` the base engine and
+`_guide = 5` both return cost 6 while `_guide = 3` returns cost 4. Pruning
+changes which readings die, hence which deaths are recorded, hence which
+windows open. Here it strictly improves the answer, but it is a search
+change, not only a speed change, and `_guide` is a parameter that must be
+scored, not assumed.
+
+**Cost.** Normalized LOC c20 743 → c25 **901** (+158, **+21.3%**), almost
+all of it `_Bound`. That is the wrong direction for the size goal and is
+the main argument against this build.
+
+**All positions open is refuted a third way.** Deleting the windows and
+relying on the bound alone fixes Codex's window counterexample (`P` is
+kept at every n) and removes both `back=4` and `wide=64`, with battery
+0.9900 / 85.8 and all gates passing — but `1000/8/1` takes 64,014 ms /
+2.5 GB and `1000/12/1` never finishes. The windows do work the bound
+cannot replace. Variant: `_c20.allopen.dart`.
+
+**Still open.** `1000/32/1` does not finish, so the hard requirement that
+every input terminate is **not met**. Codex's window counterexample
+(`_window21.dart`: c20 loses the `P` reading for n >= 8 because the
+`back=4` window excludes the opener at position 0) is **still unfixed** in
+c25, since the only fix found so far is all-open, which does not scale.
+
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
