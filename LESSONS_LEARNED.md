@@ -2617,6 +2617,28 @@ cdx11r gives an invalid cost-1 tree); `R <- 'c'*+ 'b'` on `ccca` costs 1
 (cdx11l 4); `S <- 'b'` on `a` still costs 2 (substitution exists only inside
 a Seq slot). LOC 837 → 802 normalized (−35, −4.2%).
 
+**Substitution at every Char/Str terminal is a trade-off, not a win
+(scratch `subT`, `subT2`, 2026-09-23).** `subT` lets a failed Char/Str
+terminal replace the next input character (`_Way.skip(pos, pos + 1, text)`)
+beside its insertion; `subT2` also deletes the Seq-slot substitution block and
+`_resumes`, which the terminal rule subsumes. Measured for `subT2` against
+cdx11s: LOC 802 → 793 normalized (−9, −1.1%); all checks pass (accept t/t/t,
+freespan 3 3 4 4 1, recommit 16/16, conformance 0 1 1 0 2 3, props 2728/0,
+window P, pred 0); `S <- 'b'` on `a` costs 1 instead of 2; fuzzer seeds 1–4
+worse 0/0/0/0 against cdx11s's 7/5/9/6 (cdx11s pays a higher cost on 27
+cases), invalid 6/7/4/17 against 6/7/6/17. Against that: battery 0.9900/84.2
+(two equal-cost cases lost, 618 `{"z":}3}` and 636 `[4,5,]6`: subT2 opens an
+empty nested array and replaces the digit instead of moving the bracket), and
+many-error rungs 16–21% slower, two paired runs each (1000/32/1 3,953–3,993
+vs 3,360–3,431 ms; 1000/128/1 9,522–9,927 vs 8,071–8,224; 8000/32/7
+14,742–15,086 vs 12,243–12,529); battery time is the same. Three tie-breaks
+meant to recover 618 and 636 were refuted: forbidding substitution of a
+character that a non-inverted CharSet reads (0.9897/84.0, 20 costs worse; the
+battery contains a mistyped bracket that is a digit, `{"k":5{"a":1}...`);
+counting only CharSet characters as evidence (0.9853/80.7, also 0.9855 on
+cdx11s itself); a substitution as evidence −1 (0.9898/84.0, loses `[1\2]` →
+`[1,2]` to deleting the `\`, and twice as slow). cdx11s stays the engine.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
