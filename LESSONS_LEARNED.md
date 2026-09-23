@@ -2405,6 +2405,20 @@ characters. An arm's endpoint does not show that the arm stays selected after
 a later edit, because an earlier failed arm may have looked past that
 endpoint.
 
+**Gemini's round-2 engine: a set of rejected characters at the frontier is
+not the PEG obligation.** Gemini added `expectedMask` to the library's
+`MatchResult` (the characters rejected at a match's frontier, one bit per
+code unit mod 64, OR-ed through zero-width children) and refused an edit whose
+character is in the mask of the piece before it, deleting the stop guard, the
+stop exposure and the deletion offer rule. Its report says the fuzzer confirms
+validity but gives no counts. Measured in its kit: battery 0.9899/84.3 →
+0.9821/80.9 (149 trees and 78 costs differ from cdx9m, 51 lower), fuzzer
+invalid 26/21 → **32/30**, worse 7 and 9 against cdx9m's 2 and 2, LOC 860.
+The mask sees one character, so a failed arm that needs two or more
+characters is either missed or refused too broadly, and mod-64 bits alias
+unrelated characters. Its Q2 section (a prefix bound "makes the product a
+sum") was not implemented; Codex's implementation of that prune was slower.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
