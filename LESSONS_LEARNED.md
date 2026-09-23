@@ -2228,6 +2228,106 @@ product of 384 NFA states with a depth counter — which is a per-document
 table of hundreds of megabytes. Not attempted.
 
 
+### Cross-review round 1 — the cdx line, and a bound that counts recursion depth (2026-09-22/23)
+
+**Setup.** Codex, Gemini and a separate Claude session each got BRIEF1 and a
+copy of the kit. Gemini ran out of quota (HTTP 429) before producing a
+candidate. Codex's candidate is `_cdx1.dart`: c19's relation attached to the
+ordinary parser's memo entries, one champion per end, a regular suffix bound,
+and repetitions that share an ordinary occurrence when the next occurrence
+also succeeds. It finished every rung, including 32 errors, but Codex also
+proved that its repetition rule is not minimal: a six-character input where it
+returns cost 3 and cost 2 exists. The cdx line below is that engine plus the
+fixes found by the witness-oracle fuzzer (`_fuzz.dart SEED N engines...`,
+which checks every answer against an exhaustive minimum on small grammars).
+
+| Engine | Change | Battery | LOC (raw/norm) |
+|---|---|---|---|
+| cdx1 | Codex round-1 candidate | 0.9899/85.9, 1565 ms | 491/616 |
+| cdx4 | the bound decides which stops a repetition exposes | 0.9899/85.9, 1418 ms | 497/627 |
+| cdx5 | an edit may not be placed after a repetition departs | 0.9900/86.0, 2450 ms | 499/631 |
+| cdx7 | ordered choice breaks ties in First | 0.9897/84.0 | 501/633 |
+| cdx8 | stop guard | 0.9897/84.0 | 574/744 |
+| cdx8p | `+` over a zero-width body | 0.9897/84.0 | 576/751 |
+| cdx8x | flat-array bucket-queue bound; states whose only exit is free are merged | 0.9897/84.0, 1375 ms | 625/809 |
+| cdx8y | the ladder starts at the bound's floor | 0.9897/84.0, 1372 ms, trees = cdx8x | 625/809 |
+| cdx9r | the bound counts recursion depth; depth rows are bought as rungs fail | 0.9897/84.0, 1290–1334 ms, trees = cdx8y | 668/858 |
+
+The perfect-case drop 85.9 → 84.0 at cdx7 is the price of making First obey
+ordered choice when two readings tie; it removed wrong answers that the
+fuzzer found and the battery does not score.
+
+**Fuzzer (confirmed).** Worse-than-minimum answers, seeds 2/1: cdx7 14/10,
+cdx8x 8/3, cdx8y 8/3; at N=400, cdx8y and cdx9r both 0/0. The remaining
+invalid answers (27 and 22 at N=400) all come from repetitions whose body can
+match nothing (`'a'*+`). That class is open.
+
+**Where the 32-error time goes (confirmed, `cdx8yp`).** The ladder runs rungs
+21 → 29 and the last rung is 2/3 of the 60 s. Each extra unit of budget above
+the floor multiplies a rung's time by about 2.7. The gap between floor and cost
+is almost all bracket deletions. Deleting one structural character at 209
+random positions of a 40-member document, the regular bound charged `]`, `[`
+and `}` zero (0 of 13, 0 of 10, 0 of 14), while the true cost is one each. The
+regular relaxation lets a recursive call return to any caller, so a missing
+closer is never owed. A dominance prune (drop a way whose cost exceeds another
+way's at the same cell by more than their difference in position) removed only
+8% of the work and was dropped.
+
+**The depth-counting bound (cdx9, confirmed).** Inside the one backward
+distance computation, each state is paired with a count of open recursive
+calls. A recursive reference becomes a push edge into the cycle and a pop edge
+out of it, never merged with anything; the count saturates at a cap, and at
+the cap push and pop are free, so the bound is admissible for every cap. End
+of input is accepted only at depth 0. Only the minimum over depth is stored,
+one byte per (position, state), so the table is the same size as before; the
+depth rows exist only in two working rows. This corrects the synthesis round
+above, which said this product needs a table of hundreds of megabytes: that
+was true only if every depth were stored. The root value (depth 0 at position
+0) is exact for every deleted-character type in the sweep, `[` included
+(10 of 10). The stored minimum over depth still charges closers but not
+openers (`[` 0 of 10), because a prefix may start at any depth.
+
+**The cap (confirmed).** At 1000/32/1: cap 1, 2, 4 → 59–60 s (no gain);
+cap 6 → 22.4 s; 8 → 22.7 s; 12 → 25.9 s; 16 → 27.0 s. Build time grows
+linearly with the cap (0.2 s at 1, 1.8 s at 8, 5.2 s at 16 for 23.5k
+characters), so a fixed cap of 8 made one-error recovery 8x slower
+(1954 ms against 255). Doubling the cap after each failed rung fixed small
+inputs but not medium ones (4000/4/2: 2320 ms against 909). The rule kept is
+rent-then-buy: build the depth-0 bound first, and build the next one (cap
+2c+1) only once the search since the last build has taken twice as long as that
+build did, i.e. as long as the next build is expected to take. Its total is
+within twice the better of never building and building at once, and it
+has no tuned constant. The clock only decides when to prune harder; the
+answers do not depend on it (battery treeDiff=0 and costDiff=0 for caps 8,
+doubling and rent-then-buy against cdx8y).
+
+Rungs, ms (all costs correct, all covered):
+
+| Rung | cdx1 | c20y | cdx8x | cdx8y | cdx9 (cap 8) | cdx9r |
+|---|---:|---:|---:|---:|---:|---:|
+| 1000/1/1 | 98 | 210 | 242 | 255 | 1954 | 282 |
+| 1000/8/1 | 905 | 1091 | 484 | 475 | 2171 | 498 |
+| 1000/16/1 | 1561 | 2167 | 1367 | 1341 | 2472 | 1557 |
+| 1000/32/1 | 49681 | 31464 | 61037 | 60088 | 23093 | 28276 |
+| 4000/4/2 | 2840 | 3382 | 893 | 909 | 8044 | 990 |
+| 8000/4/7 | 5521 | 7354 | 1914 | — | 15862 | 1914 |
+
+cdx9r passes every check: battery 0.9897/84.0, accept t/t/t, freespan
+3 3 4 4 1, recommit 16/16, conformance 0 1 1 0 2 3, cleanTreeDiff 0 (all
+identical to cdx8y), props 2728/0 violations, pred falseAssertions=0, window
+counterexample P kept at n = 64, 256, 4096. LOC 809 → 858 normalized (+49,
++6.1%).
+
+**Still open.** (1) The two-sided cell prune: min over depth of (prefix
+bound + suffix bound) would charge missing openers too, but it needs one
+direction stored with its depth. (2) The zero-width repetition bodies above.
+(3) 32 errors still take 28 s; the gap between floor (22) and cost (29) is
+the remaining work, and the first rungs above the floor cost almost nothing
+(confirmed), so the remaining work is in the bound, not the search
+(inferred: a tighter bound would raise the floor and prune the last rungs;
+not yet measured).
+
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
