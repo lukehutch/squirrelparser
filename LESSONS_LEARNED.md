@@ -2581,6 +2581,42 @@ Missing characters at end of input are one completion (`owed`), so both
 readings have charge 1, and `_compare` prefers the later first edit. The same
 holds for every EOF case tried.
 
+### cdx11s — Codex's round-3 engine minus the four no-op parts: 837 → 802 LOC, 10% faster battery, one more valid repair (2026-09-23)
+
+**Codex round 3 finished** (`cx3f`, 829 LOC, built on cdx11l). Beyond
+`total_stage` it adds: First also consults the plain earlier-arm result (a
+bound-pruned repair frontier does not show that an earlier PEG arm failed);
+`_usedSeed` reads the relation cells' `recursive`/`usedSeed` flags instead of
+a separate left-corner walk; a substitution carries its literal in `lead`, and
+`_tail` checks whether the next edit completes a direct earlier Char/Str arm
+of a frozen First; `_Way.change` replaces the copy constructors; the explicit
+preferred-bit key in `_compare` is deleted (inert on battery and fuzzer).
+Codex also refuted, by measurement: `Mismatch.len` as the examined span
+(`'a' ('b' 'c')` on `abd`: len 1, the reviving edit is at 2; `&"ab"` on `ac`:
+len 0, edit at 1); unordered choice (seed-1 invalid 6 → 18); one longest LR
+extent per budget (0.9802, 213 trees differ); the regular bound alone
+(1000/32/1 3.7 → 101 s); a productive-nullable rule (a new invalid on `aca`).
+
+**cdx11s (untracked `_cdx11s.dart`) is cx3f minus the cdx11o deletions:** no
+`incomplete` flag or fallback (F), no `_oneShape` in the Ref filter (H; the
+function stays, a Seq slot still uses it), no absorption term in `charge`
+and no `complete` flag in `_compare` (J).
+
+Measured (orchestrator's kit, confirmed): battery 0.9900/84.3, treeDiff 0 and
+costDiff 0 against cdx11r; alternating runs 1,594/1,575 ms against cdx11r's
+1,757/1,777 (−10%). Accept t/t/t, freespan 3 3 4 4 1, recommit 16/16,
+conformance 0 1 1 0 2 3, cleanTreeDiff 0, props 2728/0, window P at every n,
+pred 0. Fuzzer seeds 1–4 invalid 6/7/6/17, the same as cdx11r; worse 0/0/1/0
+against cdx11r's 0/0/0/1, and in both such cases both answers are invalid.
+Rungs, paired and alternating (ms, cdx11s / cdx11r): 1000/1/1 327–329/321;
+8/1 615–637/646; 16/1 1,798–1,864/1,859; 32/1 3,318–3,353/3,404; 64/1
+3,708–3,721/3,844; 128/1 8,023–8,531/8,271; 4000/4/2 1,194–1,275/1,224;
+8000/4/7 2,341–2,346/2,388; 8000/32/7 13,520–13,853/13,786. Codex's probes:
+`S <- A 'b'; A <- "ab" / 'a'` on `ac` costs 2 (valid, `abb`, the only word;
+cdx11r gives an invalid cost-1 tree); `R <- 'c'*+ 'b'` on `ccca` costs 1
+(cdx11l 4); `S <- 'b'` on `a` still costs 2 (substitution exists only inside
+a Seq slot). LOC 837 → 802 normalized (−35, −4.2%).
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
