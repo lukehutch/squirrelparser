@@ -2484,9 +2484,16 @@ substitution's lead (neutral: invalid 15/11 against 14/12, worse 7/9).
   policy against invented readings.
 - Mutual left recursion still gives cost-0 invalid trees (for example
   `aaaac`): the engine's relation fixed point is not PEG's seed growth.
-- `_q1diag` compares node spans only. It does not check which First arm the
-  tree chose, so an invalid arm choice with correct spans is not reported;
-  the invalid counts above are lower bounds.
+- `_q1diag` counts a tree as invalid only when the plain parser rejects every
+  witness spelling of it (membership). It does not compare spans or First
+  arms with the plain parse of the repaired string; its `_diag` line only
+  prints a diagnosis. The invalid counts above are lower bounds. A strict
+  count (`_q1strict`, any node span or arm that differs from the plain parse
+  of R) gives 122–151 per seed for cdx10 and 127–179 for cdx11r; about half
+  of those trees differ only within one character of an edit, mostly a
+  repetition or First arm that would continue across the edit point. The
+  strict count does not separate the engines (trees with a difference more
+  than one character from every edit, seeds 1–4: cdx10 199, cdx11r 224).
 
 ### cdx11o — five deletions from cdx11l keep every tree class; two others are the speed (2026-09-23)
 
