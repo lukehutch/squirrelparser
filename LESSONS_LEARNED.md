@@ -2325,6 +2325,25 @@ identical to cdx8y), props 2728/0 violations, pred falseAssertions=0, window
 counterexample P kept at n = 64, 256, 4096. LOC 809 → 858 normalized (+49,
 +6.1%).
 
+**A clean empty reading hid the deletion (cdx9m, confirmed).** `_seq`
+offered a deletion before a slot only when the slot had no clean reading. A
+slot that can match nothing always has one, so "delete this character, then
+read the slot" was never tried, and the need surfaced later where only a
+substitution or a long skip remained. With `R0 <- (R1 (R1 / 'a')) 'b';
+R1 <- 'a' / 'b'*` on `ca`, every engine from cdx8 on found no reading and deleted
+the whole input. Changing the condition to "no clean reading that advances"
+(one line) gives: battery 0.9897/84.0 → 0.9899/84.3, costs changed in 51 cases,
+all 51 lower (none higher); fuzzer worse-than-cheapest (against cdx9r) 10 → 1
+and 18 → 0 at N=400, invalid 27 → 26 and 22 → 21; every gate, props, pred and
+window unchanged; LOC unchanged (858). Price: 32 errors 32.1–32.5 s → 37.3–38.3 s
+(alternated, same load), other rungs +5–16%. A second experiment, keying the
+front by (end, has guard) so a guarded way cannot displace an unguarded one,
+changed nothing on the fuzzer and was dropped. The `ca` case itself is still
+invalid under cdx9m: the deletion lands after `R1`'s empty reading, and on the
+repaired string PEG's first arm would then take the `a`. An edit placed right
+after an empty match changes what that match sees; the stop guard covers this
+only for repetitions and insertions, not for ordered choice or deletions.
+
 **Still open.** (1) The two-sided cell prune: min over depth of (prefix
 bound + suffix bound) would charge missing openers too, but it needs one
 direction stored with its depth. (2) The zero-width repetition bodies above.
