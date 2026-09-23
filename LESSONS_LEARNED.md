@@ -2354,6 +2354,17 @@ the remaining work, and the first rungs above the floor cost almost nothing
 not yet measured).
 
 
+**The Claude seat's round-1 engines.** The seat hit its 3-hour limit without
+a report. It built on c19 and added pruning contexts per cell (`_x5` is its
+`cand.dart`, `_x7`/`_x7j` add a frame stack). Measured in the orchestrator's kit
+(2026-09-23): battery 0.9900/86.1 for all three (c19's tie-breaking, which
+returns trees PEG would not produce), 2066/2114/2508 ms; against cdx9m, costs
+differ in 51 cases and none is lower. LOC 635 (x5) and 712 (x7) normalized.
+Rungs: 1000/1/1 696 and 701 ms; 1000/8/1 42,368 and 14,739 ms (cdx9m 574);
+1000/16/1 does not finish in 300 s for either; 4000/4/2 4,028 ms (x5). Smaller
+than cdx9m, but dominated on cost and on every many-error input, so it was not
+carried into round 2.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
