@@ -2259,8 +2259,15 @@ fuzzer found and the battery does not score.
 
 **Fuzzer (confirmed).** Worse-than-minimum answers, seeds 2/1: cdx7 14/10,
 cdx8x 8/3, cdx8y 8/3; at N=400, cdx8y and cdx9r both 0/0. The remaining
-invalid answers (27 and 22 at N=400) all come from repetitions whose body can
-match nothing (`'a'*+`). That class is open.
+invalid answers (27 and 22 at N=400, 49 in all, the same counts for cdx8y) are
+of two kinds. In 18, no reading is found and the whole input is deleted, although
+a cheaper repair exists (`R0 <- (R1 (R1 / 'a')) 'b'; R1 <- 'a' / 'b'*` on `ca`:
+`aab` costs 2). In 31, the tree's repaired string is not accepted by PEG, for
+example an insertion inside a later First arm whose earlier arm would match
+the inserted character (`R0 <- 'b' R1; R1 <- 'a' / ('b' / R0)+` on `bab`). 30 of
+the 49 grammars contain a directly nested repetition of a body that can match
+nothing (`'a'*+`), so that shape is involved often but is not the only cause.
+Both kinds are open.
 
 **Where the 32-error time goes (confirmed, `cdx8yp`).** The ladder runs rungs
 21 → 29 and the last rung is 2/3 of the 60 s. Each extra unit of budget above
