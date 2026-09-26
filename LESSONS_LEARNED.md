@@ -5116,8 +5116,8 @@ where v2 runs one.
   520, 26 5,873 -> 3,650, 29 4,644 -> 2,885, 30 5,554 -> 3,568, 32 344 -> 231,
   34 477 -> 306, 39 2,353 -> 1,173, 40 277 -> 38. v2 alone is faster on 2
   (705 -> 308). Slower: 16 1,386 -> 1,563, 18 1,707 -> 2,007, 19 1,394 ->
-  1,555, 28 1,423 -> 1,837, 31 1,523 -> 1,874 (v2 alone the same; the seat
-  named only 18 and 28). Cause not found.
+  1,555, 28 1,423 -> 1,837, 31 1,523 -> 1,874 (v2 alone: 16, 19, 28 and 31
+  slower, 14-20%; the seat named 18 and 28). Cause not found.
 - AOT stress, 11 interleaved runs, medians (cl24 / v2 / cl25): errors 4,096
   49/50/50, lr 2,048 35/35/35, lr 8,192 129/128/133. Rungs 2-5% slower than
   cl24 (8000/4/7 5,627 -> 5,899 ms), costs equal. The four quadratic shapes and
@@ -5154,7 +5154,7 @@ where v2 runs one.
 | v2: every check = cl24, battery treeDiff 0 | Claude | check25.sh r21c | confirmed |
 | v2: `_samedw` = cl24, `_samew` seed 4 10 -> 9 | Claude | check25.sh r21c | confirmed |
 | v2: eight families 1.5-8x faster, costs equal | Claude | sweep3.py r20c r21c | confirmed |
-| v2: only 18 and 28 slower | Claude | sweep3.py: also 16, 19, 31 | wrong (incomplete) |
+| v2: only 18 and 28 slower | Claude | sweep3.py: 16, 19, 28 and 31 slower, 18 not | wrong |
 | v2: AOT and rungs within noise | Claude | aot.sh, rungs.sh | confirmed |
 | v2: `aaaa`, `ac` costlier, both valid | Claude | `_wit.dart` on `aaaa`; fuzzer lines | confirmed |
 | slowdown is extra rungs | Claude | rung trace on `aaaa` shows the same mechanism | confirmed in effect |
