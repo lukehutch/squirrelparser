@@ -2274,6 +2274,7 @@ which checks every answer against an exhaustive minimum on small grammars).
 | cl23 | a stop this body already guards returns the reading unchanged (no new guard or closure per meet), so `x (ab)*n` is back below cl21 (1,600: 5,121 -> 4,236 ms); `_got` read directly; rule 1 and the new return share `_stopped`; trees = cl22 everywhere | 0.9900/84.4, 1,897 ms | 841/841 |
 | cl24 | a repetition step that adds no character to the repaired string is not an iteration (PEG stops at an empty match), a `+` holds no reading before its first occurrence, a First rejects a later arm when an earlier arm reads the input after its leading deletion; strict-witness invalid 68 -> 50, worse 31 -> 12; battery treeDiff 0 vs cl23; seven families +1 (cl23 invalid there), eight slower by a constant factor | 0.9900/84.4, 1,897 ms | 861/861 |
 | cl25 | a front keys an insertion that reads no input (`end == pos`, `missing > 0`) apart from the empty reading, and a collision of the two under one key triggers the diverse retry; eight nullable-body families 1.5-7x faster, five 13-29% slower, all costs equal; strict-witness invalid 50 = cl24, worse 15 -> 12; one old-fuzzer case (`aba`) now an invalid owed completion | 0.9900/84.5, 1,915 ms | 871/871 |
+| cl26 | a lone completion costs 1, but after another edit each owed character costs 1; the stop guard tests the whole owed text, and a stop at the end of input gets no seed exemption; one comparator line proved dead and deleted; strict-witness invalid 50 -> 49, worse 19 -> 9 (three-way run); `aba` valid, `cbbb` (kind D) newly invalid; battery treeDiff 0 | 0.9900/84.5, 1,935 ms | 889/889 |
 
 The table shows only battery score, time and size. It does not show the checks that separate the engines: measured in one kit on 2026-09-24, cdx1 has 389 invalid fuzzer trees on seeds 1-8 against cl15's 58, does not finish 4,096 errors, 8,192-term left recursion or 26 of the 46 families, and crashes on an unclosed parenthesis at 1,024 terms (see the cl16 section).
 
@@ -2282,6 +2283,8 @@ Round 19 (2026-09-26) found that the corrected fuzzer's witness (`_samedq`) acce
 Round 20 (2026-09-26) promoted cl24: under the strict witness it has 50 invalid trees on seeds 1-8 against cl23's 68.
 
 Round 21 (2026-09-26) promoted cl25: a front keys an insertion that reads no input apart from the empty reading, which makes eight nullable-body families 1.5-7x faster at equal cost; the strict-witness invalid count stays 50 and worse falls 15 -> 12.
+
+Round 22 (2026-09-26) promoted cl26: owed characters after another edit cost 1 each, and the stop guard sees the whole owed text, so `aba` and two other trees become valid; strict-witness invalid 50 -> 49, worse 19 -> 9, battery trees unchanged.
 
 The perfect-case drop 85.9 → 84.0 at cdx7 is the price of making First obey
 ordered choice when two readings tie; it removed wrong answers that the
@@ -5117,7 +5120,11 @@ where v2 runs one.
   34 477 -> 306, 39 2,353 -> 1,173, 40 277 -> 38. v2 alone is faster on 2
   (705 -> 308). Slower: 16 1,386 -> 1,563, 18 1,707 -> 2,007, 19 1,394 ->
   1,555, 28 1,423 -> 1,837, 31 1,523 -> 1,874 (v2 alone: 16, 19, 28 and 31
-  slower, 14-20%; the seat named 18 and 28). Cause not found.
+  slower, 14-20%; the seat named 18 and 28). Cause not found. Corrected in
+  round 22: v2 is slower on 18 too. Three runs each at 16,384 put every cl25
+  run above every cl24 run on 18 (medians 1,975 -> 2,249 ms), and the seat's
+  counters are identical for v2 and cl25 there; my one-run sweep of v2 was
+  noise.
 - AOT stress, 11 interleaved runs, medians (cl24 / v2 / cl25): errors 4,096
   49/50/50, lr 2,048 35/35/35, lr 8,192 129/128/133. Rungs 2-5% slower than
   cl24 (8000/4/7 5,627 -> 5,899 ms), costs equal. The four quadratic shapes and
@@ -5154,7 +5161,7 @@ where v2 runs one.
 | v2: every check = cl24, battery treeDiff 0 | Claude | check25.sh r21c | confirmed |
 | v2: `_samedw` = cl24, `_samew` seed 4 10 -> 9 | Claude | check25.sh r21c | confirmed |
 | v2: eight families 1.5-8x faster, costs equal | Claude | sweep3.py r20c r21c | confirmed |
-| v2: only 18 and 28 slower | Claude | sweep3.py: 16, 19, 28 and 31 slower, 18 not | wrong |
+| v2: only 18 and 28 slower | Claude | sweep3.py (one run): 16, 19, 28 and 31 slower, 18 not; round 22, three runs and counters: 18 slower too | incomplete (16, 19, 31 missing); my "18 not" was wrong |
 | v2: AOT and rungs within noise | Claude | aot.sh, rungs.sh | confirmed |
 | v2: `aaaa`, `ac` costlier, both valid | Claude | `_wit.dart` on `aaaa`; fuzzer lines | confirmed |
 | slowdown is extra rungs | Claude | rung trace on `aaaa` shows the same mechanism | confirmed in effect |
@@ -5170,6 +5177,123 @@ where v2 runs one.
 - Substitution only before the first edit (`bbbb` costs 4, 3 is valid).
 - The quadratic term with two or more errors in the four shapes.
 - Size: 871 against cl20's 757.
+
+### cl26 - cross-review round 22 on cl25: after an edit, owed characters are edits, 871 -> 889 LOC (2026-09-26)
+
+Round 22 ran a Claude subagent (Opus 5.5, high effort) on BRIEF22 (Q1 the
+owed-completion price; Q2 the families cl25 made slower; Q3 kind D; Q4 size;
+Q5 review of round 21). Codex and Gemini had no quota. The engine is untracked
+`_cl26.dart` (kit name r22k): the seat's `cand` (j8) with one comparator line
+deleted and the cost getter rewritten by the orchestrator.
+
+**What cl26 changes (confirmed from the diff against cl25).**
+- Price. cl25 charged `spent + (owed == 0 ? 0 : 1)`: characters owed at the
+  end of input cost 1 together, whatever else the reading did. cl26 charges
+  `spent > 0 ? edits : owed.sign`: a reading whose only edits are owed
+  characters costs 1, and any other reading pays 1 per edited or owed
+  character. The lone-completion price stays because the battery needs it: the
+  seat's j1 (`spent + owed` everywhere) scores 0.9699/75.8 with 220 costs
+  changed, all JSON and `stmt` truncations (seat's figure, not rerun).
+- Guard. The stop guard in `_Way.then` tested only a reading's `lead`, the
+  first inserted literal. For a reading that only owes characters it now tests
+  `owing`, all the text the reading inserts, collected from its zero-width
+  terminal matches.
+- Seed exemption. `_stop` no longer exempts a stop that used a seed when it is
+  at the end of input (`pos < _len`).
+- Deleted line (proved dead). `_compare` had
+  `if (a.cost > 1 && a.edits != b.edits) return a.edits - b.edits;`. Under the
+  new price, a cost above 1 means `spent > 0`, so cost equals edits for both
+  readings; equal costs above 1 therefore mean equal edits, and the line never
+  decides. Deleting it changes no tree in the battery or any of the 24 fuzzer
+  runs (confirmed: r22k against j8, treeDiff 0 everywhere).
+
+**Measured (confirmed), kit r9/verify.**
+- LOC 871 -> 889 normalized (+18, +2.1%); j8 890.
+- Battery 0.9900/84.5, treeDiff 0, costDiff 0 against cl25. Every other check
+  as cl25: accept, freespan, recommit 16/16, conformance, props, window, pred.
+  No-repair 0; determinism: only `aabb` depends on the bound.
+- `_samedw`, seeds 1-8: invalid 7/5/5/4/7/6/5/10 = 49 against cl25's 50 (seed 3
+  6 -> 5); worse 9 against cl25's 19 in the same three-way run; levSum lower or
+  equal on every seed.
+- `_samew`: invalid 38 against 39 (seed 3 6 -> 7, seed 6 3 -> 2, seed 7
+  7 -> 6); worse 1 against 5. `_same`: worse 0 on every seed against 6.
+- The new invalid tree is `cbbb` under
+  `S <- R0; R0 <- ((R0 / 'b')? R2 R2); R1 <- (R0+* / R0*?); R2 <- ('b' / (R2 / 'b')+);`
+  (seed-3 change confirmed; the mechanism is the seat's). Under cl25's price a
+  valid reading (delete `c`, owe 2) and an invalid one (delete `c`, owe 1) both
+  cost 2 and the ranking takes the valid one. Under cl26's price the valid one
+  costs 3. The invalid tree leaves `(R0 / 'b')?` empty before the deleted `c`
+  although `b` follows it: kind D, which the price exposes rather than causes.
+- Families: all 46 costs equal cl25's. Two families differed by more than 12%
+  in one sweep run (11 and 22); family 11 re-timed three times is 655 vs 644 ms
+  (noise). Families 16, 18, 19, 28, 31 and 2 at 16,384, three-run medians
+  (cl24 / cl25 / j8, ms): 1,619/1,836/1,891, 1,975/2,249/2,283,
+  1,641/1,853/1,869, 1,724/1,989/1,906, 1,743/2,053/1,978, 855/734/757.
+- AOT stress, medians (cl24 / cl25 / cl26): errors 4,096 48/49/49, lr 2,048
+  35/35/34, lr 8,192 130/130/133. Rungs 0-5% slower than cl25 (8000/4/7
+  5,675 -> 5,871 ms), costs equal. The deep and multi-error shapes (k = 2, 8):
+  within noise of cl25, same depth.
+
+**Negative results (the seat's, not rerun).**
+- The guard alone (j5) leaves `aba` invalid with a different tree; the price
+  alone (j7) leaves it invalid and exposes `cbbb`. Both parts are needed.
+- Without the price (j6: guard and exemption only), `ccacbc` under a seed-6
+  `_same` grammar costs 4 where cl25 and cl26 cost 3 with a valid tree
+  (confirmed: j6 worse on one `_same` seed-6 case).
+- Q2: the extra work in families 16, 18, 19, 28 and 31 is the second front
+  entry per position that the `~pos` key keeps (counters identical for v2, cl25
+  and j8; rungs unchanged). In family 2 the collision trigger costs one diverse
+  rung. j17 (key apart only where a `+` can take the insertion) restores cl24's
+  times on 16, 19, 28 and 31 but adds the invalid tree `bbc` (`_samew` seed 4)
+  and 43 lines.
+- Q3, kind D: a test at the deletion ("the stopped body reads the text after
+  the deleted span", j19) fixes one of the four cases and adds seven invalid or
+  costlier trees. For cases 5 and 18 no test at the deletion can be exact: the
+  body's match in the repaired string runs across a later edit that does not
+  exist when the stop and the deletion are joined (the seat's proof from the
+  trees). An exact test must wait until the body's match region is decided.
+- Q4: one key (`repaired > pos`) cannot replace the `~pos` key and the
+  collision trigger: without the trigger (j13) and with it (j14), `cab` returns
+  on `_samedw` seed 2 and `cbbb` and `aca` appear on `_samew` seed 3.
+
+**Candidates.**
+
+| Candidate | Change | Result | Score | Reasoning |
+|---|---|---|---|---|
+| r22k = cl26 | j8, dead comparator line deleted | 889 LOC; trees = j8 everywhere | 8 | j8's gains, one line shorter |
+| j8 = cand (Claude) | owing guard + `pos < _len` + per-character price after an edit | 890 LOC; `_samedw` 49, worse 9; `cbbb` invalid | 7 | same trees as cl26 |
+| j6 (Claude) | guard and exemption, cl25's price | `_samedw` 49; `ccacbc` 3 -> 4 | 6 | loses a case |
+| cl25 unchanged | none | 871 LOC; `aba` invalid | 6 | more invalid and worse trees |
+| j5, j17 (Claude) | guard only; `~pos` only under `+` | `aba` invalid; `bbc` invalid (seat's figures) | 4 | each loses a case |
+| j7 (Claude) | price only | `aba` invalid, `cbbb` invalid (seat's figures) | 3 | exposes kind D, fixes nothing |
+| j10, j15, j16, j18, j19 (Claude) | resume-check and deletion-test variants | no kind-D tree fixed, or new invalid trees (seat's figures) | 2 | lose cases |
+| j2, j3, j4, j9, j13, j14 (Claude) | size and single-key variants | invalid trees return (seat's figures) | 1 | lose cases |
+| j1, j11 (Claude) | `spent + owed` everywhere; others | battery 0.9699/75.8 for j1 (seat's figure) | 0 | fails the battery |
+
+**Claims table.**
+
+| Claim | Agent | My check | Verdict |
+|---|---|---|---|
+| j8: battery treeDiff 0, every check = cl25 | Claude | check26.sh r22j8 | confirmed |
+| j8: `_samedw` 49, `_samew` 38, `cbbb` new on seed 3 | Claude | check26.sh r22j8 | confirmed |
+| j6: `_same` seed 6 worse by one case | Claude | check26.sh r22j6 | confirmed |
+| family 18 slower in cl25 than cl24 | Claude | fam5.py, three runs | confirmed |
+| j8 timing = cl25 | Claude | fam5.py, sweep3.py, aot.sh, rungs.sh | confirmed |
+| counters: v2 = cl25 = j8 on the slow families | Claude | not rerun | unsupported by my check |
+| j1 battery 0.9699/75.8 | Claude | not rerun | unsupported by my check |
+| j17 fixes Q2 speed, adds `bbc` | Claude | not rerun | unsupported by my check |
+| no test at the deletion can be exact (cases 5, 18) | Claude | argument read against the quoted trees, not rerun | plausible |
+| j13, j14 bring back `cab` | Claude | not rerun | unsupported by my check |
+
+**Open items.**
+- Kind D (5 invalid trees with `cbbb`): an exact test needs the body's match
+  region in the repaired string, which is decided only after later edits.
+- The second front entry per position that `~pos` keeps (families 16, 18, 19,
+  28, 31 10-18% slower than cl24).
+- Whether `owing`'s walk is linear per call; it walks the whole reading.
+- Substitution only before the first edit (`bbbb` costs 4, 3 is valid).
+- The quadratic term with two or more errors in the four shapes.
+- Size: 889 against cl20's 757.
 
 ## 4. The c-series arc — what each engine taught
 
