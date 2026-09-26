@@ -2273,12 +2273,15 @@ which checks every answer against an exhaustive minimum on small grammars).
 | cl22 | cl21's growth as hand-written frames (`_Grow`, `_Pass`) instead of `sync*` generators, so AOT stress is back at cl20's speed at cl21's depth; a stop meets the guard it replaces, and rule 1 tests the guard's body tag, so 3 battery trees and 2 old-fuzzer trees become valid at equal cost (`caabb`: cl21's cost-1 answer was invalid); `x (ab)*n` 12% slower | 0.9900/84.4, 2,032 ms | 845/845 |
 | cl23 | a stop this body already guards returns the reading unchanged (no new guard or closure per meet), so `x (ab)*n` is back below cl21 (1,600: 5,121 -> 4,236 ms); `_got` read directly; rule 1 and the new return share `_stopped`; trees = cl22 everywhere | 0.9900/84.4, 1,897 ms | 841/841 |
 | cl24 | a repetition step that adds no character to the repaired string is not an iteration (PEG stops at an empty match), a `+` holds no reading before its first occurrence, a First rejects a later arm when an earlier arm reads the input after its leading deletion; strict-witness invalid 68 -> 50, worse 31 -> 12; battery treeDiff 0 vs cl23; seven families +1 (cl23 invalid there), eight slower by a constant factor | 0.9900/84.4, 1,897 ms | 861/861 |
+| cl25 | a front keys an insertion that reads no input (`end == pos`, `missing > 0`) apart from the empty reading, and a collision of the two under one key triggers the diverse retry; eight nullable-body families 1.5-7x faster, five 13-29% slower, all costs equal; strict-witness invalid 50 = cl24, worse 15 -> 12; one old-fuzzer case (`aba`) now an invalid owed completion | 0.9900/84.5, 1,915 ms | 871/871 |
 
 The table shows only battery score, time and size. It does not show the checks that separate the engines: measured in one kit on 2026-09-24, cdx1 has 389 invalid fuzzer trees on seeds 1-8 against cl15's 58, does not finish 4,096 errors, 8,192-term left recursion or 26 of the 46 families, and crashes on an unclosed parenthesis at 1,024 terms (see the cl16 section).
 
 Round 19 (2026-09-26) found that the corrected fuzzer's witness (`_samedq`) accepted trees that are not PEG's tree of any string; under the stricter witness (`_samedw`) cl23 has 68 invalid trees on seeds 1-8, not 50. Earlier invalid counts in this file use the old witness. No engine replaced cl23 in round 19.
 
 Round 20 (2026-09-26) promoted cl24: under the strict witness it has 50 invalid trees on seeds 1-8 against cl23's 68.
+
+Round 21 (2026-09-26) promoted cl25: a front keys an insertion that reads no input apart from the empty reading, which makes eight nullable-body families 1.5-7x faster at equal cost; the strict-witness invalid count stays 50 and worse falls 15 -> 12.
 
 The perfect-case drop 85.9 → 84.0 at cdx7 is the price of making First obey
 ordered choice when two readings tie; it removed wrong answers that the
@@ -5061,6 +5064,112 @@ untracked `_cl24.dart` (kit name r20c), the seat's `cand` unchanged.
   on `bbbb` costs 4 where 3 is valid.
 - The quadratic term with two or more errors in the four shapes.
 - Size: 861 against cl20's 757.
+
+### cl25 - cross-review round 21 on cl24: an insertion that reads no input is not the empty reading, 861 -> 871 LOC (2026-09-26)
+
+Round 21 ran a Claude subagent (Opus 5.5, high effort) on BRIEF21 (Q1 cl24's
+slowdown on nullable repetition bodies; Q2 kind D; Q3 substitution after an
+edit; Q4 size; Q5 review of round 20). Codex and Gemini had no quota. The
+engine is untracked `_cl25.dart` (kit name r21u): the seat's `cand` (v2) plus
+one retry trigger added by the orchestrator.
+
+**Why cl24 is slow on nullable bodies (the seat's counters; the effect
+confirmed in part).** `'a'?` at p offers the empty reading and the insertion of `a`.
+Both end at p, so a front keyed by `end` keeps only the empty one, and cl24's
+`+` rightly refuses an empty occurrence. The ordinary ladder then finds nothing
+at any budget and the diverse ladder runs as well, so cl24 runs both ladders
+where v2 runs one.
+
+**What cl25 changes (confirmed from the diff against cl24).**
+- `_Front` records its position, and its key gives a reading that inserts
+  characters without reading input (`end == pos`, `missing > 0`) the key `~pos`,
+  apart from the empty reading. Every front is made at its real position (the
+  cell, `_first`, `_seq`, `_repeat`); growth seeds `{far, pos, ~pos}`.
+- An owed completion (characters owed at the end of input) keeps key `end`: it
+  costs 1 whatever its length, so keyed apart it ties a deletion and wins on
+  evidence with an invalid tree (`cab`, round 20).
+- **Orchestrator's trigger.** v2 alone is costlier than cl24 on two old-fuzzer
+  cases, `aaaa` under `S <- (('a'+ / 'b') 'c'*+);` (1 -> 2) and `ac` (1 -> 4),
+  both valid in both engines. A rung trace (confirmed) shows why: cl24's
+  ordinary ladder fails at every budget up to 7 and its diverse ladder finds
+  cost 1; v2's ordinary ladder finds cost 2, and its failing budget-1 rung
+  rejects nothing, so the diverse ladder never runs. The owed `c` lost to the
+  empty `'c'*` under key `end`. cl25 sets `_rejected` in `_Front.add` when the
+  empty reading and one that adds characters without reading input meet under
+  one key, in either order. Both cases are cost 1 again.
+
+**Measured (confirmed), kit r9/verify unless stated.**
+- LOC 861 -> 871 normalized (+10, +1.2%); v2 alone 866.
+- Battery 0.9900/84.5 (cl24 84.4), treeDiff 3, costDiff 0. Accept t/t/t,
+  freespan 3 3 4 4 1, recommit 16/16, conformance 0 1 1 0 2 3, cleanTreeDiff 0,
+  props 2728/0, window P, pred falseAssertions 0. No-repair 0 and determinism
+  only `aabb` (seat kit, on the same code without the comment edits).
+- `_samedw` (three-way with cdx1, seeds 1-8): invalid equal to cl24 on every
+  seed (50); worse 15 -> 12; levWorse lower or equal on every seed.
+- `_samew`: invalid 39 = 39 (seed 4 10 -> 9, seed 7 6 -> 7). `_same`: worse
+  2 against cl24's 2. The one regression: seed 7 `aba` under
+  `S <- R0; R0 <- ((R1 / ('b' 'a' 'a')) / ('a' R1)?); R1 <- ((R0 / R0)? R0++ R0++);`,
+  cl24 cost 2 valid, cl25 a 4-character owed completion, which the engine
+  prices at 1 and which is invalid. The trigger lets the diverse search run
+  there and it returns that reading; the owed pricing is the defect, as in `cab`.
+- Families: all 46 costs equal cl24's. At 16,384 (cl24 -> cl25, ms): 2 630 ->
+  520, 26 5,873 -> 3,650, 29 4,644 -> 2,885, 30 5,554 -> 3,568, 32 344 -> 231,
+  34 477 -> 306, 39 2,353 -> 1,173, 40 277 -> 38. v2 alone is faster on 2
+  (705 -> 308). Slower: 16 1,386 -> 1,563, 18 1,707 -> 2,007, 19 1,394 ->
+  1,555, 28 1,423 -> 1,837, 31 1,523 -> 1,874 (v2 alone the same; the seat
+  named only 18 and 28). Cause not found.
+- AOT stress, 11 interleaved runs, medians (cl24 / v2 / cl25): errors 4,096
+  49/50/50, lr 2,048 35/35/35, lr 8,192 129/128/133. Rungs 2-5% slower than
+  cl24 (8000/4/7 5,627 -> 5,899 ms), costs equal. The four quadratic shapes and
+  the k = 2 and k = 8 multi-error shapes: within noise of cl24, same depth.
+
+**Negative results (the seat's, not rerun unless stated).**
+- Keeping owed completions apart too (v15, v16, v17) fixes `aaaa` and `ac` but
+  brings back cost-1 owed ties (`ab` 2, `abab` 4) and is worse on `_samedw`.
+- Kind D: `_revives` and three narrowings (v7-v12) leave the four kind-D trees
+  invalid; v14 fixes `bcb` but does not finish `bccaccaccbaaaa` in 280 s.
+- Q3: dropping `r.preferred` from substitution (v18) does not reach cost 3 on
+  `bbbb` (the second substitution is inside `'a'?+`, not a Seq slot), makes
+  family 39 quadratic and drops the battery to 84.0.
+- Round 20's brief was wrong twice: 1005 on `cab` is an invalid answer with 5
+  edits (the fuzzer scores `1000 + cost`), not a whole-input answer; and
+  widening substitution does not give cost 3 on `bbbb`.
+
+**Candidates.**
+
+| Candidate | Change | Result | Score | Reasoning |
+|---|---|---|---|---|
+| r21u = cl25 | v2 + retry on a displaced insertion | 871 LOC; battery 84.5; `_samedw` worse 15 -> 12; 7 families 1.5-7x faster; `aba` invalid | 8 | fast and no worse on the strict fuzzer |
+| v2 = cand (Claude) | `~pos` key, fronts at their position | 866 LOC; `aaaa` 1 -> 2, `ac` 1 -> 4 | 6 | fastest; two cases costlier |
+| cl24 unchanged | none | 861 LOC | 6 | slow on nullable bodies |
+| v18 (Claude) | substitution after an edit | family 39 quadratic; battery 84.0 (seat's figures) | 3 | fails speed |
+| v4, v5, v12 (Claude) | lone-literal guards | `_same` worse on several seeds (seat's figures) | 3-4 | lose cases |
+| v15, v16, v17 (Claude) | owed completions apart | owed ties return (seat's figures) | 2 | lose cases |
+| v14 (Claude) | kind-D `_uncovers` | one case does not finish in 280 s (seat's figures) | 0 | every input must finish |
+
+**Claims table.**
+
+| Claim | Agent | My check | Verdict |
+|---|---|---|---|
+| v2: every check = cl24, battery treeDiff 0 | Claude | check25.sh r21c | confirmed |
+| v2: `_samedw` = cl24, `_samew` seed 4 10 -> 9 | Claude | check25.sh r21c | confirmed |
+| v2: eight families 1.5-8x faster, costs equal | Claude | sweep3.py r20c r21c | confirmed |
+| v2: only 18 and 28 slower | Claude | sweep3.py: also 16, 19, 31 | wrong (incomplete) |
+| v2: AOT and rungs within noise | Claude | aot.sh, rungs.sh | confirmed |
+| v2: `aaaa`, `ac` costlier, both valid | Claude | `_wit.dart` on `aaaa`; fuzzer lines | confirmed |
+| slowdown is extra rungs | Claude | rung trace on `aaaa` shows the same mechanism | confirmed in effect |
+| 1005 is an invalid 5-edit answer | Claude | `_samedw` scoring | confirmed |
+| v18 fails speed, battery 84.0 | Claude | not rerun | unsupported by my check |
+| kind D not fixed by v7-v14 | Claude | not rerun | unsupported by my check |
+
+**Open items.**
+- The owed-completion price: characters owed at the end cost 1 whatever their
+  length, which makes invalid cost-1 answers (`cab`, `aba`).
+- Kind D (4 invalid trees).
+- Five families 13-29% slower than cl24; family 2 keeps less of v2's gain.
+- Substitution only before the first edit (`bbbb` costs 4, 3 is valid).
+- The quadratic term with two or more errors in the four shapes.
+- Size: 871 against cl20's 757.
 
 ## 4. The c-series arc — what each engine taught
 
