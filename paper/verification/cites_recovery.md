@@ -326,6 +326,34 @@ Status legend: VERIFIED-FULLTEXT (quotes copied from a primary PDF I hold), VERI
 
 ---
 
+## 13. Fried, Golan, Kociumaka, Porat & Starikovskaya 2021 - VERIFIED-FULLTEXT (arXiv LaTeX source)
+
+- Work: "An Improved Algorithm for The $k$-Dyck Edit Distance Problem", arXiv 2111.02336.
+- Fetched: arXiv source via allpapers `arxiv-source 2111.02336`, file `dyck_k_ed_for_arXiv.tex`, read 2026-10-03.
+- Used for: LESSONS round 27 (pd44), the claim that n extra brackets costing about n^3 matches the
+  general bound for language edit distance, and that a bounded number of edits allows O(n + poly(k)).
+- Quotes (tex line numbers):
+  - L132: "Aho and Peterson~\cite{doi:10.1137/0201022} showed a dynamic-programming  algorithm with runtime $\Oh(|G|^2 n^3)$."
+  - L133: "Myers~\cite{MYERS199585} improved the running time of the algorithm to $\Oh(|G| n^3)$."
+  - L134: "Bringmann et al.~\cite{BGSW19} bypassed the $n^3$ barrier and demonstrated $\Oh(|G|^{\Oh(1)} n^{2.8244})$-time randomized"
+  - L136-137: "the lower bound result of Lee~\cite{10.1145/505241.505242} implies that there is no algorithm that solves \LED{} in time less than that of Boolean matrix multiplication."
+  - L148-149: "Abboud et al. ... proved that an efficient algorithm for the \Dyck{} edit distance problem implies an algorithm for  $k$-Clique whose runtime is faster than what is believed to be obtainable."
+  - L109: "new algorithms for the threshold \Dyck{} edit distance problem which costs $O(n+k^{4.544184})$ time with high probability or $O(n+k^{4.853059})$ deterministically."
+- Caution: the result is for Dyck sequences of parentheses only. The bracket grammar of round 27 also has
+  commas and numbers, so the k-Dyck bound is an indication for it, not a theorem about it.
+
+```bibtex
+@misc{fried2021kdyck,
+  author        = {Fried, Dvir and Golan, Shay and Kociumaka, Tomasz and Porat, Ely and Starikovskaya, Tatiana},
+  title         = {An Improved Algorithm for The $k$-Dyck Edit Distance Problem},
+  year          = {2021},
+  eprint        = {2111.02336},
+  archivePrefix = {arXiv}
+}
+```
+
+---
+
 ## Summary of discrepancies found
 
 1. **Medeiros follow-up: DOI 10.1002/spe.2789 is a different, unrelated paper** (Ghazouani et al., SPE 50(4), multicloud services). Correct: Science of Computer Programming 187:102373 (2020), DOI 10.1016/j.scico.2019.102373, with third author Gilney de Azevedo Alvez Junior. The paper is titled "Automatic syntax error reporting and recovery in parsing expression grammars," not "Automatic insertion of error recovery expressions."

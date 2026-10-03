@@ -41,6 +41,7 @@ but text not reachable.
 | treesitter | tree-sitter repo | METADATA + docs quotes (GLR, error robustness) | cites_recovery.md §12 |
 | larcheveque1995 | Larcheveque 1995, TOPLAS 17(1) | METADATA + abstract (body paywalled) | cites_editor.md §3 |
 | dubroy2017 | Dubroy & Warth SLE 2017 | METADATA (Crossref: title/authors/pages/DOI confirmed in-session) | this file |
+| fried2021kdyck | Fried et al. 2021, arXiv 2111.02336 (LESSONS round 27, not cited by the paper) | FULLTEXT (arXiv LaTeX source) | cites_recovery.md §13 |
 
 ## Claim-mapping notes (discrepancies resolved during writing)
 
