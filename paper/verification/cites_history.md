@@ -132,6 +132,11 @@ the ACM range 111-122 (both are 12 pages); sections are exact.
   "error" in the body is in the acknowledgments ("pointing out several errors in the
   original draft"). If the paper cites a farthest-failure heuristic, cite Ford's 2002
   thesis Section 3.2.4 instead (see work 2, quote 4).
+- **Emptiness of a PEG's language is undecidable: SUPPORTED** (Section 3.4, by
+  reduction from Post's correspondence problem): "Theorem: It is undecidable in general
+  whether the language L(G) of an arbitrary parsing expression grammar G is empty."
+  Checked 2026-10-03 against the author PDF (pdftotext). The recovery engines cite this
+  for their search cap.
 
 **Quotes:**
 1. (Abstract, p. 111) "Parsing Expression Grammars (PEGs) provide an alternative,
