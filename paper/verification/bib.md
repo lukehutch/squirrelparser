@@ -66,3 +66,70 @@ restoration, parse counts, work-per-character tables, adversarial work ratios, s
 example results) is re-checked by `verify_paper_numbers.dart` in this directory; see
 `verify.py`. Timing figures (ms/s) are environment-dependent (AMD Ryzen 9 3950X,
 Dart 3.12.2, single thread, 2026-07-20) and are recorded but not asserted.
+
+## Alur2010expressiveness
+
+```bibtex
+@inproceedings{Alur2010expressiveness,
+  doi = {10.4230/LIPIcs.FSTTCS.2010.1},
+  url = {https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.FSTTCS.2010.1},
+  author = {Alur, Rajeev and Černý, Pavol},
+  keywords = {streaming string transducer, list processing, heap manipulation, monadic second-order transduction},
+  language = {en},
+  title = {Expressiveness of streaming string transducers},
+  journal = {LIPIcs, Volume 8, FSTTCS 2010},
+  volume = {8},
+  pages = {1--12},
+  publisher = {Schloss Dagstuhl – Leibniz-Zentrum für Informatik},
+  year = {2010},
+  copyright = {Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported license}
+}
+```
+
+- **Verified authors**: Alur, Rajeev and Černý, Pavol
+- **Verified title**: Expressiveness of streaming string transducers
+- **Journal**: LIPIcs, Volume 8, FSTTCS 2010 8 pp. 1--12 (2010)
+- **DOI**: 10.4230/lipics.fsttcs.2010.1
+- **arXiv**: —
+- **Metadata cross-checked against**: DataCite
+- **Source URLs**:
+  - `https://doi.org/10.4230/lipics.fsttcs.2010.1` — metadata (DataCite)
+  - `https://scholar.google.com/scholar?hl=en&as_epq=Expressiveness+of+streaming+string+transducers&as_occt=title` — metadata (Scholar (no usable record))
+  - `https://content.openalex.org/works/W1529428897.pdf` — pdf → `Alur2010expressiveness.pdf`
+  - `api.core.ac.uk work 19088957` — text at CORE, located but not fetched, fullText field, 46,575 chars — already extracted
+  - `https://content.openalex.org/works/W1529428897.grobid-xml` — xml at OpenAlex content, located but not fetched, GROBID TEI XML, $0.01/file
+  - `https://repository.upenn.edu/handle/20.500.14332/6848` — html at OpenAlex, located but not fetched, ScholarlyCommons (University of Pennsylvania) — identity unconfirmed
+  - `https://repository.upenn.edu/cis_papers/776` — html at OpenAlex, located but not fetched, ScholarlyCommons (University of Pennsylvania) — identity unconfirmed
+  - `https://doi.org/10.4230/lipics.fsttcs.2010.1` — html at OpenAlex, located but not fetched, Leibniz international proceedings in informatics
+  - `https://core.ac.uk/download/62915774.pdf` — pdf at CORE, located but not fetched, downloadUrl — identity unconfirmed
+  - `https://drops.dagstuhl.de/storage/00lipics/lipics-vol008-fsttcs2010/LIPIcs.FSTTCS.2010.1/LIPIcs.FSTTCS.2010.1.pdf` — pdf at OpenAlex, located but not fetched, DROPS (Schloss Dagstuhl – Leibniz Center for Informatics) — identity unconfirmed
+- **Abstract** (OpenAlex abstract_inverted_index):
+
+  Streaming string transducers define (partial) functions from input strings to output
+  strings. A streaming string transducer makes a single pass through the input string
+  and uses a finite set of variables that range over strings from the output alphabet.
+  At every step, the transducer processes an input symbol, and updates all the
+  variables in parallel using assignments whose right-hand-sides are concatenations of
+  output symbols and variables with the restriction that a variable can be used at most
+  once in a right-hand-side expression. It has been shown that streaming string
+  transducers operating on strings over infinite data domains are of interest in
+  algorithmic verification of list-processing programs, as they lead to Pspace decision
+  procedures for checking pre/postconditions and for checking semantic equivalence, for
+  a well-defined class of heap-manipulating programs. In order to understand the
+  theoretical expressiveness of streaming transducers, we focus on streaming
+  transducers processing strings over finite alphabets, given the existence of a robust
+  and well-studied class of ``regular'' transductions for this case. Such regular
+  transductions can be defined either by two-way deterministic finite-state
+  transducers, or using a logical MSO-based characterization. Our main result is that
+  the expressiveness of streaming string transducers coincides exactly with this class
+  of regular transductions.
+
+- **Justification**: Defines streaming string transducers: a single pass that keeps output strings in variables updated by concatenations. Round 28 (pd51, pd52) kept tree forests in per-state registers in this style; LESSONS only, not cited by the paper.
+- **Claims supported**:
+  - Claim: A streaming string transducer keeps a finite set of string variables updated in parallel by concatenation at each input symbol
+    Quote: "It uses a finite set of variables that range over strings from the output alphabet. At every step, the transducer processes an input symbol, and updates all the variables in parallel using assignments whose right-hand-sides are concatenations of output symbols and variables" (pdftotext lines 46-49)
+- **Status**: TODO — VERIFIED / DISCREPANCY / UNSUPPORTED
+- **Local copies**: `source/Alur2010expressiveness/`
+  - `Alur2010expressiveness.pdf` — pdf, 492,344 bytes, sha256 ad77246c68f0
+- **Indexes with no record**: Crossref, INSPIRE-HEP, Scholar
+- **Notes**: —
