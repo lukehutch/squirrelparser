@@ -133,3 +133,65 @@ Dart 3.12.2, single thread, 2026-07-20) and are recorded but not asserted.
   - `Alur2010expressiveness.pdf` — pdf, 492,344 bytes, sha256 ad77246c68f0
 - **Indexes with no record**: Crossref, INSPIRE-HEP, Scholar
 - **Notes**: —
+
+## Chang2015hardness
+
+```bibtex
+@misc{Chang2015hardness,
+  doi = {10.48550/arXiv.1511.04731},
+  url = {https://arxiv.org/abs/1511.04731},
+  author = {Chang, Yi-Jun},
+  keywords = {Computational Complexity (cs.CC), Data Structures and Algorithms (cs.DS), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  title = {Hardness of {RNA} Folding Problem with Four Symbols},
+  publisher = {arXiv},
+  year = {2015},
+  copyright = {arXiv.org perpetual, non-exclusive license}
+}
+```
+
+- **Verified authors**: Chang, Yi-Jun
+- **Verified title**: Hardness of {RNA} Folding Problem with Four Symbols
+- **Journal**: — (2015)
+- **DOI**: 10.48550/arXiv.1511.04731
+- **arXiv**: 1511.04731
+- **Metadata cross-checked against**: DataCite
+- **Source URLs**:
+  - `https://doi.org/10.48550/arXiv.1511.04731` — metadata (DataCite)
+  - `https://scholar.google.com/scholar?hl=en&as_epq=Hardness+of+RNA+Folding+Problem+with+Four+Symbols&as_occt=title` — metadata (Scholar (no usable record))
+  - `https://arxiv.org/src/1511.04731` — arxiv-src-payload → `Chang2015hardness-arxiv-src.tar.gz`
+  - `https://arxiv.org/src/1511.04731` — latex → `latex/`
+  - `/papers/arx_1511.04731/content.lines` — content.lines → `content.lines`
+  - `https://arxiv.org/pdf/1511.04731` — pdf → `Chang2015hardness.pdf`
+  - `https://doi.org/10.48550/arxiv.1511.04731` — html at OpenAlex, located but not fetched, arXiv (Cornell University)
+  - `https://arxiv.org/html/1511.04731` — html at arXiv, located but not fetched, LaTeXML HTML, converted from the submitted TeX
+- **Abstract** (paperclip meta.json):
+
+  An RNA sequence is a string composed of four types of nucleotides, $A, C, G$, and
+  $U$. The goal of the RNA folding problem is to find a maximum cardinality set of
+  crossing-free pairs of the form $\{A,U\}$ or $\{C,G\}$ in a given RNA sequence. The
+  problem is central in bioinformatics and has received much attention over the years.
+  Abboud, Backurs, and Williams (FOCS 2015) demonstrated a conditional lower bound for
+  a generalized version of the RNA folding problem based on a conjectured hardness of
+  the $k$-clique problem. Their lower bound requires the RNA sequence to have at least
+  36 types of symbols, making the result not applicable to the RNA folding problem in
+  real life (i.e., alphabet size 4). In this paper, we present an improved lower bound
+  that works for the alphabet size 4 case. We also investigate the Dyck edit distance
+  problem, which is a string problem closely related to RNA folding. We demonstrate a
+  reduction from RNA folding to Dyck edit distance with alphabet size 10. This leads to
+  a much simpler proof of the conditional lower bound for Dyck edit distance problem
+  given by Abboud, Backurs, and Williams (FOCS 2015), and lowers the alphabet size
+  requirement.
+
+- **Justification**: Conditional lower bound: exact Dyck edit distance (alphabet 10) has no truly subcubic combinatorial algorithm unless k-clique improves. Exact least-cost PEG repair contains it, so a cubic worst case in the number of bracket errors is expected for any exact engine (LESSONS round 29; not cited by the paper).
+- **Claims supported**:
+  - Claim: Dyck edit distance on alphabet size 10 is at least as hard as RNA folding, which has a k-clique-based conditional lower bound
+    Quote: "If the Dyck edit distance problem on sequences of length $n$ with alphabet size 10  can be solved in $T(n)$ time, then $3k$-clique on graphs with $|V|=n$ can be solved in $T\left( O(n^{k + 1} \log n)\right)$ time." (paper.tex#L159)
+    Quote: "Therefore, an ${O}(n^{3- \epsilon})$-time combinatorial algorithm for RNA folding would imply a breakthrough for combinatorial algorithms for $k$-clique." (paper.tex#L123)
+- **Status**: TODO — VERIFIED / DISCREPANCY / UNSUPPORTED
+- **Local copies**: `source/Chang2015hardness/`
+  - `Chang2015hardness-arxiv-src.tar.gz` — arxiv-src-payload, 625,737 bytes, sha256 303626365391
+  - `latex/` — latex, 717,193 bytes
+  - `content.lines` — content.lines, 82,014 bytes, sha256 55ac87e65e2a
+  - `Chang2015hardness.pdf` — pdf, 1,148,673 bytes, sha256 4a17346da995
+- **Indexes with no record**: Crossref, INSPIRE-HEP, Scholar, arXiv
+- **Notes**: —
