@@ -7681,6 +7681,140 @@ the D1 ruling on x472c.
 LOC: x464a 306; x471j 361 (+55, +18.0%); x472c 337 (+31, +10.1%); x473r
 316 (+10, +3.3%).
 
+### x482o, x481i, x483n, x486e - round 48: exact bounds halve x473r's battery Ir at the same trees (x482o, 327 lines); the three round-47 parts merge (x481i, 422) and are reviewed (x483n, 424); the user's ruling against duplicated work gives x486e, 21% fewer battery Ir and 54% fewer on the 64/1 rung than x464a, with half its invalid trees (462 lines) (2026-10-11)
+
+Four Opus builders worked this round, each followed by an independent
+checker that re-measured its best engine. Speed is compared by
+callgrind instruction counts (Ir), since the machine load was 5-28.
+
+Exact bounds (x482o, on x473r, checker confirmed):
+
+- Three changes skip offers that cannot win, and none changes a tree:
+  a nested offer of price p is skipped when n+1-p <= b.r-b.c (a line
+  reads at most to n+1); a top-level offer is skipped when the kept
+  line reads past the end and p >= b.c; an equal-cost line loses to
+  one that reads past the end, since its next fix costs at least 1.
+  Also: an s-loop stop, a list of written positions for `_forget`,
+  Int32List for `_top`, `_nfix` and reach, hoisted locals.
+- 316 -> 327 lines (+11, +3.5%); 306 -> 327 (+21, +6.9%) against x464a.
+- Same trees and costs as x464a on the battery, fuzzer (worse 0,
+  invalid 66), gates, rungs and deep inputs.
+- Ir: battery 20.88G -> 10.64G (-49%; x464a 23.15G), 64/1 rung 36.7G
+  -> 28.4G, x(ab)*1600 19.9G -> 18.7G.
+- Refuted: dominance between offers as first stated (77 battery trees
+  change); a memo keyed by fix set (no fix set repeats).
+
+Merge (x481i, on x464a, checker confirmed with one severe defect):
+
+- x464a + x473r's quiet parses + x472a's ban form (no plain Parser) +
+  x471j's depth handler, then shrunk. 306 -> 422 lines (+116, +37.9%).
+- Battery treeDiff 0, gates pass, rungs unchanged, every deep input
+  finishes, `~` test 0 crashes in 1206 cases. Fuzzer worse 13 against
+  x464a's 35, invalid 35 against 66. Battery Ir 22.26G (-3.8%).
+- The checker's defect: quiet parses blow up when recursion passes
+  through a lookahead. `S <- A; A <- &('a' A) 'a' A / 'b';` on 'a'*n
+  'c' takes 39 s at n = 200 (x464a 5 ms), 8-13x per doubling, and the
+  answer changes (cost 51 against 100 at n = 100). Without quiet parses
+  it takes 1-4 ms. On JSON with whitespace (`~WS`) and many errors the
+  quiet parses make x481i 2.5x slower than x464a.
+
+Elegance review (x483n, on x481i, checker not run separately):
+
+- Pure cleanups give x483m, 422 -> 419 lines. Three changes then
+  improve quality, 419 -> 424:
+  - lookahead bodies are parsed loud, so a failure inside one becomes a
+    candidate. The lookahead grammar above now costs 1, the optimum,
+    where x464a costs n and x481i about n/2; it takes 41, 155 and
+    581 ms at n = 100, 200, 400 (quadratic, measured by me);
+  - when the root fails, the cap includes the whole-input fallback's
+    price (fixes an invalid witness on `... / 'w' 'w' 'w' 'z'` over "z");
+  - a ban removes one fix (k, f), not every fix at key k.
+- Fuzzer worse 12 against 36, invalid 35. Ir: battery 21.97G, 64/1
+  32.78G, x(ab)*1600 18.60G.
+- Refuted: memoizing `_into` per (rule, i): it fixes one sibling-path
+  miss of its shared visited set and adds one invalid tree elsewhere.
+
+My timings on the checker's cases (wall ms, load about 7):
+
+| Case | n | x464a | x481i | x483n |
+|---|---|---|---|---|
+| lookahead | 100/200/400 | 3/4/8 (cost n) | 2939/49691/timeout | 41/155/581 (cost 1) |
+| `~WS` JSON, `]]x` | 100/200/400 | 247/1695/12782 | 563/4468/31633 | 511/3996/27475 |
+| `[n,` | 100/200/400 | 44/157/499 | 35/116/409 | 31/103/369 |
+
+The `~WS` JSON case grows about 7.5x per doubling in every engine
+(cubic), and x483n is 2.2x slower there than x464a at equal costs.
+
+The user's ruling, after the quiet-parse blowup: "never duplicate work
+that has already been done. That's what the memo table is supposed to
+prevent." A check must read the memo table or compute its result once
+and keep it, never run a separate parse. This rules out x472c's plain
+Parser per fix. A loud parse that redoes quiet entries, and `_wins`
+parsing each offer's line again, fall under the same ruling.
+
+No duplicated work (x484a, x485, x486, on x464a, checker confirmed
+with three defects):
+
+- An audit counted evaluations whose clause, position and fix lookups
+  equal an earlier one. In x464a they are 76.1% of evaluations and
+  67.4% of work on the battery. `_forget`'s comment says it drops
+  entries "that read to q", but it dropped every entry at any position
+  whose `_top` >= q; that gap caused 4.45M duplicate `_m` calls.
+- x484a: x472a's ban built on the memo, `~` crash fixed. 426 lines,
+  battery treeDiff 0, fuzzer worse 18 / 36, invalid 33 / 66.
+- x486e = x484a + per-entry forget (keep entries that did not read to
+  q; a loud use of a kept entry matches it again) + x473r's quiet
+  parses + `_top` stored as a max tree, so `_forget` visits only
+  positions that read to q (the old scan was 270M steps on the 64/1
+  rung) + typed arrays.
+
+| Engine | Lines | Battery | 64/1 | x400 | x1600 | Worse/invalid |
+|---|---|---|---|---|---|---|
+| x464a | 306 | 23.15 | 46.39 | 1.61 | 24.84 | 36 / 66 |
+| x484a | 426 | 23.47 | 46.46 | 1.62 | 24.86 | 18 / 33 |
+| x486d | 454 | 18.01 | 29.87 | 1.22 | 18.74 | 18 / 33 |
+| x486e | 462 | 18.30 | 21.15 | 1.18 | 18.00 | 18 / 33 |
+
+- x486e: battery 0.9811, treeDiff 0 against x464a; gates pass; rungs
+  cost 31 and 65; `~` test 0 crashes in 1019 cases.
+- Ablations (each battery treeDiff 0): without keeping entries battery
+  Ir +9%; without quiet parses +13% battery, +48% 64/1; without the
+  ban invalid 33 -> 66; without the max tree 64/1 +41%.
+- Replaying a kept entry's recorded candidates costs the same Ir as
+  matching it again (21.36G both), so it was deleted (-35 lines).
+- Duplicate work falls to 61.1% of battery work and 25.3% of 64/1
+  work, so the ruling is not yet met. Left, largest first: each offer
+  forgets on set and again on unset (about 31%; putting the dropped
+  entries back cost more Ir than it saved, x485i/j); left-recursion
+  growth redone after a version bump (7.1%); `_wins` line parses
+  (10.1%); probes over s (1.5%).
+- The checker's defects:
+  - Per-entry forget is unsound with lookaheads: `_try` restores
+    `_far` after a lookahead, so its reads never reach `reach`, and an
+    entry whose lookahead read q is kept. On a lookahead fuzzer 2 of
+    3200 answers change, one from cost 4 valid to cost 11 invalid.
+    x464a has the same hole, hidden by dropping whole positions.
+  - Quiet parses change an answer with no lookahead: `R0 <- ('b'+
+    (('a' R0 "caaaa") / 'c'?))` on "aba" costs 3 in x484a, 7 (invalid)
+    in x486e.
+  - A 1000-deep `'(' A ')'` and a 12,004-character left-recursive sum
+    overflow the stack (x486e does not carry the depth handler).
+  - The empty-language case `S <- 'x' W 'y'; ~W <- 'y'*;` costs 2 and
+    4 on "x" and "xyyz", against x464a's 1 and 1: the ban removes the
+    only insertion and the fallback costs more.
+
+Not adopted yet: no engine has all of x486e's speed, x483n's quality
+fixes and depth handler, and x482o's bounds, without the defects
+above. Round 49 builds it.
+
+Open: the remaining duplicated work; the cubic `~WS` JSON case; the
+lookahead extent in `reach`; quiet-parse answer changes;
+`S <- ('a'?)* 'b' ('c'*)+;` on "aab" (cost 3, invalid tree, all engines).
+
+LOC: x473r 316 -> x482o 327 (+11, +3.5%); x464a 306 -> x481i 422
+(+116, +37.9%) -> x483n 424 (+2, +0.5%); x464a 306 -> x484a 426 (+120,
++39.2%) -> x486e 462 (+36, +8.5%).
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
