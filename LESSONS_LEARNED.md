@@ -7926,6 +7926,141 @@ LOC: x486e 462 -> x491k 482 (+20, +4.3%) -> x494d 545 (+63, +13.1%);
 x486e 462 -> x492p 532 (+70, +15.2%); x486e 462 -> x493b 595 (+133,
 +28.8%).
 
+### x501u, x502f, x503f, x504i, x505a - round 50: quality parts halve x494d's worse fuzzer cases (x501u, 707 lines); duplicate-work bookkeeping costs more Ir than it saves (x502f, 574); an overlay climb makes the `~WS` JSON case quadratic at lower battery Ir (x503f, 746); the merge x504i (880) has the best measured quality and speed; Codex's retained derivation graph cuts duplicate work to 23% but hangs on a 5-character fuzzer input (x505a, 936) (2026-10-11)
+
+Three Opus builders worked on x494d, each followed by a checker, then
+an elegance merge with its own checker. Codex built a fourth engine.
+Speed is compared by callgrind instruction counts (Ir).
+
+Quality (x501u, on x494d, checker confirmed):
+
+- 545 -> 707 lines (+162, +29.7%).
+- Battery 0.9811, treeDiff 0; gates pass.
+- Fuzzer against x494d: dl worse 7 / 19, invalid 24 / 37; lf worse
+  8 / 27, invalid 28 / 49.
+- Ir: battery 13.69G (+16%), 64/1 26.11G, x1600 19.84G.
+- Refuted: a FIRST-set test alone (no fuzzer effect); x501e (15
+  battery trees change); x501i (139 change).
+- The checker found that `_reach` repeats the same quiet match many
+  times; caching it (x50ca5) saves almost no Ir.
+
+Duplicate work (x502*, on x494d, checker confirmed):
+
+- No engine beats x494d on Ir. Each change that cut audited duplicate
+  work added more bookkeeping than it saved.
+- x502f (574 lines, +29, +5.3%): refresh entries made before a
+  left-recursion growth. lrVersion work -21%, total work -2.3%, but
+  battery Ir +2.1% and 64/1 +7.2%. The checker found one lf tree that
+  differs (it reused stale entries in loud parses); x50cb2 fixes it.
+- x502a (549): exact visitors per (clause, entry). Work -5.5%, 64/1
+  Ir +118%: registering visitors costs about 30G Ir.
+- x502b (585): roll back dropped entries after each offer. 40 battery
+  trees change. With offer rollback only, the duplicates move to the
+  next offer (unset 559k -> 73k, set 120k -> 393k).
+
+Scaling (x503f, on x494d, checker found defects):
+
+- An offer is measured by re-matching only the entries the fix can
+  change, into an overlay over the memo, climbing parent links from
+  the entries that tried an element at the fix position. If the climb
+  stops early, the stopped entry decides the offer.
+- 545 -> 746 lines (+201, +36.9%).
+- Battery treeDiff 0, gates pass, dl and lf treeDiff 0.
+- Ir: battery 11.34G (x494d 11.81G), 64/1 13.08G (26.13G), x1600
+  15.30G (19.82G).
+- `~WS` JSON case 3 at n = 100/200/400: 73/313/1370 ms against
+  723/5821/42479 ms, about n^2.1 against n^2.9.
+- The checker found 4 of about 3,500 random cases with different
+  answers (costs 9 vs 6, 5 vs 2, 3 vs 7, one equal-cost tie). Cause,
+  by ablation: the climb skips `_dirty`'s loud resets, so the next
+  loud parse reuses entries and loses their candidates. Which
+  candidates a loud parse sees already depended on the order of
+  earlier offers in x494d; the climb makes it visible. One climbed
+  offer also reported a wrong read extent (23 for 22).
+- Duplicate work is not lower in absolute units (2.19M against 2.15M).
+
+Merge and elegance review (x504i, checker confirmed):
+
+- x50cc2 (x503f with both checker fixes) + x50ca5 (x501u's quality
+  parts), then five simplifications with treeDiff 0 each: two
+  left-recursion drop blocks deleted, one `_regen` helper, `_left`
+  derived and then deleted, rank ties broken by corner-set size.
+- 545 -> 880 lines (+335, +61.5%); 921 -> 880 (-41, -4.5%) in the
+  review; 306 -> 880 (+574, +188%) against x464a.
+- Battery 0.9811, treeDiff 0 against x494d; gates pass; rungs
+  6/8/13/16/31/65 with x494d's 64/1 signature; every deep input
+  finishes; `~` test 0 crashes in 1019.
+
+| Engine | Lines | Battery | 64/1 | x400 | x1600 | dl worse | dl invalid |
+|---|---|---|---|---|---|---|---|
+| x464a | 306 | 23.15 | 46.39 | 1.61 | 24.84 | 53 / 17 | 66 |
+| x494d | 545 | 11.81 | 26.13 | 1.33 | 19.82 | 19 / 7 | 37 |
+| x504i | 880 | 13.15 | 13.20 | 1.05 | 15.24 | - | 24 |
+
+- Worse counts are "this engine / x504i" on dl seeds 1-8; lf gives
+  7 / 26 against x494d, invalid 28 against 49.
+- `~WS` JSON case 3: 148/759/4257 ms, about n^2.4 (x494d n^3).
+- Duplicate work: battery 44.2% of 4.99M units, 64/1 35.3% (x494d
+  21.9%), mostly the rebuild after a fix is unset (19% of 64/1 work).
+  The validity checks cost under 0.03% of work.
+- Long families (x504i / x494d): `A <- 'a' A 'b' / !'a' 'c'` on
+  a^1500 b^1500 78 / 7443 ms (x464a crashes); `[n,`*200 9.5 / 38.8 s.
+- Slower than x494d on a few small cases: `E <- E '-' E / 'x'` on
+  "x--x" 16 / 2 ms.
+
+The first-gain bound (D50-2). Every top-level offer after the first
+must have s <= w1, the price of the first offer that gains. On
+`S <- 'b'*+ 'a'? 'b';` over "acbab" x504i costs 4 and x494d 2: the
+quality parts price an insertion for `'b'*+` at 1, so w1 = 1 and the
+deletion of "ac" (s = 2) is never offered. The checker showed the
+loss is older: `'b'+` and `('b'+)+` cost 4 on all three engines, and
+`'b'*` costs 3, where the optimum is 2. Four relaxations were tried:
+
+| Variant | Change | Result |
+|---|---|---|
+| x504j | bound deleted | worse 8 / 41 dl, 8 / 38 lf; 64/1 unfinished after 18 min |
+| x504k | bound below the top level only | rung 8 47 s, rung 32 over 300 s |
+| x504l | bound = max(w1, kept line's cost) | no answer changes; rungs +14-44% |
+| x504m | bound = first line's full cost | "acbab" 2; rung 32 294 s |
+
+The bound is what keeps many-error inputs fast; an exact bound needs
+each line's full cost, which is cubic. A cheap lower bound on a
+line's remaining cost is not yet built.
+
+Codex (x505a, on x494d, my checks):
+
+- Each memo entry keeps its tree, its fix reads (present and absent),
+  its child versions and a trace of its candidates, so a reused entry
+  replays its candidates without matching again. Versions are indexed
+  by read extent; an offer climbs parent links into a memo view with
+  an undo log.
+- 545 -> 936 lines (+391, +71.7%). I confirmed the size and the
+  battery (0.9811, treeDiff 0, costDiff 0).
+- Audit: work 5.03M -> 3.30M units (-34%), duplicate 42.7% -> 23.4%;
+  left are left-recursion growth (9.6%), probes (3.0%) and an
+  unlabeled 10.8%.
+- Case 3: 2420/12708/46783 ms against x494d's 773/5461/39923, about
+  n^2.1 against n^2.9 but slower at every size; 1.7 GB at n = 400.
+- My dl run (seeds 1-8) against x494d: worse 4 / 1, invalid 37 / 37,
+  treeDiff 10, and one timeout: `R0 <- (('b'? R1* R1*) ((R0 / 'a') /
+  'c'*) ("cca" 'c')); R1 <- (R0?? / R2*+); R2 <- ((R1 R1 R0)? R0);`
+  on "abccc" does not finish, where x494d costs 2.
+
+Not adopted. x504i is better than x464a on every measure but size,
+yet it breaks the user's ruling (44% duplicate battery work) and adds
+`_lit`, the longest literal, to `_reach` (a D2 constant; the checker
+reads the right offset as 1). x464a stays the recorded best.
+
+Open: the first-gain bound; duplicate work (x505a's retained versions
+show the share can fall to 23% at the same battery trees, but not yet
+at lower cost); the dependence of loud candidates on offer order;
+`_lit`; `S <- 'x' W 'y'; ~W <- 'y'*;` invalid on "x" and "xz" (every
+engine); size.
+
+LOC: x494d 545 -> x501u 707 (+162, +29.7%); 545 -> x502f 574 (+29,
++5.3%); 545 -> x503f 746 (+201, +36.9%); 545 -> x504i 880 (+335,
++61.5%); 545 -> x505a 936 (+391, +71.7%).
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
