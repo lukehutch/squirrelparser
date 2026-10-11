@@ -7815,6 +7815,117 @@ LOC: x473r 316 -> x482o 327 (+11, +3.5%); x464a 306 -> x481i 422
 (+116, +37.9%) -> x483n 424 (+2, +0.5%); x464a 306 -> x484a 426 (+120,
 +39.2%) -> x486e 462 (+36, +8.5%).
 
+### x491k, x492p, x493b, x494d - round 49: the round-48 parts merge with a depth handler (x491k, 482 lines); exact memo dependency cuts duplicate battery work to 41-43% (x492p, 532; x494d, 545); a cut that climbs the parent entries only while their results change makes the `~WS` JSON case quadratic but doubles battery Ir (x493b, 595) (2026-10-11)
+
+Three Opus builders worked this round, each followed by a checker
+that re-measured its best engine, then an elegance review of the
+merged engine with its own checker. Speed is compared by callgrind
+instruction counts (Ir).
+
+Merge (x491k, on x486e, checker confirmed):
+
+- x486e's defects 1 and 2 fixed (lookahead reads now reach `reach`;
+  quiet parses no longer change the answer), then x483n's three
+  quality changes, an overflow handler with a path list, x482o's exact
+  bounds, the empty-language fix (keep the cheapest tree the ban
+  removed), and positive-lookahead bodies matched loud.
+- 462 -> 482 lines (+20, +4.3%).
+- Battery 0.9811, treeDiff 0 against x464a and x486e; gates pass;
+  rungs 6/8/13/16/31/65, same signatures as x486e.
+- Every deep input finishes (depth 3200 in 53 ms, x(ax)*1600 b cost
+  1); x486e and x464a overflow at depth 800.
+- Fuzzer: dl worse 13 against x464a's 40, invalid 37 against 66; lf
+  (lookahead fuzzer) worse 19 against 37, invalid 52 against 65.
+- Ir: battery 11.78G, 64/1 25.82G, x400 1.30G, x1600 19.43G.
+- The lookahead case `A <- &('a' A) 'a' A / 'b'` costs 1 (x486e 51).
+- Duplicate work 60.8% of battery work: the share is unchanged,
+  although the absolute amount fell by 55%.
+- The checker found invalid trees the report did not name: bacca
+  (29), bbcbb, bcbab, accccc, cccacc, abcabxcz; "aba" still costs 7,
+  invalid.
+
+Exact dependency (x492p, on x486e, checker confirmed):
+
+- A set or unset of a fix drops only the owners of the changed
+  position that read at or past it, and their ancestors through
+  parent links per memo entry. Every other entry is kept.
+- 462 -> 532 lines (+70, +15.2%).
+- Battery treeDiff 0, gates pass. Ir: battery 11.17G, 64/1 21.66G,
+  x1600 18.42G. Duplicate work 61.1% -> 40.6% (battery), 25.4% ->
+  21.7% (64/1). The duplicate from `unset` falls 86%, from `_wins`
+  94%; a new source appears, re-matching zombie entries (12.2%).
+- Refuted: restoring dropped entries on unset (Ir 2x); per-position
+  visit lists (no gain); a probe cache keyed by (clause, position)
+  (Ir +3%).
+- No depth handler: overflows at depth 800.
+- The checker's fixes: x49bc1, `_look = max(_look, at)` at the stop
+  and after a deletion, stale reads 125 -> 0 (536 lines); x49bc3, a
+  skipped lookahead must still hold, lf worse 6, invalid 45, but it
+  changes the conformance gate to 0 1 1 0 2 3 (549 lines).
+
+Scaling (x493b, on x486e, checker confirmed):
+
+- The `~WS` JSON case (`[ `^n n `]]x`^(n/2)) is cubic because each of
+  its n/2 repair rounds tries O(depth) offers, and each offer reparsed
+  from the root, redoing the ancestor chain its forget had dropped.
+- The cut: re-match only the candidate's rule entry with the fix in
+  force, climb to parent entries only while their results change,
+  undo every write. Ir exponent on that case 2.95 -> 1.95; the `[n,`
+  case 1.9 -> 1.0. The lower bound with a loud reparse of the spine
+  per round is n^2.
+- 462 -> 595 lines (+133, +28.8%). Battery treeDiff 0.
+- Not adopted: battery Ir 22.4G and x1600 37.5G, about 2x x486e. On
+  x(ab)* the climb always reaches the root (0 of 1199 tries cut), so
+  the work is done twice. x493d (return the root result when the
+  climb reaches it) disagrees with a full reparse in 10 of about 37k
+  events, unexplained.
+
+Elegance review (x494a-x494d, on x491k, checker confirmed):
+
+| Engine | Change | Lines | Battery Ir | 64/1 | Dup battery |
+|---|---|---|---|---|---|
+| x491k | base | 482 | 11.78 | 25.82 | 60.8% |
+| x494a | + x492p's exact dependency | 539 | 11.67 | 25.84 | 42.7% |
+| x494b | + a skipped lookahead must hold | 550 | | | |
+| x494c | the same, negative lookahead only | 550 | 11.73 | 26.13 | 42.7% |
+| x494d | c simplified | 545 | 11.81 | 26.13 | 42.7% |
+
+- x494b gives a free pass on the conformance gate (0 1 1 0 0 0):
+  a positive lookahead's body already takes fixes, so testing it
+  before the fix blocks the fix that makes it match. Refuted.
+- x494d: battery 0.9811, treeDiff 0; gates pass; deep inputs finish;
+  `~` test 0 crashes. dl worse 10 against x464a's 36, invalid 37
+  against 66; lf worse 15 against 37, invalid 49 against 65.
+- x494d is cubic on the `~WS` JSON case: 655/4721/39113 ms at
+  n = 100/200/400, 3.4x slower than x464a.
+- The checker found a cost regression from the negative-lookahead
+  rule ("no inserted character may follow a skipped negative
+  lookahead"): `S <- 'a' !'b' 'c' 'b'` on "ab" costs 3 against 1, and
+  the left-recursive `E '+' !'+' T` family costs +1 at every size.
+  The rule tests the inserted text by a parse where a static FIRST set
+  would do.
+- The checker also found `_price` computed twice per offer, and
+  parent links appended more than once (64/1 peak RSS 1.67 GB against
+  1.59 GB).
+- Exact dependency costs 1.25-1.38x more Ir on the short `_chkscale`
+  inputs.
+
+Not adopted: x494d meets the ruling best and has the fewest worse
+cases, but it is cubic on the `~WS` case, slower than x464a there,
+and has the lookahead cost regression. x464a stays the recorded best.
+
+Duplicate work left in x494d's battery (42.7%): unset 13.9%, loud
+re-matches of kept entries 11.0%, left-recursion growth after a
+version bump 9.9%.
+
+Open: the cut without redone work; the FIRST-set test; the
+conformance ruling for x49bc3; "aba" (7, invalid); the empty
+language `~W`; `('a'?)* 'b' ('c'*)+` on "aab"; cabaccabc (6 against 2).
+
+LOC: x486e 462 -> x491k 482 (+20, +4.3%) -> x494d 545 (+63, +13.1%);
+x486e 462 -> x492p 532 (+70, +15.2%); x486e 462 -> x493b 595 (+133,
++28.8%).
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
