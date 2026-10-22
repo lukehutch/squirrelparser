@@ -101,7 +101,7 @@ of the repaired input. "-" means not measured.
 | x513j | x | 10-21 | 918 | 0.9811 / 76.4 | 1,191 ms; Ir 12.72G | rung 64: Ir 12.21G | 22 | all finish |
 | z1 (r52) | z | 10-22 | 762 (529 raw) | 0.9898 / 86.1 | 2,845 ms | rung 64: 373 ms (cost 59) | 107 (c14: 371) | all finish |
 | z1 (r53) | z | 10-22 | 613 (379 raw) | 0.9896 / 86.1 | 2,800 ms | rung 64: 695 ms (cost 59) | 107 (c14: 371) | all finish |
-| z1 (r54) | z | 10-22 | 569 (347 raw) | 0.9900 / 86.3 | 2,388 ms | rung 64: 555 ms JIT / 355 ms AOT (cost 59) | 96 (5 seeds) | all finish |
+| z2 (r54) | z | 10-22 | 569 (347 raw) | 0.9900 / 86.3 | 2,388 ms | rung 64: 555 ms JIT / 355 ms AOT (cost 59) | 96 (5 seeds) | all finish |
 
 The x-line Ir figures are from three builds: x464a, x494d and x504i
 from round 50's, x513j from round 51's; in round 51's builds x504i
@@ -8440,12 +8440,13 @@ succeeded or failed:
   - case 3: `247 / 510 / 1,689 ms` (`cost=50 / 100 / 200`)
   - case 4: `178 / 265 / 472 ms` (`cost=35 / 68 / 135`)
 
-### z1 - round 54: covariant state collapse (`mark`), unified structural predicates (`pureSub`, `synced`, `trim`), non-empty container witness after missing opening delimiter, and dynamic `First` nullability reach 0.9900 / 86.3% in 347 raw / 569 normalized lines (2026-10-22)
+### z2 - round 54: covariant state collapse (`mark`), unified structural predicates (`pureSub`, `synced`, `trim`), non-empty container witness after missing opening delimiter, and dynamic `First` nullability reach 0.9900 / 86.3% in 347 raw / 569 normalized lines (2026-10-22)
 
 Stepping back to view `z1` from both the low-level memo/cell state representation
-and the high-level grammar recovery invariants yielded six structural unifications
+and the high-level grammar recovery invariants yielded `z2` (`dart/experiments/recovery/_z2.dart`
+and `dart/lib/src/parser/recovery.dart`), incorporating six structural unifications
 and improvements (while preserving `lib_pure/` as the pure paper Squirrel parser
-from `6a8a173` and `lib_z1_baseline/` as the Round 53 `z1` baseline):
+from `6a8a173` and `lib_z1_baseline/` / `_z1.dart` as the Round 53 `z1` baseline):
 
 1. **5-to-1 Covariant State Collapse in `_Cell` (`mark`)**:
    In Round 53, `_Cell` carried five separate state fields (`int budget = -1,
@@ -8526,37 +8527,37 @@ from `6a8a173` and `lib_z1_baseline/` as the Round 53 `z1` baseline):
    **`96`** (`-36%`) and `lf.sh` (5 seeds, 2,000 cases) `invalid` from `107` to
    **`76`** (`-29%`), with `0` timeouts and `0` worse cases.
 
-**Measured results on `z1.dart` (Round 54)**:
+**Measured results on `z2.dart` (Round 54)**:
 
 - **Size**: **`347` raw** non-comment/non-blank lines (**`569` normalized** under
-  `dart format --language-version=3.0` — down from `379 / 613` in Round 53 and
+  `dart format --language-version=3.0` — down from `379 / 613` in Round 53 `z1` and
   `529 / 762` in Round 52), `0` `dart analyze` issues.
-- **Battery (`bench.sh battery z1`)**: **`score=0.9900, perfect=86.3% (1,814/2,101),
+- **Battery (`bench.sh battery z2`)**: **`score=0.9900, perfect=86.3% (1,814/2,101),
   crashed=0, uncovered=0, auditBad=0, ms=2388`**.
-- **All 4 Honesty Gates (`bench.sh gates z1`)**: `accept cx2=true b1=true b2=true`,
+- **All 4 Honesty Gates (`bench.sh gates z2`)**: `accept cx2=true b1=true b2=true`,
   `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`,
   `cleanTreeDiff=0`.
-- **Properties, predicate, and window checks**: `bench.sh props z1` `2728/2728`
-  (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`; `bench.sh window z1`
+- **Properties, predicate, and window checks**: `bench.sh props z2` `2728/2728`
+  (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`; `bench.sh window z2`
   `n=1..4096` all `cost=1 P=true edits=1`.
-- **Multi-error JSON scaling (`bench.sh scale z1 1000/k/1`)**:
+- **Multi-error JSON scaling (`bench.sh scale z2 1000/k/1`)**:
   - `1000/16/1`: `cost=14, ms=218`
   - `1000/32/1`: `cost=29, ms=327`
   - `1000/64/1`: `cost=59, ms=555` (JIT) / `355 ms` (warm)
-- **`_tilde.dart z1`**: `cases=909 crashes=0 cost=14951`.
-- **`deep.sh z1`**:
+- **`_tilde.dart z2`**: `cases=909 crashes=0 cost=14951`.
+- **`deep.sh z2`**:
   - `depth` `n=100..3200`: `missing=0` in `0..50 ms`; `missing=1` in `19..3,058 ms` (`cost=1`).
   - `x (ax)*n b` `n=50..1600`: `3 / 11 / 34 / 116 / 376 / 842 ms` (`cost=1`).
   - `x (ab)*n` `n=50..1600`: `1 / 2 / 6 / 11 / 47 / 81 ms` (`cost=n`).
-- **`_chkscale.dart z1` (`n=100 / 200 / 400`, JIT)**:
+- **`_chkscale.dart z2` (`n=100 / 200 / 400`, JIT)**:
   - case 0: `30 / 70 / 69 ms` (`cost=2`)
   - case 1: `36 / 64 / 70 ms` (`cost=2`)
   - case 2: `19 / 28 / 39 ms` (`cost=102 / 202 / 402`)
   - case 3: `285 / 641 / 2,376 ms` (`cost=50 / 100 / 200`)
   - case 4: `192 / 245 / 472 ms` (`cost=35 / 68 / 135`)
 - **Fuzzers (`SEEDS="1 2 3 4 5" dl.sh` and `lf.sh`, 2,000 cases each)**:
-  - `dl.sh`: `worse: 0, invalid: 96, timeouts: 0, levWorse: 0` (down from `151` invalid).
-  - `lf.sh`: `worse: 0, invalid: 76, timeouts: 0, levWorse: 0` (down from `107` invalid).
+  - `dl.sh`: `worse: 0, invalid: 96, timeouts: 0, levWorse: 0` (down from `151` invalid in `z1`).
+  - `lf.sh`: `worse: 0, invalid: 76, timeouts: 0, levWorse: 0` (down from `107` invalid in `z1`).
 
 ## 4. The c-series arc — what each engine taught
 
