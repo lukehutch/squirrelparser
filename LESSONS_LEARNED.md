@@ -64,6 +64,70 @@ asks only questions a human could answer.
 
 ## 2. The standing table (era-3 battery, 2026-08-21) and the c-series comparison (2026-09-06)
 
+### All lines: the leading engines compared (2026-10-21)
+
+One row per engine that led its line, with the figures recorded in its
+round's section (not re-run for this table). Every score is the same
+2,101-case battery under `_research18.dart` (score / perfect %). Battery
+time is one engine's recorded wall time in its own session, so times
+from different rows differ by load and harness by up to 2x; Ir
+(callgrind instructions) is comparable only within one x3.exe build,
+and is given only for the x line. "Rung k" is `1000/k/1`: a 1,000-node
+JSON document with k errors. "dl" is `_samedl.dart` seeds 1-8 x 400
+(3,200 cases); an invalid tree is one whose answer is not a PEG parse
+of the repaired input. "-" means not measured.
+
+| Engine | Line | Date | LOC | Battery | Battery time | Many errors | dl invalid | Deep inputs |
+|---|---|---|---|---|---|---|---|---|
+| s1 | r/s | 08-05 | 697 | 0.9841 / 77.0 | 1,686 ms | - | - | - |
+| c14 | c | 09-02 | 807 | 0.9899 / 85.8 | 370-572 ms | 24k chars, 4 errors: 26.2 s | - | - |
+| c18 | c | 09-05 | 1,194 | 0.9900 / 86.0 | 806 ms | 200k chars: 4.7 s, 1.2 GB | - | - |
+| c18-envelope | c | 09-06 | - | 0.9902 / 86.2 | 1,383 ms | 5,959 chars: 861 ms | - | - |
+| c19 | c | 09-05 | 470 | 0.9900 | 1,539 ms | 5,959 chars: 2.4 s | - | - |
+| c20 | c | 09-07 | 742 | 0.9899 / 86.1 | 1,364-1,395 ms | rung 8: 8.9 s | - | - |
+| c25 | c | 09-08 | 900 | 0.9901 / 86.0 | as c20 | rung 12: 1.7 s; rung 32 never | - | - |
+| cdx10 | cdx | 09-23 | 845 | 0.9899 / 84.3 | - | rung 32: 3.2 s; rung 64: 3.0 s | 47 (older fuzzer) | - |
+| cl8 | cl | 09-23 | 712 | 0.9900 / 84.3 | - | - | 30 (older fuzzer) | - |
+| cl28 | cl | 10-03 | 909 | 0.9900 / 84.5 | 2.0 s | every rung finishes | 163 of 12,800 | overflow at 3,200 |
+| pd23 | pd | 10-03 | 856 | 0.9900 / 84.4 | 18.6 s | - | 0 | linear, no overflow |
+| pd57 | pd | 10-03 | 898 | 0.9898 / 84.4 | 2.0-2.1 s | - | 0 | - |
+| u28 | u | 10-07 | 998 | 0.9896 / 84.2 | 2.27 s | rung 12: 1.3 s; rung 32: 17.4 s, 4.1 GB | 0 | - |
+| sk2 | sk | 10-07 | 151 | 0.4498 / 9.3 | 182-189 ms | quadratic | 1,297 | - |
+| sk7q | sk | 10-08 | 428 | 0.953 | 623-653 ms | rung 64: 5.7 s | - | - |
+| sk10p | sk | 10-09 | 531 | 0.9801 | 4.2 s (loaded) | rung 64: cost 68 | 89 | overflow at 800 |
+| x464a | x | 10-10 | 306 | 0.9811 / 76.4 | Ir 23.15G | rung 64: Ir 46.39G | 66 | overflow at 800 |
+| x494d | x | 10-11 | 545 | 0.9811 / 76.4 | Ir 11.81G | rung 64: Ir 26.13G | 37 | all finish |
+| x504i | x | 10-11 | 880 | 0.9811 / 76.4 | Ir 13.15G | rung 64: Ir 13.20G | 24 | all finish |
+| x513j | x | 10-21 | 918 | 0.9811 / 76.4 | 1,191 ms; Ir 12.72G | rung 64: Ir 12.21G | 22 | all finish |
+
+The x-line Ir figures are from three builds: x464a, x494d and x504i
+from round 50's, x513j from round 51's; in round 51's builds x504i
+measured 12.89-12.91G on the battery and 12.80-12.87G on rung 64,
+2-3% below round 50's.
+
+**Which engine is best at what, and why.**
+
+| Measure | Best | Why it wins |
+|---|---|---|
+| Accuracy | c18-envelope 0.9902; c25 0.9901 | c13's seven ranking keys judge whole readings by the evidence each one has, and c12's gated substitution repairs a wrong character as one edit; the x line has one fix kind (delete s characters, insert a shortest input for skipped elements), so a substitution costs 2 and ties are broken less well (perfect 76.4 against 86) |
+| Valid trees | pd23, pd57, u28: 0 of 3,200 | the search states are PEG derivatives of the top rule, so every answer is a PEG parse of the repaired input by construction; the other lines repair a tree and must check validity afterward |
+| Size | x464a 306 lines (sk2 151 at score 0.45) | the repair is the ordinary memo parser run with fixes in force; one fix kind and one price, no second grammar and no ranking keys |
+| Battery speed | c14 370-572 ms | one pass per case, no windows and no re-runs; x513j is about 1.2 s, the pd and u lines 2 s |
+| Many errors on one document | cdx10 (rung 64 in 3.0 s); x504i and x513j (rung 64 at about the battery's Ir) | cdx10: an admissible bound that remembers the return site of each recursive call; x line: the first-gain bound, which limits later offers to the price of the first offer that gains, but is not admissible (D50-2, round 51) |
+| Long inputs | c18 (200k characters in 4.7 s) | repairs only inside windows over the farthest failure, and memoized plain matches |
+| Deep nesting | x494d onward, pd23 | an overflow handler that reruns the path in its recorded state (x); an explicit frame stack (pd) |
+| Fuzzer costs | x513j (x511n, its base, is worse than x504i in 3 dl cases against 25) | the first-gain round goes one price past w1, and x513j adds two validity changes (round 51) |
+
+No engine holds all of these. The c and cdx lines have the best
+accuracy at 742-900 lines; the pd and u lines are the only ones with
+no invalid trees, at 856-998 lines and about 2 s on the battery. The
+x line scores 0.009 below the c line. Its smallest engine, x464a, is
+306 lines; the parts added since (deep inputs, exact bounds, the
+overlay climb, the validity checks) bring x513j to 918 lines, the
+size of c25, with every deep and many-error input finishing and 22
+invalid dl trees. The synthesis round
+(below, 2026-09-11) showed why the c-line bests do not combine.
+
 ### Full c-series comparison (2026-09-06; measured by Codex, audited the same day)
 
 **Confirmed measurements:** c1–c19 and the c18 envelope variant, current
@@ -8060,6 +8124,138 @@ engine); size.
 LOC: x494d 545 -> x501u 707 (+162, +29.7%); 545 -> x502f 574 (+29,
 +5.3%); 545 -> x503f 746 (+201, +36.9%); 545 -> x504i 880 (+335,
 +61.5%); 545 -> x505a 936 (+391, +71.7%).
+
+### x511n, x513a, x513h, x513j - round 51: a first-gain round one price past w1 cuts x504i's worse fuzzer cases from 25 to 3 (x511n, 874 lines); quiet lookahead bodies that still report how far they read, and fixes no tree child holds taken out, give x513j (918) with 22 invalid dl trees against 24 (2026-10-11, 2026-10-21)
+
+The round started on 2026-10-11 as parallel builders on x504i. A
+usage limit stopped three stages, and a reboot wiped /tmp, which held
+every kit. The kits now live in /home/luke/Work/squirrel-kit; x511n,
+x512a and x512c were rebuilt by replaying the builders' tool calls
+(sizes and battery match the record). On 2026-10-21 the user asked
+for one candidate at a time, in series, each improving on all
+metrics. Ir below is from one x3.exe build.
+
+Builder results (2026-10-11, checked again after the rebuild):
+
+- x511n (874 lines, -6 against x504i): the top-level search goes to
+  s = w1 + 1, and an offer is skipped when `s > w1 && q + s < r1`.
+  The skip is not admissible: it can drop the optimum. `_lit` (D2) is
+  removed; `_in` is keyed on the mode. Battery treeDiff 0; dl worse
+  3 against x504i's 25, lf 4 against 30; invalid unchanged (24, 28).
+- x512a (920, +40): `_back` restores memo entries a full offer
+  dropped. No tree changes; rung 64 Ir -8%.
+- x512c (965, + `_grown`): refuted by its checker. It loses
+  candidates (`R0 <- (R0 W / W); ~W <- 'c'*`), 6 trees disagree with
+  PEG, and reads are under-reported up to 4.6x.
+
+Candidates in series on x511n (all battery 0.9811, treeDiff 0, and
+all gates pass, unless stated):
+
+| Engine | Change | Result |
+|---|---|---|
+| x513a | x511n + x512a's `_back` | dl worse 3, lf 4 against x504i 25, 30; Ir below |
+| x513b | x513a without the skip rule | ablation: x(ab)*400 Ir 2.02G against 1.19G |
+| x513c | the `&Kw` skip banned in the ok check | conformance fails (`0 1 1 0 0 0`) |
+| x513d | lookahead bodies take no fixes | lf invalid 27 against 28, but a new invalid tree |
+| x513f | a fix that ends the input is compared on price | battery 0.9808; a 1-character input forced to whole deletion |
+| x513g | x513f with the null-line case fixed | dl worse 5 against 15, lf invalid 29 against 28 |
+| x513h | x513d, and a positive lookahead's body reports how far it read | lf worse 3 against 6, invalid 26 against 28; dl the same |
+| x513i | x513a, fixes no tree child holds taken out | dl worse 3 against 7, invalid 22 against 24; lf worse 9 against 6 |
+| x513j | x513h + x513i | see below |
+| x513k | x513j, whole-input fallback whenever it is cheaper | battery 0.9749 |
+
+Why each one did what it did (each cause confirmed on its case):
+
+- x513c: once the `&Kw` skip is banned, the engine fixes inside
+  `Kw`'s body. A positive lookahead's tree is `Match(c, pos, 0)` with
+  no children, so the price of a fix inside its body never reaches
+  the tree, and the cost reads 0. This is a pre-existing flaw in
+  every x engine. It stays hidden only because skipping the `&` costs
+  1, the least price, and so wins.
+- x513d: with a quiet body, a failed `&` leaves the frontier at its
+  start, and an element after it that matches empty is never offered:
+  `R0 <- (&('c' 'b' R1) 'c' ('b' 'b')+)` on "ccbbbbb" costs 1002
+  (invalid) against 2. x513h keeps the body quiet but raises the
+  frontier to how far the body read, which fixes this case.
+- x513g: an end fix taken directly can sit inside a lookahead body,
+  so the tree drops its price: `R0 <- (&('b' 'b') / ('a'? (R0 /
+  "acbb") !R0))` on "aab" gives a tree costing 1 that is not a PEG
+  parse (x513a: 2).
+- x513i: a fix used only by a parse the tree does not keep (a failed
+  choice arm, a lookahead body) is taken out, as `_bad` takes out an
+  invalid fix. On `R0 <- (R2 / ('b' / "aca")+)` over "acaa", x513h
+  returns a tree through the second arm, but PEG matches `R2` first on
+  the repaired input; x513i costs 1 with a valid tree. A repetition
+  stopped by a fix has no child for its stop, so it is exempt.
+- x513j loses 4 lf cases to x513h. On `R0 <- (('b' R1 "abbc")?
+  "aabb")` over "bbb" x513h falls back to the whole-input answer
+  (cost 4) and x513j keeps a tree of cost 6, because the return rule
+  keeps a tree whose cost is covered by its fixes' summed prices.
+  x513k changes that rule and loses 0.0062 battery score, so the rule
+  stays.
+
+x513j against its rivals (dl and lf: 8 seeds x 400). A run with three
+engines counts a case as worse when another engine costs less; rows
+marked * come from such runs (with x513i, and with x511n).
+
+| Pair | dl worse | dl invalid | lf worse | lf invalid |
+|---|---|---|---|---|
+| x513j / x513h | 3 / 7 | 22 / 24 | 4 / 0 | 26 / 26 |
+| x513j / x513a | 3 / 7 * | 22 / 24 | 7 / 6 | 26 / 28 |
+| x513a / x504i * | 3 / 25 | 24 / 24 | 4 / 30 | 28 / 28 |
+
+| Ir | x504i | x513a | x513h | x513j |
+|---|---|---|---|---|
+| battery | 12.91G | 12.67G | 12.70G | 12.72G |
+| rung 64 | 12.87G | 12.12G | 12.26G | 12.21G |
+| x(ab)*400 | 1.01G | 1.19G | 1.20G | 1.20G |
+
+(x504i's Ir is from an earlier build of the same day, in which x513a
+measured 12.67G, 12.14G and 1.19G, within 0.2% of the later build that
+measured x513a/h/j.)
+
+- Battery 0.9811 / 76.4, treeDiff 0, costDiff 0, 1,191 ms; all gates
+  (accept true, freespan 3 3 4 4 1, recommit 16/16, conformance
+  0 1 1 0 1 1, cleanTreeDiff 0).
+- deep.sh: every depth to 3,200 finishes (55 ms at 3,200, as x504i);
+  x(ax)*1600 b costs 1 in 42 ms; x(ab)*n is quadratic, 1,969 ms at
+  n = 1,600 against x504i's 1,653 (+19%), from x511n's extra round.
+- Duplicate work: 42.5% of 4.89M battery work units, against
+  x504i's 44.2% of 4.99M. The user's ruling is still not met.
+
+Scores (0-10):
+
+| Engine | Score | Reason |
+|---|---|---|
+| x513j | 8 | fewest invalid trees, tied with x513h on worse cases, +5 lines |
+| x513h | 7 | best lf, but returns invalid trees x513j fixes |
+| x513a | 6 | base; dominated by x513h |
+| x513i | 5 | best dl, worst lf |
+| x513g | 3 | dl gain, new invalid tree |
+| x513f | 2 | battery loss |
+| x513d | 2 | new invalid tree |
+| x513k | 1 | battery 0.9749 |
+| x513c | 0 | fails conformance |
+
+x513j is the round's best. It is not promoted over x464a for the
+same reason as x504i: 42.5% of its battery work repeats.
+
+Open:
+
+- The lookahead price flaw: a fix inside a positive lookahead's body
+  is not priced in the tree. x513j avoids such fixes by keeping
+  lookahead bodies quiet; the tree shape is unchanged.
+- The skip rule `s > w1 && q + s < r1` is not admissible, and D50-2
+  (`'b'+ 'a'? 'b'` on "acbab", cost 4 against 2) is still open.
+- x(ab)*n costs 18-19% more than in x504i.
+- The return rule keeps a tree costlier than the whole-input answer
+  when its fixes' prices cover it ("bbb" above); changing it loses
+  battery score.
+- Duplicate work (42.5%); size (918 against x464a's 306).
+
+LOC: x504i 880 -> x511n 874 (-6, -0.7%); x511n 874 -> x513a 914
+(+40, +4.6%); x513a 914 -> x513h 913 (-1, -0.1%); x513a 914 ->
+x513j 918 (+4, +0.4%); x504i 880 -> x513j 918 (+38, +4.3%).
 
 ## 4. The c-series arc — what each engine taught
 
