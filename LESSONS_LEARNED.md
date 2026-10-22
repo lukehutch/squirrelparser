@@ -99,7 +99,8 @@ of the repaired input. "-" means not measured.
 | x494d | x | 10-11 | 545 | 0.9811 / 76.4 | Ir 11.81G | rung 64: Ir 26.13G | 37 | all finish |
 | x504i | x | 10-11 | 880 | 0.9811 / 76.4 | Ir 13.15G | rung 64: Ir 13.20G | 24 | all finish |
 | x513j | x | 10-21 | 918 | 0.9811 / 76.4 | 1,191 ms; Ir 12.72G | rung 64: Ir 12.21G | 22 | all finish |
-| z1 | z | 10-22 | 762 (529 raw) | 0.9898 / 86.1 | 2,845 ms | rung 64: 373 ms (cost 59) | 107 (c14: 371) | all finish |
+| z1 (r52) | z | 10-22 | 762 (529 raw) | 0.9898 / 86.1 | 2,845 ms | rung 64: 373 ms (cost 59) | 107 (c14: 371) | all finish |
+| z1 (r53) | z | 10-22 | 613 (379 raw) | 0.9896 / 86.1 | 2,800 ms | rung 64: 695 ms (cost 59) | 107 (c14: 371) | all finish |
 
 The x-line Ir figures are from three builds: x464a, x494d and x504i
 from round 50's, x513j from round 51's; in round 51's builds x504i
@@ -8332,7 +8333,7 @@ Measured results on `z1`:
   `351 / 807 / 104`; `lf` invalid `81 / 233 / 28`, worse `354 / 708 / 79`
   (3.5x fewer invalid and >2x fewer worse than `c14`).
 
-### z1 - round 53: deep audit of all historical recovery lines and radical simplification of `z1` to 311 raw / 462 normalized lines (-41% LOC) at 0.9895 / 85.7%, 2728/2728 properties, and 401 ms on 64-error JSON with zero duplicate memo work (2026-10-22)
+### z1 - round 53: deep audit of all historical recovery lines and simplification of `z1` to 379 raw / 613 normalized lines at 0.9896 / 86.1%, 2728/2728 properties, and full deep / `_tilde` / `_chkscale` compliance with zero duplicate memo work (2026-10-22)
 
 A full audit of all historical lines (`libsrc_recovery/`, `a`, `b`, `c`, `cdx`,
 `cl`, `m`, `pd`, `r`, `s`, `sk`, `t`, `u`, `x`, and `z` across `attic/`,
@@ -8367,39 +8368,53 @@ succeeded or failed:
    errors) because its Pareto bucket retained every incomparable `(first, last)`
    error-span pair across long repetitions, and `c20`–`c25` (`666`–`1,089` LOC)
    grew large trying to tame that growth with windows or 13-condition dominance
-   predicates (`rSub`, `sSub`, `cut`, `_warmMatch`, etc.).
+   predicates.
 
-**Key simplifications in Round 53 (`z1.dart`, `311` raw / `462` normalized LOC)**:
+**Key simplifications and ablation lessons in Round 53 (`z1.dart`, `379` raw / `613` normalized LOC)**:
 
-- **Tuple-keyed `_Cell` (`Map<(int, bool, bool), _Way>`)**: replaces `_Front`
-  (`Map<int, List<_Way>>` + 13-condition `dominates`) and `_Relation`
-  (`view`/`viewBudget` cache) with a single 11-line `_Cell` class keyed by
-  `(r.end, r.incomplete, r.missing == 0)` and ordered by `(r.used, r.cmp(b))`.
-  Keeping at most one best `_Way` per `(end, incomplete, missing == 0)` tuple
-  bounds cell width to $O(1)$ per reachable endpoint while preserving the exact
-  `0.9895 / 85.7%` battery score and all 2,728 property checks.
-- **Single-pass iterative `_ev`**: replaces the 26-line two-pass `(node, expanded)`
-  postorder stack with a 10-line single-pass loop that reuses `_evidence[ch]` in
-  $O(1)$.
-- **Inline 1-character terminal repetition projection**: replaces `_lexicalWays`
-  with an inline prefix loop gated by the exact identity `plain.end - pos == k.length`
-  (since every repetition of a 1-character terminal has total length equal to its
-  subclause match count).
-- **Direct `cleanTail` and repetition lookahead (`syncs`)**: replaces the `d`
-  ancestor-walk loop with `cleanTail = r.prev != null && r.spent == r.prev!.spent`.
-  In `_repeat`, `syncs(step)` (`(_plain(c.subClause, step.end)?.end ?? 0) > step.end`)
-  acts as the natural PEG repetition lookahead so string-valued JSON members
-  (where interior `[^"\\]*` characters have `absorbed > evidence`) settle
-  cleanly as soon as the next repetition element matches at `step.end`.
+- **4-tuple-keyed `_Cell` (`Map<(int, bool, bool, int), _Way>`)**: replaces `_Front`
+  (`Map<int, List<_Way>>` + 23-line pairwise dominance loop) and `_Relation`
+  (`view`/`viewBudget` cache) with a single `_Cell` class keyed by
+  `(r.end, r.incomplete, r.missing == 0, r.used)` and ordered by `r.cmp(b)`.
+  Why `r.used` must be in the key: under credit settlement, `used = max(0, spent - credit)`
+  is the *remaining future budget cost*, whereas `charge` in `cmp` is the *total edit price*.
+  Because `(used, charge)` is a 2D Pareto frontier (`used <= _budget`), a 3-tuple key
+  `(r.end, r.incomplete, r.missing == 0)` lets a settled high-charge reading
+  (`used = 1, charge = 4`) overwrite an unsettled lower-charge reading (`used = 2, charge = 2`).
+  Adding `r.used` to the tuple key preserves all Pareto-incomparable `(used, charge)`
+  pairs in 6 lines of map lookup and restores the full **`86.1%` perfect** rate.
+- **Ablation of the 311-line prototype against adversarial stress suites**:
+  An initial `311` raw / `462` normalized LOC compaction passed `battery` (`0.9895 / 85.7%`),
+  `gates`, `props`, `window`, and `scale`, but stress-testing against `deep.sh`,
+  `_tilde.dart`, and `_chkscale.dart` proved that four mechanisms cannot be deleted:
+  1. **Cut obligations (`cut`)**: without `cut` on `First`/`Optional`/`Repetition`,
+     `x (ax)*n b` in `deep.sh` degrades from linear to $O(n^3)$.
+  2. **Pure-substitution credit settlement (`subs` / `rSub` in `_seq` and `r.subs == r.cost` in `Ref`)**:
+     without `subs`, right-recursive `x (ab)*n` with $n$ substitutions cannot settle at
+     `_budget = 1` and times out at $n = 400$. Importantly, `subs` must *not* be added
+     to `cmp()` as a global tie-breaker (where it causes delimiter substitutions like
+     `[4,5,6]` to beat intra-token deletions like `[45,6]` when `charge` and `evidence` tie).
+  3. **Top-level `StackOverflowError` recovery (`_warmMatch`) and iterative `_tree`**:
+     catching `StackOverflowError` inside `_plain` instead of at the top level of
+     `recover()` prevents `_read` from unwinding to `_warmMatch` at depth $n \ge 800$.
+  4. **Repetition last-repaired-step evidence (`dEv > 1`) and `_seq` `settles(o)` (`o.end > o.last`)**:
+     in `_repeat`, checking `dEv > 1` on the last *repaired* step `d` prevents a
+     1-character hallucinated block `"{ "` from borrowing a subsequent clean statement's
+     evidence to settle credit. In `_seq`, `settles(o)` must check `o.end > o.last`
+     (at least 1 clean character after `o`'s last edit, e.g. closing `']'` in
+     `V <- '[' WS (V ...)? ']'`) rather than `o.synced(r.end)` (`o.end > o.last + 1`),
+     which otherwise causes `_tilde.dart` grammar 1 to blow up 70x ($2,238\text{ ms} \to 32\text{ ms}$ at $n = 200$).
+- **Single-pass iterative `_ev` and inline 1-character terminal repetition projection**:
+  replaces the 26-line two-pass postorder stack with a 10-line single-pass loop and
+  replaces `_lexicalWays` with an inline prefix loop gated by `plain.end - pos == k.length`.
 
-**Measured results on the simplified `z1.dart`**:
+**Measured results on `z1.dart`**:
 
-- **Size**: **`311` raw** non-comment/non-blank lines (**`462` normalized** under
+- **Size**: **`379` raw** non-comment/non-blank lines (**`613` normalized** under
   `dart format --language-version=3.0` — down from `529 / 762` in Round 52 and
-  `666 / 986` in `c25`, and smaller than `c19`'s `470`, `s4`'s `480`, and
-  `x464a`'s `481` normalized lines), `0` `dart analyze` issues.
-- **Battery (`bench.sh battery z1`)**: `score=0.9895, perfect=85.7%, crashed=0,
-  uncovered=0, auditBad=0, ms=2251`.
+  `666 / 986` in `c25`), `0` `dart analyze` issues.
+- **Battery (`bench.sh battery z1`)**: **`score=0.9896, perfect=86.1%, crashed=0,
+  uncovered=0, auditBad=0, ms=2800`**.
 - **All 4 Honesty Gates (`bench.sh gates z1`)**: `accept cx2=true b1=true b2=true`,
   `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`,
   `cleanTreeDiff=0`.
@@ -8407,10 +8422,22 @@ succeeded or failed:
   (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`; `bench.sh window z1`
   `n=1..4096` all `cost=1 P=true edits=1`.
 - **Multi-error JSON scaling (`bench.sh scale z1 1000/k/1`)**:
-  - `1000/16/1`: `cost=14, ms=198`
-  - `1000/32/1`: `cost=29, ms=359`
-  - `1000/64/1`: `cost=59, ms=401`
+  - `1000/16/1`: `cost=14, ms=218`
+  - `1000/32/1`: `cost=29, ms=352`
+  - `1000/64/1`: `cost=59, ms=695`
   with **0% duplicate pure-memo work**.
+- **`_tilde.dart z1`**: `cases=909 crashes=0 cost=14933` in ~7 s (all 909 cases up
+  to `n=3,000` run twice = 1,818 runs).
+- **`deep.sh z1`**:
+  - `depth` `n=100..3200`: `missing=0` in `0..44 ms`; `missing=1` in `19..2,988 ms` (`cost=1`).
+  - `x (ax)*n b` `n=50..1600`: `3 / 10 / 34 / 116 / 390 / 840 ms` (`cost=1`).
+  - `x (ab)*n` `n=50..1600`: `1 / 3 / 6 / 12 / 49 / 82 ms` (`cost=n`).
+- **`_chkscale.dart z1` (`n=100 / 200 / 400`, JIT)**:
+  - case 0: `28 / 45 / 61 ms` (`cost=2`)
+  - case 1: `31 / 42 / 64 ms` (`cost=2`)
+  - case 2: `18 / 23 / 36 ms` (`cost=102 / 202 / 402`)
+  - case 3: `247 / 510 / 1,689 ms` (`cost=50 / 100 / 200`)
+  - case 4: `178 / 265 / 472 ms` (`cost=35 / 68 / 135`)
 
 ## 4. The c-series arc — what each engine taught
 
