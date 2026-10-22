@@ -8332,6 +8332,86 @@ Measured results on `z1`:
   `351 / 807 / 104`; `lf` invalid `81 / 233 / 28`, worse `354 / 708 / 79`
   (3.5x fewer invalid and >2x fewer worse than `c14`).
 
+### z1 - round 53: deep audit of all historical recovery lines and radical simplification of `z1` to 311 raw / 462 normalized lines (-41% LOC) at 0.9895 / 85.7%, 2728/2728 properties, and 401 ms on 64-error JSON with zero duplicate memo work (2026-10-22)
+
+A full audit of all historical lines (`libsrc_recovery/`, `a`, `b`, `c`, `cdx`,
+`cl`, `m`, `pd`, `r`, `s`, `sk`, `t`, `u`, `x`, and `z` across `attic/`,
+`OLD_LESSONS_LEARNED.md`, and `LESSONS_LEARNED.md`) identified why each paradigm
+succeeded or failed:
+
+1. **Two-phase probe / lookahead / grammar-derived heuristics (`libsrc_recovery`,
+   `a`/`b`/`m`/`r`)**: `m23` (`0.9866`, `897` LOC) and `m41` (`0.9873`, `794`
+   LOC) showed that local structural recovery works well on single-error sites,
+   but coupling recovery into `Parser`/`Clause` with lookahead probes and
+   cascading heuristics (`r1`–`r14`, `1,259` LOC) creates state leaks, magic
+   constants, and exponential cascades on multi-error files.
+2. **Chart / Dijkstra / Earley / NFA / Token-Lattice / Pushdown (`t1`–`t3`,
+   `pd1`–`pd6`, `sk1`–`sk3`, `u1`–`u6`)**: global minimum-edit decoders
+   violate PEG ordered-choice discipline (`First`) and negation (`NotFollowedBy`),
+   creating anchorless deletion deserts and failing `recommit` and `conformance`.
+3. **Single-winner memoized recursion (`s1`–`s12`)**: `s4` (`480` LOC, `0.9786`)
+   was compact and fast, but storing a single `MatchResult` per `(Clause, pos)`
+   suffers from the **Same-Start Prefix Trap** (a greedy clean match of an
+   early subclause hides the shorter prefix needed for an inner repair).
+4. **Trial-and-invalidate over a single memo (`x1`–`x513k`)**: `x464a` (`306`
+   raw / `481` normalized LOC, `0.9811 / 76.4%`) was the smallest engine in raw
+   lines, but mutating `_fix` and calling `_forget(q)` to re-run `_parse()`
+   causes `42.5–67%` of all memo work to repeat (`x513j` grew to `918` lines
+   and still had `42.5%` duplicate work), violating the Round 48 zero-duplicate-work
+   ruling.
+5. **Multi-end Pareto front sidecar on the native parser (`c1`–`c25`, `z1`)**:
+   `c19` (`334` raw / `470` normalized LOC, `0.9885 / 84.3%`) proved that
+   attaching a recovery cell to `parser.getMemoEntry(c, pos)` via `Map.identity()`
+   achieves **0% duplicate pure-memo work** while solving the Same-Start Prefix
+   Trap cleanly. However, `c19` blew up on multi-error scaling (`25 s` on 16
+   errors) because its Pareto bucket retained every incomparable `(first, last)`
+   error-span pair across long repetitions, and `c20`–`c25` (`666`–`1,089` LOC)
+   grew large trying to tame that growth with windows or 13-condition dominance
+   predicates (`rSub`, `sSub`, `cut`, `_warmMatch`, etc.).
+
+**Key simplifications in Round 53 (`z1.dart`, `311` raw / `462` normalized LOC)**:
+
+- **Tuple-keyed `_Cell` (`Map<(int, bool, bool), _Way>`)**: replaces `_Front`
+  (`Map<int, List<_Way>>` + 13-condition `dominates`) and `_Relation`
+  (`view`/`viewBudget` cache) with a single 11-line `_Cell` class keyed by
+  `(r.end, r.incomplete, r.missing == 0)` and ordered by `(r.used, r.cmp(b))`.
+  Keeping at most one best `_Way` per `(end, incomplete, missing == 0)` tuple
+  bounds cell width to $O(1)$ per reachable endpoint while preserving the exact
+  `0.9895 / 85.7%` battery score and all 2,728 property checks.
+- **Single-pass iterative `_ev`**: replaces the 26-line two-pass `(node, expanded)`
+  postorder stack with a 10-line single-pass loop that reuses `_evidence[ch]` in
+  $O(1)$.
+- **Inline 1-character terminal repetition projection**: replaces `_lexicalWays`
+  with an inline prefix loop gated by the exact identity `plain.end - pos == k.length`
+  (since every repetition of a 1-character terminal has total length equal to its
+  subclause match count).
+- **Direct `cleanTail` and repetition lookahead (`syncs`)**: replaces the `d`
+  ancestor-walk loop with `cleanTail = r.prev != null && r.spent == r.prev!.spent`.
+  In `_repeat`, `syncs(step)` (`(_plain(c.subClause, step.end)?.end ?? 0) > step.end`)
+  acts as the natural PEG repetition lookahead so string-valued JSON members
+  (where interior `[^"\\]*` characters have `absorbed > evidence`) settle
+  cleanly as soon as the next repetition element matches at `step.end`.
+
+**Measured results on the simplified `z1.dart`**:
+
+- **Size**: **`311` raw** non-comment/non-blank lines (**`462` normalized** under
+  `dart format --language-version=3.0` — down from `529 / 762` in Round 52 and
+  `666 / 986` in `c25`, and smaller than `c19`'s `470`, `s4`'s `480`, and
+  `x464a`'s `481` normalized lines), `0` `dart analyze` issues.
+- **Battery (`bench.sh battery z1`)**: `score=0.9895, perfect=85.7%, crashed=0,
+  uncovered=0, auditBad=0, ms=2251`.
+- **All 4 Honesty Gates (`bench.sh gates z1`)**: `accept cx2=true b1=true b2=true`,
+  `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`,
+  `cleanTreeDiff=0`.
+- **Properties, predicate, and window checks**: `bench.sh props z1` `2728/2728`
+  (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`; `bench.sh window z1`
+  `n=1..4096` all `cost=1 P=true edits=1`.
+- **Multi-error JSON scaling (`bench.sh scale z1 1000/k/1`)**:
+  - `1000/16/1`: `cost=14, ms=198`
+  - `1000/32/1`: `cost=29, ms=359`
+  - `1000/64/1`: `cost=59, ms=401`
+  with **0% duplicate pure-memo work**.
+
 ## 4. The c-series arc — what each engine taught
 
 - **c1** (I101): the budget-zero collapse. The two-mode split (parse vs
