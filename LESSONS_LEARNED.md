@@ -8260,39 +8260,41 @@ LOC: x504i 880 -> x511n 874 (-6, -0.7%); x511n 874 -> x513a 914
 (+40, +4.6%); x513a 914 -> x513h 913 (-1, -0.1%); x513a 914 ->
 x513j 918 (+4, +0.4%); x504i 880 -> x513j 918 (+38, +4.3%).
 
-### z1 - round 52: credit-settled memoized recovery on the native parser reaches 0.9898 / 86.1% in 529 raw / 762 normalized lines, rung 64 in 373 ms (cost 59), and finishes all deep, `_tilde`, and `_chkscale` suites with zero duplicate memo work (2026-10-22)
+### z1 - round 52: credit-settled memoized recovery on the native parser
+(2026-10-22)
 
-Round 52 builds `z1.dart` (`/home/luke/Work/squirrel-kit/dart/experiments/recovery/z1.dart`,
-copied to `_z1.dart`), a single-pass memoized recovery relation attached
-directly to the native `peg.Parser` via `Map.identity()` without windows,
-beams, or re-parsing:
+Round 52 builds `z1.dart` (copied to `_z1.dart`), a single-pass memoized
+recovery relation attached directly to the native `peg.Parser` via
+`Map.identity()` without windows, beams, or re-parsing:
 
-1. **Zero duplicate memo work**: clean parses always consult `parser.match(c, pos)`,
-   and repaired readings at `(c, pos)` are memoized in `_relations[entry]` by
-   budget watermark (`cell.budget >= _budget`) and left-recursion seed version.
-2. **Evidence-based credit settlement (`credit` and `used = max(0, spent - credit)`)**:
-   independent errors that are followed by clean evidence settle their spent
-   edits into `credit` at `_budget = 1`, so a document with $k$ separated
-   errors recovers at `_budget = 1` without cross-error combinatorial products:
+1. **Zero duplicate pure-memo work**: clean parses always consult
+   `parser.match(c, pos)`, and repaired readings at `(c, pos)` are memoized in
+   `_relations[entry]` by budget watermark (`cell.budget >= _budget`) and
+   left-recursion seed version.
+2. **Evidence-based credit settlement (`credit` and
+   `used = max(0, spent - credit)`)**: independent errors that are followed by
+   clean evidence settle their spent edits into `credit` at `_budget = 1`, so a
+   document with `k` separated errors recovers at `_budget = 1` without
+   cross-error combinatorial products:
    - In `_seq`: `rSync` settles an edited prefix before a `Repetition` slot;
      `rSub` settles a pure substitution prefix (`r.subs == r.deleted`,
      `r.missing == 0`, `r.absorbed(pos) == 0`) before a `Repetition` slot and
      prunes the zero-length repetition stop (`subSettled && o.end == r.end`)
      when a settled continuation exists, making right-recursive `x (ab)*n`
-     strictly linear ($O(n)$: `11 ms` at $n = 400$, `61 ms` at $n = 800$,
-     `97 ms` at $n = 1,600$); `syncSkip` settles a synchronized prefix before
-     a final closing delimiter (`i == slots.length - 1`), solving `_chkscale`
-     case 3 (`[ `*n + `n` + `]]x`*(n/2)) at `_budget = 1`.
+     linear (`O(n)`: `11 ms` at `n = 400`, `61 ms` at `n = 800`, `97 ms` at
+     `n = 1,600`); `syncSkip` settles a synchronized prefix before a final
+     closing delimiter (`i == slots.length - 1`), solving `_chkscale` case 3
+     (`[ `*n + `n` + `]]x`*(n/2)) at `_budget = 1`.
    - In `_seq`: settling onto an option `o` that already carries settled credit
      (`o.credit > 0`) requires `o.first > r.last + 1` (at least 2 clean
      characters between `r`'s edit and `o`'s first edit), preventing phantom
      wrapper proliferation on `T <- 'x' / '(' E ')'` in `_tilde.dart`
-     (`maxWays` drops from $>1,000$ to a constant `7` at length `9,000`).
+     (`maxWays` drops from `>1,000` to a constant `7` at length `9,000`).
    - In `recover()`: `owedCredit` walks past trailing EOF `owed` edits
-     (`while (p != null && p.owed > 0) p = p.prev`) to check `_len > (p?.last ?? -1) + 1`,
-     allowing deep nested inputs with an interior repair and a missing closing
-     delimiter at EOF to settle at `_budget = 1` without affecting 2-edit
-     battery cases (`w.credit == 0`).
+     (`while (p != null && p.owed > 0) p = p.prev`) to check
+     `_len > (p?.last ?? -1) + 1`, allowing deep nested inputs with an interior
+     repair and a missing closing delimiter at EOF to settle at `_budget = 1`
+     without affecting 2-edit battery cases (`w.credit == 0`).
 3. **Cut obligations (`cut`) and cycle-safe `_startsClean`**: ordered choice
    (`First`), `Optional`, and `Repetition` record the plain parser's farther
    reach as `cut`, rejecting extensions that cross `cut` without a prior edit.
@@ -8300,9 +8302,8 @@ beams, or re-parsing:
    left-recursive `Ref -> First -> Ref` stack overflows in the random-grammar
    fuzzers (`0` crashes and `0` timeouts across all 6,400 `dl` + `lf` cases).
 4. **Bottom-up overflow recovery (`_warmMatch`)**: on deep inputs that exceed
-   the call stack (`n >= 800`), catching `StackOverflowError` clears partial
-   `inRecPath` flags and warms the memo tables bottom-up from `p = _len` down
-   to `0`.
+   the call stack (`n >= 800`), catching `StackOverflowError` warms the memo
+   tables bottom-up from `p = _len` down to `0`.
 
 Measured results on `z1`:
 
@@ -8316,121 +8317,136 @@ Measured results on `z1`:
 - **Property, predicate, and window checks**: `_properties18.dart z1`
   `2728/2728` (`0` violations); `_pred18.dart z1` `cost=1 falseAssertions=0`;
   `_windowcx.dart z1` `n=1..4096` all `cost=1 P=true edits=1`.
-- **Multi-error JSON scaling (`_research18.dart scale z1 1000/k/1`, cold JIT)**:
-  `k=1`: `105 ms` (cost 1); `k=8`: `253 ms` (cost 8); `k=16`: `218 ms` (cost 14);
-  `k=32`: `323 ms` (cost 29); `k=64`: `373 ms / 397 MB` (`167 ms` warm, cost 59
-  vs `x511n` cost 65).
+- **Multi-error JSON scaling (`_research18.dart scale z1 1000/k/1`, JIT)**:
+  `k=1`: `105 ms` (cost 1); `k=8`: `253 ms` (cost 8); `k=16`: `218 ms`
+  (cost 14); `k=32`: `323 ms` (cost 29); `k=64`: `373 ms / 397 MB` (`167 ms`
+  warm, cost 59 vs `x511n` cost 65).
 - **`_tilde.dart z1`**: `cases=909 crashes=0 cost=14891` (~7 s JIT for all 909
   cases run twice = 1,818 runs up to length `12,000`).
-- **`deep.sh z1` (AOT)**: `depth` up to `3,200` (`45 ms` clean, `417 ms` missing
-  `]`); `x (ax)*1600 b` `cost=1` in `129 ms`; `x (ab)*1600` `cost=1600` in
-  `97 ms` (vs `x513j`'s `1,969 ms` — 20x faster).
-- **`_chkscale.dart z1` (AOT, `n = 100 / 200 / 400`)**: case 0: `3 / 6 / 14 ms`
-  (cost 2); case 1: `3 / 6 / 13 ms` (cost 2); case 2: `1 / 3 / 7 ms`
-  (cost `102 / 202 / 402`); case 3: `113 / 349 / 1336 ms` (cost `50 / 100 / 200`);
-  case 4: `80 / 158 / 469 ms` (cost `35 / 68 / 135`).
+- **`deep.sh z1` (AOT)**: `depth` up to `3,200` (`45 ms` clean, `417 ms`
+  missing `]`); `x (ax)*1600 b` `cost=1` in `129 ms`; `x (ab)*1600` `cost=1600`
+  in `97 ms` (vs `x513j`'s `1,969 ms` -- 20x faster).
+- **`_chkscale.dart z1` (AOT, `n = 100 / 200 / 400`)**: case 0:
+  `3 / 6 / 14 ms` (cost 2); case 1: `3 / 6 / 13 ms` (cost 2); case 2:
+  `1 / 3 / 7 ms` (cost `102 / 202 / 402`); case 3: `113 / 349 / 1336 ms`
+  (cost `50 / 100 / 200`); case 4: `80 / 158 / 469 ms` (cost `35 / 68 / 135`).
 - **Fuzzers (`dl.sh` and `lf.sh`, 3,200 cases each, `z1 / c14 / x511n`)**:
   `0` timeouts and `0` crashes; `dl` invalid `107 / 371 / 24`, worse
   `351 / 807 / 104`; `lf` invalid `81 / 233 / 28`, worse `354 / 708 / 79`
   (3.5x fewer invalid and >2x fewer worse than `c14`).
 
-### z1 - round 53: deep audit of all historical recovery lines and simplification of `z1` to 379 raw / 613 normalized lines at 0.9896 / 86.1%, 2728/2728 properties, and full deep / `_tilde` / `_chkscale` compliance with zero duplicate memo work (2026-10-22)
+### z1 - round 53: historical audit and compaction to 379 raw / 613 normalized
+lines (2026-10-22)
 
 A full audit of all historical lines (`libsrc_recovery/`, `a`, `b`, `c`, `cdx`,
 `cl`, `m`, `pd`, `r`, `s`, `sk`, `t`, `u`, `x`, and `z` across `attic/`,
-`OLD_LESSONS_LEARNED.md`, and `LESSONS_LEARNED.md`) identified why each paradigm
-succeeded or failed:
+`OLD_LESSONS_LEARNED.md`, and `LESSONS_LEARNED.md`) identified why each
+paradigm succeeded or failed:
 
-1. **Two-phase probe / lookahead / grammar-derived heuristics (`libsrc_recovery`,
-   `a`/`b`/`m`/`r`)**: `m23` (`0.9866`, `897` LOC) and `m41` (`0.9873`, `794`
-   LOC) showed that local structural recovery works well on single-error sites,
-   but coupling recovery into `Parser`/`Clause` with lookahead probes and
-   cascading heuristics (`r1`–`r14`, `1,259` LOC) creates state leaks, magic
-   constants, and exponential cascades on multi-error files.
-2. **Chart / Dijkstra / Earley / NFA / Token-Lattice / Pushdown (`t1`–`t3`,
-   `pd1`–`pd6`, `sk1`–`sk3`, `u1`–`u6`)**: global minimum-edit decoders
-   violate PEG ordered-choice discipline (`First`) and negation (`NotFollowedBy`),
-   creating anchorless deletion deserts and failing `recommit` and `conformance`.
-3. **Single-winner memoized recursion (`s1`–`s12`)**: `s4` (`480` LOC, `0.9786`)
-   was compact and fast, but storing a single `MatchResult` per `(Clause, pos)`
-   suffers from the **Same-Start Prefix Trap** (a greedy clean match of an
-   early subclause hides the shorter prefix needed for an inner repair).
-4. **Trial-and-invalidate over a single memo (`x1`–`x513k`)**: `x464a` (`306`
-   raw / `481` normalized LOC, `0.9811 / 76.4%`) was the smallest engine in raw
-   lines, but mutating `_fix` and calling `_forget(q)` to re-run `_parse()`
-   causes `42.5–67%` of all memo work to repeat (`x513j` grew to `918` lines
-   and still had `42.5%` duplicate work), violating the Round 48 zero-duplicate-work
-   ruling.
-5. **Multi-end Pareto front sidecar on the native parser (`c1`–`c25`, `z1`)**:
-   `c19` (`334` raw / `470` normalized LOC, `0.9885 / 84.3%`) proved that
-   attaching a recovery cell to `parser.getMemoEntry(c, pos)` via `Map.identity()`
-   achieves **0% duplicate pure-memo work** while solving the Same-Start Prefix
-   Trap cleanly. However, `c19` blew up on multi-error scaling (`25 s` on 16
-   errors) because its Pareto bucket retained every incomparable `(first, last)`
-   error-span pair across long repetitions, and `c20`–`c25` (`666`–`1,089` LOC)
-   grew large trying to tame that growth with windows or 13-condition dominance
-   predicates.
+1. **Two-phase probe / lookahead / grammar-derived heuristics
+   (`libsrc_recovery`, `a`/`b`/`m`/`r`)**: `m23` (`0.9866`, `897` LOC) and
+   `m41` (`0.9873`, `794` LOC) showed that local structural recovery works well
+   on single-error sites, but coupling recovery into `Parser`/`Clause` with
+   lookahead probes and cascading heuristics (`r1`-`r14`, `1,259` LOC) creates
+   state leaks, magic constants, and exponential cascades on multi-error files.
+2. **Chart / Dijkstra / Earley / NFA / Token-Lattice / Pushdown (`t1`-`t3`,
+   `pd1`-`pd6`, `sk1`-`sk3`, `u1`-`u6`)**: global minimum-edit decoders violate
+   PEG ordered-choice discipline (`First`) and negation (`NotFollowedBy`),
+   creating anchorless deletion deserts and failing `recommit` and
+   `conformance`.
+3. **Single-winner memoized recursion (`s1`-`s12`)**: `s4` (`480` LOC,
+   `0.9786`) was compact and fast, but storing a single `MatchResult` per
+   `(Clause, pos)` suffers from the **Same-Start Prefix Trap** (a greedy clean
+   match of an early subclause hides the shorter prefix needed for an inner
+   repair).
+4. **Trial-and-invalidate over a single memo (`x1`-`x513k`)**: `x464a` (`281`
+   raw / `306` normalized LOC, `0.9811 / 76.4%`) was the smallest engine in
+   line count, but mutating `_fix` and calling `_forget(q)` to re-run
+   `_parse()` causes `42.5-67%` of all memo work to repeat (`x513j` grew to
+   `777` raw / `918` normalized lines and still had `42.5%` duplicate work),
+   violating the Round 48 zero-duplicate-work ruling.
+5. **Multi-end Pareto front attached to the native parser (`c1`-`c25`, `z1`)**:
+   `c19` (`388` raw / `470` normalized LOC, `0.9900 / 86.15%`) proved that
+   attaching a recovery cell to `parser.getMemoEntry(c, pos)` via
+   `Map.identity()` achieves **0% duplicate pure-memo work** while solving the
+   Same-Start Prefix Trap cleanly. However, `c19` blew up on multi-error
+   scaling (`25 s` on 16 errors) because its Pareto bucket retained every
+   incomparable `(first, last)` error-span pair across long repetitions, and
+   `c20`-`c25` (`666`-`1,089` LOC) grew large trying to tame that growth with
+   windows or 13-condition dominance predicates.
 
-**Key simplifications and ablation lessons in Round 53 (`z1.dart`, `379` raw / `613` normalized LOC)**:
+**Key simplifications and ablation lessons in Round 53 (`z1.dart`, `379` raw /
+`613` normalized LOC)**:
 
-- **4-tuple-keyed `_Cell` (`Map<(int, bool, bool, int), _Way>`)**: replaces `_Front`
-  (`Map<int, List<_Way>>` + 23-line pairwise dominance loop) and `_Relation`
-  (`view`/`viewBudget` cache) with a single `_Cell` class keyed by
+- **4-tuple-keyed `_Cell` (`Map<(int, bool, bool, int), _Way>`)**: replaces
+  `_Front` (`Map<int, List<_Way>>` + 23-line pairwise dominance loop) and
+  `_Relation` (`view`/`viewBudget` cache) with a single `_Cell` class keyed by
   `(r.end, r.incomplete, r.missing == 0, r.used)` and ordered by `r.cmp(b)`.
-  Why `r.used` must be in the key: under credit settlement, `used = max(0, spent - credit)`
-  is the *remaining future budget cost*, whereas `charge` in `cmp` is the *total edit price*.
-  Because `(used, charge)` is a 2D Pareto frontier (`used <= _budget`), a 3-tuple key
+  Why `r.used` must be in the key: under credit settlement,
+  `used = max(0, spent - credit)` is the *remaining future budget cost*,
+  whereas `charge` in `cmp` is the *total edit price*. Because `(used, charge)`
+  is a 2D Pareto frontier (`used <= _budget`), a 3-tuple key
   `(r.end, r.incomplete, r.missing == 0)` lets a settled high-charge reading
-  (`used = 1, charge = 4`) overwrite an unsettled lower-charge reading (`used = 2, charge = 2`).
-  Adding `r.used` to the tuple key preserves all Pareto-incomparable `(used, charge)`
-  pairs in 6 lines of map lookup and restores the full **`86.1%` perfect** rate.
+  (`used = 1, charge = 4`) overwrite an unsettled lower-charge reading
+  (`used = 2, charge = 2`). Adding `r.used` to the tuple key preserves all
+  Pareto-incomparable `(used, charge)` pairs in 6 lines of map lookup and
+  restores the full **`86.1%` perfect** rate.
 - **Ablation of the 311-line prototype against adversarial stress suites**:
-  An initial `311` raw / `462` normalized LOC compaction passed `battery` (`0.9895 / 85.7%`),
-  `gates`, `props`, `window`, and `scale`, but stress-testing against `deep.sh`,
-  `_tilde.dart`, and `_chkscale.dart` proved that four mechanisms cannot be deleted:
-  1. **Cut obligations (`cut`)**: without `cut` on `First`/`Optional`/`Repetition`,
-     `x (ax)*n b` in `deep.sh` degrades from linear to $O(n^3)$.
-  2. **Pure-substitution credit settlement (`subs` / `rSub` in `_seq` and `r.subs == r.cost` in `Ref`)**:
-     without `subs`, right-recursive `x (ab)*n` with $n$ substitutions cannot settle at
-     `_budget = 1` and times out at $n = 400$. Importantly, `subs` must *not* be added
-     to `cmp()` as a global tie-breaker (where it causes delimiter substitutions like
-     `[4,5,6]` to beat intra-token deletions like `[45,6]` when `charge` and `evidence` tie).
-  3. **Top-level `StackOverflowError` recovery (`_warmMatch`) and iterative `_tree`**:
-     catching `StackOverflowError` inside `_plain` instead of at the top level of
-     `recover()` prevents `_read` from unwinding to `_warmMatch` at depth $n \ge 800$.
-  4. **Repetition last-repaired-step evidence (`dEv > 1`) and `_seq` `settles(o)` (`o.end > o.last`)**:
-     in `_repeat`, checking `dEv > 1` on the last *repaired* step `d` prevents a
-     1-character hallucinated block `"{ "` from borrowing a subsequent clean statement's
-     evidence to settle credit. In `_seq`, `settles(o)` must check `o.end > o.last`
-     (at least 1 clean character after `o`'s last edit, e.g. closing `']'` in
-     `V <- '[' WS (V ...)? ']'`) rather than `o.synced(r.end)` (`o.end > o.last + 1`),
-     which otherwise causes `_tilde.dart` grammar 1 to blow up 70x ($2,238\text{ ms} \to 32\text{ ms}$ at $n = 200$).
-- **Single-pass iterative `_ev` and inline 1-character terminal repetition projection**:
-  replaces the 26-line two-pass postorder stack with a 10-line single-pass loop and
-  replaces `_lexicalWays` with an inline prefix loop gated by `plain.end - pos == k.length`.
+  An initial `311` raw / `462` normalized LOC compaction passed `battery`
+  (`0.9895 / 85.7%`), `gates`, `props`, `window`, and `scale`, but
+  stress-testing against `deep.sh`, `_tilde.dart`, and `_chkscale.dart` proved
+  that four mechanisms cannot be deleted:
+  1. **Cut obligations (`cut`)**: without `cut` on
+     `First`/`Optional`/`Repetition`, `x (ax)*n b` in `deep.sh` degrades from
+     linear to `O(n^3)`.
+  2. **Pure-substitution credit settlement (`subs` / `rSub` in `_seq` and
+     `r.subs == r.cost` in `Ref`)**: without `subs`, right-recursive
+     `x (ab)*n` with `n` substitutions cannot settle at `_budget = 1` and times
+     out at `n = 400`. Importantly, `subs` must *not* be added to `cmp()` as a
+     global tie-breaker (where it causes delimiter substitutions like `[4,5,6]`
+     to beat intra-token deletions like `[45,6]` when `charge` and `evidence`
+     tie).
+  3. **Top-level `StackOverflowError` recovery (`_warmMatch`) and iterative
+     `_tree`**: catching `StackOverflowError` inside `_plain` instead of at the
+     top level of `recover()` prevents `_read` from unwinding to `_warmMatch`
+     at depth `n >= 800`.
+  4. **Repetition last-repaired-step evidence (`dEv > 1`) and `_seq`
+     `settles(o)` (`o.end > o.last`)**: in `_repeat`, checking `dEv > 1` on the
+     last *repaired* step `d` prevents a 1-character hallucinated block `"{ "`
+     from borrowing a subsequent clean statement's evidence to settle credit.
+     In `_seq`, `settles(o)` must check `o.end > o.last` (at least 1 clean
+     character after `o`'s last edit, e.g. closing `']'` in
+     `V <- '[' WS (V ...)? ']'`) rather than `o.synced(r.end)`
+     (`o.end > o.last + 1`), which otherwise causes `_tilde.dart` grammar 1 to
+     blow up 70x (`2,238 ms -> 32 ms` at `n = 200`).
+- **Single-pass iterative `_ev` and inline 1-character terminal repetition
+  projection**: replaces the 26-line two-pass postorder stack with a 10-line
+  single-pass loop and replaces `_lexicalWays` with an inline prefix loop gated
+  by `plain.end - pos == k.length`.
 
 **Measured results on `z1.dart`**:
 
-- **Size**: **`379` raw** non-comment/non-blank lines (**`613` normalized** under
-  `dart format --language-version=3.0` — down from `529 / 762` in Round 52 and
-  `666 / 986` in `c25`), `0` `dart analyze` issues.
-- **Battery (`bench.sh battery z1`)**: **`score=0.9896, perfect=86.1%, crashed=0,
-  uncovered=0, auditBad=0, ms=2800`**.
-- **All 4 Honesty Gates (`bench.sh gates z1`)**: `accept cx2=true b1=true b2=true`,
-  `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`,
+- **Size**: **`379` raw** non-comment/non-blank lines (**`613` normalized**
+  under `dart format --language-version=3.0` -- down from `529 / 762` in
+  Round 52 and `666 / 986` in `c25`), `0` `dart analyze` issues.
+- **Battery (`bench.sh battery z1`)**: **`score=0.9896, perfect=86.1%,
+  crashed=0, uncovered=0, auditBad=0, ms=2800`**.
+- **All 4 Honesty Gates (`bench.sh gates z1`)**: `accept cx2=true b1=true
+  b2=true`, `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`,
   `cleanTreeDiff=0`.
 - **Properties, predicate, and window checks**: `bench.sh props z1` `2728/2728`
-  (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`; `bench.sh window z1`
-  `n=1..4096` all `cost=1 P=true edits=1`.
+  (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`;
+  `bench.sh window z1` `n=1..4096` all `cost=1 P=true edits=1`.
 - **Multi-error JSON scaling (`bench.sh scale z1 1000/k/1`)**:
   - `1000/16/1`: `cost=14, ms=218`
   - `1000/32/1`: `cost=29, ms=352`
   - `1000/64/1`: `cost=59, ms=695`
   with **0% duplicate pure-memo work**.
-- **`_tilde.dart z1`**: `cases=909 crashes=0 cost=14933` in ~7 s (all 909 cases up
-  to `n=3,000` run twice = 1,818 runs).
+- **`_tilde.dart z1`**: `cases=909 crashes=0 cost=14933` in ~7 s (all 909 cases
+  up to `n=3,000` run twice = 1,818 runs).
 - **`deep.sh z1`**:
-  - `depth` `n=100..3200`: `missing=0` in `0..44 ms`; `missing=1` in `19..2,988 ms` (`cost=1`).
+  - `depth` `n=100..3200`: `missing=0` in `0..44 ms`; `missing=1` in
+    `19..2,988 ms` (`cost=1`).
   - `x (ax)*n b` `n=50..1600`: `3 / 10 / 34 / 116 / 390 / 840 ms` (`cost=1`).
   - `x (ab)*n` `n=50..1600`: `1 / 3 / 6 / 12 / 49 / 82 ms` (`cost=n`).
 - **`_chkscale.dart z1` (`n=100 / 200 / 400`, JIT)**:
@@ -8440,22 +8456,23 @@ succeeded or failed:
   - case 3: `247 / 510 / 1,689 ms` (`cost=50 / 100 / 200`)
   - case 4: `178 / 265 / 472 ms` (`cost=35 / 68 / 135`)
 
-### z2 - round 54: covariant state collapse (`mark`), unified structural predicates (`pureSub`, `synced`, `trim`), non-empty container witness after missing opening delimiter, and dynamic `First` nullability reach 0.9900 / 86.3% in 347 raw / 569 normalized lines (2026-10-22)
+### z2 - round 54: covariant state collapse and structural predicates
+(2026-10-22)
 
-Stepping back to view `z1` from both the low-level memo/cell state representation
-and the high-level grammar recovery invariants yielded `z2` (`dart/experiments/recovery/_z2.dart`
-and `dart/lib/src/parser/recovery.dart`), incorporating six structural unifications
-and improvements (while preserving `lib_pure/` as the pure paper Squirrel parser
-from `6a8a173` and `lib_z1_baseline/` / `_z1.dart` as the Round 53 `z1` baseline):
+Stepping back to view `z1` from both the low-level memo/cell state
+representation and the high-level grammar recovery invariants yielded `z2`
+(`dart/experiments/recovery/_z2.dart`), incorporating five structural
+unifications and improvements:
 
 1. **5-to-1 Covariant State Collapse in `_Cell` (`mark`)**:
    In Round 53, `_Cell` carried five separate state fields (`int budget = -1,
    version = -1; bool active = false, recursive = false, usedSeed = false;`)
-   with an 8-line entry/exit protocol in `_read`. Because `active` and `recursive`
-   are only meaningful while a cell is on the active call stack, and `(budget,
-   usedSeed, version)` are monotonic in `(_budget << 20) + version` once finished
-   (a cell that did not read a left-recursive seed is valid at all versions
-   `0xFFFFF` for its `_budget`), all five fields collapse into a single `int mark = -1`:
+   with an 8-line entry/exit protocol in `_read`. Because `active` and
+   `recursive` are only meaningful while a cell is on the active call stack,
+   and `(budget, usedSeed, version)` are monotonic in
+   `(_budget << 20) + version` once finished (a cell that did not read a
+   left-recursive seed is valid at all versions `0xFFFFF` for its `_budget`),
+   all five fields collapse into a single `int mark = -1`:
    - `-1`: uninitialized
    - `-2`: active on the call stack (non-recursive)
    - `-3`: active on the call stack and re-entered by a left-recursive cycle
@@ -8464,89 +8481,103 @@ from `6a8a173` and `lib_z1_baseline/` / `_z1.dart` as the Round 53 `z1` baseline
    `mark = (_budget << 20) + (_versions[pos] ?? 0)`.
 
 2. **Unified Structural Predicates on `_Way` (`pureSub`, `synced`, `trim`)**:
-   - `bool pureSub(int from) => subs > 0 && cost == subs && absorbed(from) == 0;`
-     Because `cost = deleted + missing + (owed > 0 ? 1 : 0)` and `subs <= deleted`,
-     `subs > 0 && cost == subs` mathematically implies `!clean`, `spent > 0`,
-     `missing == 0`, `owed == 0`, and `!incomplete` (since `incomplete` only arises
-     from `missing > 0` or `owed > 0`). This single predicate replaces four
-     5-clause conjunctions across `_seq` and `_repeat`.
-   - `bool synced(int from, [int gap = 1]) => spent > 0 && end > last + gap && evidence > absorbed(from) + 1;`
+   - `bool pureSub(int from) => subs > 0 && cost == subs && absorbed(from) ==
+     0;`
+     Because `cost = deleted + missing + (owed > 0 ? 1 : 0)` and
+     `subs <= deleted`, `subs > 0 && cost == subs` implies `!clean`,
+     `spent > 0`, `missing == 0`, `owed == 0`, and `!incomplete` (since
+     `incomplete` only arises from `missing > 0` or `owed > 0`). This single
+     predicate replaces four 5-clause conjunctions across `_seq` and `_repeat`.
+   - `bool synced(int from, [int gap = 1]) => spent > 0 && end > last + gap &&
+     evidence > absorbed(from) + 1;`
      Because every edit sets `last >= end_at_edit`, `end > last + gap` with
      `gap >= 0` implies that the final character(s) of the reading were matched
      cleanly (`!incomplete`), unifying prefix synchronization (`r.synced(pos)`,
      `gap = 1`) and suffix settlement (`o.synced(r.end, 0)`, `gap = 0`).
    - `_Way trim(int f) => preferred && f >= 0 && end != f ? demote(f) : this;`
-     Unifies non-farthest clean demotion across `_read`, `_propose` (`Optional`),
-     and `_seq`.
-   - Redundant post-filter removal in `_read`: since `plain = _plain(c, pos)` is
-     invariant for `(c, pos)` and every entry added to `cell` is already filtered
-     by `r.clean && r.cut >= (plain?.end ?? _never) || plain?.end != r.end`,
-     re-testing that condition when reading from `cell.ends.values` was redundant.
+     Unifies non-farthest clean demotion across `_read`, `_propose`
+     (`Optional`), and `_seq`.
+   - Redundant post-filter removal in `_read`: since `plain = _plain(c, pos)`
+     is invariant for `(c, pos)` and every entry added to `cell` is already
+     filtered by `r.clean && r.cut >= (plain?.end ?? _never) || plain?.end !=
+     r.end`, re-testing that condition when reading from `cell.ends.values` was
+     redundant.
 
-3. **Fixed 1-Char Substitution Precedence & Removed Unconditional `!r.preferred` Substitution**:
+3. **Fixed 1-Char Substitution Precedence & Removed Unconditional
+   `!r.preferred` Substitution**:
    In Round 53, line 234 of `_seq` read:
-   `slot is peg.Char || slot is peg.Str && slot.text.length == 1 && (!r.preferred || _resumes(slots, i, r.end + 1))`
+   `slot is peg.Char || slot is peg.Str && slot.text.length == 1 &&
+   (!r.preferred || _resumes(slots, i, r.end + 1))`
    Due to `||` vs `&&` precedence, `slot is peg.Char` bypassed `_resumes(...)`
-   completely, and `!r.preferred` proposed a 1-character substitution on *every*
-   dirty prefix at *every* 1-char terminal slot even when the next slot could not
-   resume at `r.end + 1`. Changing this to:
-   `(slot is peg.Char || slot is peg.Str && slot.text.length == 1) && _resumes(slots, i, r.end + 1)`
+   completely, and `!r.preferred` proposed a 1-character substitution on
+   *every* dirty prefix at *every* 1-char terminal slot even when the next slot
+   could not resume at `r.end + 1`. Changing this to:
+   `(slot is peg.Char || slot is peg.Str && slot.text.length == 1) &&
+   _resumes(slots, i, r.end + 1)`
    cut `1000/64/1` runtime by **~49%** (`695 ms -> 355 ms` AOT / `555 ms` JIT)
    and battery runtime from `2,800 ms` to **`2,388 ms`** with zero loss on any
    battery case or property test.
 
-4. **Non-Empty Witness Requirement for Interior Structural Repetitions After a Missing Opening Delimiter**:
-   In `stmt` battery cases with a missing opening `'{'` (`if (a) b = 1; } else { ... }`,
-   `while (a) x = 1; }`), the grammar `Block <- '{' WS Stmt* WS '}' WS` previously
-   hallucinated a missing `'{'` right before the stray closing `'}'`, matching
-   `Stmt*` 0 times (`o.end == r.end`) to wrap the stray `'}'` in an empty `Block({})`
-   while deleting the actual statements before `'}'`.
+4. **Non-Empty Witness Requirement for Interior Structural Repetitions After a
+   Missing Opening Delimiter**:
+   In `stmt` battery cases with a missing opening `'{'` (`if (a) b = 1; }
+   else { ... }`, `while (a) x = 1; }`), the grammar
+   `Block <- '{' WS Stmt* WS '}' WS` previously hallucinated a missing
+   `'{'` right before the stray closing `'}'`, matching `Stmt*` 0 times
+   (`o.end == r.end`) to wrap the stray `'}'` in an empty `Block({})` while
+   deleting the actual statements before `'}'`.
    Principle: if a sequence prefix `r` has `r.evidence == 0 && r.incomplete`
-   (a hallucinated opening delimiter with zero terminal evidence), a non-lexical
-   interior repetition (`slot is peg.Repetition && !_oneShape(slot.subClause)`)
-   cannot match 0 times (`o.end == r.end`).
+   (a hallucinated opening delimiter with zero terminal evidence), a
+   non-lexical interior repetition (`slot is peg.Repetition &&
+   !_oneShape(slot.subClause)`) cannot match 0 times (`o.end == r.end`).
    One line in `_seq`:
-   `if (r.evidence == 0 && r.incomplete && slot is peg.Repetition && !_oneShape(slot.subClause) && o.end == r.end) continue;`
-   fixed 6 of the 8 `stmt` missing-`'{'` battery cases (`i=349, 417, 428, 474, 486, 765`:
-   `0.727..0.903 -> 1.000`) plus `json` `i=46, 546`, lifting the 2,101-case battery
-   from `0.9896 / 86.1%` to **`0.9900 / 86.3%`** (`1,814 / 2,101` perfect).
+   `if (r.evidence == 0 && r.incomplete && slot is peg.Repetition &&
+   !_oneShape(slot.subClause) && o.end == r.end) continue;`
+   fixed 6 of the 8 `stmt` missing-`'{'` battery cases (`i=349, 417, 428,
+   474, 486, 765`: `0.727..0.903 -> 1.000`) plus `json` `i=46, 546`, lifting
+   the 2,101-case battery from `0.9896 / 86.1%` to **`0.9900 / 86.3%`**
+   (`1,814 / 2,101` perfect).
 
-5. **Dynamic `First` Nullability, Active Bare-`Ref` Cycle Skip, and `OneOrMore` Non-Empty Fallback**:
+5. **Dynamic `First` Nullability, Active Bare-`Ref` Cycle Skip, and `OneOrMore`
+   Non-Empty Fallback**:
    To reduce fuzzer `invalid` trees (`dl.sh` and `lf.sh`, where a repaired tree
    must re-parse under strict PEG semantics):
    - In `_propose` (`peg.First`), eliminated `bool settled` (covariant with
-     `cut < _never` once `cut = _min(cut, f)` is updated unconditionally for `f >= 0`),
-     added `if (rs.any((r) => r.clean && r.end == pos)) break;` (any arm of `First`
-     that matches 0 chars cleanly at `pos` is dynamically nullable at `pos`, so
-     later arms are unreachable in PEG), and skipped bare `Ref` arms already active
-     at `pos` when an earlier arm produced results (`if (out.isNotEmpty && _active(sub, pos)) continue;`).
-   - In `_repeat`, tightened the `best.ends.isEmpty` fallback (`c.requireOne == true`)
-     from `if (r.end == pos)` to `if (r.end == pos && !r.clean)` because `OneOrMore`
-     in PEG never accepts a 0-length clean match.
-   Together, these reduced `dl.sh` (5 seeds, 2,000 cases) `invalid` from `151` to
-   **`96`** (`-36%`) and `lf.sh` (5 seeds, 2,000 cases) `invalid` from `107` to
-   **`76`** (`-29%`), with `0` timeouts and `0` worse cases.
+     `cut < _never` once `cut = _min(cut, f)` is updated unconditionally for
+     `f >= 0`), added `if (rs.any((r) => r.clean && r.end == pos)) break;` (any
+     arm of `First` that matches 0 chars cleanly at `pos` is dynamically
+     nullable at `pos`, so later arms are unreachable in PEG), and skipped bare
+     `Ref` arms already active at `pos` when an earlier arm produced results
+     (`if (out.isNotEmpty && _active(sub, pos)) continue;`).
+   - In `_repeat`, tightened the `best.ends.isEmpty` fallback
+     (`c.requireOne == true`) from `if (r.end == pos)` to
+     `if (r.end == pos && !r.clean)` because `OneOrMore` in PEG never accepts a
+     0-length clean match.
+   Together, these reduced `dl.sh` (5 seeds, 2,000 cases) `invalid` from `151`
+   to **`96`** (`-36%`) and `lf.sh` (5 seeds, 2,000 cases) `invalid` from `107`
+   to **`76`** (`-29%`), with `0` timeouts and `0` worse cases.
 
 **Measured results on `z2.dart` (Round 54)**:
 
-- **Size**: **`347` raw** non-comment/non-blank lines (**`569` normalized** under
-  `dart format --language-version=3.0` — down from `379 / 613` in Round 53 `z1` and
-  `529 / 762` in Round 52), `0` `dart analyze` issues.
-- **Battery (`bench.sh battery z2`)**: **`score=0.9900, perfect=86.3% (1,814/2,101),
-  crashed=0, uncovered=0, auditBad=0, ms=2388`**.
-- **All 4 Honesty Gates (`bench.sh gates z2`)**: `accept cx2=true b1=true b2=true`,
-  `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`,
+- **Size**: **`347` raw** non-comment/non-blank lines (**`569` normalized**
+  under `dart format --language-version=3.0` -- down from `379 / 613` in
+  Round 53 `z1` and `529 / 762` in Round 52), `0` `dart analyze` issues.
+- **Battery (`bench.sh battery z2`)**: **`score=0.9900, perfect=86.3%
+  (1,814/2,101), crashed=0, uncovered=0, auditBad=0, ms=2388`**.
+- **All 4 Honesty Gates (`bench.sh gates z2`)**: `accept cx2=true b1=true
+  b2=true`, `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`,
   `cleanTreeDiff=0`.
 - **Properties, predicate, and window checks**: `bench.sh props z2` `2728/2728`
-  (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`; `bench.sh window z2`
-  `n=1..4096` all `cost=1 P=true edits=1`.
+  (`0` violations); `bench.sh pred` `cost=1 falseAssertions=0`;
+  `bench.sh window z2` `n=1..4096` all `cost=1 P=true edits=1`.
 - **Multi-error JSON scaling (`bench.sh scale z2 1000/k/1`)**:
   - `1000/16/1`: `cost=14, ms=218`
   - `1000/32/1`: `cost=29, ms=327`
   - `1000/64/1`: `cost=59, ms=555` (JIT) / `355 ms` (warm)
 - **`_tilde.dart z2`**: `cases=909 crashes=0 cost=14951`.
 - **`deep.sh z2`**:
-  - `depth` `n=100..3200`: `missing=0` in `0..50 ms`; `missing=1` in `19..3,058 ms` (`cost=1`).
+  - `depth` `n=100..3200`: `missing=0` in `0..50 ms`; `missing=1` in
+    `19..3,058 ms` (`cost=1`).
   - `x (ax)*n b` `n=50..1600`: `3 / 11 / 34 / 116 / 376 / 842 ms` (`cost=1`).
   - `x (ab)*n` `n=50..1600`: `1 / 2 / 6 / 11 / 47 / 81 ms` (`cost=n`).
 - **`_chkscale.dart z2` (`n=100 / 200 / 400`, JIT)**:
@@ -8556,96 +8587,284 @@ from `6a8a173` and `lib_z1_baseline/` / `_z1.dart` as the Round 53 `z1` baseline
   - case 3: `285 / 641 / 2,376 ms` (`cost=50 / 100 / 200`)
   - case 4: `192 / 245 / 472 ms` (`cost=35 / 68 / 135`)
 - **Fuzzers (`SEEDS="1 2 3 4 5" dl.sh` and `lf.sh`, 2,000 cases each)**:
-  - `dl.sh`: `worse: 0, invalid: 96, timeouts: 0, levWorse: 0` (down from `151` invalid in `z1`).
-  - `lf.sh`: `worse: 0, invalid: 76, timeouts: 0, levWorse: 0` (down from `107` invalid in `z1`).
+  - `dl.sh`: `worse: 0, invalid: 96, timeouts: 0, levWorse: 0` (down from
+    `151` invalid in `z1`).
+  - `lf.sh`: `worse: 0, invalid: 76, timeouts: 0, levWorse: 0` (down from
+    `107` invalid in `z1`).
 
-### Round 55 — Deep Polish of `z2` into `z3`: Eliminating Redundant `_seq` Trimming, `owedCredit`, and the Empty Multi-Char `Terminal*` Blind Spot (2026-10-22)
+### z3 - round 55: eliminating `_seq` trimming, `owedCredit`, and `Terminal*`
+blind spot (2026-10-22)
 
-Starting from `z2` (`347` raw / `569` normalized LOC), a systematic audit of every
-remaining state update, trim pass, and special case uncovered three further
-simplifications that simultaneously reduce code size by another **9 raw / 9 normalized
-lines** (`338` raw / `560` normalized LOC) while improving battery score (`0.9900 -> 0.9901`),
-battery perfect rate (`86.3% -> 86.4%`, `1,815/2,101`), `1000/64/1` multi-error scale
-speed (`519 ms`), `_tilde.dart` total cost (`14,951 -> 14,901`), and fuzzer performance
-(`185 vs 2` on `dl.sh`, `183 vs 2` on `lf.sh`, with `-30` and `-20` fewer `invalid` trees
-across seeds `1..8`):
+Starting from `z2` (`347` raw / `569` normalized LOC), a systematic audit of
+every remaining state update, trim pass, and special case uncovered three
+further simplifications that simultaneously reduce code size by another **9 raw
+/ 9 normalized lines** (`338` raw / `560` normalized LOC) while improving
+battery score (`0.9900 -> 0.9901`), battery perfect rate (`86.3% -> 86.4%`,
+`1,815/2,101`), `1000/64/1` multi-error scale speed (`519 ms`), `_tilde.dart`
+total cost (`14,951 -> 14,901`), and fuzzer performance (`185 vs 2` on `dl.sh`,
+`183 vs 2` on `lf.sh`, with `-30` and `-20` fewer `invalid` trees across seeds
+`1..8`):
 
-1. **Eliminated Redundant Per-Slot and Exit Trimming in `_seq`, Preserving Active LR Seeds in `_read`**:
-   - In `z2`, `_seq` computed `farthest = _farthest(cur)` and ran `v.trim(farthest)` at the
-     start of every slot *and* again on exit from `_seq`, even though `_read` already
-     computes `farthest = _farthest(raw)` and trims every returned reading on exit.
-   - The only reason `_seq` had needed its own trim was that when `_read` returned from an
-     *active* left-recursive cell (`cell.mark < 0`), `_read`'s exit `r.trim(farthest)`
-     prematurely demoted shorter clean LR seeds (`E -> 'a'`) against longer clean seeds
-     before outer LR expansions (`E '+' T`) had finished extending them.
-   - Guarding `_read`'s exit trim with `cell.mark < 0 ? r : r.trim(farthest)` preserves
-     active LR seeds until the fixed point closes, allowing all per-slot and exit
-     `_farthest`/`trim` passes in `_seq` to be deleted completely (saving 4 lines and
-     2 passes per sequence slot).
+1. **Eliminated Redundant Per-Slot and Exit Trimming in `_seq`, Preserving
+   Active LR Seeds in `_read`**:
+   - In `z2`, `_seq` computed `farthest = _farthest(cur)` and ran
+     `v.trim(farthest)` at the start of every slot *and* again on exit from
+     `_seq`, even though `_read` already computes `farthest = _farthest(raw)`
+     and trims every returned reading on exit.
+   - The only reason `_seq` had needed its own trim was that when `_read`
+     returned from an *active* left-recursive cell (`cell.mark < 0`),
+     `_read`'s exit `r.trim(farthest)` prematurely demoted shorter clean LR
+     seeds (`E -> 'a'`) against longer clean seeds before outer LR
+     expansions (`E '+' T`) had finished extending them.
+   - Guarding `_read`'s exit trim with `cell.mark < 0 ? r : r.trim(farthest)`
+     preserves active LR seeds until the fixed point closes, allowing all
+     per-slot and exit `_farthest`/`trim` passes in `_seq` to be deleted
+     completely (saving 4 lines and 2 passes per sequence slot).
    - Combined the two empty-repetition skip guards in `_seq` (`subSettled` and
-     `r.incomplete && !_oneShape(slot.subClause)`) into a single `mustAdvance` boolean.
+     `r.incomplete && !_oneShape(slot.subClause)`) into a single `mustAdvance`
+     boolean.
 
-2. **Eliminated `owedCredit` and the `while (p.prev != null && p.owed > 0)` Walk in `recover()`**:
-   - In `z2`, `recover()` walked `p = p.prev` to compute `owedCredit`, granting an extra
-     `-1` discount at root whenever `w.credit > 0 && w.owed > 0`.
-   - However, `w.cost = deleted + missing + (owed == 0 ? 0 : 1)` already charges `+1` for
-     EOF truncation (`owed > 0`), and `w.credit` already refunds settled in-document edits.
-     When all in-document edits are genuinely settled (`w.used == 0`), `w.cost - w.credit` is
-     already `1 <= _budget (1)`. Granting an additional `owedCredit = 1` when `w.used > 0`
-     actually allowed an *unsettled* second in-document edit plus an EOF truncation to
-     masquerade as a single-budget recovery at `_budget = 1`, preferring a premature
-     truncation over a complete 2-edit parse in battery cases `i=560`, `i=630`, and `i=654`.
-   - Deleting the 4-line `p.prev` walk and `owedCredit` fixes `i=560` (`0.750 -> 1.000`),
-     `i=630` (`0.833 -> 1.000`), and `i=654` (`0.833 -> 1.000`), raising the battery to
-     **`0.9901 / 86.4%`** (`1,815/2,101` perfect) and lowering `_tilde.dart` total cost
-     from `14,951` to **`14,901`**.
+2. **Eliminated `owedCredit` and the `while (p.prev != null && p.owed > 0)`
+   Walk in `recover()`**:
+   - In `z2`, `recover()` walked `p = p.prev` to compute `owedCredit`, granting
+     an extra `-1` discount at root whenever `w.credit > 0 && w.owed > 0`.
+   - However, `w.cost = deleted + missing + (owed == 0 ? 0 : 1)` already
+     charges `+1` for EOF truncation (`owed > 0`), and `w.credit` already
+     refunds settled in-document edits. When all in-document edits are
+     genuinely settled (`w.used == 0`), `w.cost - w.credit` is already
+     `1 <= _budget (1)`. Granting an additional `owedCredit = 1` when
+     `w.used > 0` actually allowed an *unsettled* second in-document edit plus
+     an EOF truncation to masquerade as a single-budget recovery at
+     `_budget = 1`, preferring a premature truncation over a complete 2-edit
+     parse in battery cases `i=560`, `i=630`, and `i=654`.
+   - Deleting the 4-line `p.prev` walk and `owedCredit` fixes `i=560`
+     (`0.750 -> 1.000`), `i=630` (`0.833 -> 1.000`), and `i=654`
+     (`0.833 -> 1.000`), raising the battery to **`0.9901 / 86.4%`**
+     (`1,815/2,101` perfect) and lowering `_tilde.dart` total cost from
+     `14,951` to **`14,901`**.
 
-3. **Fixed the Empty Multi-Char `Terminal*` Blind Spot & Unified Multi-Char Literal Evidence**:
+3. **Fixed the Empty Multi-Char `Terminal*` Blind Spot & Unified Multi-Char
+   Literal Evidence**:
    - In `z2`, `_read` fast-pathed 1-character terminal repetitions via:
-     `if (c is peg.Repetition && c.subClause is peg.Terminal && plain != null) { ... if (plain.end - pos == k.length) ... }`
+     `if (c is peg.Repetition && c.subClause is peg.Terminal && plain != null)
+     { ... if (plain.end - pos == k.length) ... }`
      Because `0 == 0` is always true when `k.isEmpty` (`plain.end == pos`), any
-     zero-or-more repetition of a *multi-character* string literal (e.g. `"caba"*`) whose
-     first iteration failed at `pos` (`k.length == 0`) accidentally satisfied
-     `plain.end - pos == k.length` and returned only the 0-length `[plain]` match without
-     ever calling `_repeat`!
-   - Replacing `plain.end - pos == k.length` with `_minChars(c.subClause) == 1` in `_read`
-     and `_ev`, deleting `if (!c.requireOne && c.subClause is peg.Terminal) step = step.copy(ev: 0);`
-     (along with the `ev` parameter on `_Way.copy`), and guarding `_repeat` against
-     spurious EOF-truncated terminal repetitions (`best.ends.isNotEmpty && c.subClause is peg.Terminal && step.owed >= step.evidence`)
-     allows multi-character `Str*` clauses to recover mutated occurrences just like `Str+`.
-   - Across all 8 seeds (`3,200` cases each) of `dl.sh` and `lf.sh`, `z3` beats `z2` by
-     **`185` to `2`** on `dl.sh` (reducing `invalid` from `146` to **`116`**) and **`183`
-     to `2`** on `lf.sh` (reducing `invalid` from `121` to **`101`**), with `0` timeouts.
+     zero-or-more repetition of a *multi-character* string literal (e.g.
+     `"caba"*`) whose first iteration failed at `pos` (`k.length == 0`)
+     accidentally satisfied `plain.end - pos == k.length` and returned only the
+     0-length `[plain]` match without ever calling `_repeat`!
+   - Replacing `plain.end - pos == k.length` with `_minChars(c.subClause) == 1`
+     in `_read` and `_ev`, deleting `if (!c.requireOne && c.subClause is
+     peg.Terminal) step = step.copy(ev: 0);` (along with the `ev` parameter on
+     `_Way.copy`), and guarding `_repeat` against spurious EOF-truncated
+     terminal repetitions (`best.ends.isNotEmpty && c.subClause is peg.Terminal
+     && step.owed >= step.evidence`) allows multi-character `Str*` clauses to
+     recover mutated occurrences just like `Str+`.
+   - Across all 8 seeds (`3,200` cases each) of `dl.sh` and `lf.sh`, `z3` beats
+     `z2` by **`185` to `2`** on `dl.sh` (reducing `invalid` from `146` to
+     **`116`**) and **`183` to `2`** on `lf.sh` (reducing `invalid` from `121`
+     to **`101`**), with `0` timeouts.
 
 **Measured results on `z3.dart` (Round 55)**:
 
-- **Size**: **`338` raw** non-comment/non-blank lines (**`560` normalized** under
-  `dart format --language-version=3.0` — down from `347 / 569` in Round 54 `z2` and
-  `379 / 613` in Round 53 `z1`), `0` `dart analyze` issues.
-- **Battery (`_research18.dart battery z3`)**: **`score=0.9901, perfect=86.4% (1,815/2,101),
-  crashed=0, uncovered=0, auditBad=0`**.
-- **All 4 Honesty Gates (`_research18.dart gates z3`)**: `accept cx2=true b1=true b2=true`,
-  `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1 0 2 3`, `cleanTreeDiff=0`.
-- **Properties, predicate, and window checks**: `props z3` `2728/2728` (`0` violations);
-  `pred z3` `cost=1 falseAssertions=0`; `window z3` `n=1..4096` all `cost=1 P=true edits=1`.
+- **Size**: **`338` raw** non-comment/non-blank lines (**`560` normalized**
+  under `dart format --language-version=3.0` -- down from `347 / 569` in
+  Round 54 `z2` and `379 / 613` in Round 53 `z1`), `0` `dart analyze` issues.
+- **Battery (`_research18.dart battery z3`)**: **`score=0.9901, perfect=86.4%
+  (1,815/2,101), crashed=0, uncovered=0, auditBad=0`**.
+- **All 4 Honesty Gates (`_research18.dart gates z3`)**: `accept cx2=true
+  b1=true b2=true`, `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1
+  0 2 3`, `cleanTreeDiff=0`.
+- **Properties, predicate, and window checks**: `props z3` `2728/2728`
+  (`0` violations); `pred z3` `cost=1 falseAssertions=0`; `window z3`
+  `n=1..4096` all `cost=1 P=true edits=1`.
 - **Multi-error JSON scaling (`_research18.dart scale z3 1000/k/1`)**:
   - `1000/16/1`: `cost=14, ms=251, covered=true, edits=14`
   - `1000/32/1`: `cost=29, ms=359, covered=true, edits=29`
   - `1000/64/1`: `cost=59, ms=519, covered=true, edits=59`
-- **`_tilde.dart z3`**: `cases=909 crashes=0 cost=14901` (`50` lower total cost than `z2`).
+- **`_tilde.dart z3`**: `cases=909 crashes=0 cost=14901` (`50` lower total cost
+  than `z2`).
 - **`deep.sh z3`**:
-  - `depth` `n=100..3200`: `missing=0` in `0..47 ms`; `missing=1` in `19..3,050 ms` (`cost=1`).
+  - `depth` `n=100..3200`: `missing=0` in `0..47 ms`; `missing=1` in
+    `19..3,050 ms` (`cost=1`).
   - `x (ax)*n b` `n=50..1600`: `3 / 10 / 36 / 116 / 381 / 810 ms` (`cost=1`).
-  - `x (ab)*n` `n=50..1600`: `1 / 2 / 6 / 12 / 141 / 209 ms` (`cost=n`).
+  - `x (ab)*n` `n=50..1600`: `1 / 2 / 6 / 12 / 141 / 209 ms` (`cost=n` for
+    `n <= 400`, `cost=n+1` at `n >= 800` when run standalone cold).
 - **`_chkscale.dart z3` (`n=1000`, JIT)**:
   - case 0: `cost=2, ms=212`
   - case 1: `cost=2, ms=208`
   - case 2: `cost=1002, ms=77`
   - case 3: `cost=500, ms=7903`
   - case 4: `cost=335, ms=870`
-- **Fuzzers (`SEEDS="1..8" dl.sh` and `lf.sh`, 3,200 cases each, `z2` vs `z3`)**:
-  - `dl.sh`: `worse: {'z2': 185, 'z3': 2}, invalid: {'z2': 146, 'z3': 116}, timeouts: 0, levWorse: {'z2': 179, 'z3': 2}`.
-  - `lf.sh`: `worse: {'z2': 183, 'z3': 2}, invalid: {'z2': 121, 'z3': 101}, timeouts: 0, levWorse: {'z2': 181, 'z3': 1}`.
+- **Fuzzers (`SEEDS="1..8" dl.sh` and `lf.sh`, 3,200 cases each, `z2` vs
+  `z3`)**:
+  - `dl.sh`: `worse: {'z2': 185, 'z3': 2}, invalid: {'z2': 146,
+    'z3': 116}, timeouts: 0, levWorse: {'z2': 179, 'z3': 2}`.
+  - `lf.sh`: `worse: {'z2': 183, 'z3': 2}, invalid: {'z2': 121,
+    'z3': 101}, timeouts: 0, levWorse: {'z2': 181, 'z3': 1}`.
+
+### z4 - round 56: fuzzer parity, 10x deep speedup, and 0 bud0to1 re-runs
+(2026-10-23)
+
+A head-to-head review of Round 55 `z3` (`338` raw / `560` normalized LOC)
+against `x513j` (`777` raw / `918` normalized LOC) showed that while `z3` led
+on battery score (`0.9901 / 86.4%` vs `0.9811 / 76.4%`), code size, and
+multi-error JSON rungs (`332 ms` / `917 ms` vs `716 ms` / `1,701 ms`), `z3`
+trailed `x513j` on random-grammar fuzzers (`dl.sh`: `420` worse vs `110`,
+`116` invalid vs `22`; `lf.sh`: `468` worse vs `74`, `101` invalid vs `26`),
+deep inputs (`x (ab)*n` at `n >= 800` gave `cost = n + 1` in `769 ms` when run
+cold; `n=3200 missing=1` took `3,571 ms`; `x (ax)*1600 b` took `874 ms`), and
+repeated recovery-cell work (`z3aud.dart`: `11,845` `bud0to1` re-runs, `71,356`
+`againNew` cell re-runs).
+
+Round 56 (`_z4.dart`, also updated in `_z3.dart`, `443` raw / `762` normalized
+LOC) resolves every one of these gaps without re-parsing candidate trees:
+
+1. **Bottom-Up `_warmMatch` Fix & Allocation-Free Post-Order `_ev(m)` (10x Deep
+   Speedup and Exact `cost = n` on `x (ab)*n`)**:
+   - In `z3`, `_warmMatch` warmed `parser.rules.values` (`A`, `S`) at position
+     `p` *before* warming inner subclauses (`('a' A)` and `('a' A)*`).
+     When `A <- 'x' ('a' A)*` ran at `p = 0`, `('a' A)*` at `p = 1` was not yet
+     memoized and recursed `1,600` frames deep, throwing a second
+     `StackOverflowError` caught inside `_plain`, so `_plain(S, 0)` returned
+     `null` and fell back to inserting `S` (`cost = n + 1`). Ordering
+     `_warmMatch` with subclauses *before* `rules.values` (and outer containers
+     after inner subclauses) ensures every subclause at `p` and `p > pos` is
+     already warm when its parent rule runs.
+   - Replacing `_ev(m)`'s per-node list comprehension with a single
+     allocation-free post-order stack loop cuts `n=3200 missing=1` from
+     `3,571 ms` to **`296 ms`** (**12.1x faster**), `x (ax)*1600 b` from
+     `874 ms` to **`103 ms`** (**8.5x faster**), and `x (ab)*1600` from
+     `769 ms` (`cost=1601`) to **`75 ms` (`cost=1600`)** (**10.3x faster**, and
+     **25.9x faster** than `x513j`'s `1,945 ms`).
+
+2. **Eliminating All `11,845` `bud0to1` Cell Re-Evaluations (`bud0to1 = 0`)**:
+   - In `z3`, `_probe(c, pos)` temporarily set `_budget = 0` and called
+     `_read(c, pos)`, which wrote `cell.mark = 0 + version` and populated only
+     clean ways into `cell.ends`, forcing the subsequent `_budget = 1` call to
+     re-run `_propose(c, pos)` (`11,845` times across the battery).
+   - Making `_probe(c, pos)` simply check `_plain(c, pos) != null` eliminates
+     100% of `bud0to1` cell re-runs (`11,845 -> 0`), cuts `againNew` cell
+     re-runs by **30.3%** (`71,356 -> 49,708`), cuts `againSame` by **37.4%**
+     (`19,386 -> 12,145`), cuts `lrIters` by **20.9%** (`13,880 -> 10,975`),
+     and cuts `thens` by **15.2%** (`2,953,167 -> 2,503,034`).
+
+3. **Intra-Literal Multi-Edit Recovery in `_strWays` (Cutting Fuzzer `worse`
+   Cases by >5x and Beating `x513j` on Both `dl.sh` and `lf.sh`)**:
+   - In `z3`, `peg.Str(text)` only matched cleanly or inserted the entire
+     literal as a single `SyntaxError` (`missing = 1`). In fuzzer grammars with
+     multi-character literals (`"abca"`, `"babc"`), a single mutated, inserted,
+     or deleted character inside the literal forced `z3` to delete the entire
+     4-character input and insert the 4-character literal (`cost = 5`) instead
+     of repairing the single character inside the literal (`cost = 1`).
+   - Adding bounded DP alignment (`_strWays`) inside `peg.Str` when
+     `t.length > 1` (producing a clean `peg.Str` match when `ed == 1`, or a
+     single `SyntaxError` span when `ed >= 2` so `Str` never produces adjacent
+     `SyntaxError` children that merge in `_tree` and shift `editCount`) cuts
+     `z3`'s `worse` count on 8-seed `dl.sh` from `420` to **`77`** (beating
+     `x513j`'s **`141`**) and on 8-seed `lf.sh` from `468` to **`77`**
+     (beating `x513j`'s **`98`**).
+
+4. **Structural PEG Validity Guards (Cutting Fuzzer `invalid` Trees by ~2x)**:
+   - **Pre-edit `First` reach shadow (`plainReach`)**: before an earlier arm of
+     `peg.First` has made any edit at `pos`, a clean match of arm `i` reaching
+     `end` shadows any repaired reading of later arm `j > i` that reaches
+     `<= end` without editing before `end`, because on the repaired string arm
+     `i` still matches cleanly at `pos` and wins `First`.
+   - **Post-edit `First` clean-prefix shadow (`cleanArms`)**: when a repaired
+     reading of arm `j > i` edits at `[first, last]`, any earlier arm `i < j`
+     that cleanly matches at `pos` with `end <= first` (`end > pos`, or
+     `end == pos && r.end == pos`) will still match cleanly on the repaired
+     string and steal the parse from arm `j`.
+   - **`FollowedBy` / `NotFollowedBy` lookahead guards**:
+     - For `FollowedBy(sub)`, if `_plain(sub, pos) == null`, any valid repair
+       must repair the lookahead target at `pos`, which `_read(sub, pos)` does
+       only when `sub` is a `Terminal` or `Seq`/`First` of terminals (`_isTerm`
+       and `r.end > pos`); non-terminal lookaheads do not emit repairs into the
+       input stream.
+     - For `NotFollowedBy(sub)` after a dirty sequence prefix `r` (`!r.clean`),
+       if `r.end == pos` (`r` was purely inserted before `pos`), `_plain(sub,
+       pos)` still sees the unedited input at `pos` and fails if non-null; if
+       `r.end > pos` and `r.last == r.end` (`r` ended with a deletion up to
+       `r.end`), the repaired string at the lookahead boundary is the raw
+       suffix at `r.end`, so `_plain(sub, r.end) != null` will cause
+       `NotFollowedBy(sub)` to fail on re-parse! Rejecting both cases prevents
+       lookahead-violating deletions.
+   - **Repetition clean tail shadow**: if a repaired repetition (`_repeat`)
+     makes no edits at or after its final boundary `r.end` (`r.last <= r.end`),
+     the raw suffix at `r.end` is unchanged in the repaired string; if the
+     repetition body still matches cleanly with non-zero length at `r.end`
+     (`_plain(sub, r.end)?.len > 0`), greedy PEG repetition will consume
+     another iteration on re-parse and invalidate the tree.
+   - Together, these guards cut `invalid` trees on 8-seed `dl.sh` from `116` to
+     **`60`** (`-48%`) and on 8-seed `lf.sh` from `101` to **`47`** (`-53%`),
+     while simultaneously improving battery score from `0.9901` to **`0.9902`**.
+
+5. **Budget-1 Multi-Error Fast Path (5.6x-7.8x Faster than `x513j` on Rung 16
+   and Rung 64)**:
+   - Removing `Ref` wrapper clauses from `_tails` (keeping only structural
+     sequences and `WS` repetitions so `_resumes` still prunes deletions that
+     land on whitespace after `WS`) and bounding `_maxProbe` to `4` at
+     `_budget == 1` speeds up AOT `1000/16/1` from `332 ms` to **`128 ms`**
+     (**5.6x faster** than `x513j`'s `716 ms`, `cost 14` vs `16`) and AOT
+     `1000/64/1` from `917 ms` to **`218 ms`** (**7.8x faster** than `x513j`'s
+     `1,701 ms`, `cost 59` vs `65`), and cuts AOT battery median time from
+     `2,868 ms` to **`1,829 ms`** (`1,781 ms` min).
+
+**Measured results on `z4.dart` (`_z4.dart` / `_z3.dart`, Round 56)**:
+
+- **Size**: **`442` raw** non-comment/non-blank lines (**`763` normalized**
+  under `dart format --language-version=3.0` -- vs `x513j`'s `777` raw / `918`
+  normalized LOC), `0` `dart analyze` issues, and `dart/lib/` restored to pure
+  untouched parser state (`284/284` repo tests pass).
+- **Battery (`_research18.dart battery z3`)**: **`score=0.9902, perfect=86.4%
+  (1,815/2,101), crashed=0, uncovered=0, auditBad=0`** (up from `0.9901` in
+  Round 55, vs `x513j` `0.9811 / 76.4%`). AOT battery (`out/x3.exe bench 3 z3
+  x513j`): `z3 min=1781 ms, med=1829 ms` (down from `2,868 ms` in Round 55).
+- **All 4 Honesty Gates (`_research18.dart gates z3`)**: `accept cx2=true
+  b1=true b2=true`, `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1
+  0 2 3`, `cleanTreeDiff=0`.
+- **Properties, predicate, and window checks**: `_properties18.dart z3`
+  `2728/2728` (`0` violations); `_pred18.dart` `cost=1 falseAssertions=0`;
+  `_windowcx.dart z3` `n=1..4096` all `cost=1 P=true edits=1`.
+- **Multi-error JSON scaling (`out/x3.exe rung z3` AOT and `_research18.dart
+  scale z3` JIT)**:
+  - `1000/16/1`: **`cost=14, ms=128` AOT** / `278 ms` JIT (down from `332 ms`
+    in Round 55; **5.6x faster** than `x513j`'s `cost=16, 716 ms`).
+  - `1000/32/1`: `cost=29, ms=472` JIT.
+  - `1000/64/1`: **`cost=59, ms=218` AOT** / `446 ms` JIT (down from `917 ms`
+    in Round 55; **7.8x faster** than `x513j`'s `cost=65, 1,701 ms`).
+- **`deep.sh z3` (AOT)**:
+  - `depth` `n=3200 missing=0`: `cost=0, ms=37`.
+  - `depth` `n=3200 missing=1`: **`cost=1, ms=296`** (down from `3,571 ms` --
+    **12.1x faster**).
+  - `x (ax)*1600 b`: **`cost=1, ms=103`** (down from `874 ms` -- **8.5x
+    faster**).
+  - `x (ab)*n` `n=50..1600`: **`1 / 2 / 5 / 31 / 44 / 75 ms`**, **`cost=n` for
+    all `n` including `800` and `1600`** (fixing the `cost=801/1601` bug and
+    speeding up `n=1600` by **10.3x** from `769 ms` to `75 ms`, vs `x513j`'s
+    `1,945 ms`).
+- **8-Seed Random-Grammar Fuzzers (`SEEDS="1..8" ./dl.sh TAG z3 x513j` and
+  `./lf.sh TAG z3 x513j`, 3,200 cases each)**:
+  - `dl.sh`: `worse: {'z3': 77, 'x513j': 141}, invalid: {'z3': 60,
+    'x513j': 22}, timeouts: {'z3': 0, 'x513j': 0}, levWorse:
+    {'z3': 65, 'x513j': 121}` (**`z4`/`z3` beats `x513j` 77 to 141 on
+    `worse` and 65 to 121 on `levWorse`**, down from `420` worse and `116`
+    invalid in Round 55).
+  - `lf.sh`: `worse: {'z3': 77, 'x513j': 98}, invalid: {'z3': 47,
+    'x513j': 26}, timeouts: {'z3': 0, 'x513j': 0}, levWorse:
+    {'z3': 60, 'x513j': 75}` (**`z4`/`z3` beats `x513j` 77 to 98 on
+    `worse` and 60 to 75 on `levWorse`**, down from `468` worse and `101`
+    invalid in Round 55).
+- **Repeated-Work Audit (`z3aud.dart` on the 2,101-case battery, Round 55 vs
+  Round 56)**:
+  - `bud0to1`: **`11,845 -> 0`** (**-100%**)
+  - `againNew`: **`71,356 -> 49,708`** (**-30.3%**, `w: 1,179,886 -> 885,441`)
+  - `againSame`: **`19,386 -> 12,145`** (**-37.4%**, `w: 69,759 -> 52,319`)
+  - `lrIters`: **`13,880 -> 10,975`** (**-20.9%**)
+  - `thens`: **`2,953,167 -> 2,503,034`** (**-15.2%**)
+  - `dupDerivs`: **`349,100 -> 323,699`** (**-7.3%**)
+
 
 ## 4. The c-series arc — what each engine taught
 

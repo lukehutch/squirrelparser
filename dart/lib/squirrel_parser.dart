@@ -7,7 +7,6 @@ export 'src/parser/combinators.dart';
 export 'src/parser/match_result.dart';
 export 'src/parser/parser.dart';
 export 'src/parser/parser_stats.dart';
-export 'src/parser/recovery.dart';
 export 'src/parser/terminals.dart';
 export 'src/parser/tree.dart';
 export 'src/squirrel_parse.dart';
