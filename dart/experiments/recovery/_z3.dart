@@ -40,13 +40,12 @@ class _Way {
       incomplete, subs, fee ?? this.fee, cr ?? credit, cut ?? this.cut,
       p == null ? prev : null, last);
   _Way label(peg.Clause c, int pos) => copy(p: (c, pos, this));
-  _Way demote([int sc = _never]) => copy(rk: _min(first, _clean), cut: _min(cut, sc));
-  _Way trim(int f) => preferred && f >= 0 && end != f ? demote(clean ? f : _never) : this;
+  _Way demote([int sc = _never]) => copy(rk: _min(first, _clean), cut: clean ? _min(cut, sc) : cut);
+  _Way trim(int f) => preferred && f >= 0 && end != f ? demote(f) : this;
   int cmp(_Way b) {
     if (charge != b.charge) return charge - b.charge;
     if (preferred != b.preferred) return preferred ? -1 : 1;
     if (evidence != b.evidence) return b.evidence - evidence;
-    if (spent + owed != b.spent + b.owed) return spent + owed - b.spent - b.owed;
     if (first != b.first) return b.first - first;
     if (last != b.last) return last - b.last;
     if (owed != b.owed) return owed - b.owed;
@@ -74,52 +73,29 @@ class Squirrel {
   final _cells = Map<Object, _Cell>.identity(), _zeroWays = Map<peg.MatchResult, _Way>.identity();
   final _evidence = Map<peg.MatchResult, int>.identity(), _versions = <int, int>{};
   final _shapes = <peg.Clause, bool>{}, _letters = <peg.Str, List<peg.Clause>>{};
-  int _depth = 0, _seedDepth = _never;
+  bool _seedRead = false;
   int _budget = 0, lastCost = 0;
   int get _len => parser.input.length;
 
   int recoverCost(String input) => (this..recover(input)).lastCost;
 
   _Way? _plain(peg.Clause c, int pos) {
-    if ((c is peg.FollowedBy || c is peg.NotFollowedBy) && _depth > 0) {
-      final act = [for (final r in parser.rules.values) if (parser.getMemoEntry(r, pos) case final e? when (_cells[e]?.mark ?? 0) < -1) (r, e)];
-      if (act.isNotEmpty) {
-        final saved = [for (final r in parser.rules.values) if (parser.getMemoEntry(r, pos) case final e?) (e, e.result)];
-        for (final (e, _) in saved) { e.result = null; }
-        for (final (_, e) in act) { e..inRecPath = true..foundLeftRec = false; }
-        ++parser.memoVersion[pos];
-        final m = c.match(parser, pos);
-        var rk = _preferred;
-        if (!m.isMismatch && act.any((x) => x.$2.foundLeftRec)) {
-          for (final (e, _) in saved) { e.result = null; }
-          for (final (r, e) in act) { e.result = peg.Match(r, pos, 0); }
-          ++parser.memoVersion[pos];
-          if (c.match(parser, pos).isMismatch) rk = _clean;
-        }
-        for (final (_, e) in act) { e.inRecPath = false; }
-        for (final (e, s) in saved) { e.result = s; }
-        ++parser.memoVersion[pos];
-        return m.isMismatch ? null : _Way(pos + m.len, 0, 0, _ev(m), rk, m);
-      }
-    }
     final m = parser.match(c, pos);
     return m.isMismatch ? null : _zeroWays[m] ??= _Way(pos + m.len, 0, 0, _ev(m), _preferred, m);
   }
 
   int _ev(peg.MatchResult m) {
     if (_evidence[m] case final v?) return v;
+    var s = 0;
     for (final q = [m]; q.isNotEmpty;) {
-      final n = q.last, c = n.clause, k = n.subClauseMatches;
-      if (_evidence[n] != null) { q.removeLast(); continue; }
-      if (c is peg.Repetition && !c.requireOne && c.subClause is peg.CharSet) { _evidence[n] = 0; continue; }
-      var s = k.isEmpty && (c is peg.Str || c is peg.Char || c is peg.CharSet && !c.inverted) ? n.len : 0, ok = true;
-      for (final ch in k) { if (_evidence[ch] case final v?) { s += v; } else { q.add(ch); ok = false; } }
-      if (ok) _evidence[n] = s;
+      final n = q.removeLast(), c = n.clause, k = n.subClauseMatches;
+      if (c is peg.Repetition && !c.requireOne && c.subClause is peg.Terminal && _minChars(c.subClause) == 1) continue;
+      if (k.isEmpty && (c is peg.Str || c is peg.Char || c is peg.CharSet && !c.inverted)) s += n.len;
+      for (final ch in k) { _evidence[ch] != null ? s += _evidence[ch]! : q.add(ch); }
     }
-    return _evidence[m]!;
+    return _evidence[m] = s;
   }
 
-  bool _oneLit(peg.Clause c) => c is peg.Char || c is peg.Str && c.text.length == 1;
   bool _oneShape(peg.Clause c) => _shapes[c] ??= switch (c) {
     peg.Seq() => (_shapes[c] = false) || c.subClauses.every(_oneShape),
     peg.Repetition() => (_shapes[c] = false) || c.requireOne && _oneShape(c.subClause),
@@ -128,18 +104,14 @@ class Squirrel {
     _ => false,
   };
 
-  int _minChars(peg.Clause c, [Set<peg.Clause> p = const {}, bool req = false]) => p.contains(c) ? _never : switch (c) {
-    peg.Seq() => switch (c.subClauses.fold(0, (int a, b) => _min(_never, a + _minChars(b, {...p, c})))) {
-      0 when req => c.subClauses.fold(_never, (int a, b) => _min(a, _minChars(b, {...p, c}, true))),
-      final n => n,
-    },
-    peg.First() => c.subClauses.fold(_never, (int a, b) => _min(a, _minChars(b, {...p, c}, req))),
-    peg.Ref() => _minChars(parser.rules[c.ruleName]!, {...p, c}, req),
-    peg.Repetition() when c.requireOne || req => _minChars(c.subClause, {...p, c}, true),
-    peg.Optional() when req => _minChars(c.subClause, {...p, c}, true),
+  int _minChars(peg.Clause c, [Set<peg.Clause> p = const {}]) => p.contains(c) ? _never : switch (c) {
+    peg.Seq() => c.subClauses.fold(0, (int a, b) => _min(_never, a + _minChars(b, {...p, c}))),
+    peg.First() => c.subClauses.fold(_never, (int a, b) => _min(a, _minChars(b, {...p, c}))),
+    peg.Ref() => _minChars(parser.rules[c.ruleName]!, {...p, c}),
+    peg.Repetition() when c.requireOne => _minChars(c.subClause, {...p, c}),
     peg.Str() => c.text.length,
     peg.Char() || peg.CharSet() || peg.AnyChar() => 1,
-    _ => req ? _never : 0,
+    _ => 0,
   };
 
   List<_Way> _read(peg.Clause c, int pos) {
@@ -152,7 +124,7 @@ class Squirrel {
       if (plain != null) return [plain];
       if (c is peg.Str && c.text.length > 1) {
         final letters = _letters.putIfAbsent(c, () => [for (final s in c.text.split('')) peg.Char(s)]);
-        return [for (final r in _seq(letters, pos)) if (r.evidence > 0 || r.used + r.owed <= _budget) r.label(c, pos)];
+        return [for (final r in _seq(letters, pos)) r.label(c, pos)];
       }
       final eof = pos == _len ? 1 : 0;
       return [_Way(pos, 0, 1 - eof, 0, pos,
@@ -162,7 +134,7 @@ class Squirrel {
       return [for (final r in _read(parser.rules[c.ruleName]!, pos))
         if (r.evidence > 0 || r.subs == r.cost || r.clean || r.end == pos || _oneShape(c)) r.label(c, pos)];
     }
-    if (c is peg.Repetition && c.subClause is peg.CharSet && plain != null) {
+    if (c is peg.Repetition && c.subClause is peg.Terminal && _minChars(c.subClause) == 1 && plain != null) {
       final k = (plain.piece as peg.MatchResult).subClauseMatches;
       var w = _Way.empty(pos).demote(plain.end);
       return [
@@ -172,27 +144,22 @@ class Squirrel {
         plain,
       ];
     }
-    final entry = parser.getMemoEntry(c, pos)!, cell = _cells[entry] ??= _Cell(), mark = ((pos == _len && _budget == 0 ? 1 : _budget) << 20) + (_versions[pos] ?? 0);
+    final cell = _cells[parser.getMemoEntry(c, pos)!] ??= _Cell(), mark = (_budget << 20) + (_versions[pos] ?? 0);
     if (cell.mark < -1) {
-      final d = -cell.mark >> 1;
-      cell.mark = -2 * d - 1; _seedDepth = _min(_seedDepth, d);
+      cell.mark = -3; _seedRead = true;
     } else if (cell.mark < mark) {
-      final d = ++_depth, outer = _seedDepth;
-      var minSeed = _never;
-      cell.mark = -2 * d;
+      cell.mark = -2;
+      final outer = _seedRead; _seedRead = false;
       do {
-        _seedDepth = _never;
         var improved = false;
         for (final r in _propose(c, pos)) {
           if ((r.clean && r.cut >= (plain?.end ?? _never) || plain?.end != r.end) && cell.add(r)) improved = true;
         }
-        minSeed = _min(minSeed, _seedDepth);
-        if (!improved || !cell.mark.isOdd || _seedDepth > d) break;
+        if (!improved || cell.mark != -3) break;
         _versions[pos] = (_versions[pos] ?? 0) + 1;
       } while (true);
-      _depth--;
-      cell.mark = (mark & ~0xFFFFF) + (minSeed < d ? _versions[pos] ?? 0 : 0xFFFFF);
-      _seedDepth = _min(outer, minSeed < d ? minSeed : _never);
+      cell.mark = (_budget << 20) + (_seedRead ? _versions[pos] ?? 0 : 0xFFFFF);
+      _seedRead = outer || _seedRead;
     }
     final raw = cell.ends.values, farthest = _farthest(raw);
     return [for (final r in raw) if (r.used <= _budget)
@@ -206,24 +173,18 @@ class Squirrel {
     if (c is peg.Repetition) return _repeat(c, pos);
     if (c is peg.Optional) {
       final rs = _read(c.subClause, pos), f = _farthest(rs);
-      return [if (f != pos) _Way.empty(pos).trim(rs.fold(f, (m, r) => r.clean && r.end > pos && r.end < m ? r.end : m)), ...rs];
+      return [if (f != pos) _Way.empty(pos).trim(f), ...rs];
     }
-    final out = <_Way>[]; var cut = _never, seeded = _seedDepth;
+    final out = <_Way>[]; var cut = _never;
     for (final sub in (c as peg.First).subClauses) {
-      final act = _active(sub is peg.HasOneSubClause ? sub.subClause : sub, pos);
-      if (out.isNotEmpty && act) continue;
-      final rs = _read(sub, pos), f = act ? -1 : _farthest(rs);
+      if (out.isNotEmpty && _active(sub, pos)) continue;
+      final rs = _read(sub, pos), f = _farthest(rs);
       for (final r in rs) {
         if (cut < _never && (r.clean || r.first >= cut || r.absorbed(pos) >= r.evidence)) continue;
-        if (_seedDepth < _never && r.end > pos) seeded = _min(seeded, _seedDepth);
-        out.add(cut < _never ? r.demote() : r);
+        out.add(cut < _never ? r.demote(cut) : r);
       }
       if (f >= 0) cut = _min(cut, f);
-      if (!act && rs.any((r) => r.preferred && r.end == pos)) break;
-    }
-    if (out.isNotEmpty) _seedDepth = seeded;
-    if (cut == _never && _budget > 0 && pos < _len && {for (final s in c.subClauses) if (_oneLit(s)) '$s'}.length == 1) {
-      out.add(_Way.skip(pos, pos + 1, 1));
+      if (rs.any((r) => r.clean && r.end == pos)) break;
     }
     return out;
   }
@@ -237,43 +198,6 @@ class Squirrel {
     _ => false,
   };
 
-  void _tails(Object? p, int end, List<peg.Clause> out) {
-    if (p is (peg.Clause?, int, _Way)) {
-      final (c, pos, r) = p;
-      if (c is peg.Repetition) { out.add(c.subClause); } else if (c != null && pos == end && r.clean) { out.add(c); }
-      for (_Way? x = r; x != null && x.end == end; x = x.prev) {
-        _tails(x.piece, end, out);
-        if (!x.clean || (x.prev?.end ?? pos) < end) break;
-      }
-    } else if (p is peg.MatchResult && !p.isMismatch && p.clause is! peg.Terminal) {
-      if (p.clause case final c?) { if (c is peg.Repetition) { out.add(c.subClause); } else if (p.len == 0) { out.add(c); } }
-      for (final k in p.subClauseMatches.reversed) {
-        if (k.pos + k.len == end) _tails(k, end, out);
-        if (k.len > 0 || k.clause is peg.Terminal) break;
-      }
-    }
-  }
-
-  bool _matchesOne(peg.Clause c, String ch, [Set<peg.Clause>? s]) => (s ??= {}).add(c) && switch (c) {
-    peg.Char() => c.char == ch,
-    peg.Str() => c.text == ch,
-    peg.CharSet() => c.inverted != c.ranges.any((r) => ch.codeUnitAt(0) >= r.$1 && ch.codeUnitAt(0) <= r.$2),
-    peg.AnyChar() => true,
-    peg.Ref() => _matchesOne(parser.rules[c.ruleName]!, ch, s),
-    peg.First() => c.subClauses.any((x) => _matchesOne(x, ch, s)),
-    peg.Repetition(:final subClause) || peg.Optional(:final subClause) => _matchesOne(subClause, ch, s),
-    peg.Seq() => c.subClauses.isNotEmpty && _matchesOne(c.subClauses[0], ch, s) &&
-        c.subClauses.skip(1).every((x) => _minChars(x) == 0),
-    _ => false,
-  };
-
-  Object? _firstEdit(Object? p, int at) {
-    for (Object? n; p is (peg.Clause?, int, _Way); p = n, n = null) {
-      for (_Way? x = p.$3; x != null; x = x.prev) { if (x.piece != null && !(x.clean && x.end == at)) n = x.piece; }
-    }
-    return p;
-  }
-
   List<_Way> _seq(List<peg.Clause> slots, int pos) {
     var cur = [_Way.empty(pos)];
     for (var i = 0; i < slots.length; i++) {
@@ -285,8 +209,6 @@ class Squirrel {
             r.deleted == 0 && r.end == pos && _startsClean(slot, r.end));
         final whole = _budget; _budget = canSettle ? whole : whole - r.used;
         final options = _read(slot, r.end); _budget = whole;
-        List<peg.Clause>? tails;
-        List<peg.Clause> getTails() { if (tails == null) _tails(i == 0 ? null : (null, pos, r), r.end, tails = []); return tails!; }
         var deletedAhead = -1;
         if (!options.any((o) => o.clean && o.end > r.end)) {
           final syncSkip = r.used > 0 && i == slots.length - 1 && slots.length > 2 && r.synced(pos);
@@ -294,11 +216,10 @@ class Squirrel {
           for (var j = r.end + 1; j <= r.end + room && j <= _len; j++) {
             final clean = _plain(slot, j);
             if (clean == null || clean.end == j && (syncSkip || options.any((o) => o.clean))) continue;
-            if (!getTails().any((u) => (_plain(u, j)?.end ?? j) > j)) next.add(base.then(_Way.skip(r.end, j))?.then(clean));
+            next.add(base.then(_Way.skip(r.end, j))?.then(clean));
             deletedAhead = j - r.end; break;
           }
-          if (r.used < _budget && r.end < _len && _oneLit(slot) && (r.used + 1 < _budget || _resumes(slots, i, r.end + 1)) &&
-              !getTails().any((u) => _matchesOne(u, slot is peg.Char ? slot.char : (slot as peg.Str).text))) {
+          if (r.used < _budget && r.end < _len && (slot is peg.Char || slot is peg.Str && slot.text.length == 1) && _resumes(slots, i, r.end + 1)) {
             next.add(r.then(_Way.skip(r.end, r.end + 1, 1)));
           }
         }
@@ -309,14 +230,9 @@ class Squirrel {
             (r.incomplete && !_oneShape(slot.subClause) || rSub && options.any(settles));
         for (final o in options) {
           if (mustAdvance && o.end == r.end) continue;
-          if (i > 0 && o.first == r.end && getTails().isNotEmpty) {
-            final ed = _firstEdit(o.piece, r.end);
-            if (ed is peg.MatchResult && ed.clause is peg.Char && getTails().any((u) => _matchesOne(u, (ed.clause as peg.Char).char))) continue;
-            if (ed is peg.SyntaxError && ed.len > 0 && o.subs == 0 && getTails().any((u) => (_plain(u, r.end + ed.len)?.end ?? 0) > r.end + ed.len)) continue;
-          }
           final base = settles(o) ? r.copy(cr: r.spent) : r;
           final w = base.then(penalize && o.end == r.end && !o.clean && deletedAhead <= o.missing ? o.copy(fee: o.fee + 1) : o);
-          if (w != null && w.used + (i == 1 && r.owed > 1 && o.owed > 0 ? r.owed : 0) <= whole) next.add(w);
+          if (w != null && w.used <= whole) next.add(w);
         }
       }
       cur = next.ends.values.toList();
@@ -331,13 +247,13 @@ class Squirrel {
 
   List<_Way> _repeat(peg.Repetition c, int pos) {
     final zero = _Way.empty(pos), best = _Cell(), q = <int, _Cell>{pos: _Cell()..add(zero)};
+    if (!c.requireOne) best.add(zero);
     while (q.isNotEmpty) {
       for (var r in q.remove(q.keys.reduce(_min))!.ends.values) {
         final startEnd = r.end;
         for (var m1 = _plain(c.subClause, r.end); m1 != null && m1.end > r.end && m1.evidence > 0;) {
           final m2 = _plain(c.subClause, m1.end), next = m2 != null && m2.end > m1.end ? r.then(m1) : null;
           if (next == null) break;
-          if (r.end > pos && c.subClause is peg.Terminal) best.add(r);
           r = next; m1 = m2!;
         }
         if (r.end > startEnd) {
@@ -352,23 +268,10 @@ class Squirrel {
         final canSettle = r.used > 0 && (rSub || (cleanTail || r.end > r.last + 1) && dEv > 1 && r.evidence > r.absorbed(pos) + 1);
         final whole = _budget; _budget = canSettle ? whole : whole - r.used;
         final steps = _read(c.subClause, r.end); _budget = whole;
-        if (c.subClause is! peg.CharSet && !_active(c.subClause, r.end) && !steps.any((s) => s.clean && s.end > r.end)) {
-          for (var j = r.end + 1; j <= r.end + _budget - r.cost && j <= _len; j++) {
-            final clean = _plain(c.subClause, j);
-            if (clean == null || clean.end == j || clean.evidence == 0) continue;
-            final w = r.then(_Way.skip(r.end, j))?.then(clean);
-            if (w != null && best.add(w)) (q[w.end] ??= _Cell()).add(w);
-            break;
-          }
-          if (r.used < _budget && r.end < _len && _oneLit(c.subClause)) {
-            final w = r.then(_Way.skip(r.end, r.end + 1, 1));
-            if (w != null && best.add(w)) (q[w.end] ??= _Cell()).add(w);
-          }
-        }
         bool syncs(_Way s) => (_plain(c.subClause, s.end)?.end ?? 0) > s.end;
         final anySync = canSettle && steps.any((s) => s.end > r.end && syncs(s));
         for (var step in steps) {
-          if (step.end <= r.end || step.end - r.end == step.deleted && step.subs == 0 && step.missing == 0 || step.clean && step.cut < _never || r.end > pos && c.subClause is peg.Terminal && step.owed >= step.evidence) continue;
+          if (step.end <= r.end || step.end - r.end == step.deleted && step.subs == 0 && step.missing == 0 || step.clean && step.cut < _never || best.ends.isNotEmpty && c.subClause is peg.Terminal && step.owed >= step.evidence) continue;
           var longer = r.then(step);
           if (longer == null) continue;
           if (canSettle && !step.clean && (!step.incomplete || step.first == step.end) &&
@@ -383,12 +286,8 @@ class Squirrel {
     if (best.ends.isEmpty) {
       for (final r in _read(c.subClause, pos)) { if (r.end == pos && !r.clean) best.add(zero.then(r)?.demote()); }
     }
-    if (!c.requireOne) best.add(zero);
     final ways = best.ends.values, f = _farthest(ways);
-    return [for (final r in ways) switch (_plain(c.subClause, r.end)?.end ?? r.end) {
-      final sc when sc > r.end && !(r.end == pos && _seedDepth < _never) => r.demote(sc),
-      _ => !r.preferred || r.end == f ? r : r.demote(),
-    }];
+    return [for (final r in ways) !r.preferred || r.end == f ? r : r.demote(_plain(c.subClause, r.end)?.end ?? _never)];
   }
 
   peg.MatchResult _tree(Object root, int rootEnd) {
@@ -416,33 +315,26 @@ class Squirrel {
     parser = peg.Parser(rules: rules, topRuleName: topRuleName, input: input);
     _cells.clear(); _zeroWays.clear(); _evidence.clear(); _versions.clear();
     final top = parser.rules[topRuleName]!;
-    void sweep(void Function(peg.Clause, int) fn) {
-      for (var p = _len; p >= 0; p--) { for (final r in parser.rules.values) { if (r is! peg.Ref) fn(r, p); } }
-    }
-    var deep = false;
     late peg.MatchResult verdict;
     try {
       verdict = parser.match(top, 0);
     } on StackOverflowError {
-      deep = true;
       parser = peg.Parser(rules: rules, topRuleName: topRuleName, input: input);
-      sweep(parser.match);
+      for (var p = _len; p >= 0; p--) { for (final r in parser.rules.values) { parser.match(r, p); } }
       verdict = parser.match(top, 0);
     }
     if (!verdict.isMismatch && verdict.len == _len) { lastCost = 0; return verdict; }
     final shortest = _minChars(top), ceiling = shortest == _never ? -1 : _len + shortest;
     _Way? best, fallback;
-    for (var rung = 1; rung <= ceiling; rung++) {
-      _budget = rung;
+    for (_budget = 1; _budget <= ceiling; _budget++) {
       final inc = <_Way>[];
       List<_Way> ways;
       try {
-        if (deep) sweep(_read);
         ways = _read(top, 0);
       } on StackOverflowError {
-        deep = true; _depth = 0; _seedDepth = _never; _budget = rung;
         for (final c in _cells.values) { if (c.mark < -1) c..mark = -1..ends.clear(); }
-        sweep(parser.match); sweep(_read);
+        _seedRead = false;
+        for (var p = _len; p >= 0; p--) { for (final r in parser.rules.values) { _read(r, p); } }
         ways = _read(top, 0);
       }
       for (final r in ways) {
@@ -458,7 +350,7 @@ class Squirrel {
       if (fallback == null && inc.isNotEmpty) fallback = inc.reduce((a, b) => a.cmp(b) <= 0 ? a : b);
     }
     best ??= fallback;
-    lastCost = best == null ? (_len == 0 ? 1 : _len) : best.spent + best.owed;
+    lastCost = best == null ? (_len == 0 ? 1 : _len) : best.deleted + best.missing + best.owed;
     return best == null ? peg.SyntaxError(pos: 0, len: _len)
         : _tree(best.prev == null && best.piece != null ? best.piece! : (null, 0, best), best.end);
   }

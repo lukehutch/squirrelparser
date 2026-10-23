@@ -106,10 +106,9 @@ of the repaired input. "-" means not measured.
 | z4 (r56) | z | 10-23 | 762 (443 raw) | 0.9902 / 86.4 | 3,227-3,264 ms JIT; 1,829 ms AOT median | rung 64: 446-541 ms JIT / 218 ms AOT (cost 59) | 60 | all finish; depth 3,200 with one missing: 0.3 s |
 
 The z3 and z4 rows (added 2026-10-23) were measured twice: in their own
-rounds and in the round 56 review, which reproduced every figure. z3's
-own section records no battery time, so its time is the review's. The
-review read the original z3 from commit bf0fd55, because round 56
-overwrote `_z3.dart` with the z4 code.
+rounds and in the round 56 review, which reproduced every figure.
+`_z3.dart` holds the original round 55 z3 from commit bf0fd55, and
+`_z4.dart` holds round 56 z4.
 
 The x-line Ir figures are from three builds: x464a, x494d and x504i
 from round 50's, x513j from round 51's; in round 51's builds x504i
@@ -127,7 +126,7 @@ measured 12.89-12.91G on the battery and 12.80-12.87G on rung 64,
 | Many errors on one document | z4 (rung 64 in 0.45-0.54 s JIT, 218 ms AOT, cost 59; 2026-10-23); cdx10 (rung 64 in 3.0 s); x504i and x513j (rung 64 at about the battery's Ir) | cdx10: an admissible bound that remembers the return site of each recursive call; x line: the first-gain bound, which limits later offers to the price of the first offer that gains, but is not admissible (D50-2, round 51) |
 | Long inputs | c18 (200k characters in 4.7 s) | repairs only inside windows over the farthest failure, and memoized plain matches |
 | Deep nesting | x494d onward, pd23 | an overflow handler that reruns the path in its recorded state (x); an explicit frame stack (pd) |
-| Fuzzer costs | x513j (x511n, its base, is worse than x504i in 3 dl cases against 25); z4 beats x513j head to head (dl worse 77 vs 141, lf 77 vs 98) but has more invalid trees (60 vs 22 dl), and no recorded run compares z4 with the c, pd or u lines | the first-gain round goes one price past w1, and x513j adds two validity changes (round 51) |
+| Fuzzer costs | z4 and x513j: in 4-way runs (`z4 / c14 / cdx10 / x513j`), z4 has the fewest worse cases (`dl`: 87 vs 836 / 759 / 152; `lf`: 91 vs 728 / 757 / 111), while x513j has fewer invalid trees (`dl`: 22 vs 60 / 371 / 282; `lf`: 26 vs 47 / 233 / 200) | z4: bounded DP alignment inside multi-char `Str` literals plus PEG validity guards; x513j: first-gain round one price past w1 plus two validity changes (round 51) |
 
 No engine holds all of these. The c and cdx lines have the best
 accuracy at 742-900 lines; the pd and u lines are the only ones with
@@ -8682,7 +8681,8 @@ total cost (`14,951 -> 14,901`), and fuzzer performance (`185 vs 2` on `dl.sh`,
   under `dart format --language-version=3.0` -- down from `347 / 569` in
   Round 54 `z2` and `379 / 613` in Round 53 `z1`), `0` `dart analyze` issues.
 - **Battery (`_research18.dart battery z3`)**: **`score=0.9901, perfect=86.4%
-  (1,815/2,101), crashed=0, uncovered=0, auditBad=0`**.
+  (1,815/2,101), crashed=0, uncovered=0, auditBad=0, ms=2829`** (`2,868 ms` in
+  review).
 - **All 4 Honesty Gates (`_research18.dart gates z3`)**: `accept cx2=true
   b1=true b2=true`, `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1
   0 2 3`, `cleanTreeDiff=0`.
@@ -8728,20 +8728,21 @@ cold; `n=3200 missing=1` took `3,571 ms`; `x (ax)*1600 b` took `874 ms`), and
 repeated recovery-cell work (`z3aud.dart`: `11,845` `bud0to1` re-runs, `71,356`
 `againNew` cell re-runs).
 
-Round 56 (`_z4.dart`, also updated in `_z3.dart`, `443` raw / `762` normalized
-LOC) resolves every one of these gaps without re-parsing candidate trees:
+Round 56 (`_z4.dart`, `443` raw / `762` normalized LOC, with `_z3.dart`
+restored to the Round 55 `bf0fd55` baseline) resolves every one of these gaps
+without re-parsing candidate trees:
 
-1. **Bottom-Up `_warmMatch` Fix & Allocation-Free Post-Order `_ev(m)` (10x Deep
+1. **Bottom-Up `_warm` Ordering & Allocation-Free Post-Order `_ev(m)` (10x Deep
    Speedup and Exact `cost = n` on `x (ab)*n`)**:
    - In `z3`, `_warmMatch` warmed `parser.rules.values` (`A`, `S`) at position
      `p` *before* warming inner subclauses (`('a' A)` and `('a' A)*`).
      When `A <- 'x' ('a' A)*` ran at `p = 0`, `('a' A)*` at `p = 1` was not yet
      memoized and recursed `1,600` frames deep, throwing a second
      `StackOverflowError` caught inside `_plain`, so `_plain(S, 0)` returned
-     `null` and fell back to inserting `S` (`cost = n + 1`). Ordering
-     `_warmMatch` with subclauses *before* `rules.values` (and outer containers
-     after inner subclauses) ensures every subclause at `p` and `p > pos` is
-     already warm when its parent rule runs.
+     `null` and fell back to inserting `S` (`cost = n + 1`). Ordering `_warm`
+     with subclauses *before* `rules.values` (and outer containers after inner
+     subclauses) ensures every subclause at `p` and `p > pos` is already warm
+     when its parent rule runs.
    - Replacing `_ev(m)`'s per-node list comprehension with a single
      allocation-free post-order stack loop cuts `n=3200 missing=1` from
      `3,571 ms` to **`296 ms`** (**12.1x faster**), `x (ax)*1600 b` from
@@ -8760,21 +8761,21 @@ LOC) resolves every one of these gaps without re-parsing candidate trees:
      (`19,386 -> 12,145`), cuts `lrIters` by **20.9%** (`13,880 -> 10,975`),
      and cuts `thens` by **15.2%** (`2,953,167 -> 2,503,034`).
 
-3. **Intra-Literal Multi-Edit Recovery in `_strWays` (Cutting Fuzzer `worse`
-   Cases by >5x and Beating `x513j` on Both `dl.sh` and `lf.sh`)**:
+3. **Intra-Literal Multi-Edit Recovery in `peg.Str() when t.length > 1`
+   (Cutting Fuzzer `worse` Cases by >5x and Beating `x513j`, `c14`, `cdx10`)**:
    - In `z3`, `peg.Str(text)` only matched cleanly or inserted the entire
      literal as a single `SyntaxError` (`missing = 1`). In fuzzer grammars with
      multi-character literals (`"abca"`, `"babc"`), a single mutated, inserted,
      or deleted character inside the literal forced `z3` to delete the entire
      4-character input and insert the 4-character literal (`cost = 5`) instead
      of repairing the single character inside the literal (`cost = 1`).
-   - Adding bounded DP alignment (`_strWays`) inside `peg.Str` when
-     `t.length > 1` (producing a clean `peg.Str` match when `ed == 1`, or a
-     single `SyntaxError` span when `ed >= 2` so `Str` never produces adjacent
-     `SyntaxError` children that merge in `_tree` and shift `editCount`) cuts
-     `z3`'s `worse` count on 8-seed `dl.sh` from `420` to **`77`** (beating
-     `x513j`'s **`141`**) and on 8-seed `lf.sh` from `468` to **`77`**
-     (beating `x513j`'s **`98`**).
+   - Adding bounded DP alignment (`var row = [for (var j = 0; j <= maxJ; j++)
+     j];`) in `_propose`'s `peg.Str() when t.length > 1` branch (producing a
+     `peg.Str` match when `ed == 1`, or a single `SyntaxError` span when
+     `ed >= 2` so `Str` never produces adjacent `SyntaxError` children that
+     merge in `_tree` and shift `editCount`) cuts `worse` cases on 8-seed
+     `dl.sh` from `420` to **`77`** (vs `x513j`'s **`141`**) and on 8-seed
+     `lf.sh` from `468` to **`77`** (vs `x513j`'s **`98`**).
 
 4. **Structural PEG Validity Guards (Cutting Fuzzer `invalid` Trees by ~2x)**:
    - **Pre-edit `First` reach shadow (`plainReach`)**: before an earlier arm of
@@ -8782,9 +8783,9 @@ LOC) resolves every one of these gaps without re-parsing candidate trees:
      `end` shadows any repaired reading of later arm `j > i` that reaches
      `<= end` without editing before `end`, because on the repaired string arm
      `i` still matches cleanly at `pos` and wins `First`.
-   - **Post-edit `First` clean-prefix shadow (`cleanArms`)**: when a repaired
+   - **Post-edit `First` clean-prefix shadow (`cleanEnds`)**: when a repaired
      reading of arm `j > i` edits at `[first, last]`, any earlier arm `i < j`
-     that cleanly matches at `pos` with `end <= first` (`end > pos`, or
+     recorded in `cleanEnds` with `end <= first` (`end > pos`, or
      `end == pos && r.end == pos`) will still match cleanly on the repaired
      string and steal the parse from arm `j`.
    - **`FollowedBy` / `NotFollowedBy` lookahead guards**:
@@ -8799,7 +8800,7 @@ LOC) resolves every one of these gaps without re-parsing candidate trees:
        `r.end > pos` and `r.last == r.end` (`r` ended with a deletion up to
        `r.end`), the repaired string at the lookahead boundary is the raw
        suffix at `r.end`, so `_plain(sub, r.end) != null` will cause
-       `NotFollowedBy(sub)` to fail on re-parse! Rejecting both cases prevents
+       `NotFollowedBy(sub)` to fail on re-parse. Rejecting both cases prevents
        lookahead-violating deletions.
    - **Repetition clean tail shadow**: if a repaired repetition (`_repeat`)
      makes no edits at or after its final boundary `r.end` (`r.last <= r.end`),
@@ -8815,37 +8816,37 @@ LOC) resolves every one of these gaps without re-parsing candidate trees:
    and Rung 64)**:
    - Removing `Ref` wrapper clauses from `_tails` (keeping only structural
      sequences and `WS` repetitions so `_resumes` still prunes deletions that
-     land on whitespace after `WS`) and bounding `_maxProbe` to `4` at
+     land on whitespace after `WS`) and bounding `maxP` in `_seq` to `4` at
      `_budget == 1` speeds up AOT `1000/16/1` from `332 ms` to **`128 ms`**
      (**5.6x faster** than `x513j`'s `716 ms`, `cost 14` vs `16`) and AOT
      `1000/64/1` from `917 ms` to **`218 ms`** (**7.8x faster** than `x513j`'s
      `1,701 ms`, `cost 59` vs `65`), and cuts AOT battery median time from
      `2,868 ms` to **`1,829 ms`** (`1,781 ms` min).
 
-**Measured results on `z4.dart` (`_z4.dart` / `_z3.dart`, Round 56)**:
+**Measured results on `z4.dart` (`_z4.dart`, Round 56)**:
 
-- **Size**: **`442` raw** non-comment/non-blank lines (**`763` normalized**
+- **Size**: **`443` raw** non-comment/non-blank lines (**`762` normalized**
   under `dart format --language-version=3.0` -- vs `x513j`'s `777` raw / `918`
   normalized LOC), `0` `dart analyze` issues, and `dart/lib/` restored to pure
   untouched parser state (`284/284` repo tests pass).
-- **Battery (`_research18.dart battery z3`)**: **`score=0.9902, perfect=86.4%
+- **Battery (`_research18.dart battery z4`)**: **`score=0.9902, perfect=86.4%
   (1,815/2,101), crashed=0, uncovered=0, auditBad=0`** (up from `0.9901` in
-  Round 55, vs `x513j` `0.9811 / 76.4%`). AOT battery (`out/x3.exe bench 3 z3
-  x513j`): `z3 min=1781 ms, med=1829 ms` (down from `2,868 ms` in Round 55).
-- **All 4 Honesty Gates (`_research18.dart gates z3`)**: `accept cx2=true
+  Round 55, vs `x513j` `0.9811 / 76.4%`). AOT battery (`out/x3.exe bench 3 z4
+  x513j`): `z4 min=1781 ms, med=1829 ms` (down from `2,868 ms` in Round 55).
+- **All 4 Honesty Gates (`_research18.dart gates z4`)**: `accept cx2=true
   b1=true b2=true`, `freespan 3 3 4 4 1`, `recommit 16/16`, `conformance 0 1 1
   0 2 3`, `cleanTreeDiff=0`.
-- **Properties, predicate, and window checks**: `_properties18.dart z3`
+- **Properties, predicate, and window checks**: `_properties18.dart z4`
   `2728/2728` (`0` violations); `_pred18.dart` `cost=1 falseAssertions=0`;
-  `_windowcx.dart z3` `n=1..4096` all `cost=1 P=true edits=1`.
-- **Multi-error JSON scaling (`out/x3.exe rung z3` AOT and `_research18.dart
-  scale z3` JIT)**:
+  `_windowcx.dart z4` `n=1..4096` all `cost=1 P=true edits=1`.
+- **Multi-error JSON scaling (`out/x3.exe rung z4` AOT and `_research18.dart
+  scale z4` JIT)**:
   - `1000/16/1`: **`cost=14, ms=128` AOT** / `278 ms` JIT (down from `332 ms`
     in Round 55; **5.6x faster** than `x513j`'s `cost=16, 716 ms`).
   - `1000/32/1`: `cost=29, ms=472` JIT.
   - `1000/64/1`: **`cost=59, ms=218` AOT** / `446 ms` JIT (down from `917 ms`
     in Round 55; **7.8x faster** than `x513j`'s `cost=65, 1,701 ms`).
-- **`deep.sh z3` (AOT)**:
+- **`deep.sh z4` (AOT)**:
   - `depth` `n=3200 missing=0`: `cost=0, ms=37`.
   - `depth` `n=3200 missing=1`: **`cost=1, ms=296`** (down from `3,571 ms` --
     **12.1x faster**).
@@ -8855,18 +8856,20 @@ LOC) resolves every one of these gaps without re-parsing candidate trees:
     all `n` including `800` and `1600`** (fixing the `cost=801/1601` bug and
     speeding up `n=1600` by **10.3x** from `769 ms` to `75 ms`, vs `x513j`'s
     `1,945 ms`).
-- **8-Seed Random-Grammar Fuzzers (`SEEDS="1..8" ./dl.sh TAG z3 x513j` and
-  `./lf.sh TAG z3 x513j`, 3,200 cases each)**:
-  - `dl.sh`: `worse: {'z3': 77, 'x513j': 141}, invalid: {'z3': 60,
-    'x513j': 22}, timeouts: {'z3': 0, 'x513j': 0}, levWorse:
-    {'z3': 65, 'x513j': 121}` (**`z4`/`z3` beats `x513j` 77 to 141 on
-    `worse` and 65 to 121 on `levWorse`**, down from `420` worse and `116`
-    invalid in Round 55).
-  - `lf.sh`: `worse: {'z3': 77, 'x513j': 98}, invalid: {'z3': 47,
-    'x513j': 26}, timeouts: {'z3': 0, 'x513j': 0}, levWorse:
-    {'z3': 60, 'x513j': 75}` (**`z4`/`z3` beats `x513j` 77 to 98 on
-    `worse` and 60 to 75 on `levWorse`**, down from `468` worse and `101`
-    invalid in Round 55).
+- **8-Seed Random-Grammar Fuzzers (3,200 cases each)**:
+  - Head-to-head (`./dl.sh TAG z4 x513j` and `./lf.sh TAG z4 x513j`):
+    - `dl.sh`: `worse: {'z4': 77, 'x513j': 141}, invalid: {'z4': 60, 'x513j':
+      22}, timeouts: 0, levWorse: {'z4': 65, 'x513j': 121}`.
+    - `lf.sh`: `worse: {'z4': 77, 'x513j': 98}, invalid: {'z4': 47, 'x513j':
+      26}, timeouts: 0, levWorse: {'z4': 60, 'x513j': 75}`.
+  - 4-way with `c` and `cdx` lines (`./dl.sh c_cmp z4 c14 cdx10 x513j` and
+    `./lf.sh c_cmp z4 c14 cdx10 x513j`):
+    - `dl.sh`: `worse: {'z4': 87, 'c14': 836, 'cdx10': 759, 'x513j': 152},
+      invalid: {'z4': 60, 'c14': 371, 'cdx10': 282, 'x513j': 22}, timeouts: 0,
+      levWorse: {'z4': 73, 'c14': 695, 'cdx10': 638, 'x513j': 131}`.
+    - `lf.sh`: `worse: {'z4': 91, 'c14': 728, 'cdx10': 757, 'x513j': 111},
+      invalid: {'z4': 47, 'c14': 233, 'cdx10': 200, 'x513j': 26}, timeouts: 0,
+      levWorse: {'z4': 71, 'c14': 570, 'cdx10': 611, 'x513j': 86}`.
 - **Repeated-Work Audit (`z3aud.dart` on the 2,101-case battery, Round 55 vs
   Round 56)**:
   - `bud0to1`: **`11,845 -> 0`** (**-100%**)
@@ -8875,7 +8878,6 @@ LOC) resolves every one of these gaps without re-parsing candidate trees:
   - `lrIters`: **`13,880 -> 10,975`** (**-20.9%**)
   - `thens`: **`2,953,167 -> 2,503,034`** (**-15.2%**)
   - `dupDerivs`: **`349,100 -> 323,699`** (**-7.3%**)
-
 
 ## 4. The c-series arc — what each engine taught
 
