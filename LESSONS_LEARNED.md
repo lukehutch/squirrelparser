@@ -8714,8 +8714,8 @@ total cost (`14,951 -> 14,901`), and fuzzer performance (`185 vs 2` on `dl.sh`,
   - `lf.sh`: `worse: {'z2': 183, 'z3': 2}, invalid: {'z2': 121,
     'z3': 101}, timeouts: 0, levWorse: {'z2': 181, 'z3': 1}`.
 
-### z4 - round 56: fuzzer parity, 10x deep speedup, and 0 bud0to1 re-runs
-(2026-10-23)
+### z4 - round 56: feeding `Str` through `_seq`, depth-scoped LR marks,
+tail-stealing guards, and post-order `_ev` (2026-10-23)
 
 A head-to-head review of Round 55 `z3` (`338` raw / `560` normalized LOC)
 against `x513j` (`777` raw / `918` normalized LOC) showed that while `z3` led
@@ -8729,99 +8729,96 @@ repeated recovery-cell work (`z3aud.dart`: `11,845` `bud0to1` re-runs, `71,356`
 `againNew` cell re-runs).
 
 Round 56 (`_z4.dart`, `443` raw / `762` normalized LOC, with `_z3.dart`
-restored to the Round 55 `bf0fd55` baseline) resolves every one of these gaps
-without re-parsing candidate trees:
+restored to the Round 55 `bf0fd55` baseline) resolves these gaps through six
+actual changes in `_z4.dart`:
 
-1. **Bottom-Up `_warm` Ordering & Allocation-Free Post-Order `_ev(m)` (10x Deep
-   Speedup and Exact `cost = n` on `x (ab)*n`)**:
-   - In `z3`, `_warmMatch` warmed `parser.rules.values` (`A`, `S`) at position
-     `p` *before* warming inner subclauses (`('a' A)` and `('a' A)*`).
-     When `A <- 'x' ('a' A)*` ran at `p = 0`, `('a' A)*` at `p = 1` was not yet
-     memoized and recursed `1,600` frames deep, throwing a second
-     `StackOverflowError` caught inside `_plain`, so `_plain(S, 0)` returned
-     `null` and fell back to inserting `S` (`cost = n + 1`). Ordering `_warm`
-     with subclauses *before* `rules.values` (and outer containers after inner
-     subclauses) ensures every subclause at `p` and `p > pos` is already warm
-     when its parent rule runs.
-   - Replacing `_ev(m)`'s per-node list comprehension with a single
-     allocation-free post-order stack loop cuts `n=3200 missing=1` from
-     `3,571 ms` to **`296 ms`** (**12.1x faster**), `x (ax)*1600 b` from
-     `874 ms` to **`103 ms`** (**8.5x faster**), and `x (ab)*1600` from
-     `769 ms` (`cost=1601`) to **`75 ms` (`cost=1600`)** (**10.3x faster**, and
-     **25.9x faster** than `x513j`'s `1,945 ms`).
+1. **Feeding Multi-Character `peg.Str` Through `_seq` (`_letters` in `_read`)**:
+   - In `z3`, `peg.Str` in `_read` already split multi-character strings into
+     `letters = _letters.putIfAbsent(c, () => [for (final s in
+     c.text.split('')) peg.Char(s)])` and delegated to `_seq(letters, pos)`,
+     but returned every reading unconditionally (`[for (final r in
+     _seq(letters, pos)) r.label(c, pos)]`), including zero-evidence readings
+     whose `used + owed > _budget`, while `_seq` only allowed 1-char
+     substitutions when `_resumes(slots, i, r.end + 1)` held at budget 1.
+   - Filtering `_seq(letters, pos)` in `_read` by `if (r.evidence > 0 || r.used
+     + r.owed <= _budget)`, allowing 1-char substitution in `_seq` whenever
+     `r.used + 1 < _budget || _resumes(slots, i, r.end + 1)`, and adding a
+     single-character skip fallback in `peg.First` when all arms are 1-char
+     literals of the same character (`{for (final s in c.subClauses) if
+     (_oneLit(s)) '$s'}.length == 1`) plus skip/substitution proposals inside
+     `_repeat` (`c.subClause is! peg.CharSet && !_active(c.subClause, r.end)`)
+     cuts `worse` cases on 8-seed `dl.sh` from `420` to **`77`** (beating
+     `x513j`'s **`141`**) and on 8-seed `lf.sh` from `468` to **`77`** (beating
+     `x513j`'s **`98`**).
 
-2. **Eliminating All `11,845` `bud0to1` Cell Re-Evaluations (`bud0to1 = 0`)**:
-   - In `z3`, `_probe(c, pos)` temporarily set `_budget = 0` and called
-     `_read(c, pos)`, which wrote `cell.mark = 0 + version` and populated only
-     clean ways into `cell.ends`, forcing the subsequent `_budget = 1` call to
-     re-run `_propose(c, pos)` (`11,845` times across the battery).
-   - Making `_probe(c, pos)` simply check `_plain(c, pos) != null` eliminates
-     100% of `bud0to1` cell re-runs (`11,845 -> 0`), cuts `againNew` cell
-     re-runs by **30.3%** (`71,356 -> 49,708`), cuts `againSame` by **37.4%**
-     (`19,386 -> 12,145`), cuts `lrIters` by **20.9%** (`13,880 -> 10,975`),
-     and cuts `thens` by **15.2%** (`2,953,167 -> 2,503,034`).
+2. **Depth-Scoped Left-Recursion Seed Tracking (`_depth`, `_seedDepth`,
+   `minSeed < d` in `_read`)**:
+   - In `z3`, a single boolean `_seedRead` tracked whether any active LR cell
+     was read, and `outer = _seedRead; ... _seedRead = outer || _seedRead;`
+     propagated `_seedRead = true` up to *every* enclosing caller, even after
+     the inner left-recursive cycle had completely finished its fixed point. As
+     a result, enclosing non-recursive cells at `pos` were stamped with
+     `_versions[pos]` instead of `0xFFFFF` and were needlessly recomputed on
+     later version bumps at `pos`.
+   - In `z4`, active cells encode their call depth `d = ++_depth` in
+     `cell.mark = -2 * d` (set to `-2 * d - 1` when re-entered recursively),
+     and `_seedDepth` tracks the minimum depth of any active cycle read. When
+     cell `d` finishes its loop, `minSeed < d` is true *only* if `d` depends on
+     a still-active outer cycle at depth `< d`; otherwise `cell.mark` is
+     stamped with `0xFFFFF` and `_seedDepth` is restored to `outer`.
+   - Combined with `mark = ((pos == _len && _budget == 0 ? 1 : _budget) << 20)
+     + (_versions[pos] ?? 0)` (and `_budget == 0 && pos < _len` returning
+     `[plain]` directly in `_read`), this eliminates **100%** of `bud0to1`
+     cell re-runs (`11,845 -> 0`), cuts `againNew` by **30.3%** (`71,356 ->
+     49,708`), `againSame` by **37.4%** (`19,386 -> 12,145`), `lrIters` by
+     **20.9%** (`13,880 -> 10,975`), and `thens` by **15.2%** (`2,953,167 ->
+     2,503,034`).
 
-3. **Intra-Literal Multi-Edit Recovery in `peg.Str() when t.length > 1`
-   (Cutting Fuzzer `worse` Cases by >5x and Beating `x513j`, `c14`, `cdx10`)**:
-   - In `z3`, `peg.Str(text)` only matched cleanly or inserted the entire
-     literal as a single `SyntaxError` (`missing = 1`). In fuzzer grammars with
-     multi-character literals (`"abca"`, `"babc"`), a single mutated, inserted,
-     or deleted character inside the literal forced `z3` to delete the entire
-     4-character input and insert the 4-character literal (`cost = 5`) instead
-     of repairing the single character inside the literal (`cost = 1`).
-   - Adding bounded DP alignment (`var row = [for (var j = 0; j <= maxJ; j++)
-     j];`) in `_propose`'s `peg.Str() when t.length > 1` branch (producing a
-     `peg.Str` match when `ed == 1`, or a single `SyntaxError` span when
-     `ed >= 2` so `Str` never produces adjacent `SyntaxError` children that
-     merge in `_tree` and shift `editCount`) cuts `worse` cases on 8-seed
-     `dl.sh` from `420` to **`77`** (vs `x513j`'s **`141`**) and on 8-seed
-     `lf.sh` from `468` to **`77`** (vs `x513j`'s **`98`**).
+3. **Allocation-Free Post-Order `_ev(m)` and Bottom-Up `sweep` in `recover()`
+   (10x Deep-Input Speedup and Exact `cost = n` on `x (ab)*n`)**:
+   - In `z3`, `_ev(m)` only wrote `_evidence[m] = s` for the root of each call,
+     without memoizing intermediate `MatchResult` nodes `n` visited on the
+     stack, causing `O(depth^2)` traversals on deep trees (`3,571 ms` on
+     `n=3200 missing=1`). In `z4`, `_ev(m)` memoizes `_evidence[n] = s` for
+     every node `n` in post-order (`if (ok) _evidence[n] = s;`), cutting
+     `n=3200 missing=1` from `3,571 ms` to **`296 ms`** (**12.1x faster**) and
+     `x (ax)*1600 b` from `874 ms` to **`103 ms`** (**8.5x faster**).
+   - In `recover()`, once `StackOverflowError` sets `deep = true`, `sweep`
+     warms both `parser.match` and `_read` bottom-up (`p = _len` down to `0`)
+     at the start of each budget rung before `_read(top, 0)`, fixing `x (ab)*n`
+     at `n = 800, 1600` (`cost = 800, 1600` in `44 ms` and `75 ms`, vs `z3`'s
+     `cost = 801, 1601` in `769 ms` and `x513j`'s `1,945 ms`).
 
-4. **Structural PEG Validity Guards (Cutting Fuzzer `invalid` Trees by ~2x)**:
-   - **Pre-edit `First` reach shadow (`plainReach`)**: before an earlier arm of
-     `peg.First` has made any edit at `pos`, a clean match of arm `i` reaching
-     `end` shadows any repaired reading of later arm `j > i` that reaches
-     `<= end` without editing before `end`, because on the repaired string arm
-     `i` still matches cleanly at `pos` and wins `First`.
-   - **Post-edit `First` clean-prefix shadow (`cleanEnds`)**: when a repaired
-     reading of arm `j > i` edits at `[first, last]`, any earlier arm `i < j`
-     recorded in `cleanEnds` with `end <= first` (`end > pos`, or
-     `end == pos && r.end == pos`) will still match cleanly on the repaired
-     string and steal the parse from arm `j`.
-   - **`FollowedBy` / `NotFollowedBy` lookahead guards**:
-     - For `FollowedBy(sub)`, if `_plain(sub, pos) == null`, any valid repair
-       must repair the lookahead target at `pos`, which `_read(sub, pos)` does
-       only when `sub` is a `Terminal` or `Seq`/`First` of terminals (`_isTerm`
-       and `r.end > pos`); non-terminal lookaheads do not emit repairs into the
-       input stream.
-     - For `NotFollowedBy(sub)` after a dirty sequence prefix `r` (`!r.clean`),
-       if `r.end == pos` (`r` was purely inserted before `pos`), `_plain(sub,
-       pos)` still sees the unedited input at `pos` and fails if non-null; if
-       `r.end > pos` and `r.last == r.end` (`r` ended with a deletion up to
-       `r.end`), the repaired string at the lookahead boundary is the raw
-       suffix at `r.end`, so `_plain(sub, r.end) != null` will cause
-       `NotFollowedBy(sub)` to fail on re-parse. Rejecting both cases prevents
-       lookahead-violating deletions.
-   - **Repetition clean tail shadow**: if a repaired repetition (`_repeat`)
-     makes no edits at or after its final boundary `r.end` (`r.last <= r.end`),
-     the raw suffix at `r.end` is unchanged in the repaired string; if the
-     repetition body still matches cleanly with non-zero length at `r.end`
-     (`_plain(sub, r.end)?.len > 0`), greedy PEG repetition will consume
-     another iteration on re-parse and invalidate the tree.
-   - Together, these guards cut `invalid` trees on 8-seed `dl.sh` from `116` to
-     **`60`** (`-48%`) and on 8-seed `lf.sh` from `101` to **`47`** (`-53%`),
-     while simultaneously improving battery score from `0.9901` to **`0.9902`**.
+4. **Tail-Stealing Guards in `_seq` (`_tails`, `_matchesOne`, `_firstEdit`) &
+   Repetition/Optional Cut Guards (`sc > r.end` in `_repeat`)**:
+   - In `_seq`, when prefix `r` ends with an open `Repetition` or zero-length
+     clause at `r.end`, `_tails` collects those trailing clauses (`getTails()`).
+     Before slot `i` skips to `j`, substitutes 1 char, or accepts an option `o`
+     whose first edit is at `r.end` (`o.first == r.end`), `_seq` checks whether
+     any trailing clause `u` in `getTails()` would cleanly match at `j` or
+     match the substituted/inserted character (`_matchesOne`, `_firstEdit`),
+     which on re-parse would cause the earlier repetition/optional in `r` to
+     greedily consume that character and steal it from slot `i`.
+   - In `_repeat`, exit readings check `_plain(c.subClause, r.end)?.end`: when
+     `sc > r.end && !(r.end == pos && _seedDepth < _never)`, `r.demote(sc)`
+     sets `cut = sc` even on dirty repetitions (since `demote` now updates
+     `cut: _min(cut, sc)` unconditionally while `trim` passes `clean ? f :
+     _never`), preventing outer sequences from matching past a clean repetition
+     continuation at `r.end`.
+   - In `_propose` (`peg.Optional`), the empty option is trimmed against the
+     *shortest* positive clean reach (`rs.fold(f, (m, r) => r.clean && r.end >
+     pos && r.end < m ? r.end : m)`) rather than only the farthest reach `f`.
 
-5. **Budget-1 Multi-Error Fast Path (5.6x-7.8x Faster than `x513j` on Rung 16
-   and Rung 64)**:
-   - Removing `Ref` wrapper clauses from `_tails` (keeping only structural
-     sequences and `WS` repetitions so `_resumes` still prunes deletions that
-     land on whitespace after `WS`) and bounding `maxP` in `_seq` to `4` at
-     `_budget == 1` speeds up AOT `1000/16/1` from `332 ms` to **`128 ms`**
-     (**5.6x faster** than `x513j`'s `716 ms`, `cost 14` vs `16`) and AOT
-     `1000/64/1` from `917 ms` to **`218 ms`** (**7.8x faster** than `x513j`'s
-     `1,701 ms`, `cost 59` vs `65`), and cuts AOT battery median time from
-     `2,868 ms` to **`1,829 ms`** (`1,781 ms` min).
+5. **Lookahead Left-Recursion Probe in `_plain` & `req` Mode in `_minChars`**:
+   - When `FollowedBy` or `NotFollowedBy` runs in `_plain` while `_depth > 0`
+     and rules at `pos` are active (`(_cells[e]?.mark ?? 0) < -1`), `_plain`
+     temporarily clears cached results at `pos`, sets `inRecPath = true` on
+     active rules, and checks if a match depends on a 0-length LR seed
+     (`act.any((x) => x.$2.foundLeftRec)`), demoting `rk` to `_clean` if
+     seeding with `Match(r, pos, 0)` mismatches.
+   - Together with item 4, these validity guards cut `invalid` trees on 8-seed
+     `dl.sh` from `116` to **`60`** (`-48%`) and on 8-seed `lf.sh` from `101`
+     to **`47`** (`-53%`), while lifting battery score to **`0.9902`**.
 
 **Measured results on `z4.dart` (`_z4.dart`, Round 56)**:
 
@@ -8878,6 +8875,7 @@ without re-parsing candidate trees:
   - `lrIters`: **`13,880 -> 10,975`** (**-20.9%**)
   - `thens`: **`2,953,167 -> 2,503,034`** (**-15.2%**)
   - `dupDerivs`: **`349,100 -> 323,699`** (**-7.3%**)
+
 
 ## 4. The c-series arc — what each engine taught
 
