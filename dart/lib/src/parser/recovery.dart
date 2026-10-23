@@ -35,8 +35,8 @@ class _Way {
         r.incomplete || (r.end == end && incomplete), subs + r.subs, fee + r.fee,
         credit + r.credit, c, this, last > r.last ? last : r.last);
   }
-  _Way copy({int? ev, int? rk, int? fee, int? cr, int? cut, Object? p}) => _Way(
-      end, deleted, missing, ev ?? evidence, rk ?? first, p ?? piece, owed,
+  _Way copy({int? rk, int? fee, int? cr, int? cut, Object? p}) => _Way(
+      end, deleted, missing, evidence, rk ?? first, p ?? piece, owed,
       incomplete, subs, fee ?? this.fee, cr ?? credit, cut ?? this.cut,
       p == null ? prev : null, last);
   _Way label(peg.Clause c, int pos) => copy(p: (c, pos, this));
@@ -89,7 +89,7 @@ class Squirrel {
     var s = 0;
     for (final q = [m]; q.isNotEmpty;) {
       final n = q.removeLast(), c = n.clause, k = n.subClauseMatches;
-      if (c is peg.Repetition && !c.requireOne && c.subClause is peg.Terminal) continue;
+      if (c is peg.Repetition && !c.requireOne && c.subClause is peg.Terminal && _minChars(c.subClause) == 1) continue;
       if (k.isEmpty && (c is peg.Str || c is peg.Char || c is peg.CharSet && !c.inverted)) s += n.len;
       for (final ch in k) { _evidence[ch] != null ? s += _evidence[ch]! : q.add(ch); }
     }
@@ -134,17 +134,15 @@ class Squirrel {
       return [for (final r in _read(parser.rules[c.ruleName]!, pos))
         if (r.evidence > 0 || r.subs == r.cost || r.clean || r.end == pos || _oneShape(c)) r.label(c, pos)];
     }
-    if (c is peg.Repetition && c.subClause is peg.Terminal && plain != null) {
+    if (c is peg.Repetition && c.subClause is peg.Terminal && _minChars(c.subClause) == 1 && plain != null) {
       final k = (plain.piece as peg.MatchResult).subClauseMatches;
-      if (plain.end - pos == k.length) {
-        var w = _Way.empty(pos).demote(plain.end);
-        return [
-          if (!c.requireOne && k.isNotEmpty) w.label(c, pos),
-          for (var i = 0; i < k.length - 1; i++)
-            (w = w.then(_Way(k[i].pos + 1, 0, 0, c.requireOne ? _ev(k[i]) : 0, _clean, k[i]))!.demote(plain.end)).label(c, pos),
-          plain,
-        ];
-      }
+      var w = _Way.empty(pos).demote(plain.end);
+      return [
+        if (!c.requireOne && k.isNotEmpty) w.label(c, pos),
+        for (var i = 0; i < k.length - 1; i++)
+          (w = w.then(_Way(k[i].pos + 1, 0, 0, c.requireOne ? _ev(k[i]) : 0, _clean, k[i]))!.demote(plain.end)).label(c, pos),
+        plain,
+      ];
     }
     final cell = _cells[parser.getMemoEntry(c, pos)!] ??= _Cell(), mark = (_budget << 20) + (_versions[pos] ?? 0);
     if (cell.mark < -1) {
@@ -165,7 +163,7 @@ class Squirrel {
     }
     final raw = cell.ends.values, farthest = _farthest(raw);
     return [for (final r in raw) if (r.used <= _budget)
-      r.preferred && r.end == farthest && plain?.end == r.end ? plain! : r.trim(farthest).label(c, pos)];
+      r.preferred && r.end == farthest && plain?.end == r.end ? plain! : (cell.mark < 0 ? r : r.trim(farthest)).label(c, pos)];
   }
 
   bool _active(peg.Clause c, int at) => c is peg.Ref && (_cells[parser.getMemoEntry(parser.rules[c.ruleName]!, at)]?.mark ?? 0) < -1;
@@ -201,11 +199,10 @@ class Squirrel {
   };
 
   List<_Way> _seq(List<peg.Clause> slots, int pos) {
-    Iterable<_Way> cur = [_Way.empty(pos)];
+    var cur = [_Way.empty(pos)];
     for (var i = 0; i < slots.length; i++) {
-      final slot = slots[i], next = _Cell(), farthest = _farthest(cur);
-      for (final v in cur) {
-        final r = v.trim(farthest);
+      final slot = slots[i], next = _Cell();
+      for (final r in cur) {
         if (r.used > _budget) continue;
         final rSub = r.pureSub(pos) && slot is peg.Repetition;
         final canSettle = r.used > 0 && (slot is peg.Repetition && r.synced(pos) || rSub ||
@@ -229,20 +226,19 @@ class Squirrel {
         final penalize = deletedAhead > 0 && i != slots.length - 1 && !_active(slot, r.end) && !_oneShape(slot);
         bool settles(_Way o) => canSettle && o.first > r.end &&
             (rSub ? o.pureSub(r.end) && o.evidence > 0 : o.synced(r.end, 0) && (o.credit == 0 || o.first > r.last + 1));
-        final subSettled = rSub && r.evidence == 0 && options.any(settles);
+        final mustAdvance = r.evidence == 0 && slot is peg.Repetition &&
+            (r.incomplete && !_oneShape(slot.subClause) || rSub && options.any(settles));
         for (final o in options) {
-          if (subSettled && o.end == r.end) continue;
-          if (r.evidence == 0 && r.incomplete && slot is peg.Repetition && !_oneShape(slot.subClause) && o.end == r.end) continue;
+          if (mustAdvance && o.end == r.end) continue;
           final base = settles(o) ? r.copy(cr: r.spent) : r;
           final w = base.then(penalize && o.end == r.end && !o.clean && deletedAhead <= o.missing ? o.copy(fee: o.fee + 1) : o);
           if (w != null && w.used <= whole) next.add(w);
         }
       }
-      cur = next.ends.values;
+      cur = next.ends.values.toList();
       if (cur.isEmpty) break;
     }
-    final farthest = _farthest(cur);
-    return [for (final r in cur) r.trim(farthest)];
+    return cur;
   }
 
   bool _resumes(List<peg.Clause> s, int i, int at) => i + 1 >= s.length || switch (_plain(s[i + 1], at)) {
@@ -275,8 +271,7 @@ class Squirrel {
         bool syncs(_Way s) => (_plain(c.subClause, s.end)?.end ?? 0) > s.end;
         final anySync = canSettle && steps.any((s) => s.end > r.end && syncs(s));
         for (var step in steps) {
-          if (step.end <= r.end || step.end - r.end == step.deleted && step.subs == 0 && step.missing == 0 || step.clean && step.cut < _never) continue;
-          if (!c.requireOne && c.subClause is peg.Terminal) step = step.copy(ev: 0);
+          if (step.end <= r.end || step.end - r.end == step.deleted && step.subs == 0 && step.missing == 0 || step.clean && step.cut < _never || best.ends.isNotEmpty && c.subClause is peg.Terminal && step.owed >= step.evidence) continue;
           var longer = r.then(step);
           if (longer == null) continue;
           if (canSettle && !step.clean && (!step.incomplete || step.first == step.end) &&
@@ -344,11 +339,7 @@ class Squirrel {
       }
       for (final r in ways) {
         final tail = _len - r.end, w = tail == 0 ? r : r.then(_Way.skip(r.end, _len));
-        if (w == null) continue;
-        var p = r;
-        while (p.prev != null && p.owed > 0) { p = p.prev!; }
-        final owedCredit = w.credit > 0 && w.owed > 0 && _len > (p.owed > 0 ? -1 : p.last) + 1 ? 1 : 0;
-        if (w.charge - w.credit - owedCredit > _budget || w.first == _clean) continue;
+        if (w == null || w.charge - w.credit > _budget || w.first == _clean) continue;
         if (tail > 0 && r.incomplete) { inc.add(w); continue; }
         if (best == null || w.cmp(best) < 0) best = w;
       }
