@@ -102,6 +102,14 @@ of the repaired input. "-" means not measured.
 | z1 (r52) | z | 10-22 | 762 (529 raw) | 0.9898 / 86.1 | 2,845 ms | rung 64: 373 ms (cost 59) | 107 (c14: 371) | all finish |
 | z1 (r53) | z | 10-22 | 613 (379 raw) | 0.9896 / 86.1 | 2,800 ms | rung 64: 695 ms (cost 59) | 107 (c14: 371) | all finish |
 | z2 (r54) | z | 10-22 | 569 (347 raw) | 0.9900 / 86.3 | 2,388 ms | rung 64: 555 ms JIT / 355 ms AOT (cost 59) | 96 (5 seeds) | all finish |
+| z3 (r55) | z | 10-22 | 560 (338 raw) | 0.9901 / 86.4 | 2,829-2,868 ms (round 56 review) | rung 64: 519 ms JIT (cost 59) | 116 | all finish; depth 3,200 with one missing: 3.1-3.6 s |
+| z4 (r56) | z | 10-23 | 762 (443 raw) | 0.9902 / 86.4 | 3,227-3,264 ms JIT; 1,829 ms AOT median | rung 64: 446-541 ms JIT / 218 ms AOT (cost 59) | 60 | all finish; depth 3,200 with one missing: 0.3 s |
+
+The z3 and z4 rows (added 2026-10-23) were measured twice: in their own
+rounds and in the round 56 review, which reproduced every figure. z3's
+own section records no battery time, so its time is the review's. The
+review read the original z3 from commit bf0fd55, because round 56
+overwrote `_z3.dart` with the z4 code.
 
 The x-line Ir figures are from three builds: x464a, x494d and x504i
 from round 50's, x513j from round 51's; in round 51's builds x504i
@@ -112,14 +120,14 @@ measured 12.89-12.91G on the battery and 12.80-12.87G on rung 64,
 
 | Measure | Best | Why it wins |
 |---|---|---|
-| Accuracy | c18-envelope 0.9902; c25 0.9901 | c13's seven ranking keys judge whole readings by the evidence each one has, and c12's gated substitution repairs a wrong character as one edit; the x line has one fix kind (delete s characters, insert a shortest input for skipped elements), so a substitution costs 2 and ties are broken less well (perfect 76.4 against 86) |
+| Accuracy | z4 0.9902 / 86.4 (2026-10-23); c18-envelope 0.9902 / 86.2; c25 0.9901 | c13's seven ranking keys judge whole readings by the evidence each one has, and c12's gated substitution repairs a wrong character as one edit; the x line has one fix kind (delete s characters, insert a shortest input for skipped elements), so a substitution costs 2 and ties are broken less well (perfect 76.4 against 86) |
 | Valid trees | pd23, pd57, u28: 0 of 3,200 | the search states are PEG derivatives of the top rule, so every answer is a PEG parse of the repaired input by construction; the other lines repair a tree and must check validity afterward |
 | Size | x464a 306 lines (sk2 151 at score 0.45) | the repair is the ordinary memo parser run with fixes in force; one fix kind and one price, no second grammar and no ranking keys |
 | Battery speed | c14 370-572 ms | one pass per case, no windows and no re-runs; x513j is about 1.2 s, the pd and u lines 2 s |
-| Many errors on one document | cdx10 (rung 64 in 3.0 s); x504i and x513j (rung 64 at about the battery's Ir) | cdx10: an admissible bound that remembers the return site of each recursive call; x line: the first-gain bound, which limits later offers to the price of the first offer that gains, but is not admissible (D50-2, round 51) |
+| Many errors on one document | z4 (rung 64 in 0.45-0.54 s JIT, 218 ms AOT, cost 59; 2026-10-23); cdx10 (rung 64 in 3.0 s); x504i and x513j (rung 64 at about the battery's Ir) | cdx10: an admissible bound that remembers the return site of each recursive call; x line: the first-gain bound, which limits later offers to the price of the first offer that gains, but is not admissible (D50-2, round 51) |
 | Long inputs | c18 (200k characters in 4.7 s) | repairs only inside windows over the farthest failure, and memoized plain matches |
 | Deep nesting | x494d onward, pd23 | an overflow handler that reruns the path in its recorded state (x); an explicit frame stack (pd) |
-| Fuzzer costs | x513j (x511n, its base, is worse than x504i in 3 dl cases against 25) | the first-gain round goes one price past w1, and x513j adds two validity changes (round 51) |
+| Fuzzer costs | x513j (x511n, its base, is worse than x504i in 3 dl cases against 25); z4 beats x513j head to head (dl worse 77 vs 141, lf 77 vs 98) but has more invalid trees (60 vs 22 dl), and no recorded run compares z4 with the c, pd or u lines | the first-gain round goes one price past w1, and x513j adds two validity changes (round 51) |
 
 No engine holds all of these. The c and cdx lines have the best
 accuracy at 742-900 lines; the pd and u lines are the only ones with
@@ -129,7 +137,10 @@ x line scores 0.009 below the c line. Its smallest engine, x464a, is
 overlay climb, the validity checks) bring x513j to 918 lines, the
 size of c25, with every deep and many-error input finishing and 22
 invalid dl trees. The synthesis round
-(below, 2026-09-11) showed why the c-line bests do not combine.
+(below, 2026-09-11) showed why the c-line bests do not combine. Since
+2026-10-23, z4 leads on accuracy and on many errors, at 762 lines, and
+every deep input finishes; it has 60 invalid dl trees, and its battery
+time is the slowest of the leading engines except pd23.
 
 ### Full c-series comparison (2026-09-06; measured by Codex, audited the same day)
 
