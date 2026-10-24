@@ -106,6 +106,8 @@ of the repaired input. "-" means not measured.
 | z4 (r56) | z | 10-23 | 762 (443 raw) | 0.9902 / 86.4 | 3,227-3,264 ms JIT; 1,829 ms AOT median | rung 64: 446-541 ms JIT / 218 ms AOT (cost 59) | 60 | all finish; depth 3,200 with one missing: 0.3 s |
 | z5 (r57) | z | 10-23 | 732 (418 raw) | 0.9904 / 86.6 | 2,778-2,859 ms JIT; 2,863 ms x3 AOT (z4: 3,133 ms) | rung 64: 584 ms JIT / 251 ms AOT (cost 59) | 35 | all finish; depth 3,200 with one missing: 282 ms |
 | z6 | z | 10-23 | 716 (413 raw) | 0.9904 / 86.6 (trees = z5) | 2,812-2,899 ms JIT (z5 3,106-3,201 same session); 2,796 ms x3 AOT median (z5 2,844) | as z5 | 35 | as z5; depth 3,200 with one missing: 280 ms |
+| e7s | e | 10-24 | 659 (429 raw) | 0.9899 / 84.5 | 6.0 s JIT | rung 4: 86 s | 0 (0 of 12,800 on dl+lf seeds 1-16) | - (breaks D1; fails b2) |
+| e14 | e | 10-24 | 709 (456 raw) | 0.9900 / 84.5 | 4.2 s JIT | rungs 1, 2: 0.20, 0.23 s; rung 4: 61 s | 12 of 12,800 (e8, same trees as e7s: 0) | - (breaks D1; fails b2) |
 
 The z3 and z4 rows (added 2026-10-23) were measured twice: in their own
 rounds and in the round 56 review, which reproduced every figure.
@@ -123,12 +125,13 @@ measured 12.89-12.91G on the battery and 12.80-12.87G on rung 64,
 | Measure | Best | Why it wins |
 |---|---|---|
 | Accuracy | z5 0.9904 / 86.6 (2026-10-23); z4 0.9902 / 86.4; c18-envelope 0.9902 / 86.2 | c13's seven ranking keys judge whole readings by the evidence each one has, and c12's gated substitution repairs a wrong character as one edit; z5 adds PEG monotonicity guards (ordered-choice LR arm monotonicity, nullable-arm shadowing, zero-growth LR cycle rejection, greedy LR prefix absorption, and leaf substitution discrimination); the x line has one fix kind (delete s characters, insert a shortest input for skipped elements), so a substitution costs 2 and ties are broken less well (perfect 76.4 against 86.6) |
-| Valid trees | pd23, pd57, u28: 0 of 3,200 | the search states are PEG derivatives of the top rule, so every answer is a PEG parse of the repaired input by construction; the other lines repair a tree and must check validity afterward |
+| Valid trees | e7s and e8: 0 of 12,800 (dl and lf, seeds 1-16, 2026-10-24); pd23, pd57, u28: 0 of 3,200 | e line: every candidate is a real parse of its repaired string (this breaks D1); pd/u: the search states are PEG derivatives of the top rule; both give a PEG parse of the repaired input by construction, while the other lines repair a tree and must check validity afterward |
 | Size | x464a 306 lines (sk2 151 at score 0.45) | the repair is the ordinary memo parser run with fixes in force; one fix kind and one price, no second grammar and no ranking keys |
 | Battery speed | c14 370-572 ms | one pass per case, no windows and no re-runs; x513j is about 1.2 s, the pd and u lines 2 s |
 | Many errors on one document | z4 and z5 (rung 64 in 218-251 ms AOT, 0.45-0.58 s JIT, cost 59; 2026-10-23); cdx10 (rung 64 in 3.0 s); x504i and x513j (rung 64 at about the battery's Ir) | z line: credit settlement amortizes isolated repairs once followed by clean synced input; cdx10: an admissible bound that remembers the return site of each recursive call; x line: the first-gain bound, which limits later offers to the price of the first offer that gains, but is not admissible (D50-2, round 51) |
 | Long inputs | c18 (200k characters in 4.7 s) | repairs only inside windows over the farthest failure, and memoized plain matches |
 | Deep nesting | x494d onward, pd23, z4, z5 | an overflow handler that reruns the path in its recorded state (x); an explicit frame stack (pd); bottom-up memo sweep on overflow plus post-order evidence memoization (z4/z5) |
+| Fuzzer costs (with the e line) | e7s: fewest worse in every row of a 4-way run (`z6 / x513j / e7 / e7s`, 8 seeds x 400 per row): dl 1-8 72 / 162 / 65 / 47; lf 1-8 99 / 129 / 61 / 39; dl 9-16 100 / 160 / 67 / 50; lf 9-16 108 / 166 / 59 / 31 (2026-10-24) | a cost-ordered search over repaired strings finds the cheapest repair it can reach by real parses; the progress rule with a second pass keeps it exact on small inputs |
 | Fuzzer costs | z5, z4 and x513j: in 5-way runs (`z5 / z4 / c14 / cdx10 / x513j`), z5 has the fewest worse cases (`dl`: 65 vs 87 / 837 / 759 / 154; `lf`: 83 vs 92 / 729 / 758 / 113; head-to-head `z5` vs `x513j`: `dl` 56 vs 144, `lf` 66 vs 98), while x513j has fewer invalid trees (`dl`: 22 vs 35 / 60 / 371 / 282; `lf`: 26 vs 35 / 47 / 233 / 200) | z5: bounded DP alignment inside multi-char `Str` literals plus PEG monotonicity and tail-stealing validity guards; x513j: first-gain round one price past w1 plus two validity changes (round 51) |
 
 No engine holds all of these. The c and cdx lines have high accuracy at
@@ -143,7 +146,12 @@ not combine. Since 2026-10-23, z5 leads on accuracy (0.9904 / 86.6),
 many errors, and fuzzer repair costs at 732 lines (418 raw), with every
 deep input finishing and invalid dl trees cut to 35 (from 116 in z3 and
 60 in z4); its battery time (2.8 s JIT) remains slower than c14 and
-x513j.
+x513j. The e line (2026-10-24, section "e-series" below) searches over
+repaired strings and parses each one: e7s has no invalid tree in 12,800
+fuzzer cases and the fewest worse costs, at 0.9899 and 659 lines, but
+it breaks D1 by construction, fails gate b2, takes 4-6 s on the
+battery, and 4 errors in a 23.5k-character document take 61-86 s. z6
+remains the best engine that obeys the directives.
 
 ### Full c-series comparison (2026-09-06; measured by Codex, audited the same day)
 
@@ -9164,6 +9172,200 @@ Removing any one of the twelve guards in the z5 ablation does not change
 this, so the cause is in z5's core changes to left-recursion growth; z4
 gets the one-arm case right. Neither fuzzer generates this case.
 Probes: kit `_bits.dart`, `_bits2.dart`.
+
+## e-series: repair as a search over repaired strings (2026-10-24)
+
+**Status: research line, not promoted.** The e engines break D1 by
+design: every candidate is a full PEG parse of a repaired string, and
+the final tree comes from one more parse of the chosen string with the
+library parser. They also keep a fixed cap of 400,000 parses per input
+(D2), and they fail gate b2 (`[,2,33,true]` should delete the comma;
+the second D8 reading). They are recorded because they answer one
+question the other lines could not: how good can repairs be when every
+answer is a real parse? Engines and the harness are in the kit
+(`squirrel-kit/dart/experiments/recovery/e1.dart` ... `e14.dart`);
+`_e7s.dart` and `_e14.dart` are copied into this repository.
+
+### The design
+
+A search state is a list of edits (delete, insert or substitute one
+character) applied to the input. Each state is parsed. If the parse
+fails, its children each add one edit, placed at or after the state's
+last edit and no later than the last position its parse examined: an
+edit further right cannot change what the parse saw. The characters
+worth inserting or substituting at a position are found by one parse
+with an unknown character there; only characters the parse compared
+against can change the result. States are expanded cost level by cost
+level. Characters appended at the end of the input count once in total,
+so a level is split by how many characters it appends at the end and
+stops at the first count that succeeds. Equal-cost results are ranked
+by matched literal text, then by how much real input the named
+constructs around the edits keep (the enclosure tie-break), then by
+later edits, then insert before substitute before delete.
+
+Because each answer is the parse of a string, its tree is a valid PEG
+parse of the repaired input. This is the property the pd and u lines
+got from PEG derivatives.
+
+### The single-edit ceiling
+
+Before e1, a script tried every single-character edit of every battery
+input and kept the best by the battery's own scoring. That oracle
+scores 0.9847, below z6's 0.9904, so a search that ranks single-edit
+repairs well is not enough on its own; the ranking among multi-edit
+repairs and the way edits are written into the tree decide the rest.
+
+### Engines and measurements
+
+Battery: 2,101 cases, `_research18.dart`, score / perfect %. Times are
+JIT wall times in this session. treeDiff and costDiff are against e7s
+(`BASE=e7s ... compare`). Rung k is `scale X 1000/k/1`, a 23.5k
+character JSON document with k errors.
+
+| Engine | Change | Battery | Time | 1 / 2 / 4 errors |
+|---|---|---|---|---|
+| e1 | the search, a full parse per state | 0.9208 / 68.3, 23 uncovered | 67.9 s | - |
+| e2 | substitutions and the completion found | 0.9582 / 70.5 | 133 s | - |
+| e3 | alphabet from the unknown-character parse | 0.9688 / 72.9 | 154 s | - |
+| e4 | incremental memo: results that examined no edit are kept in input coordinates, about 18 rule computations per parse | 0.9897 / 84.2, 24 uncovered | 193 s | - |
+| e5 (variants) | state signature prune, tie-break rules | 0.8104 to 0.9900 / 84.6 | 8.5-104 s | - |
+| e6 | enclosure tie-break by default, array memo; deletions and substitutions written into the tree | 0.9898 / 84.5, uncovered 0 | 5.2 s | 0.9 / 1.3 / 71.6 s |
+| e7 | progress rule: grow a state only if its last edit moved the parse on | 0.9898 / 84.5 | 4.2 s | - |
+| e7p | e7 plus a second pass without the progress rule | 0.9899 / 84.5 | 15.8 s | - |
+| e7s | the second pass only when the first finds nothing or a cost above 1, capped at that cost minus 1 | 0.9899 / 84.5 | 6.0 s | - / - / 86 s |
+| e8 | e7s with the second pass resuming from the states the first pass refused | 0.9899 / 84.5, treeDiff 0 | 4.6-5.5 s | 0.8 / 1.5 / >600 s |
+| e9 | one pass, also growing a state when the input expected at its failure changes | not run | - | 2.2 / 12.3 s / gives up at 37.7 s (deletes everything) |
+| e10 | grow only states that fail at the farthest position reached at the same or lower cost | 0.9798 / 82.6, treeDiff 73, costDiff 21 | 4.0 s | 0.74 / 1.1 / 18.6 s |
+| e11 | merge states that fail at the same position with the same expected input | 0.9596 / 73.7, treeDiff 358 | 10.2 s | 1.3 / 2.2 / 46 s |
+| e12 | drop a state only when a strictly cheaper state fails at the same position or later | 0.9899, treeDiff 0 | 5.5 s | 1.1 / 2.0 / >600 s |
+| e13 | e12 with the dominating front kept per cost level, and applied to the states resumed in the second pass | 0.9899, treeDiff 0 | 7.5 s | 1.8 / 2.7 / >300 s |
+| e14 | e8 with a window: edits only at or after the second-nearest start of a rule call that failed and examined the failure point | 0.9900 / 84.5, treeDiff 2, costDiff 2 (both higher) | 4.2 s | 0.20 / 0.23 / 61 s |
+
+The best e5 variant (0.9900 / 84.6) took 104 s; e6 kept 0.9898 at a
+twentieth of the time. With the farthest-reading repair committed, e6
+reached cost 19 on rung 16 in 82 s; without it, it fell back to cost
+23,556 (deleting the whole input).
+
+**Fuzzer** (`dl.sh` and `lf.sh`, 8 seeds x 400 cases per row, one run
+of four engines; worse is against the cheapest of the four; zd is z6):
+
+| Row | worse z6 / x513j / e7 / e7s | invalid z6 / x513j / e7 / e7s | e7s timeouts |
+|---|---|---|---|
+| dl seeds 1-8 | 72 / 162 / 65 / 47 | 35 / 22 / 7 / 0 | 0 |
+| lf seeds 1-8 | 99 / 129 / 61 / 39 | 35 / 26 / 18 / 0 | 0 |
+| dl seeds 9-16 | 100 / 160 / 67 / 50 | 46 / 25 / 10 / 0 | 0 |
+| lf seeds 9-16 | 108 / 166 / 59 / 31 | 44 / 43 / 18 / 0 | 0 |
+
+e7s returns no invalid tree in 12,800 cases and has the fewest worse
+costs in every row, held-out seeds included. e7's invalid trees are
+cases where the progress rule refused every path to the cheapest
+repair and the search ended on a fallback; the second pass finds them.
+The last one (input `b`, which needs `cc` appended) was a cycle key that
+ignored single-character literals.
+
+e14 against e8 alone, same rows: e14 worse 5 / 4 / 1 / 8, invalid
+4 / 2 / 1 / 5; e8 worse 0 and invalid 0 in every row. So the window
+costs a few repairs and, through them, a few valid trees (the fallback
+again); the cause of each invalid tree was not traced.
+
+Gates: e8 and e14 pass cx2, b1, `_freespan` (3 3 4 4 1), `_recommit`
+16/16 and cleanTreeDiff 0; they fail b2, and conformance prints
+`0 1 1 0 2 2` (z6: `0 1 1 0 2 3`, b2 passes).
+
+### What worked
+
+- **The incremental memo (e4).** A rule result that examined no edit is
+  valid for every repaired string that leaves its window alone, so it
+  is stored once in input coordinates. Same answers as e3, about 18
+  rule computations per parse instead of a full parse.
+- **The enclosure tie-break.** Among equal-cost repairs, prefer the one
+  whose named constructs keep more real input. It took e5 from 0.9894
+  to 0.9898 / 84.5.
+- **Writing deletions and substitutions into the tree as the library
+  parse saw them (e6).** Uncovered cases 24 to 0 with the score kept.
+- **The progress rule (e7)**, then **the second pass (e7s)**: a state
+  grows only if its last edit read further, was read where the parent
+  failed, or appends at the end. Without it, inserting anywhere the
+  parse reads multiplied the cost-2 states by about 100 (battery 43.8 s
+  against 4.6 s); the second pass, run only when needed and capped below the first answer,
+  restores the cheapest repair in the cases the rule cut.
+- **The failed-call window, K = 2 (e14).** Edits only at or after the
+  second-nearest start of a rule call that failed and examined the
+  failure point. Battery unchanged in score (two costs higher), 1 and
+  2 errors on 23.5k characters in about 0.2 s instead of 0.8-1.5 s.
+
+### What did not work
+
+- **e9's expected-input rule:** finds the cases the progress rule
+  missed in one pass, but 1 error takes 2.2 s and 4 errors give up.
+- **e10's farthest-failure rule and e11's merge:** both fast on 4 errors
+  (18.6 s, 46 s), both lose repairs (0.9798, 0.9596). A state that fails
+  earlier is not dominated by one that fails later.
+- **e12 and e13's cost dominance:** exact on the battery, no faster on
+  4 errors.
+- **Other windows (e14 variants, battery then 4-error rung):**
+
+  | Window | Battery | treeDiff / costDiff | 4 errors |
+  |---|---|---|---|
+  | calls in the changed memo only, K = 1 | 0.9898 | 4 / 0 | 80 s |
+  | calls in the changed memo only, K >= 2 | 0.9899 | 0 / 0 | >300 s |
+  | changed memo + input memo, extent past the failure, K = 1 | 0.9886 | 60 / 20 | 61 s |
+  | extent at or past the failure, K = 1 | 0.9739 | 208 / 122 | 1.3 s, cost 7 (wrong) |
+  | extent at or past the failure, K = 2 | 0.9899 / 84.3 | 61 / 9 | 0.46 s, cost 4 |
+  | extent at or past the failure, K = 3 | 0.9898 | 23 / 0 | >300 s |
+  | failed calls only, K = 1 | 0.9782 | 122 / 76 | 21.7 s, cost 7, 2.7 GB |
+  | **failed calls only, K = 2 (kept)** | **0.9900 / 84.5** | **2 / 2** | **61 s** |
+  | failed calls, successful calls if fewer than K | 0.9889 | 72 / 15 | 61 s |
+
+  The extent K = 2 variant is the only one fast on 4 errors with the
+  right cost, but it raises the cost of six battery cases with a
+  missing `]` (176, 211, 220, 229, 541, 647): no rule starts at the `,`,
+  so the array is the third-nearest call and the window cuts it off.
+
+### Why 4 errors are still slow
+
+Trace of e14 on rung 4: at the third error (position 12,433) the only
+failed call enclosing the failure is the whole document, at position
+0, so the window falls back to the start of the input. The cost-3 level
+then holds 75k states and cost 4 holds 375k (577k parses, 58 s).
+Open: a window for the case where fewer than K failed calls enclose
+the failure. Successful calls as a fallback did not help. The z line
+handles the same rung (64 errors) in 0.58 s JIT because it settles each
+isolated repair once clean input follows it; the e search has no
+equivalent and its work grows with the product of the choices at each
+error.
+
+### Traps met
+
+- `_research18.dart compare` compares against `BASE` (default c17), so
+  e-series runs must set `BASE=e7s`; without it e8 showed treeDiff 2,079
+  against itself.
+- `_tree` and `_children` read the memo of the most recent parse, so
+  they must run before any other state is parsed (an e10 bug).
+- Each `dart run` recompiles from the file: editing an engine while a
+  background run of it is compiling mixes versions. One rung result
+  (1000/4/7, 213 s, 1.05 GB) is discarded for this reason.
+
+### LOC (`loc.py`, normalized / raw)
+
+| Engine | LOC |
+|---|---|
+| z6 | 716 / 413 |
+| e7s | 659 / 429 (-57, -8.0% vs z6) |
+| e8 | 671 / 429 (+12, +1.8% vs e7s) |
+| e13 | 685 / 438 |
+| e14 | 709 / 456 (+38, +5.7% vs e8) |
+
+### Standing of the line
+
+e7s and e8 lead every engine on valid trees together with fuzzer repair
+cost: 0 invalid trees in 12,800 cases and the fewest worse costs, at
+0.9899 on the battery, in fewer lines than z6. They lose on battery
+time (4.6-6.0 s against z6's 2.8 s and c14's 0.4-0.6 s), on many errors
+(4 errors: 61 s or more against 64 errors in 0.58 s for z6), on gate b2,
+and on D1. Whether the parse-per-state cost can be brought under the
+memo sharing the D1 rule asks for, without losing the validity, is the
+open question this line leaves.
 
 ## 4. The c-series arc — what each engine taught
 
