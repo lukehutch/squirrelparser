@@ -10552,3 +10552,245 @@ c12's names unchanged (its one addition is a local boolean).
 | `_far`/`_peg` | `_clean`/`_chosen` | the two firstDoubt sentinels |
 | `_never` | `_impossible` | minChars for "cannot match" |
 | `lit:` | `insideLiteral:` | `_readSlots` flag for the replace repair |
+
+## 9. The breakthroughs, distilled (2026-10-24)
+
+This section condenses the whole record, from m1 to z8 and the e-series, into the ideas that
+actually moved size, robustness, speed, validity or quality. Six readers each covered one era
+of this file plus the memory notes and the engine sources that still exist; each claim below
+was taken from their reports and checked against the line numbers they cite. "Recorded" means
+this file states it; "inferred" means it is analysis, not a measurement.
+
+Eras: **A** m/r/s/c1-c19 (2026-07 to 09-06); **B** c20-c25 and cdx1-cdx10 (09-06 to 09-23);
+**C** cdx11-cl20 (09-23 to 09-30); **D** cl21-u28, pd (10-01 to 10-06); **E** sk/x
+(10-07 to 10-21); **F** z/e (10-22 to 10-24).
+
+### 9.1 The ideas that mattered
+
+**Search: what made many errors and long inputs finish**
+
+| Idea | Engine, era | What it bought | How it was found | Why it worked (inferred unless marked) |
+|---|---|---|---|---|
+| Budget 0 is the parser; the budget ladder is the search horizon (I101) | c-line, A | deleting the ladder cost ~100x latency, twice | two failed attempts to delete it | most documents need few edits; a rung only explores readings costing at most its budget |
+| Each child gets only the budget that is left | c14, A | growth n^3.5 to about linear at fixed budget | profiling: the sweep asked every step at the whole budget | a reading that has spent its budget cannot afford more alternatives, so they are never built |
+| The left-recursion grow loop is the recovery loop (I100) | c-line, A | one fixed-point loop serves both | unifying two loops that did the same thing | both iterate until the memo stops changing |
+| Stop prune: keep only the stops the input dictated | c20, B | front insertions 7.89M to 2.79M, 100k input 5.2 to 2.8 s, trees bit-identical | counting where front insertions came from, not making each one cheaper | PEG repetition is greedy, so a continuation never starts at an interior item end on clean text |
+| Cost scales with the number of repairs, not length (diagnosis) | c20/c21, B | redirected all scaling work to lower bounds | 1000/4 0.44 s, 1000/8 10.2 s, 1000/12 unfinished; five local prunes refuted | the front carries whole-document totals, so ways to split them multiply per error |
+| An admissible floor prunes inside each rung | c25, B | 12 errors: unfinished to 1.7 s; 16 errors 4.1 s | floor used only to pick the starting rung gained nothing (recorded) | it kills exactly the bills that cannot finish within budget, before they enter the front |
+| Bound remembers the last return site | cdx10, B | 32 errors 39.8 to 3.2 s; 64 errors finish in 3 s; -1.5% lines; same trees | `_boundstat8` showed every deleted bracket is free to a regular bound | bracket balance is not regular; one remembered call site captures nearly all of it, and the automaton stays finite |
+| Semi-naive growth sorted by end | cl12, C | left recursion 8,192 terms 44 s to 316 ms; with an error, linear | re-derivation count in the grow loop | each round extends only the readings that changed |
+| Diverse retry | cl13, C | no-repair failures 10 to 0 | fuzzer cases with no answer | a retry keyed apart finds the reading the first pass evicted |
+| Shared gap scan, position worklist, gallop/bisect over budget, bound bought after counted work | cl14, C | all 46 families finish | the family table | answers are monotone in budget, so a ladder can bisect; buying the bound late keeps one-error inputs cheap |
+| Explicit stack, then frames | cl21/cl22, D | depth 400 to 1,600 at cl20's speed | stack overflow on nested input | Dart has no stack-size flag |
+| Sharing: one derivative automaton, GSS continuations, classes | pd46, D | 18.5 to 2.0 s battery | profiling pd23 | the same continuation was rebuilt per reading |
+| Two-part bound with return-site rows | u21, D | 6-12 error rungs over 300 s to 1.5 s | cdx10's bound moved into the derivative search | same reason as cdx10 |
+| Gain-measured offers with a partial re-parse | sk4/sk6, E | 64/1 rung 14,781 to 415 | taking the first matching skip was too greedy | "reads farthest for least" stands in for the rest of the document's cost; re-parsing only what read to the offer makes measuring cheap |
+| First-gain bound w1 | sk8f..x504i, E | many-error rungs finish | deleting it: 64/1 unfinished in 18 minutes (D50-2) | it caps the deletion length; it is not admissible (`'b'+` costs 4 vs 2) |
+| Exact skip bounds | x482o, E | battery Ir -49%, same trees | reading which offers could never win | the test `n+1-p <= b.r-b.c` is a proof, not a guess |
+| Credit settlement: the budget limits unconfirmed edits only | z-line, F | k errors cost a sum, not a product; 64 errors in 470 ms | z2's design | once a later stretch of input confirms an edit, the edit no longer limits the search |
+| Cut obligations | z-line, F | O(n^3) to linear on its family | profiling | a cut means nothing before it can change |
+| Bottom-up sweep on stack overflow; depth-scoped left-recursion marks | x471j, z-line, E/F | nesting 705 to 3,200, same trees | Dart has no stack-size flag | filling the deepest entries first makes the retry shallow |
+| Window over the latest failure | c17/c18, e14, A/F | 200k characters in 5 s (c18) | memory profiles | most errors are local; c21's counterexample shows this is a heuristic |
+| Deferred clean-path setup | c25, B | clean latency -45.6%, zero tree changes | reading the clean path | a clean document never needs recovery state |
+
+**Validity and robustness: trees that parse their own repaired string**
+
+| Idea | Engine, era | What it bought | How it was found | Why it worked |
+|---|---|---|---|---|
+| Every failure a tree relies on must still hold on the repaired string | cdx11l/r, C | invalid 26/21 to 6/7/6/17 | fuzzer witnesses | a PEG choice or lookahead decided on the original text can decide differently on the repaired text |
+| Write insertions into the tree; match literals one character at a time | sk7q, E | fuzzer invalid 1,543 to 159 | the invalid count was meaningless until the tree held the inserted text | the tree becomes a parse of a repaired string, so it can be checked |
+| One-letter substitution only | cl-line, C | keeps the bound admissible | a whole-literal substitution undercut the bound | a substitution of a literal is several letter edits |
+| An iteration that adds no character is not an iteration | cl24, D | strict invalid 68 to 50 | `_samedw` witnesses | an empty iteration lets a repetition read text PEG would not |
+| Offer a deletion unless a clean reading advances | cdx9m, B | 51 costs lower, none higher; fuzzer worse 10 to 1 | one-line reading of `_seq` | an empty match is not evidence that the slot read the input |
+| mustAdvance; ordered-choice nullability | z-line, F | closes the empty-literal loop class | fuzzer | same as above, at the repetition |
+| Derivative search: accept only what PEG accepts | pd23, D | 0 invalid, 0 worse | design | the search state is a PEG derivative, so every accepted string is in the language by construction |
+| Search over repaired strings, tree read from the search | e7s/e8, F | 0 invalid in 12,800 cases; worse 55/47/51/35 vs z7's 90/98/96/95 | design, after z-line validity guards kept leaking | the same construction as pd23, in the memo parser |
+| Exhaustive fuzzer with a minimum-cost witness | cdx1 round, B | made invalid and costlier-than-minimum answers visible | the battery could not see them | a finite exhaustive check on small grammars is a proof for those grammars |
+| Fuzzer witness tightened (`_samedq`, `_samedw`) | rounds 5 and 19, C/D | 312-370 of 400 cases had been skipped; true invalid 68, not 50 | auditing the checker | a check that skips cases reports success |
+
+**Judgment: which of several equal repairs to keep**
+
+| Idea | Engine, era | What it bought | How it was found | Why it worked |
+|---|---|---|---|---|
+| Judge whole documents simultaneously | c1, A | greedy commit's ceiling is 0.8826 (b2); c-line reaches 0.990 | the b-line plateau | the right choice depends on repairs not yet made |
+| Five-key rank, latest rival wins ties | c-line, A | the tie rule alone is worth 2.4 points of perfect (c20) | ablation | a later reading has seen more of the input |
+| About 0.48 of the score is judgment, not search | c13b, A | scalar minimum-cost DP scores 0.5110 | probe | many readings have the same cost |
+| 83% of x464a's gap to z8 is equal-cost tie choice | x464a audit, E | named where the x-line loses | per-case score diff | x464a has no ranking keys, only first found |
+| Penalty becomes the `avoidable` tie-break after cost | cl8, C | eleven rules deleted, 802 to 712 LOC, same score | deleting rules one at a time | a penalty that only breaks ties does not need its own price |
+| `_wins`: compare offers by the fixes that follow them | sk9y6, E | 0.9647 to 0.9802; without it 0.9728 | measuring greedy failures | a bounded lookahead prices the repairs a fix forces later |
+| Delete the cyclic key | cl16, C | the ranking became transitive | inconsistent orders in the fuzzer | a non-transitive order makes results depend on arrival order |
+| Order-independent tie-breaking by grammar identity | c22, B | zero differences with traversal reversed | reversing traversal | ties no longer depend on exploration order |
+
+**Size and elegance**
+
+| Idea | Engine, era | What it bought | How it was found | Why it worked |
+|---|---|---|---|---|
+| One fix kind (s, j): the Aho-Peterson covering grammar | sk3 to x445zzo, E | 0.45 to 0.91; 531 to 297 lines | sk7's terminology correction | skipping an element is inserting its shortest text; one loop serves deletion, insertion, substitution, closing |
+| Repair is the ordinary memo parser with fixes in force | x464a, E | 306 lines at 0.9811; left recursion and memo from the library | sk2's skeleton kept through every sk round | the memo table is the search state; there is no recovery data structure |
+| The recovery cell lives on the library MemoEntry (D1) | z-line, F | no duplicate parse; checks read the memo | the user's ruling | one table, one parse |
+| Derive, don't account | c5/c6, A | -104 LOC | counters that duplicated what a walk could read | a value read from the tree cannot disagree with it |
+| Window edge is a count of marks | c20, B | 886 to 742 LOC (-16.3%); two rungs that never finished now finish | noticing the stack walk computed one position | the repetition already knows when it finishes an occurrence |
+| Fold heads that always move together | c20 lesson 64, B | three of eight heads deleted; score up | ablation | a false incomparability blocks real domination |
+| True field elimination, no bit-packing | z8, F | 716 to 500 LOC | packing caused overflow defects | fewer fields, not denser fields |
+| Data layout: flat records, arrays per rule body | x464a, E | battery Ir 2.16x lower, same trees | a nested record match cost 15.8G of 51.9G Ir | Dart's pattern match on nested records calls a runtime type test |
+
+**Method**
+
+| Idea | Era | What it bought |
+|---|---|---|
+| Gates for what the battery cannot see: `_conf1`, `_freespan`, `_recommit`, b2 | A | 31 engines were found to lie about cost (`_conf1`) |
+| Measure the shape first (I93, I115) | A | re-derivation was only 29%, which refuted the planned semi-naive chart for c-line latency |
+| Ablate every part; check held-out seeds | C, F | sealed sharing worth 19x (cdx11o); z6's validity gain was partly fitted (invalid +31% on unseen seeds) |
+| Compare whole trees with `compare`, not the scored dump | B | c18 "same as c17" was 146 different trees |
+| Time with AOT; name the rung as generator arguments | B, C | JIT hid gaps; "150k seed 7" could not be reproduced |
+| Keep an independent comparator (cdx1) | C | caught answers the cl-line's own checks could not |
+
+### 9.2 Decisive refutations
+
+| Idea | Result | Where |
+|---|---|---|
+| Greedy commit can reach the c-line's score | b2 ceiling 0.8826; x-line every tree change lowered the score | era A, E |
+| Proximity windows are a principle | `S <- P / A` on `a^n )` loses P at n >= 8 in c20 and c25 | c21, lesson 65 |
+| Opening every position instead of windows | 8 errors 64 s, 12 unfinished | c25 (third refutation) |
+| Adding a bracket count to the regular bound | sum exceeds the true cost (not a lower bound) | synthesis round |
+| Packed AND/OR forest as a speed fix | 1000/4/1 43.9 s / 11.8 GB | c22 |
+| Protecting the ordinary parse's prefix | removing a `{` costs 44 instead of 1 | c23 |
+| Repetition-only recovery | 0.4498 | sk2 |
+| Deleting or relaxing w1 | 64/1 unfinished in 18 minutes | x504j/k/m |
+| Diverse key wider than one class | width 3 38.7 s, 4 over 240 s | round 24 |
+| Bit-packing fields | overflow defects | z6/z8 |
+| Merging the e-line with a z-line search | 0.9798 and 0.9596 | e10, e11 |
+| Dominance between search states | trees changed, no gain | e12, e13, x482o first form |
+
+### 9.3 Measurement traps that produced false results
+
+- Two batteries (era-3 and the 13,241 raw cases) and two LOC conventions (raw and normalized;
+  `loc.normalised` returns (raw, normalized)) were mixed more than once.
+- `battery` prints `treeDiff=0` unless the word `compare` is passed.
+- `_recommit17/18` imported the wrong resolver, so a recorded "0 of 1" never ran.
+- The scored dump omits perfect cases, so equal dumps can hide different trees.
+- The x-line worse/better counter printed 0/0 because the CAT=1 output had no `^SCORE` lines.
+- The old fuzzer never tested multi-letter literals, and `_samedq` was too loose.
+- Blended ratios and JIT warm-up hid real differences; use AOT and per-family numbers.
+
+### 9.4 Corrections to earlier sections
+
+- **z8 section (lines 9393-9407):** the description of `then` does not match the code. In
+  z8.dart:25-26 `owed` and `spent` are plain sums (`o = owed + r.owed`, `p = spent + r.spent`);
+  nothing settles `owed`, and no term is subtracted from `spent`. The flag `s`, which the caller
+  computes with `settle(o)`, only resets the prefix's `used` to 0.
+- **z8 "0% duplicate work"** holds only at rule level. `_plain` on non-rule clauses
+  re-matches inner clauses.
+- **z8's generality:** it contains grammar-shape special cases at z8.dart lines 19, 21, 69-86,
+  108-131, 199-218, 238-259 and 317-321.
+- **e4 row:** e4 matched e3's results; a tree-writing fix was made after that and before e4's
+  battery run.
+- **c25/c20 `wide`** (lesson 61) is a heuristic, not "a bound on the search" (lesson 65).
+
+### 9.5 What the breakthroughs have in common (inferred)
+
+1. **The large speedups were all exact prunes.** The stop prune, the floor inside each rung,
+   the return-site bound, exact skip bounds and credit settlement each remove only work that
+   provably cannot change the answer. Every heuristic prune (windows, caps, w1, wide) was later
+   shown to lose answers on some input.
+2. **The large size reductions all came from making one mechanism do two jobs.** Budget 0 is
+   the parser; the grow loop is the recovery loop; one fix kind is every repair; the memo table
+   is the search state; the window edge is a count the repetition already makes.
+3. **Validity came only from construction.** Every guard-based validity fix (cdx11r, cl24,
+   x472, z5-z8) reduced invalid trees but never to zero, and held-out seeds showed part of the
+   gain was fitted. Only searches whose state is a parse of the repaired string (pd23, e7s, e8)
+   reached 0.
+4. **Quality is mostly judgment among equal costs.** 0.48 of the score separates a scalar DP
+   from the c-line, and 83% of x464a's gap is tie choice. The keys that matter: a later rival
+   wins ties, fewer avoidable edits, and PEG's own reading of the input.
+5. **Scaling to many errors needs the search cost to be a sum over errors.** Credit settlement
+   (z) and windows (c17/c18, e14) do this; a global front with whole-document totals (c19, c20)
+   does not.
+
+## 10. The f-series: e8 made to scale while keeping its trees valid (2026-10-24)
+
+The aim, from section 9.5: keep e8's validity by construction (a state is a list of edits, and
+its parse is a parse of the repaired string) and make the search cost grow with the number of
+errors rather than combinatorially. Kit: `squirrel-kit/dart/experiments/recovery/f*.dart`.
+Engine copied to `dart/experiments/recovery/_f10.dart`. Rungs are `scale ENG 1000/k/1`
+(23.5k characters of JSON, k errors). Fuzzer counts are over seeds 1-16, 400 cases each, for
+both `_samedl` (dl) and `_chk48f` (lf), so 12,800 cases in all.
+
+### 10.1 Steps
+
+| Engine | Change on its parent | Result | Verdict |
+|---|---|---|---|
+| f1 | e8 + settle-merge: at one cost level, states with an equal `_span` key become shadows of one representative; when a descendant finishes, each ancestor's shadows are re-tried with its later edits | rungs 1-2 finish (0.8, 1.2 s); 3-4 over 300 s | kept, but the key was unsound (10.2) |
+| f2 | f1 + e14's K=2 window | rung 4 27.5 s, 8 over 300 s | superseded by f3 |
+| f3 | f1 + window `_left`: the innermost failed call starting before `far`, extended back to the construct ending last before it | battery 0.9900, 9 trees differ from e8, 1 cost higher (i=541); rungs 1 0.2 s, 4 0.9 s, 8 49 s | kept for speed; window not admissible (10.3) |
+| f4 | f3 + one closed set across levels, `edits.length` dropped from the key | no speedup, 34 costs differ | rejected |
+| f5 | f3 + frontier prune: a state of cost c whose `farIn` is below the farthest position any cost c-1 state reached is dropped; one `front` for both passes; held seeds go through the level loop | battery identical to f3; rung 8 4.7 s, 16 91 s; 64 reaches the 400k evaluation cap | kept |
+| f6 | f5 + grow only the states with the fewest open calls per `farIn` | rungs 8 1.7 s, 16 4.8 s, 64 86 s (3.2 GB); battery 0.9503, i=640 cost 2 -> 48 | rejected |
+| f8, f9 | f7 with out-of-window edits deferred to pass 2 instead of dropped (f9: one deferred edit, then windowed again) | dl worse 19 / 21, invalid 2 / 2 (seeds 1-8); rung 4 26 / 17 s, 8 112 / 116 s | rejected: deferral brings back the search the window avoided |
+| f10 | f5 + failed-terminal key (10.2) + fallback search without window or prune (10.3) + replay ordering fix (10.4) | see 10.5 | current f-line best |
+
+### 10.2 The merge key could not see progress inside a literal
+
+`_span` hashes `farIn`, the edit count, and the memoized rule calls whose extent passes `far`.
+Progress inside a multi-character literal, or inside a sequence of terminals in one rule body,
+is not memoized, so two states at different places in the same literal got equal keys.
+Example: `R0 <- 'c'+ "aabb"` on `cbb`. Inserting `c` at 1 (extends `'c'+`) and inserting `a`
+at 1 (starts `"aabb"`) both fail at position 2 inside the same `R0@0` call; the second was
+merged into the first, and f1 returned cost 3 (delete everything) where e8 returns 2.
+
+Fix: during each parse, record the terminals whose failed read reached farthest, as (clause,
+distance from where the terminal started), and add that set to the key (`_fail`, `_fails`,
+`_gmax` in `_f10.dart`). Measured on dl seeds 1-8 in the same run as e8: f1 worse 33 -> 2,
+invalid 2 -> 0 (f1k). This is an exact refinement of the key; it adds no heuristic.
+
+### 10.3 The window drops repairs; a fallback recovers the worst cases
+
+The window is a restriction, not a search order: edits before `left` are never generated.
+Example: `R0 <- "caaab" / 'c' / R2; R2 <- 'a' R0 R2++` on `aaab`; the repair is inserting `c`
+at 0, before the innermost failed call, and f3 deletes the whole input (cost 4 against 1).
+f3 with the key fix (f3k), dl seeds 1-8: worse 36, invalid 5; 4 of the 5 invalid trees are
+whole-input deletions. Deferring the out-of-window edits (f8, f9) is sound but each deferred
+state costs a full parse of the input, and the rungs slow by 20-30x.
+
+f10 keeps the window and adds one fallback: when the windowed search finds no repair at all,
+search again with no window, no frontier prune, a fresh `front`, and a fresh evaluation
+count. The fresh count matters: on `babbbcbbcccb` (lf seed set 9-16) the windowed search used
+all 400k evaluations, and without the reset the fallback had none left. That case now
+returns cost 3 but takes 9 s on a 12-character input.
+
+### 10.4 The replay produced an edit order the tree builder cannot render
+
+`finish` re-tries a shadow `s` with the descendant's later edits when the first of them is at
+a later position, or at the same position after an insertion. It allowed a substitution after
+an insertion at the same position, which `_children` never generates; the string was right
+(`cabc` -> insert `c` at 1, substitute `a` -> `b` at 1 = `ccbbc`), but `_tree` drew two
+one-character errors at position 1. Fix: at an equal position the later edit must also be an
+insertion, the same rule `_children` uses.
+
+### 10.5 f10 measured
+
+| Check | e8 | f5 | f10 |
+|---|---|---|---|
+| battery score / perfect % | 0.9900 / 84.5 | 0.9900 / 84.5 | 0.9900 / 84.5 (9 trees differ from e8, i=541 cost 1 -> 2) |
+| gates | b2 fails | b2 fails | b2 fails; cx2, b1, freespan, recommit 16/16, conformance as e8 |
+| rung 1 / 4 / 8 / 16 errors | 0.2 s / over 300 s / - / - | 0.2 / 0.9 / 4.7 / 91 s | 0.2 / 0.56 / 5.3 / 107 s (16 measured before 10.3-10.4) |
+| rung 64 | - | 400k cap, deletes the document | not re-run; expected as f5 |
+| dl seeds 1-16, invalid / worse than the other | 0 / 4 | 12 invalid on seeds 1-8 alone | 0 / 44 |
+| lf seeds 1-16, invalid / worse than the other | 0 / 4 | - | 0 / 38 |
+| held-out 9-16 against z8 (dl, lf invalid) | 0, 0 | - | 0, 0 (z8 64, 62) |
+| depth `[`*n | stack overflow at 1600 | - | same |
+| `x (ab)*n` (n errors) | deletes all at every n | - | optimal to n=200 (22 s), deletes all from 400 |
+| LOC raw / normalized | 429 / 671 | 478 / 742 | 493 / 777 (+64 raw, +14.9% on e8) |
+
+### 10.6 Corrections and open items
+
+- **Correction (this session, before this section was written):** f6's 148 "lower costs" on
+  the battery are not repairs e8 misses. Characters appended at the end cost 1 in total in the
+  search (`costOf`), so appending `"":0}` to `{"a":1,` and substituting `,` -> `}` tie at
+  cost 1; `lastCost` reports `best.edits.length`, which is 5 for the append. Cost comparisons
+  on truncated inputs compare edit counts, not search costs.
+- **Still open:** rung 64 (equal-cost repairs that leave different constructs open multiply
+  across errors; f6's open-call rule bounds this but raises 73 battery costs); D1 (`_tree`
+  re-parses with the library parser); D2 (the 400k cap, now applied twice); b2; stack depth;
+  the frontier prune is not admissible (it changed no battery result but is part of the 44/38
+  fuzzer losses, with the window); the fallback's 9 s worst case.
