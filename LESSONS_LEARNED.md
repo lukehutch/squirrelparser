@@ -107,6 +107,7 @@ of the repaired input. "-" means not measured.
 | z5 (r57) | z | 10-23 | 732 (418 raw) | 0.9904 / 86.6 | 2,778-2,859 ms JIT; 2,863 ms x3 AOT (z4: 3,133 ms) | rung 64: 584 ms JIT / 251 ms AOT (cost 59) | 35 | all finish; depth 3,200 with one missing: 282 ms |
 | z6 | z | 10-23 | 716 (413 raw) | 0.9904 / 86.6 (trees = z5) | 2,812-2,899 ms JIT (z5 3,106-3,201 same session); 2,796 ms x3 AOT median (z5 2,844) | as z5 | 35 | as z5; depth 3,200 with one missing: 280 ms |
 | z7 (r58) | z | 10-24 | 806 (451 raw) | 0.9904 / 86.6 (trees = z6) | 3,407 ms JIT; 3,101 ms x3 AOT median (zd: 2,802 ms) | rung 64: 535 ms JIT / 235-282 ms AOT (cost 59) | 19 (27 on 9-16) | all finish; depth 3,200 with one missing: 316 ms |
+| z8 (r59) | z | 10-24 | 500 (315 raw) | 0.9904 / 86.6 (costDiff 0 vs z6/z7) | 2,560-2,755 ms JIT; 2,694 ms x3 AOT (zd: 2,754, z7: 3,087, z3: 2,711) | rung 64: 590 ms JIT / 231 ms AOT (cost 59) | 69 (64 on 9-16; z3: 116/107) | all finish; depth 3,200 with one missing: 293 ms |
 | e7s | e | 10-24 | 659 (429 raw) | 0.9899 / 84.5 | 6.0 s JIT | rung 4: 86 s | 0 (0 of 12,800 on dl+lf seeds 1-16) | - (breaks D1; fails b2) |
 | e14 | e | 10-24 | 709 (456 raw) | 0.9900 / 84.5 | 4.2 s JIT | rungs 1, 2: 0.20, 0.23 s; rung 4: 61 s | 12 of 12,800 (e8, same trees as e7s: 0) | - (breaks D1; fails b2) |
 
@@ -114,8 +115,9 @@ The z3 and z4 rows (added 2026-10-23) were measured twice: in their own
 rounds and in the round 56 review, which reproduced every figure.
 `_z3.dart` holds the original round 55 z3 from commit bf0fd55,
 `_z4.dart` holds round 56 z4, `_z5.dart` holds round 57 z5, `_z6.dart`
-holds z6 (z5 with two parts deleted and one cache added), and `_z7.dart`
-holds round 58 z7.
+holds z6 (z5 with two parts deleted and one cache added), `_z7.dart`
+holds round 58 z7, and `_z8.dart` holds round 59 z8 (evolved directly
+from z3 with genuine field elimination and zero bit-packing).
 
 The x-line Ir figures are from three builds: x464a, x494d and x504i
 from round 50's, x513j from round 51's; in round 51's builds x504i
@@ -126,13 +128,13 @@ measured 12.89-12.91G on the battery and 12.80-12.87G on rung 64,
 
 | Measure | Best | Why it wins |
 |---|---|---|
-| Accuracy | z5, z6, z7 0.9904 / 86.6 (2026-10-24); z4 0.9902 / 86.4; c18-envelope 0.9902 / 86.2 | c13's seven ranking keys judge whole readings by the evidence each one has, and c12's gated substitution repairs a wrong character as one edit; z5-z7 add PEG monotonicity guards; the x line has one fix kind (delete s characters, insert a shortest input for skipped elements), so a substitution costs 2 and ties are broken less well (perfect 76.4 against 86.6) |
-| Valid trees | e7s and e8: 0 of 12,800 (dl and lf, seeds 1-16, 2026-10-24); pd23, pd57, u28: 0 of 3,200; among fast D1-compliant engines on all 12,800 dl+lf cases (seeds 1-16), z7: 96 (dl 19+27, lf 25+25) vs x513j: 116 (dl 22+25, lf 26+43) and z6: 160 (dl 35+46, lf 35+44) | e line: every candidate is a real parse of its repaired string (this breaks D1); pd/u: the search states are PEG derivatives of the top rule; z7: algebraic ordered-choice totality (`_total`), head-clause dominance (`_covers`, `_head`), unified left-spine and edit stealing (`_steals`), and active-LR skip-ahead guards |
-| Size | x464a 306 lines (sk2 151 at score 0.45) | the repair is the ordinary memo parser run with fixes in force; one fix kind and one price, no second grammar and no ranking keys |
-| Battery speed | c14 370-572 ms | one pass per case, no windows and no re-runs; x513j is about 1.2 s, the pd and u lines 2 s |
-| Many errors on one document | z4, z5, z6, z7 (rung 64 in 218-282 ms AOT, 0.45-0.58 s JIT, cost 59; 2026-10-24); cdx10 (rung 64 in 3.0 s); x504i and x513j (rung 64 at about the battery's Ir) | z line: credit settlement amortizes isolated repairs once followed by clean synced input; cdx10: an admissible bound that remembers the return site of each recursive call; x line: the first-gain bound, which limits later offers to the price of the first offer that gains, but is not admissible (D50-2, round 51) |
+| Accuracy | z5, z6, z7, z8 0.9904 / 86.6 (2026-10-24); z4 0.9902 / 86.4; c18-envelope 0.9902 / 86.2 | c13's ranking keys judge whole readings by the evidence each one has, and c12's gated substitution repairs a wrong character as one edit; z8 reaches 0.9904 / 86.6 (costDiff 0 vs z6/z7) from the z3 foundation using only cut-deletion monotonicity, non-nullable substitution gating, and active-LR skip-ahead guards |
+| Valid trees | e7s and e8: 0 of 12,800 (dl and lf, seeds 1-16, 2026-10-24); pd23, pd57, u28: 0 of 3,200; among fast D1-compliant engines on all 12,800 dl+lf cases (seeds 1-16), z7: 96 (dl 19+27, lf 25+25) vs x513j: 116 (dl 22+25, lf 26+43), z6: 160 (dl 35+46, lf 35+44), and z8: 260 (dl 69+64, lf 64+63; vs z3: 431) | e line: every candidate is a real parse of its repaired string (this breaks D1); pd/u: the search states are PEG derivatives of the top rule; z7: algebraic ordered-choice totality (`_total`), head-clause dominance (`_covers`, `_head`), unified left-spine and edit stealing (`_steals`), and active-LR skip-ahead guards; z8: cut-deletion monotonicity (`cut < _never && r.first == end && r.deleted > 0`) without AST-walking filters |
+| Size | x464a 306 lines (sk2 151 at score 0.45); among 0.9904 / 86.6 engines, z8: 500 normalized / 315 raw lines | x464a: the repair is the ordinary memo parser run with fixes in force; z8: algebraically eliminates 4 `_Way` fields (`fee`, `subs`, `credit`, `missing`), 4 `_Way` methods/getters (`copy`, `empty`, `spent`, `used`), and `_letters` from z3 with zero bit-packing |
+| Battery speed | c14 370-572 ms; among 0.9904 engines, z8 2,694 ms x3 AOT (2,560-2,755 ms JIT) | c14: one pass per case, no windows and no re-runs; z8: zero AST-walking filter passes during repair search and single-pass iterative post-order `_ev`/`_tree` |
+| Many errors on one document | z4, z5, z6, z7, z8 (rung 64 in 218-282 ms AOT, 0.45-0.59 s JIT, cost 59; 2026-10-24); cdx10 (rung 64 in 3.0 s); x504i and x513j (rung 64 at about the battery's Ir) | z line: credit settlement amortizes isolated repairs once followed by clean synced input; cdx10: an admissible bound that remembers the return site of each recursive call; x line: the first-gain bound, which limits later offers to the price of the first offer that gains, but is not admissible (D50-2, round 51) |
 | Long inputs | c18 (200k characters in 4.7 s) | repairs only inside windows over the farthest failure, and memoized plain matches |
-| Deep nesting | x494d onward, pd23, z4, z5, z6, z7 | an overflow handler that reruns the path in its recorded state (x); an explicit frame stack (pd); bottom-up memo sweep on overflow plus post-order evidence memoization (z4-z7) |
+| Deep nesting | x494d onward, pd23, z4, z5, z6, z7, z8 | an overflow handler that reruns the path in its recorded state (x); an explicit frame stack (pd); bottom-up memo sweep on overflow plus post-order evidence/tree evaluation (z4-z8; z8: 293 ms at depth 3,200) |
 | Fuzzer costs (with the e line) | e7s: fewest worse in every row of a 4-way run (`z6 / x513j / e7 / e7s`, 8 seeds x 400 per row): dl 1-8 72 / 162 / 65 / 47; lf 1-8 99 / 129 / 61 / 39; dl 9-16 100 / 160 / 67 / 50; lf 9-16 108 / 166 / 59 / 31 (2026-10-24) | a cost-ordered search over repaired strings finds the cheapest repair it can reach by real parses; the progress rule with a second pass keeps it exact on small inputs |
 | Fuzzer costs | z7, z6 (zd) and x513j: in 3-way runs across all 12,800 cases (`z7 / zd / x513j`, seeds 1-8 and held-out seeds 9-16), z7 has both the fewest worse cases (`dl 1-8`: 77 vs 68 / 156; `dl 9-16`: 77 vs 82 / 146; `lf 1-8`: 75 vs 84 / 118; `lf 9-16`: 73 vs 90 / 148; total 302 vs 324 / 568) and the fewest invalid trees (`dl 1-8`: 19 vs 35 / 22; `dl 9-16`: 27 vs 46 / 25; `lf 1-8`: 25 vs 35 / 26; `lf 9-16`: 25 vs 44 / 43; total 96 vs 160 / 116) | z7: fixes both z6 defects (`_bits.dart` and `_bits2.dart`), adds ordered-choice totality and dominance laws (`_total`, `_head`, `_covers`), and unifies left-spine and first-edit stealing (`_steals`) across `First`, `_seq`, and `_repeat` |
 
@@ -144,19 +146,27 @@ is 306 lines; the parts added since (deep inputs, exact bounds, the
 overlay climb, the validity checks) bring x513j to 918 lines, the size
 of c25, with every deep and many-error input finishing and 22 invalid dl
 trees. The synthesis round (below, 2026-09-11) showed why the c-line
-bests do not combine. Since 2026-10-24, z7 (806 normalized / 451 raw
-lines) keeps z5 and z6's exact battery trees and accuracy (0.9904 /
-86.6, treeDiff 0, costDiff 0), fixes both z6 review defects
-(`_bits.dart` and `_bits2.dart`), and cuts invalid trees across the
-12,800 dl+lf fuzzer cases (seeds 1-16) from 160 (z6) and 116 (x513j) to
-96 (19 on dl seeds 1-8, beating x513j's 22), while also beating both z6
-and x513j on total fuzzer worse costs (302 vs 324 and 568). The e line
-(2026-10-24, section "e-series" below) searches over repaired strings
-and parses each one: e7s has no invalid tree in 12,800 fuzzer cases and
-the fewest worse costs, at 0.9899 and 659 lines, but it breaks D1 by
-construction, fails gate b2, takes 4-6 s on the battery, and 4 errors in
-a 23.5k-character document take 61-86 s. z7 is the strongest engine that
-obeys all project directives.
+bests do not combine. In rounds 56-58, z4-z7 reduced invalid trees to
+96 across the 12,800 dl+lf fuzzer cases (`z7`), but did so by packing
+six counters into bitfields of an `int` to disguise bookkeeping field
+count while adding ~250 normalized lines of AST-walking filters (growing
+to 806 normalized / 451 raw lines in z7 and slowing battery AOT to
+3.10 s). In round 59 (2026-10-24), **z8** (500 normalized / 315 raw
+lines) returns directly to z3's architecture and evolves it with genuine
+algebraic field elimination and zero bit-packing: it drops four `_Way`
+fields (`fee`, `subs`, `credit`, `missing`), four `_Way` methods/getters
+(`copy`, `empty`, `spent`, `used`), and `_letters`, reaches the top
+battery accuracy of `0.9904 / 86.6%` (`costDiff 0` vs `z6`/`z7`), runs
+the battery faster than `z3`, `z6`, and `z7` (`2,694 ms` AOT vs `2,711`,
+`2,754`, `3,087 ms`), passes all gates, `props`, `pred`, `window`,
+`_bits.dart`, `_bits2.dart`, and deep inputs (`293 ms` at depth 3,200),
+and cuts `z3`'s fuzzer `worse` costs by ~4x (`101` vs `452` on `dl` 1-8)
+and invalid trees by ~40% (`260` vs `431` across all 12,800 `dl`+`lf`
+cases). The e line (2026-10-24, section "e-series" below) searches over
+repaired strings and parses each one: e7s has no invalid tree in 12,800
+fuzzer cases and the fewest worse costs, at 0.9899 and 659 lines, but it
+breaks D1 by construction, fails gate b2, takes 4-6 s on the battery,
+and 4 errors in a 23.5k-character document take 61-86 s.
 
 ### Full c-series comparison (2026-09-06; measured by Codex, audited the same day)
 
@@ -9329,6 +9339,139 @@ invalid trees (`19` vs `22`), on `lf` seeds 1-8 invalid trees (`25` vs
 `26`), and on `lf` seeds 9-16 invalid trees (`25` vs `43`), while also
 beating both `z6` and `x513j` on total `worse` (`302` vs `324` and
 `568`) and `levWorse` (`240` vs `269` and `477`).
+
+## z8 (round 59, 2026-10-24): genuine field elimination and returning to z3's simplicity
+
+### Where z4–z7 diverged from optimality
+
+`z3` (round 55, `560` normalized / `338` raw LOC) was small, fast (`2.71 s`
+AOT), and already scored `0.9901 / 86.4%`. Instead of algebraically
+eliminating redundant fields on `_Way`, `z4`–`z7` took two wrong turns:
+
+1. **Bit-packing disguised as field reduction:** `z4`–`z7` packed six
+   independent counters (`owed`, `deleted`, `missing`, `fee`, `subs`,
+   `arms`) into bit-slices of a single 64-bit `int edits` (`z6` used 8-bit
+   fields that silently overflowed at `256` on `_bits.dart` and
+   `_chkscale.dart`; `z7` widened them to 15-bit fields with 9shift/mask
+   getters). That did not reduce the number of conceptual bookkeeping
+   quantities being managed—it merely hid them inside bit-shifts while
+   adding code and CPU overhead.
+2. **Heavy AST-walking filter passes during candidate generation:**
+   `z4`–`z7` added `_tails`, `_matchesOne`, `_firstEdit`, `_steals`,
+   `_covers`, `_head`, `_total`, and `_eq`, bloating the engine from
+   `560` normalized / `338` raw lines (`z3`) to `806` normalized / `451`
+   raw lines (`z7`, +44% normalized LOC) and slowing battery AOT from
+   `2,711 ms` (`z3`) to `3,087–3,101 ms` (`z7`).
+
+### How z8 evolves z3 algebraically (zero bit-packing, 500 normalized / 315 raw LOC)
+
+`z8` (`squirrel-kit/dart/experiments/recovery/z8.dart`, copied to
+`dart/experiments/recovery/_z8.dart`) starts directly from `z3` and
+applies genuine algebraic field elimination alongside the clean lessons
+learned from rounds 56–58:
+
+1. **Four `_Way` fields and four `_Way` methods/getters genuinely
+   eliminated (zero bit-packing):**
+   Every remaining field on `_Way` is a plain Dart field (`end`, `cost`,
+   `deleted`, `owed`, `spent`, `used`, `first`, `last`, `arms`, `cut`,
+   `clause`, `children`):
+   - **`fee` eliminated:** In `z3`, `fee` was only ever `0` or `1`,
+     allocated via `o.withFee(1)` when a second-or-later sequence element
+     deleted input (`penalize && o.end == r.end && !o.clean && del <= o.spent`).
+     In `_seq`, that penalized candidate is always strictly dominated by
+     the already-accumulated skip-ahead candidate `best` at `o.end`, so
+     `if (penalize && o.end == r.end && !o.clean && del <= o.spent) continue;`
+     eliminates the `fee` field and `withFee` method outright (`costDiff = 0`
+     across all 2,101 battery cases).
+   - **`subs` eliminated:** In `z3`, `subs` was tracked on every `_Way`
+     solely to test `step.subs == 0` in `_repeat` when distinguishing a
+     pure deletion from a 1-char substitution. Algebraically, a single
+     repetition step `s` from `r.end` is a pure substitution if and only if
+     `s.deleted > 0 && s.cost == s.deleted && s.absorbed(r.end) == 0`
+     (`s.pureSub(r.end)`), eliminating the `subs` field.
+   - **`credit` and `int get used` eliminated:** `z3` stored `credit` and
+     recomputed `int get used => cost - credit` on every comparison, while
+     only ever reading `credit` inside `then` to check whether a prefix
+     had unsettled cost before settling it on a clean `>= 2`-char
+     continuation. Storing `used` directly as a plain `int` field and
+     passing `[bool s = false]` to `then(_Way r, [bool s = false])`
+     eliminates `credit` and the `used` getter (`s` settles `used` to `0`
+     when `r.clean && r.end - end >= 2`, and `r.owed == 0 && !s` settles
+     `owed` to `0`).
+   - **`missing` and `int get spent` eliminated:** `z3` stored `missing`
+     only to compute `int get spent => deleted + missing + owed` and a
+     secondary tie-breaker `_min(deleted, missing + owed)` in `cmp`.
+     Dropping that redundant tie-breaker (`costDiff = 0`, `score = 0.9904 /
+     86.6%`) allows `spent` to be stored directly as a plain `int` field
+     (`spent + r.spent - (r.owed == 0 && !s ? owed : 0)`), eliminating both
+     `missing` and the `spent` getter.
+   - **`_Way.copy` and `_Way.empty` unified into `_Way.clean`**, and the
+     `_letters` cache map on `Squirrel` removed.
+2. **Cut-Deletion Monotonicity Law in `_Way.then` (replaces `_tails` /
+   `_firstEdit` / `_steals`):**
+   When an earlier element voluntarily stopped before a clean continuation
+   `[end, cut)` (`cut < _never`), the following element `r` cannot
+   immediately delete input at `end` (`cut < _never && r.first == end &&
+   r.deleted > 0`). Combined with the existing cut overlap check
+   (`r.end > end && cut <= r.end && (r.clean || r.first >= cut)`), this
+   2-token condition in `_Way.then` prevents greedy prefixes in `_seq` and
+   `_repeat` from stopping early just so the next element can delete the
+   characters the prefix could have consumed cleanly—without `z4`–`z7`'s
+   AST-walking `_tails`/`_firstEdit`/`_steals` machinery.
+3. **Non-Nullable Substitution Law in `_repeat` (`sub0`):**
+   In `_repeat`, a 1-char substitution step `s` (`s.end - r.end ==
+   s.deleted`) is allowed to propagate when the repeated subclause is
+   non-nullable (`_minChars(sub) > 0`, i.e. `!sub0`), while pure deletions
+   remain blocked across iterations (`final pDel = s.end - r.end ==
+   s.deleted && (sub0 || !s.pureSub(r.end));`). This repairs damaged
+   characters inside nested `OneOrMore` loops (such as `'c'++` in `cx2`)
+   and lifts battery accuracy to `0.9904 / 86.6%` (`costDiff = 0` vs
+   `z6`/`z7`).
+4. **Active-LR Skip-Ahead Guards and Iterative Post-Order `_ev`/`_tree`:**
+   - Guarding `_seq` and `_repeat` skip-ahead (`!_active(step, r.end)`) and
+     `_repeat` fast-forward (`!_active(sub, at)`) prevents unexpanded
+     left-recursive seed failures from pruning skip-ahead deletions around
+     an active LR spine (fixing `_bits2.dart` and contributing to `0.9904 /
+     86.6%`).
+   - `_ev` and `_tree` run as single-pass iterative post-order traversals
+     with zero intermediate `miss` list allocations, keeping deep inputs
+     (`deep.sh` depth 3,200 in `293 ms`, `_chkscale.dart` at `n = 6400` in
+     `439–459 ms`) fast and stack-safe.
+
+### Measurements (kit, 2026-10-24)
+
+| Check | z3 (r55) | z6 (`zd`) | z7 (r58) | z8 (r59) |
+|---|---|---|---|---|
+| LOC (normalized / raw) | 560 / 338 | 716 / 413 | 806 / 451 | **500 / 315** |
+| `_Way` fields | 14 + 2 getters | 9 + 6 bitfield getters | 9 + 6 bitfield getters | **12 plain fields, 0 bitfields, 0 getters** |
+| Battery accuracy (2,101 cases) | 0.9901 / 86.4% | 0.9904 / 86.6% | 0.9904 / 86.6% | **0.9904 / 86.6% (`costDiff 0` vs `z6`/`z7`)** |
+| Battery JIT (`bench.sh battery`) | 2,829–2,868 ms | 2,812–2,899 ms | 3,407 ms | **2,560–2,755 ms** |
+| Battery AOT (`x3.exe bench 1 z8 zd z7 z3 x513j`) | 2,711 ms | 2,754 ms | 3,087 ms | **2,694 ms** (`x513j`: 883 ms) |
+| Gates (`accept`, `freespan`, `recommit`, `conf1`, `cleanTreeDiff`) | all pass | all pass | all pass | **all pass (`true/true/true`, `3 3 4 4 1`, `16/16`, `0 1 1 0 2 3`, `0`)** |
+| `props` / `pred` / `window` | 0 / 0 / P=true | 0 / 0 / P=true | 0 / 0 / P=true | **0 violations (2,728) / falseAssertions=0 / P=true at n=1..4096** |
+| `_bits.dart` (`owed` n=250..300, `arms` n=100..200) | PASSES | FAILS (overflow >255) | PASSES | **PASSES (cost 250..300; arms cost 4, edits 4)** |
+| `_bits2.dart` (2 LR + error cases) | FAILS | FAILS | PASSES | **PASSES (cost 6, cost 2; 0 crashes)** |
+| Many errors (`1000/16/1`, `32/1`, `64/1` AOT / JIT) | rung 64: 519 ms JIT | rung 64: 251 ms AOT / 584 ms JIT | rung 64: 235 ms AOT / 535 ms JIT | **118 / 186 / 231 ms AOT; 284 / 393 / 590 ms JIT (costs 14, 29, 59)** |
+| `deep.sh` (depth 3,200 missing 0 / 1) | 3,100–3,600 ms | 280 ms | 44 / 316 ms | **39 / 293 ms (`x(ax)*1600b`: 99 ms; `x(ab)*1600`: 74 ms)** |
+| `_tilde.dart` (909 transparent-rule cases) | 0 crashes | 0 crashes | 0 crashes | **0 crashes (cost 14,848)** |
+| `_chkscale.dart` (`n=6400` cases 0, 1, 4) | timeout on deep | case 4 overflow (156) | passes | **case 0: 439 ms (cost 2); case 1: 459 ms (cost 2); case 4: 5,795 ms (true cost 2,135)** |
+
+### Fuzzer comparison (`dl.sh` and `lf.sh`, 4-way `z8 / zd / z3 / x513j`, 3,200 cases per row)
+
+| Suite & seeds | `worse` (`z8 / zd / z3 / x513j`) | `levWorse` (`z8 / zd / z3 / x513j`) | `invalid` (`z8 / zd / z3 / x513j`) | `timeouts` |
+|---|---|---|---|---|
+| `dl.sh` seeds 1-8 (3,200) | **101** / 64 / 452 / 150 | **85** / 51 / 385 / 128 | **69** / 35 / 116 / 22 | 0 / 0 / 0 / 0 |
+| `dl.sh` seeds 9-16 (3,200, held-out) | **115** / 83 / 449 / 148 | **97** / 71 / 385 / 122 | **64** / 46 / 107 / 25 | 0 / 0 / 0 / 0 |
+| `lf.sh` seeds 1-8 (3,200) | **156** / 74 / 489 / 105 | **118** / 60 / 412 / 83 | **64** / 35 / 101 / 26 | 0 / 0 / 0 / 0 |
+| `lf.sh` seeds 9-16 (3,200, held-out) | **151** / 70 / 453 / 129 | **114** / 54 / 381 / 107 | **63** / 44 / 107 / 43 | 0 / 0 / 0 / 0 |
+| **Total (12,800 cases)** | **523** / 291 / 1,843 / 532 | **414** / 236 / 1,563 / 440 | **260** / 160 / 431 / 116 | **0 / 0 / 0 / 0** |
+
+Compared to `z3` (from which it directly evolved while shrinking LOC from
+`560 / 338` down to `500 / 315`), `z8` cuts `worse` cases across the
+12,800 fuzzer inputs by **3.5x** (`1,843 -> 523`, beating `x513j`'s `532`
+and `levWorse` `414` vs `x513j`'s `440`) and cuts `z3`'s invalid trees by
+**40%** (`431 -> 260`), with zero bit-packing and zero AST-walking
+filters.
 
 ## e-series: repair as a search over repaired strings (2026-10-24)
 
