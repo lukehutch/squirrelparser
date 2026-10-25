@@ -109,6 +109,7 @@ of the repaired input. "-" means not measured.
 | z7 (r58) | z | 10-24 | 806 (451 raw) | 0.9904 / 86.6 (trees = z6) | 3,407 ms JIT; 3,101 ms x3 AOT median (zd: 2,802 ms) | rung 64: 535 ms JIT / 235-282 ms AOT (cost 59) | 19 (27 on 9-16) | all finish; depth 3,200 with one missing: 316 ms |
 | z8 (r59) | z | 10-24 | 500 (315 raw) | 0.9904 / 86.6 (costDiff 0 vs z6/z7) | 2,560-2,755 ms JIT; 2,694 ms x3 AOT (zd: 2,754, z7: 3,087, z3: 2,711) | rung 64: 590 ms JIT / 231 ms AOT (cost 59) | 69 (64 on 9-16; z3: 116/107) | all finish; depth 3,200 with one missing: 293 ms |
 | z9 (r60) | z | 10-25 | 792 (448 raw) | 0.9904 / 86.6 (trees = z6/z7) | 2,641-2,665 ms JIT (zd: 2,707-2,767, z8: 2,830, z7: 3,076); 2,444-2,560 ms x3 AOT (zd: 2,594-2,634, z8: 2,684-2,730, z7: 2,879-3,001) | rung 64: 438 ms JIT / 186 ms AOT (cost 59) | 16 (24 on 9-16; 89 of 12,800 on dl+lf seeds 1-16) | all finish; depth 3,200 with one missing: 314 ms |
+| z9 (r61) | z | 10-25 | 887 (503 raw) | 0.9904 / 86.6 (trees = z6/z7/z9-r60) | 2,970 ms JIT; 2,703-2,821 ms x3 AOT (zd: 2,511-2,648, z7: 2,773-2,833, z8: 2,536-2,555) | rung 64: 231 ms AOT (cost 59); rungs 1/16/32: 56/125/188 ms | 16 (24 on 9-16; 89 of 12,800 on dl+lf seeds 1-16, identical trees to r60) | all finish; depth 3,200 missing 0/1: 37/651 ms; tilde 909 cases: 0 crashes (cost 14,686) |
 | e7s | e | 10-24 | 659 (429 raw) | 0.9899 / 84.5 | 6.0 s JIT | rung 4: 86 s | 0 (0 of 12,800 on dl+lf seeds 1-16) | - (breaks D1; fails b2) |
 | e14 | e | 10-24 | 709 (456 raw) | 0.9900 / 84.5 | 4.2 s JIT | rungs 1, 2: 0.20, 0.23 s; rung 4: 61 s | 12 of 12,800 (e8, same trees as e7s: 0) | - (breaks D1; fails b2) |
 | f25 | f | 10-24 | 1,132 (719 raw) | 0.9899 / 84.5 | ~2.7 s JIT | rung 16/32/64: 1.38 / 5.1 / 9.9 s (cost 57) | 0 (0 of 12,800 on dl+lf seeds 1-16) | overflow at 1,600 (breaks D2; fails b2) |
@@ -183,7 +184,15 @@ ms` standalone JIT) and rung 64 (`186 ms` AOT, `438 ms` JIT) faster than
 `z6`, `z7`, and `z8`, and achieves the lowest fuzzer `worse` (`126` vs
 `z7`'s `182` and `z6`'s `207` in 4-way; `324` vs `379` and `402` in
 6-way with `e8`) and `invalid` (`89` vs `z7`'s `96` and `z6`'s `160`)
-counts of any D1-compliant engine.
+counts of any D1-compliant engine. In round 61 (2026-10-25, §11.6 below),
+**z9** further reduces `_Way` from 10 bookkeeping fields + 3 AST fields
+(13 total) down to **only 4 bookkeeping fields (`edits, used, evidence,
+cut`)** + 3 AST pointers (`end, piece, prev`) and `_Cell` from 5 scalar
+fields to **4 scalar fields (`mark, ver, dep, arm`)** + `ends`, with zero
+bit-packing anywhere, deriving `deleted, spent, owed, subs, first, last,
+incomplete` directly from the `_Way` tree using algebraic conservation
+laws while preserving 100% identical battery and fuzzer trees (`treeDiff
+0, costDiff 0`).
 
 ### Full c-series comparison (2026-09-06; measured by Codex, audited the same day)
 
@@ -11207,4 +11216,31 @@ In `_research18.dart`, running `BASE=zd ./bench.sh battery X compare` executes *
 | `lf.sh` seeds 1–8 (3,200) | **92** / 188 / 98 / 108 / 137 / 47 | **64** / 144 / 72 / 88 / 111 / 43 | **23** / 64 / 25 / 35 / 26 / 0 | 0 |
 | `lf.sh` seeds 9–16 (3,200, held-out) | **81** / 192 / 95 / 111 / 170 / 35 | **60** / 147 / 69 / 87 / 141 / 34 | **26** / 63 / 25 / 44 / 43 / 0 | 0 |
 | **Total (12,800 cases)** | **324** / 626 / 379 / 402 / 639 / 189 | **250** / 507 / 302 / 332 / 542 / 180 | **89** / 260 / 96 / 160 / 116 / 0 | **0** |
+
+### 11.6 Round 61: Reducing `_Way` from 12 Fields to 4 Bookkeeping Fields via Conservation Laws & Tree-Derived Invariants (2026-10-25)
+
+In Round 60, eliminating bit-packing exposed 10 bookkeeping fields (`deleted, spent, owed, used, subs, evidence, first, last, cut, incomplete`) alongside the 3 structural AST fields (`end, piece, prev`) on `_Way`, plus 5 scalar fields (`mark, ver, dep, arm, seeded`) on `_Cell`. In Round 61 (`z9`, `887` normalized / `503` raw LOC, `0` analyzer issues), we eliminate **6 of the 10 bookkeeping fields on `_Way`** (`deleted, spent, owed, subs, first, last, incomplete` replaced by a single total `edits` counter) and `seeded` on `_Cell` — leaving **only 4 bookkeeping fields on `_Way` (`edits, used, evidence, cut`)** and **4 scalar fields on `_Cell` (`mark, ver, dep, arm`)**, with **zero bit-packing anywhere** and **100% identical parse trees** (`treeDiff = 0, costDiff = 0` vs `z6`, `z7`, and Round 60 `z9`):
+
+1. **Why Only 4 Bookkeeping Fields Are Needed on `_Way`:**
+   - Every `_Way` already stores its parse tree via `(end, piece, prev)`: leaf edits are `peg.MatchResult` nodes (`SyntaxError(pos, len)` for deletions, `Match(c, pos, 0)` for missing terminals, and `Match(null, pos, 1)` for 1-char substitutions), and composite ways are linked via `prev` and labeled `(c, start, inner)` tuples in `piece`.
+   - With `edits` (`spent + owed`), `used`, `evidence`, and `cut` stored on `_Way`, every other property is a deterministic function of the dirty spine of the `_Way` tree:
+     - `clean` $\iff \text{edits} == 0$, and `_dirty` $\iff \text{edits} > (\text{prev}?.\text{edits} ?? 0)$ (identifying whether the current step added an edit in $O(1)$).
+     - `incomplete` and `owed`: only edits at the trailing edge `x.end == end` can be zero-length trailing insertions, so `_sum(..., true)` (`endOnly = true`) halts immediately as soon as `x.end < end` (or in $O(1)$ whenever `used == edits` for `owed`).
+     - `spent` $\equiv \text{edits} - \text{owed}$.
+     - `deleted` and `subs`: summed over dirty leaves via `_sum`, which recurses only on the smaller-`edits` branch (`p.edits <= q.edits ? p : q`) and loops iteratively on the larger-`edits` branch, bounding call-stack depth by $\le \lfloor \log_2(\text{edits}) \rfloor$ even on 3,000-step chains.
+   - **Signed `cell.dep` Eliminates `cell.seeded`:** Setting `cell.dep = -d` on entry to `_read` and flipping to `cell.dep = cell.dep.abs()` (`+d`) when a left-recursive cycle hits `cell` encodes both the active recursion depth `d` and whether left-recursion was encountered in the sign of `dep`.
+
+2. **Five Algebraic Conservation Laws That Prevent $O(\text{depth})$ Tree Walks:**
+   - **Law 1 — Zero-Deletion Conservation Law on `[start, end)`:** For any labeled subtree `(c, start, inner)` spanning `[start, end)`, every input character is either matched with positive evidence (`inner.evidence`), matched cleanly with 0 evidence (`>= 0`), or deleted (`inner.deleted`). Hence:
+     $$0 \le \text{inner.subs} \le \text{inner.deleted} \le \min(\text{inner.edits},\; \text{end} - \text{start} - \text{inner.evidence})$$
+     Whenever `start + inner.evidence == end`, `inner.deleted == 0` and `inner.subs == 0` in **$O(1)$** without traversing `inner` (`final q = !endOnly && x._p!.$2 + x._in!.evidence == x.end ? null : x._in;`).
+   - **Law 2 — Tight $O(1)$ Deletion Upper Bound (`_maxDel`) in `_evGt`:** Stripping clean suffixes and clean-prefix wrappers (`_core`) preserves `deleted` (`this.deleted == _core.deleted`). At `c = _core`, `deleted` is bounded in $O(1)$ by `_maxDel = (c.prev?.edits ?? 0) + _min(c._in!.edits, c.end - c._p!.$2 - c._in!.evidence)`. Using `2 * evidence + _maxDel > end - a + k` in `_evGt` avoids walking deep subtrees when `edits` is large (from inner insertions) but actual non-evidence span `end - start - evidence` is small.
+   - **Law 3 — Pure Substitution & Synced Identities:** Because $0 \le \text{subs} \le \text{deleted} \le \text{spent} \le \text{cost} \le \text{edits}$, `pureSub(a)` simplifies to `!clean && end - a - edits == evidence && subs == edits` (testing `deleted == edits && absorbed(a) == 0` in $O(1)$ via `end - a - edits == evidence` before ever touching `subs`). In `synced(a, g)`, `_lastBefore(end - g - 1)` for $g \ge 0$ forces `last < end`, which implies `owed == 0` and `spent == edits > 0`, making `spent > 0` redundant.
+   - **Law 4 — $O(1)$ Interval Bounds for `_firstAtMost(lim)` and `_lastBefore(lim)`:** Instead of computing `first` and `last` down to depth 3,200 on every `then`, `First`, `_seq`, and `_repeat` check:
+     - In `_firstAtMost(lim)`: if `!(x.prev?.clean ?? true)` and `x.prev!.end <= lim`, then `first <= x.prev!.end <= lim` is immediately `true` in $O(1)$; if `(x.prev?.clean ?? true)` and `x._p!.$2 > lim`, then `first >= x._p!.$2 > lim` is immediately `false` in $O(1)$.
+     - In `_lastBefore(lim)`: walking the rightmost dirty spine (`x._dirty ? x._in! : x.prev!`) returns `true` in $O(1)$ as soon as `x.end <= lim` (which holds at the root whenever a way ends with $\ge g + 1$ clean characters).
+   - **Law 5 — Shared-Subtree Convergence & Cancellation in `_tailCmp` and `_Cell.add`:**
+     - In `_Cell.add`, when a non-left-recursive cell (`ver == _never`) has already converged at budget `mark`, re-proposals at later rungs with `r.used <= mark` and `c == 0` keep the existing canonical `_Way` (`if (c > (ver < _never || r.used > mark ? -1 : 0)) ends[i] = r;`), preserving object identity across rungs.
+     - In `_tailCmp`, stepping `x = x._in!._core` and `y = y._in!._core` halts as soon as `identical(x, y)`. Furthermore, when `identical(x, y)` holds and $2(\max(\text{da}, \text{db}) + x.\_\text{maxDel}) \le \text{edits}$, the shared subtree's deletions $x.\text{deleted}$ cancel out algebraically in $\min(\text{da} + z, \text{edits} - \text{da} - z) - \min(\text{db} + z, \text{edits} - \text{db} - z) = \text{da} - \text{db}$, avoiding any traversal of the shared subtree `x`.
+
 
