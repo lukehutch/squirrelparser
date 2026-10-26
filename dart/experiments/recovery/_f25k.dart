@@ -26,10 +26,10 @@ class _Node {
   _Node(this.edits, [this.parentFar = -1, this.parentSig = 0, this.parentAlpha = 0]);
   final List<_Edit> edits;
   final int parentFar, parentSig, parentAlpha;
-  int fails = 0, end = -1, far = 0, lastV = 0, n = 0, farIn = 0, sig = 0, encl = 0, open = 0;
+  int fails = 0, end = -1, far = 0, lastV = 0, n = 0, farIn = 0, sig = 0, open = 0;
   _Node? parent;
   final shadows = <_Node>[]; // states merged into this one
-  int ev = -1, gen = 0, left = 0, span = 0;
+  int gen = 0, left = 0, span = 0;
 }
 
 // The iterations of one repetition from one input position on, each with
@@ -45,12 +45,10 @@ class _Trail {
 
 // One rule result: its length and, in call order, what each rule call in
 // its body returned (null for a failure). The tree is replayed from these.
-// `ev` caches the input its literals read, once read over input with no edit.
 class _T {
   _T(this.len, this.calls);
   final int len;
   final List<_T?> calls;
-  int ev = -1;
 }
 
 class Squirrel {
@@ -452,7 +450,8 @@ class Squirrel {
   }
 
   // Parses the laid-out string; returns the end of the top rule.
-  int _parse([bool sweep = false]) {
+  int _parse() { try { return _parse1(false); } on StackOverflowError { return _parse1(true); } }
+  int _parse1(bool sweep) {
     evals++;
     _w = _n + 2;
     final size = _rules.length * _w;
@@ -584,66 +583,6 @@ class Squirrel {
   // rule results as `_build` replays them, without building the tree: the
   // input read by literals outside runs of a character class, and, for each
   // literal holding an edit, the input of the construct it is in.
-  int _ev = 0, _encl = 0, _hit = 0, _plain = 0;
-  var _pre = Int32List(0);
-  int _real(int a, int b) => _pre[b] - _pre[a];
-  void _keys(_Node node, String input) {
-    _layout(node.edits, input);
-    _pre = Int32List(_n + 1);
-    for (var q = 0; q < _n; q++) { _pre[q + 1] = _pre[q] + (_origAt(q) >= 0 ? 1 : 0); }
-    _ev = 0; _encl = 0; _hit = 0;
-    _score(_top, 0, _root!.calls.iterator);
-    node.ev = _ev; node.encl = _encl;
-  }
-  int _score(int c, int pos, Iterator<_T?> calls) {
-    final cl = _clause[c];
-    int one(int k, int p) => _score(k, p, calls);
-    if (_kind[c] > _and) {
-      final r = _match(c, pos);
-      if (r > pos) {
-        final real = _real(pos, r);
-        if (real < r - pos) _hit++;
-        if (_plain == 0 && (cl is peg.Char || cl is peg.Str || cl is peg.CharSet && !cl.inverted)) _ev += real;
-      }
-      return r;
-    }
-    final ev = _ev, encl = _encl, hit = _hit;
-    _hit = 0;
-    var end = -1;
-    switch (_kind[c]) {
-      case _seq:
-        end = pos;
-        for (final k in _kids[c]) { end = one(k, end); if (end < 0) break; }
-      case _first:
-        for (final k in _kids[c]) { end = one(k, pos); if (end >= 0) break; }
-      case _rep:
-        final plain = cl is peg.Repetition && !cl.requireOne && cl.subClause is peg.CharSet;
-        if (plain) _plain++;
-        var p = pos, n = 0;
-        while (true) { final r = one(_kids[c][0], p); if (r < 0 || r == p) break; p = r; n++; }
-        if (plain) _plain--;
-        end = _code[c] == 1 && n == 0 ? -1 : p;
-      case _opt:
-        final r = one(_kids[c][0], pos);
-        end = r < 0 ? pos : r;
-      case _ref:
-        calls.moveNext();
-        final t = calls.current;
-        if (t != null && t.ev >= 0) { _ev += t.ev; end = pos + t.len; }
-        else if (t != null) {
-          end = _score(_kids[c][0], pos, t.calls.iterator);
-          if (_real(pos, end) == t.len) t.ev = _ev - ev;
-        }
-      case _not || _and:
-        final r = one(_kids[c][0], pos);
-        _ev = ev; _encl = encl; _hit = 0;
-        end = (r < 0) == (_kind[c] == _not) ? pos : -1;
-    }
-    if (end < 0) { _ev = ev; _encl = encl; }
-    else if (_hit > 0) { _encl += _hit * _real(pos, end); }
-    _hit = hit;
-    return end;
-  }
 
   // The library's node for clause `c` at `pos` in the last parse, replayed
   // from the rule results recorded in it: no rule is matched again.
@@ -734,8 +673,6 @@ class Squirrel {
     return ts.length == 1 ? ts.single : peg.Match(null, 0, 0, subClauseMatches: ts);
   }
 
-  // Among repairs of equal cost: more matched literal text, then edits as
-  // late as possible, then insert before substitute before delete.
   // A node is grown only if its last edit moved the parse on: it reads
   // further into the input, it is read where the parent's parse failed, or
   // it appends at the end of the input.
@@ -744,9 +681,10 @@ class Squirrel {
     return x.farIn > x.parentFar || last.at == input.length || last.op == _ins && last.at == x.parentFar;
   }
 
-  int _cmp(_Node a, int ea, _Node b, int eb) {
-    if (ea != eb) return eb - ea;
-    if (a.encl != b.encl) return b.encl - a.encl;
+  // Among repairs of equal cost: fewer edits, then edits as late as
+  // possible, then insert before substitute before delete.
+  int _cmp(_Node a, _Node b) {
+    if (a.edits.length != b.edits.length) return a.edits.length - b.edits.length;
     for (var i = 1; i <= a.edits.length && i <= b.edits.length; i++) {
       final x = a.edits[a.edits.length - i], y = b.edits[b.edits.length - i];
       if (x.at != y.at) return y.at - x.at;
@@ -771,7 +709,7 @@ class Squirrel {
   // substitute; in input order) parses.
   bool accepts(String input, List<(int, int, int)> edits) {
     _layout([for (final (op, at, ch) in edits) _Edit(op, at, ch)], input);
-    try { return _parse() == _n; } on StackOverflowError { return _parse(true) == _n; }
+    return _parse() == _n;
   }
 
   peg.MatchResult recover(String input) {
@@ -786,9 +724,6 @@ class Squirrel {
     int eofChars(_Node x) => x.edits.where(atEof).length;
     // One cost level holds sub-buckets by the number of characters appended
     // at the end: the level stops at the first count above zero that succeeds.
-    // No repair at a level can read more input with literals than the input
-    // it keeps: once one finishes, a node that cannot beat it is not grown.
-    int bound(_Node x) => input.length - x.edits.where((e) => e.op != _ins).length;
     // Searches level by level up to maxCost from the seeds, each grown at
     // its own cost. With held set, a node the progress rule refuses is kept
     // there instead of grown.
@@ -811,11 +746,10 @@ class Squirrel {
         final done = <_Node>[];
         final reps = <int, _Node>{};
         while (front.length <= cost) { front.add(front.isEmpty ? 0 : front.last); }
-        var bestEv = -1;
         // A finished state, and each state merged into one of its ancestors
         // with the finished state's later edits.
         void finish(_Node x) {
-          void take(_Node y) { if (y.gen != _gen) _evaluate(y, input); _keys(y, input); done.add(y); bestEv = max(bestEv, y.ev); }
+          void take(_Node y) { if (y.gen != _gen) _evaluate(y, input); done.add(y); }
           take(x);
           for (var a = x.parent; a != null; a = a.parent) {
             final rest = x.edits.sublist(a.edits.length);
@@ -841,7 +775,7 @@ class Squirrel {
               if (x.gen == 0) _evaluate(x, input);
               if (x.end == x.n) {
                 finish(x); ok = true;
-              } else if ((cost < maxCost || eofChars(x) > 0) && bound(x) > bestEv && x.far >= x.lastV && evals < 400000) {
+              } else if ((cost < maxCost || eofChars(x) > 0) && x.far >= x.lastV) {
                 if (held != null && !_progress(x, input)) { held.add(x); continue; }
                 front[cost] = max(front[cost], x.farIn);
                 if (_windowed && cost >= 1 && x.farIn < front[cost - 1]) continue;
@@ -863,7 +797,7 @@ class Squirrel {
           }
           if (ok && e > 0) break;
         }
-        if (done.isNotEmpty) return done.reduce((a, b) => _cmp(b, b.ev, a, a.ev) < 0 ? b : a);
+        if (done.isNotEmpty) return done.reduce((a, b) => _cmp(b, a) < 0 ? b : a);
       }
       return null;
     }
