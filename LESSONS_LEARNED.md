@@ -11548,6 +11548,14 @@ Candidates measured this round:
 
 ### 12.11 Open
 
-1. Dense errors still cost about k^2.3 to k^2.8 in z9's search.
+1. Dense errors still cost about k^2.3 to k^2.8 in z9's search. A rung reads about n k
+   times, once per way (one way per end and used budget), so with O(1) adds a rung costs
+   about k^2 and the search about k^2 log k, the same order as f25's search alone (k^2.5).
+   Two probes after round 67 did not help, measured on `bc `*k against z10 round 67:
+   - Rejecting a way when a way with the same end has less used budget and ranks no worse
+     (z10q2): battery trees same, 3,077 ms; k = 128 439 ms, 256 2,089 ms. Half the time,
+     same growth, so the ways are rarely dominated.
+   - Computing each cell once per rung at the rung's budget and filtering by used budget on
+     read (z10q3): battery 4,746 ms and 1 tree changed; k = 128 724 ms, 256 3,609 ms.
 2. z9's answer depends on the order in which budgets are tried (12.10 item 2).
 3. `_build` and `walk` overflow on trees deeper than about 3,000 levels.
