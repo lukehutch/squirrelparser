@@ -11244,3 +11244,101 @@ In Round 60, eliminating bit-packing exposed 10 bookkeeping fields (`deleted, sp
      - In `_tailCmp`, stepping `x = x._in!._core` and `y = y._in!._core` halts as soon as `identical(x, y)`. Furthermore, when `identical(x, y)` holds and $2(\max(\text{da}, \text{db}) + x.\_\text{maxDel}) \le \text{edits}$, the shared subtree's deletions $x.\text{deleted}$ cancel out algebraically in $\min(\text{da} + z, \text{edits} - \text{da} - z) - \min(\text{db} + z, \text{edits} - \text{db} - z) = \text{da} - \text{db}$, avoiding any traversal of the shared subtree `x`.
 
 
+
+## 12. Rounds 62-63: z10, z9's search checked by f25's interpreter (2026-10-25)
+
+### 12.1 Design
+
+`_z10.dart` runs z9's search (`_recover`, round 60), turns its tree into an edit list, and
+has `_f25k.dart` parse the edited string and build the tree from that parse. A deletion is a
+`SyntaxError` with `len > 0`; a substitution is a deletion recorded in `_subOf`, the map from
+the substitution's way to the literal it substitutes; an insertion is
+`Match(c, pos, 0, [SyntaxError len 0])`, with a negative placeholder for a character of a
+`CharSet` or `AnyChar` (D7). If the edited string does not parse, z10 runs f25's own search.
+If f25's recursive interpreter overflows the stack, z10 returns z9's tree unchecked.
+
+`_f25k.dart` is `_f25.dart` (f25) with `recover`'s setup moved to `begin`, a new
+`check(input, edits)`, and one fix (12.3).
+
+D1 holds on the checked path in the sense of the memo ruling: `check` is the only parse of the
+repaired string, and its tree is the answer; z9's tree is used only for its edit list. The
+fallback path is f25, which already searches over repaired strings and breaks D1 the same way
+f25 does.
+
+### 12.2 Round 62: z10 with all of z9's validity checks
+
+| Measure | z9 (round 60) | z10 | f25 |
+|---|---|---|---|
+| battery score / perfect | 0.9904 / 86.6% | 0.9904 / 86.6% (costDiff 0) | 0.9899 / 84.5% |
+| gates cx2 b1 b2, recommit, conformance | pass, 16/16, 0 1 1 0 2 3 | same | b2 fails |
+| dl seeds 1-16: worse / invalid / levWorse | 143 / 40 / 119 | 103 / 0 / 80 | 122 / 0 / 115 |
+| lf seeds 1-16: worse / invalid / levWorse | 161 / 49 / 111 | 112 / 0 / 62 | 93 / 0 / 84 |
+| rungs 8/16/32/64 errors, AOT, ms | 201 / 167 / 280 / 337 | 375 / 349 / 437 / 468 | 856 / 1,640 / 6,733 / 12,478 |
+| LOC | 448 | 483 (+ 727 `_f25k`) | 719 |
+
+Paths taken: battery 13,241 of 13,241 raw cases checked; dl 6,355 checked and 45 by f25's
+search; lf 6,348 checked and 52 by f25's search.
+
+The first z10 run had 126 (dl) and 145 (lf) invalid trees. Cause: f25's `_tree` decided that a
+character was substituted by its input position, so an insertion at the same input position as
+a substitution was labeled as the substitution. `_f25k` decides by the repaired position
+(`_eAt`). This defect is in `_f25.dart` too. f25's own search can produce an insertion and a
+substitution at one position, but the fuzzers showed f25 with 0 invalid trees, so the defect is
+latent there (inferred: not observed on f25's own answers). `_f25.dart` is not changed.
+
+Correction to 10.9 and 11: under AOT, `deep.sh` shows f25 overflowing the stack at nesting
+depth 800 and at n = 1,600 on the cubic family, not at 1,600 (measured 2026-10-25, round 62).
+
+The sources of u28, pd57 and pd23 are lost (the /tmp kit was wiped); only their numbers remain.
+
+### 12.3 Round 63: z9's validity checks deleted where the check makes them redundant
+
+Each check was switched off alone in a copy (`ABL=` in `z10x.dart`, scratch), and measured on
+the battery and on dl/lf seeds 1-8 (`worse`, and the number of answers that fell back to f25's
+search, "exact"):
+
+| Switched off | battery | dl worse / exact | lf worse / exact | other effect | verdict |
+|---|---|---|---|---|---|
+| none | 0.9904 | 50 / 16 | 60 / 25 | | baseline |
+| `_steals` | 0.9904 | 39 / 43 | 51 / 43 | | delete |
+| `_tails` | 0.9904 | 37 / 39 | 52 / 39 | x(ax)*1600b 1,253 -> 99 ms | delete |
+| `_covers` | 0.9904 | 49 / 18 | 58 / 32 | | delete |
+| lrNullRep | 0.9904 | 36 / 22 | 55 / 27 | | delete |
+| `_startsClean` | 0.9902 | 49 / 16 | 60 / 25 | rung 16: 0.25 -> 16.9 s, 0.92 GB | keep |
+| `pen` | 0.9908 | 47 / 16 | 56 / 25 | b2 fails | keep (D8) |
+| probe in `_plain` | 0.9904 | 50 / 16 | 97 / 38 | | keep |
+| Ref filter in `_read` | 0.9902 / 85.5% | 50 / 16 | 60 / 25 | | keep |
+| `adv` | 0.9900 | 49 / 16 | 59 / 25 | | keep |
+
+The checks that prune invalid trees cost answers (inferred from the worse counts: with the
+check in place, a pruned candidate was often the best valid one). `_startsClean` is a speed check, not a validity check, and `pen`
+is the b2 gate's check.
+
+z10 after deleting `_steals`, `_tails`, `_covers`, lrNullRep and their helpers (`_m1`,
+`_matchesOne`, `_head`, the `seen`/`priors` sets in `First`):
+
+| Measure | z10 round 62 | z10 round 63 |
+|---|---|---|
+| battery | 0.9904 / 86.6% | same trees (treeDiff 0, costDiff 0) |
+| gates | pass | pass (cx2 b1 b2, freespan 3 3 4 4 1, recommit 16/16, conformance 0 1 1 0 2 3) |
+| dl seeds 1-16: worse / invalid / levWorse | 103 / 0 / 80 | 80 / 0 / 66 |
+| lf seeds 1-16: worse / invalid / levWorse | 112 / 0 / 62 | 94 / 0 / 48 |
+| rungs 8/16/32/64, AOT, ms (one build, both run in round 63) | 274 / 242 / 319 / 351 | 256 / 251 / 317 / 345 |
+| deep.sh depth 3,200 missing 1 | 278 ms | 247 ms |
+| x(ax)*1600 b / x(ab)*1600 | 1,253 / 75 ms | 99 / 77 ms |
+| LOC | 483 | 392 (-91, -18.8%) |
+
+z10 + `_f25k` is 392 + 727 = 1,119 LOC against z9's 448.
+
+Paths on the deep inputs: nesting 800 and 3,200 with one `]` missing and x(ax)*1600 b are
+answered unchecked (f25's interpreter overflows the stack); nesting 400 and x(ax)*n b for
+n <= 800 are checked.
+
+### 12.4 Open
+
+1. Deep inputs are answered unchecked. An interpreter that does not recurse on the Dart stack
+   would check them.
+2. Two parsers: z9's search and f25's interpreter. f25's search is the fallback for about 0.7%
+   of fuzzer cases; trying z9's next candidates instead would delete f25's search.
+3. The remaining heuristics (`pen`, `adv`, the probe, the Ref filter, `_startsClean`) are
+   ranking or speed checks; each one measured changes answers.
