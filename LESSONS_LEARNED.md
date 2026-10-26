@@ -11630,3 +11630,55 @@ Refuted this round:
 2. Dense errors still cost about k^2.5 in z9's search (12.11 item 1).
 3. z9's answer depends on the order in which budgets are tried (12.10 item 2).
 4. `_build` and `walk` overflow on trees deeper than about 3,000 levels.
+
+### 12.14 Round 69: one standalone file, six rules fewer (adopted)
+
+z12 (kit) is z11 with z9's search and the exact search copied into one file, so an engine no
+longer imports another. z13 (repo `dart/experiments/recovery/_z13.dart`) is z12 with these
+changes:
+
+1. Six rules deleted: the Optional trim, two `_repeat` step filters, the skip that stops a
+   First after an arm that consumed, the incomplete-ways fallback, and the First break on a
+   total arm (with its `_total` map). One comparison key (`paired`) deleted.
+2. The checked path returns the library's tree of the repaired string, mapped onto the input
+   (the same map the exact search uses), not z9's own tree. z9's tree builder `_tree` is gone.
+3. The edits are read from the search records directly, in input order. z12 read them off
+   z9's tree and sorted them with `List.sort`, which is not stable above 32 elements.
+4. The tree map walks with an explicit stack.
+
+Measured (kit, AOT):
+
+| | z12 | z13 |
+|---|---|---|
+| LOC | 572 | 537 (-35, -6.1%) |
+| Fields: way / cell / engine | 13 / 7 / 18 | 13 / 7 / 17 |
+| Battery score / perfect | 0.9904 / 86.6 | 0.9904 / 86.6 (treeDiff 0 against z12 with the mapped tree) |
+| Gates | all pass | all pass |
+| dl seeds 1-16: worse than the other | 16 | 5 |
+| lf seeds 1-16: worse than the other | 16 | 1 |
+| Invalid trees, timeouts | 0, 0 | 0, 0 |
+| Rungs 8/16/32/64 errors (ms) | 189/157/279/298 | 214/204/274/306 |
+| Dense `bc `*256, `bb `*256, third probe *256 (s) | 9.7, 3.6, 37.8 | 4.7, 2.3, 33.2 |
+| Nesting 25,600 with one error | 2.2 s | 2.3 s |
+
+The rules were found by switching each one off in a scratch copy (z12x). Eleven of them left
+every battery tree unchanged, but the fuzzers showed five of the eleven still matter:
+
+| Switched off | dl / lf worse than z12 (seeds 1-16, or 1-2 where marked) | Kept |
+|---|---|---|
+| `look` (lookahead probe in `_plain`) | lf 81 vs 9 | yes |
+| `rsubst` (substitution in a repetition) | 6 vs 0 (1-2) | yes |
+| `kso` (spent + owed key) | 2 vs 0 (1-2) | yes |
+| `fsub`, `ex`, `rfilt2` | 1-2 each (1-2) | yes |
+| `rdemote` | battery same, `x (ax)*200 b` 6 ms -> 455 ms | yes |
+| `total` | lf 1 vs 14: better without it | deleted |
+| opttrim, rfilt, actskip, inc, kpaired | 0-1 | deleted |
+
+Lesson: the battery does not decide a deletion. A rule with treeDiff 0 on the battery changed
+the cost of 72 lookahead fuzzer cases.
+
+### 12.15 Open
+
+1. The exact search still answers the third dense probe (`E <- 'c'? 'c' 'a'? ' '` on `bc `*k),
+   33 s at k = 256: z9's repair does not parse there.
+2. 12.13 items 1-3 stand.
