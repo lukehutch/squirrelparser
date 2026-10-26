@@ -43,15 +43,15 @@ class _Way {
 
 class _Cell {
   int mark = -1, ver = -1, dep = 0, arm = 0; bool seeded = false;
-  final ends = <_Way>[];
+  final ends = <_Way>[]; Map<int, int>? _at;
+  static int _key(_Way r) => r.end << 32 | r.used << 1 | (r.incomplete ? 1 : 0);
   bool add(_Way? r) {
     if (r == null) return false;
-    for (var i = 0; i < ends.length; i++) {
-      if (ends[i] case final e when e.end == r.end && e.used == r.used && e.incomplete == r.incomplete) {
-        final c = e.cmp(r); if (c >= 0) ends[i] = r; return c > 0;
-      }
+    final at = ends.isEmpty ? null : _at ??= {_key(ends[0]): 0}, k = _key(r);
+    if (at?[k] case final i?) {
+      final c = ends[i].cmp(r); if (c >= 0) ends[i] = r; return c > 0;
     }
-    ends.add(r); return true;
+    at?[k] = ends.length; ends.add(r); return true;
   }
 }
 
@@ -393,8 +393,12 @@ class Squirrel {
     }
     if (!verdict.isMismatch && verdict.len == _len) { lastCost = 0; return verdict; }
     final shortest = _min0(top), ceiling = shortest == _never ? -1 : _len + shortest; _Way? best, fallback;
-    for (var rung = 1; rung <= ceiling; rung++) {
-      _budget = rung; final inc = <_Way>[]; List<_Way> ways;
+    // The answer at the cheapest budget that finds one: budgets double until
+    // one does, then a binary search finds the first. Cells filled at a
+    // higher budget change what a lower one finds, so a step down starts
+    // from empty cells.
+    (_Way?, List<_Way>) run(int rung) {
+      _budget = rung; _Way? best; final inc = <_Way>[]; List<_Way> ways;
       try { if (deep) sweep(_read); ways = _read(top, 0); } on StackOverflowError {
         deep = true; _depth = 0; _seedDepth = _never; _budget = rung;
         _cells.clear(); _versions.clear(); sweep(parser.match); sweep(_read); ways = _read(top, 0);
@@ -407,9 +411,19 @@ class Squirrel {
       }
       if (best != null) {
         for (final r in inc) { if (r.charge <= best!.charge && r.evidence > best.evidence) best = r; }
-        break;
       }
+      return (best, inc);
+    }
+    var lo = 0, hi = 0;
+    for (var b = 1; best == null && lo < ceiling; b *= 2) {
+      final (w, inc) = run(hi = _min(b, ceiling));
+      if ((best = w) == null) lo = hi;
       if (fallback == null && inc.isNotEmpty) fallback = inc.reduce((a, b) => a.cmp(b) <= 0 ? a : b);
+    }
+    while (best != null && hi - lo > 1) {
+      final mid = (lo + hi) ~/ 2;
+      _cells.clear(); _versions.clear();
+      if (run(mid).$1 case final w?) { best = w; hi = mid; } else { lo = mid; }
     }
     best ??= fallback; lastCost = best == null ? (_len == 0 ? 1 : _len) : best.spent + best.owed;
     return best == null ? peg.SyntaxError(pos: 0, len: _len)
