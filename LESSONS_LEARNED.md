@@ -11738,3 +11738,11 @@ queue change made the filter unnecessary.
    budget order, and `_seq`/`_repeat` still duplicate the skip, substitution and settle logic.
 2. The battery dropped from 0.9904 to 0.9899 with 4 lower costs: the cheaper repairs are not
    the battery's expected trees. Read the 62 differing trees before calling either side better.
+3. **z15 is not cost-optimal.** `xref` (repo `dart/experiments/recovery/_xref.dart`) is the
+   exact search with no prune, so it returns a minimum-cost repair; its trees are valid on every
+   case. On 16 seeds x 400 cases (`LIMIT=30`), z15 pays more than `xref` on 187 dl cases and 217
+   lf cases, and its repaired string is farther in Levenshtein distance on 118 and 101. Most are
+   one edit too many: (optimum, z15) = (1, 2) on 111 dl and 99 lf cases. One example:
+   `R0 <- ("bab" 'c'+*)` on `b`, where the optimum completes at the end of input (cost 1) and
+   z15 pays 2. Every "worse" count earlier in this file compares engines with each other, not
+   with the optimum.
