@@ -375,7 +375,7 @@ class Squirrel {
     final es = t is peg.SyntaxError ? null : _edits(t);
     try {
       _exact.begin(input);
-      if (es != null) { if (_exact.check(input, es) case final x?) return (path = 'checked', x).$2; }
+      if (es != null && _exact.accepts(input, es)) return (path = 'checked', t).$2;
       final x = _exact.recover(input); lastCost = _exact.lastCost; return (path = 'exact', x).$2;
     } on StackOverflowError { return (path = 'unchecked', t).$2; }
   }

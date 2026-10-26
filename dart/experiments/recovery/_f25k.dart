@@ -111,6 +111,9 @@ class Squirrel {
       for (final s in reach) { for (final t in [...s]) { final n = s.length; s.addAll(reach[t]); if (s.length != n) ch = true; } }
     }
     _cyc = [for (final (r, _) in _rules.indexed) [for (final t in reach[r]) if (reach[t].contains(r)) t]];
+    // the rules whose results do not depend on which rule of a
+    // left-recursive cycle is entered first
+    _roots = [for (final (r, c) in _rules.indexed) if (_cyc[r].isEmpty && reach[r].every((t) => _cyc[t].isEmpty)) c];
   }
 
   final Map<String, peg.Clause> rules;
@@ -118,7 +121,7 @@ class Squirrel {
   final _kind = <int>[], _code = <int>[], _kids = <List<int>>[], _text = <List<int>>[];
   final _ranges = <List<(int, int)>>[], _inv = <bool>[], _clause = <peg.Clause>[];
   late final int _top;
-  late final List<int> _rules;
+  late final List<int> _rules, _roots;
   late final Map<int, int> _ruleIndex;
   int lastCost = 0;
   int recoverCost(String s) => (this..recover(s)).lastCost;
@@ -449,9 +452,8 @@ class Squirrel {
   }
 
   // Parses the laid-out string; returns the end of the top rule.
-  int _parse() {
+  int _parse([bool sweep = false]) {
     evals++;
-    _ext = 0; _depth = 0; _taint = 1 << 30; _gmax = 0; _fMark = 0; _fails.clear();
     _w = _n + 2;
     final size = _rules.length * _w;
     if (_st.length < size) {
@@ -460,6 +462,10 @@ class Squirrel {
     }
     if (_vSt.length < _w) { _vSt = Int32List(_w * 2); _vVal = Int32List(_w * 2); }
     _gen++; _touched.clear(); _calls.clear(); _dirtyAt.clear(); _dirty = false;
+    _depth = 0; _taint = 1 << 30;
+    // too deep to recurse: fill the memo from the end of the string back
+    if (sweep) { for (var p = _n; p >= 0; p--) { for (final c in _roots) { _rule(c, p); _calls.clear(); } } }
+    _ext = 0; _gmax = 0; _fMark = 0; _fails.clear();
     final r = _rule(_top, 0);
     _root = _ret;
     return r;
@@ -761,12 +767,11 @@ class Squirrel {
     _bGen++; _trails.clear();
   }
 
-  // The tree of the input with these edits (op 0 delete, 1 insert, 2
-  // substitute; in input order), if the edited string parses; else null.
-  peg.MatchResult? check(String input, List<(int, int, int)> edits) {
-    final node = _Node([for (final (op, at, ch) in edits) _Edit(op, at, ch)]);
-    _evaluate(node, input);
-    return node.end == node.n ? _tree(node, input) : null;
+  // Whether the input with these edits (op 0 delete, 1 insert, 2
+  // substitute; in input order) parses.
+  bool accepts(String input, List<(int, int, int)> edits) {
+    _layout([for (final (op, at, ch) in edits) _Edit(op, at, ch)], input);
+    try { return _parse() == _n; } on StackOverflowError { return _parse(true) == _n; }
   }
 
   peg.MatchResult recover(String input) {
