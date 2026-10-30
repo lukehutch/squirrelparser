@@ -12918,3 +12918,8 @@ helper.
 
 **Open.** Unchanged from 12.31: non-LR `(1+` and `1+)` about 3.2 s and LR `(1+` about 10.4 s at
 k = 1024 (LR quadratic); `cbcaccbccab` superlinear.
+
+**Addendum: z23, z24 and z30 fuzzed side by side.** To check that running candidates alone since
+round 79 hid no regression, z23 (z22v), z24 (zf3) and z30 (ym2) ran in one fuzzer run. pdl: worse
+4 / 1 / 0, levWorse 3 / 1 / 0; plf: worse 1 / 0 / 0; invalid, timeouts and priceWorse 0 for all
+three. z30 is dearer than neither older engine on any of the 12,800 cases.
