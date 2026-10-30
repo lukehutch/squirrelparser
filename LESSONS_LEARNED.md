@@ -12697,3 +12697,54 @@ the cheapest checked repair of every run, so the local answer cannot be lost.
 
 **Open.** Saha instances at m = 32 and 64 (expected under a linear cap, by the SETH bounds above);
 non-LR `(1+` and `1+)` about n^1.7; local prices on dense LR `(1+`; `cbcaccbccab` x k.
+
+### 12.29 Round 82: in the last local stage a repetition does not stop where its next iteration starts cleanly (z27)
+
+**Diagnosis.** On dense non-LR `(1+` (grammar `E <- T ('+' T)*`) nearly all the time goes to the
+unbounded local stage (`_rung` -1). A tracer copy of z26 (kit `zt3`) counted, at k = 1024, 633k
+cell reads returning 15.1M ways, against 17k recomputations. The reads of `('+' T)*` alone
+returned 5.8M ways: a local repetition cell keeps one way per iteration end, so it holds O(n)
+ends, and every parent read walks all of them.
+
+**Change.** When `_rung < 0`, `_repeat` drops a way that ends where its sub-clause starts
+cleanly (`_startsClean`). In that position a PEG repetition would try one more iteration, so such
+a stop is the least likely to be part of the cheapest repair. Stage 0 and cost mode are
+unchanged. At k = 1024 the stage -1 reads fall from 15.1M ways to 5.1M.
+
+| Candidate | `(1+` k = 1024 | Dense prices against z26 | Other checks | Score | Verdict |
+|---|---|---|---|---|---|
+| zs15: the change above | 8,475 -> 3,163 ms | +1 on `(1+` from k = 32 | all equal to z26 | 7 | adopted (z27) |
+| zs16: zs15 + a choice skips arms that start with an edit where another arm starts cleanly | 3,142 ms | as zs15 | all equal to z26 | 5 | no gain for 4 more lines |
+| zs17a: z26's stage -1 under 16x the limit, then the zs16 rules | 3,970 ms | z26 prices to k = 128, +1 from k = 512 | not run | 5 | an extra stage for a small gain |
+| zs17b: as zs17a at 64x | 6,846 ms | as zs17a | not run | 3 | slower |
+| zs18: stage -1 settles after one clean character (`dEv > 0`) | 8,309 ms | same as z26 | not run | 2 | little gain |
+
+**Harness note.** `_g2.dart` reports price 1000 when no witness string parses, and
+`_witnesses` cannot name the fill of an inserted CharSet (here `T` matching `[0-9]` at the end of
+the input), so a valid tree that inserts a digit also reads as 1000. The `1+)` and `(1+` rows of
+g2 at k >= 32 are this, not invalid trees.
+
+**z27 = z26 + the stop rule.** Repo `dart/experiments/recovery/_z27.dart`, kit `zs15`.
+602 -> 602 LOC (+0, 0%). Fields: `_Way` 10, `_Cell` 4, engine fields unchanged.
+
+| | z26 | z27 |
+|---|---|---|
+| Battery | 0.9909 / 87.1, 4,921 ms | 0.9909 / 87.1, 4,913 ms; same trees and costs |
+| Gates | all pass | all pass |
+| dl / lf worse, invalid, timeouts, levWorse, priceWorse | 0 | 0 |
+| Exhaustive (g1-g5, 61,204 cases) worse | 0 | 0 |
+| Long sets g1 / g3 / g5 against z26 | | 0 dearer, 0 cheaper, 0 timeouts |
+| Dyck(2), dearer than exact (of 1,932) | 1 | 1 |
+| Non-LR `(1+`, cost k = 16 / 32 / 64 / 128 | 13 / 32 / 64 / 128 | 13 / 33 / 65 / 129 |
+| Non-LR `(1+`, k = 256 / 512 / 1024 | 915 / 2,436 / 8,475 ms | 582 / 1,229 / 3,163 ms, cost k + 1 |
+| Other three dense families | | same costs and times |
+
+**Elegance review.** The first version also tested `r.end == _len`; `_startsClean` is false at
+the end of the input for every clause (a Seq needs a non-empty plain match, and Ref and First
+reduce to Seqs), so the test was deleted; the battery and dense runs are unchanged.
+
+**Open.** Non-LR `(1+` is still superlinear (x2.6 from k = 512 to 1024): each local iteration
+of `T <- '(' E ')'` still ends at O(n) places because the inner `E` does. Non-LR `1+)` (4.9 s at
+k = 1024) spends its time in stage 0 doubling b to 32 and stage -1 needing b = 2: the settle test
+`dEv > 1` never holds on `+)1` iterations, whose clean tail is one character, so nothing settles
+and the budget must reach k. Saha m >= 32; local prices on dense LR `(1+`; `cbcaccbccab` x k.
