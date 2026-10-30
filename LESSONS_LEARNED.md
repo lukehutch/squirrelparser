@@ -12970,9 +12970,15 @@ Fields are unchanged: `_Way` 10, `_Cell` 4. Every field is still read.
 | yn27: the `_next` test is always 1 | plf worse 4 |
 | yn30: local `_covers` lets a way with less owed cover one with equal spent | no speed gain on LR `(1+` |
 
-**z30 is not exact on LR `(1+` x 128.** yn10 (no sync) returned a checked repair of cost 97 on LR
-`(1+` x 128, where z30 and z31 return 129. All three use the same `lastCost` rule, so z30
-overprices this input by at least 32. Up to k = 7 the two agree. The cause is not yet known.
+**Correction: z30 is exact on LR `(1+` x k; yn10's cheaper price came from an invalid tree.** yn10
+(no sync) reported cost 97 on LR `(1+` x 128 where z30 and z31 report 129, and is cheaper from k =
+11 (10 against 12). Its k = 11 tree deletes `+(1+` around position 30 and inserts six `)`, which
+gives `(1+(1+(1+(1+(1+(1+(1+(1+(1+(1))))))`: ten `(` and six `)`. The plain parser rejects this
+string, so the tree is invalid. The dense harness prints the engine's own `path` label
+(`checked`) and does not check the tree, so it cannot catch this. k + 1 is the minimum: each of
+the k `(` needs its own edit (delete it or insert its `)`), and the trailing `+` needs one more
+(delete it or insert a digit). No single edit serves two of these. This makes yn10 worse than
+the table above records.
 
 **LR `(1+` is quadratic because of tied repairs.** This was confirmed with an instrumented copy of
 z30 (`_ym2i.dart`). Each E cell keeps about k ways, at distinct ends: the deletion and substitution
