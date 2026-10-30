@@ -12748,3 +12748,30 @@ of `T <- '(' E ')'` still ends at O(n) places because the inner `E` does. Non-LR
 k = 1024) spends its time in stage 0 doubling b to 32 and stage -1 needing b = 2: the settle test
 `dEv > 1` never holds on `+)1` iterations, whose clean tail is one character, so nothing settles
 and the budget must reach k. Saha m >= 32; local prices on dense LR `(1+`; `cbcaccbccab` x k.
+
+**Addendum: z27 also settles `cbcaccbccab` x k.** Measured after the commit with `_g2.dart`
+(witness price, the edit distance of a repaired string that parses), grammar
+`S <- R0; R0 <- ((R0 / R1)* ('c'? "bcc"+ 'a'*) 'b'*); R1 <- (R1 / 'b')`:
+
+| k | 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 |
+|---|---|---|---|---|---|---|---|---|
+| z26 price | 2 | 16 | 38 | 82 | | | | |
+| z26 ms | 65 | 587 | 4,292 | 55,476 | | | | |
+| z27 price | 2 | 5 | 11 | 23 | 47 | 95 | 191 | 383 |
+| z27 ms | 44 | 273 | 282 | 434 | 1,535 | 10,769 | 121,002 | 277,322 |
+
+The exhaustive reference gives 5 at k = 2, so z27 is exact there; its prices are 3k - 1 at every
+k. Time is still superlinear from k = 16. A z27 trace at k = 32: the last run (stage -1, b = 2)
+reads 44.0M ways, 39.6M of them from the choice `(R0 / R1)` inside `(R0 / R1)*`; that
+repetition is recomputed about 2,558 times as `R0` grows, and each recomputation rereads the
+whole choice cell at every position.
+
+**Refuted after z27.**
+
+| Candidate | Result | Verdict |
+|---|---|---|
+| zs19a: the settle test counts a next iteration that starts cleanly (`dEv > (startsClean ? 0 : 1)`), all modes | battery same; non-LR `1+)` k = 1024 4.9 -> 3.4 s, `(1+` 3.2 -> 4.0 s | no net gain |
+| zs19b: as zs19a, local mode only | as zs19a | no net gain |
+| zs20: a repetition recomputed at the same budget reads its sub-clause at its start as a delta (only the ways just added) | battery same; `cbcaccbccab` back to z26 prices (16 / 38 / 82) and 49.7 s at k = 8 | refuted: the old first iterations are needed again after growth |
+
+Also measured: LR `(1+` k = 1024 is about 11 s in z25, z26 and z27 (unchanged since round 80).
