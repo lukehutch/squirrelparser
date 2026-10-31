@@ -13718,7 +13718,7 @@ group5 all 0; T family 5 above, excess 39, as z37a):
 | long sets ms | — | 6,706 / 7,426 | **17,729 / 7,376** | 6,383 / 7,249 |
 | Dyck ms (<= 1.10x) | — | 5,906 / 6,578 | **11,321 / 5,786** | 6,349 / 5,797 (1.095x) |
 | LOC (`loc.sh`) | 579 | 480 | 617 | 208 |
-| LOC after `dart format --line-length 120` | 1,009 | **843** | 1,059 | 980 |
+| formatted LOC (`kit/floc.sh`) | 961 | **804** | 1,022 | 934 |
 | non-blank characters | 29,796 | 25,029 | 30,573 | 24,406 |
 
 vx6c fails the long-set loss limit and every time limit (SLOW FAIL on dense, long sets, Dyck, validity, semi,
@@ -13731,10 +13731,10 @@ Chosen by the brief's ranking, which puts way fields first: 9 -> 3 counted `_Way
 - **Gains:** the bookkeeping target is met for the first time in series 2; dense 7.5% and long sets 12% faster.
 - **Losses:** 36 + 11 fuzzer inputs more expensive than z37 (0.84% and 0.26% of the k = 1 inputs), 26 of 9,840
   exhaustive g4 inputs, cbc k = 1 costs 3 against 2, Dyck 9.5% slower (just inside the limit).
-- **Size:** 579 -> 208 LOC by `loc.sh` (-371, -64%), but **1,009 -> 980 (-29, -2.9%) once both files are formatted
-  the same way**, and 29,796 -> 24,406 non-blank characters (-18%). vg6 packs statements onto long lines (103 lines
+- **Size:** 579 -> 208 LOC by `loc.sh` (-371, -64%), but **961 -> 934 (-27, -2.8%) once both files are formatted
+  the same way** (`kit/floc.sh`: `dart format --line-length 120` in the kit's package), and 29,796 -> 24,406 non-blank characters (-18%). vg6 packs statements onto long lines (103 lines
   over 140 characters, the longest 567). The LOC rule in the brief counted lines, not code; from round 7 on, size is
-  measured after `dart format --line-length 120`.
+  measured by `kit/floc.sh`.
 
 **R6-2: the six removed fields became logic in the way's tree.** Formatted, vg6's `_Way` class is 180 lines against
 z37a's 60. `owed` is read off a structural invariant (an end-of-input insertion always has a clean way at `len` as
@@ -13743,7 +13743,7 @@ a nested piece in `then` and by merging clean steps; `subs` is a walk (`_allSub`
 `deleted` is `max(0, end - a - evidence - spent)`. So vg6 meets the field limit by moving the facts from fields into
 the shape of the tree, and the logic that keeps that shape (eight cases in `then`, three in `label`) is the kind of
 condition the round-6 direction wanted removed. Almost all of vg6's net reduction is the deleted `Exact` class (272
-formatted lines in z37a).
+formatted lines in z37a, formatted outside the package).
 
 **R6-3: two agents chose the same three fields.** Codex and Gemini both kept `edits` (all edits), `used` (the
 local budget since the last settle) and `evidence` (positive terminal characters matched). Codex recomputes the rest
@@ -13783,7 +13783,7 @@ it is not `span - deleted`; `edits` is the total that `used` forgets.
   So the fields that cannot be predicted are the ones the cell key and the settle test read, and those must stay
   exact, whether as fields or by walking the tree.
 
-**R6-5: Claude's vc6p is the smallest formatted engine** (843 lines, -16%) and the most conservative, but keeps 8
+**R6-5: Claude's vc6p is the smallest formatted engine** (804 lines, -16.3%) and the most conservative, but keeps 8
 fields. Claude's ablations, removing one field at a time from vc6p:
 - `subs` read from the tree: dense 1.26x;
 - `cut` removed: long-set g3 +108;
@@ -13794,14 +13794,14 @@ fields. Claude's ablations, removing one field at a time from vc6p:
 So vc6p is a local minimum in fields. vg6 escapes it by restructuring the tree, which vc6p does not do.
 
 **Agents' report errors** (recorded in `vr6/ERRORS_*.md`):
-- **Gemini**: "208 LOC, 64.1% reduction" counts long packed lines; formatted it is 2.9%. Its "3 fields is the natural
+- **Gemini**: "208 LOC, 64.1% reduction" counts long packed lines; formatted it is 2.8%. Its "3 fields is the natural
   structural floor" is supported by its three live ablations, not proved.
 - **Claude**: "removing `deleted` costs nothing" rested on the battery only; Gemini's live test on dense and the
   fuzzer confirms it (no error, but the claim was under-tested).
 - **Codex**: none of fact. Its engine failed the speed limits, which it reported itself.
 
-**Quantitative summary.** Way fields 9 -> 3, cell fields 5 -> 4, engine fields 21 -> 15. Formatted size 1,009 -> 980
-(-2.9%). Accuracy losses, all inside the allowed limits: fuzzer priceWorse 0 -> 36/11, exhaustive 0 -> 26, battery
+**Quantitative summary.** Way fields 9 -> 3, cell fields 5 -> 4, engine fields 21 -> 15. Formatted size 961 -> 934
+(-2.8%). Accuracy losses, all inside the allowed limits: fuzzer priceWorse 0 -> 36/11, exhaustive 0 -> 26, battery
 0.9907 -> 0.9904. Exact families, grouping and naming tests, long sets and Dyck unchanged. Speed: dense -7.5%,
 long sets -12%, Dyck +9.5%.
 
