@@ -27,6 +27,9 @@ class MemoEntry {
   /// re-matching after the cycle has been expanded, without duplicating work.
   int memoVersion = 0;
 
+  /// The parser's [Parser.reach] over the match attempts that set [result].
+  int reach = -1;
+
   /// Match this entry's rule at [pos], handling left recursion and caching.
   MatchResult match(Parser parser, Clause clause, int pos) {
     if (result != null && (inRecPath || memoVersion == parser.memoVersion[pos])) {
@@ -34,6 +37,7 @@ class MemoEntry {
       // this position since the last match attempt (or this is a cycle back
       // to a (rule, pos) already on the recursion path, with a known result).
       parserStats?.recordCacheHit();
+      if (reach > parser.reach) parser.reach = reach;
       return result!;
     } else if (inRecPath) {
       // (rule, pos) was visited twice in the same recursion path, with no
@@ -47,6 +51,8 @@ class MemoEntry {
       return result!;
     }
     inRecPath = true;
+    final outer = parser.reach;
+    parser.reach = reach;
     do {
       parserStats?.recordMatch();
       final newResult = clause.match(parser, pos);
@@ -90,6 +96,8 @@ class MemoEntry {
     } while (true);
     inRecPath = false;
     memoVersion = parser.memoVersion[pos];
+    reach = parser.reach;
+    if (outer > parser.reach) parser.reach = outer;
     return result!;
   }
 }

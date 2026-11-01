@@ -39,6 +39,12 @@ class Seq extends HasMultipleSubClauses {
 
     for (int i = 0; i < subClauses.length; i++) {
       final result = subClauses[i].match(parser, curr);
+      if (result.isMismatch && parser.fillAtEnd && curr == parser.input.length && curr > pos) {
+        // Recovery's last resort for input that stops early: an element that
+        // is missing at the end of the input is a zero-length syntax error.
+        children.add(SyntaxError(pos: curr, len: 0));
+        continue;
+      }
       if (result.isMismatch) {
         // THE SLOTS THAT DID MATCH ARE THE FRONTIER, and the one that did not
         // is where recovery has to look. Keep both: the matched prefix as the
@@ -112,8 +118,18 @@ class Repetition extends HasOneSubClause {
     MatchResult? stoppedBy;
 
     while (curr <= parser.input.length) {
+      if (curr > parser.reach) parser.reach = curr;
       final result = subClause.match(parser, curr);
       if (result.isMismatch) {
+        // Recovery (see [Parser.parse]) may have marked the next [gap]
+        // characters as a syntax error here: skip them and try again.
+        final gap = parser.gaps[(this, curr)];
+        if (gap != null) {
+          children.add(SyntaxError(pos: curr, len: gap));
+          curr += gap;
+          continue;
+        }
+        parser.stops?.add((this, curr, result));
         stoppedBy = result;
         break;
       }
