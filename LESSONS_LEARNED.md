@@ -14483,3 +14483,206 @@ untried). Gemini: not converged, "1-2 rounds from convergence". The rounds conti
 inputs (valid at the optimum). Questions: the alignment test that compares like with like at no more lines than z45
 (vm13d is 1 line more); undo or justify the three expression-packing cuts; derive or delete the `i == k` exception;
 Claude's ablation of `_seq`'s conditions; test the merged scan's coverage-mode assumption.
+
+### 12.48 Cross-review series 2, round 14 (vr14): the read frontier traced from the parser, z46, and the end of the series
+
+**The round.** Base z45 = kit `vm13b`. Agents: Claude claude-opus-5-5 medium, Codex gpt-6.1-sol medium, Gemini
+gemini-4-argon high. Brief: `squirrel-xr/vr14/BRIEF14.md` (an alignment test for `lastCost` that compares like with
+like, undo or justify the three expression-packing cuts of R13-5, derive or delete `_far`'s `i == k` exception,
+ablate `_seq`'s conditions, test the single coverage scan's assumption). New hard checks: Codex's long-literal control
+and Gemini's `wxaa`/`wxya` inputs, valid at the optimum (`lz.sh`, now 20 inputs). New controls
+(`vr14/controls14.sh`, not gates, `tail90` valid and price):
+
+| Control | Source | Optimum |
+|---|---|---:|
+| `S <- &"abcde" [a-z] [a-z] [a-z] [a-z] [a-z] '0'+;` on `axcdx0000000000` | Gemini | 2 |
+| `S <- &(("abaaaaaaaab" / "a") "c") !"ac" [abc]+;` on 12 a's | Codex | 3 |
+| `S <- &("ab" [a-z] "cd") [a-z]+ !"q";` on `xbxxd` and on `xbzcx` | Claude | 2 |
+| `S <- &(("abcd")? ("efgh")? "xyzwvm") [a-z]+;` on `abcxefgxxyzwvn` | Claude | 3 |
+| `S <- &(("abcd")* "xyzwvm") [a-z]+;` on `abcxabcxxyzwvn` | Claude | 3 |
+| `S <- &'b' [ab] / &"cd" [a-z]+;` on 10 a's | Claude (B.5) | 2 |
+
+plus Claude's lookahead family `pfam.py` (152 generated predicate grammars per seed, seeds 14 and 15). Engines:
+- Claude `vc14p` (457): about 20 deletions (`_startsClean`, rung -2, seed tracking in `First`, `sure`, `deep`,
+  `costS`, ...), the three packing cuts undone, and `_far` re-reading the subclause of a failed `&`/`!` (with a set
+  against cycles) instead of the `i == k` exception. Uses the allowed accuracy loss. Alternatives: `vc14w` (449),
+  `vc14n` (456), `vc14` (460), `vc14s` (460, battery 0.9899, `lastCost` = plain edit distance, dense 1.11-1.14x),
+  `vc14a` (484, read frontier from wrapped terminals), `vc14r` (fails pdls4 at 44).
+- Codex `vx14aa` (536): the fallback's window is the furthest position any terminal read during the failed parse,
+  traced by a copy of the grammar whose terminals are wrapped in a recording clause (`_Read`, `_trial`); the `i == k`
+  exception is gone; `lastCost` fixed as in R13-3.
+- Gemini `vg14` (495): the three packing cuts undone, `i == k` folded into the window as `max(k, _far)`, the rung
+  variable `reach` replaced by `4 * sure + 1`, two `_local` conditions dropped from `_repeat`'s settle test,
+  `lastCost` fixed by comparing the realigned string with the string's own marks (R13-3's fix in 0 lines).
+- Orchestrator merges: `vm14a` (477) = vc14p with vx14aa's traced frontier in place of `_far`; `vm14b` (477) =
+  vm14a with vg14's 0-line `lastCost` fix.
+
+Logs: `squirrel-xr/vr14/kit/out/r14/ENGINE/*.txt` (script `vr14/check14.sh ENGINE`), `out/r14/controls.txt`,
+`controls_vm14b.txt`, `pfam.txt`; reports and engines in `vr14/archive/r14`.
+
+**Results** (orchestrator runs, one engine at a time, nothing else running). Every engine below passes the suite time
+limits (no input over 2x + 250 ms), all gates (cx2, b1, b2; freespan 3 3 4 4 1; recommit 16/16; conformance
+0 1 1 0 2 3; cleanTreeDiff 0), battery 0.9896 perfect 85.1, `big.sh`, `bat.sh`, lz 0 of 20 failed, la 165 cases with
+0 invalid and 0 above z45, cpfix 0 invalid, long sets and Dyck 0 more expensive than z37a, wxyz 5 of 5 at price 4,
+semi/semi3/group/group3/group4/wild 0, T family 5 above with excess 39, class fixtures 0 invalid.
+
+| Engine | floc | battery vs z45 | pdls4/plfs4 priceWorse | g4 | group5 | controls valid (of 7) | pfam invalid s14/s15 | bat ratio |
+|---|---:|---|---|---:|---|---:|---|---:|
+| vm13b (z45) | 499 | - | 36/20 | 40 | 0/0 | 1 | 11/15 | 1.00 |
+| vc14p (Claude) | 457 | same | 42/24 | 52 | 3/1 | 5 (one crashed) | 0/0 | 0.95 |
+| vc14w (Claude) | 449 | not run | - | - | - | 1 | not run | - |
+| vg14 (Gemini) | 495 | 30 `lastCost` lower | 36/20 | 40 | 0/0 | 1 | 11/15 | 1.00 |
+| vx14aa (Codex) | 536 | 30 `lastCost` lower | 37/20 | 40 | 0/0 | **7** | 0/0 | 1.03 |
+| vm14a | 477 | same | 42/24 | 52 | 3/1 | **7** | 0/0 | 0.97 |
+| **vm14b (z46)** | **477** | 30 `lastCost` lower | 42/24 | 52 | 3/1 | **7** | 0/0 | 0.97 |
+
+(group5 = optional-slot grouping-dependent / named sub-sequence naming-dependent; the limits are 42 for pdls4 and 3
+for group5.) Prices on the controls: vx14aa, vm14a and vm14b are at the optimum on all 7; vc14p prices
+`&(("abcd")* "xyzwvm")` at 6 against 3, is invalid on Codex's `abaaaaaaaab` control, and crashed (no output line) on
+the `("abcd")? ("efgh")?` control.
+
+**R14-1: the window must be the furthest position the parser read, and only a trace gives it (confirmed).** z45's
+`_far` takes the furthest `pos + len` in the mismatch tree. A failed `&e` reports length 0 and drops what `e` read, so on
+every control with a lookahead that reads past the point of failure, z45, vg14 and vc14w return the whole input as an
+error (cost = input length, invalid). Gemini's `max(k, _far)` only renames z45's `i == k` exception: vg14 is invalid on
+Gemini's own control. Claude's re-read of the predicate's subclause fixes 5 of 7 but not a predicate inside a
+`First` alternative that backtracks (Codex's `abaaaaaaaab`), and its price on `("abcd")*` is twice the optimum.
+Codex's trace records the end of every terminal read during the failed parse, which is by definition the furthest
+position the parse depended on, and is the only form valid on all 7 controls and on all 304 pfam grammars. Its cost
+is a second, wrapped copy of the grammar built per fallback parse (+27 lines in vm14a over vc14p's `_far`). A library
+parser that exposed the furthest read position would make it about 3 lines; the series' constraint 8 forbade library
+edits. Still invalid in every engine: `S <- &(("abcd")* "abcdefghijklmnopqrstuvwxyz") [a-z]+;` on
+`abcxabcxabcdefghijklmnopqrstuvwxyy` (the fallback's 4,096-string limit runs out before depth 3).
+
+**R14-2: vc14p's deletions cost accuracy within the allowed loss (confirmed), and its semi3 time is 1.9x z45
+(confirmed).** pdls4 priceWorse rises to the limit, 42; plfs4 24; g4 52; group5 3 and 1 (Claude names the cause of each
+loss: `seedFirst3` for pdls4/plfs4, `syncLast1` for group5, `costS` for g4). In an uncontended rerun vm14a takes
+1,282 ms on semi3 against z45's 656 ms and vm14b 1,174 against 629; no single input is over 2x + 250 ms, so the
+time limits pass. Dense 1.07x, long sets 1.05x, Dyck 0.96x, tfam/rg1/rg2 0.78-0.82x.
+
+**R14-3: Gemini's `lastCost` fix holds in vm14b (confirmed).** Comparing the realigned string's marks with the string's
+own marks (instead of the main search's cost) lowers `lastCost` on the same 30 battery inputs as vg14 and vx14aa, at
+0 lines; vm14b's battery trees otherwise equal vm14a's.
+
+**R14-4: findings checked.**
+- Codex's single coverage scan (R13-5's untested assumption): Claude's B.4 counts 183.6 million `_Cell.add` calls with
+  0 coverage-mode changes, with negative controls that do change mode; Gemini reports 0 mode flips over 18,658 inputs.
+  The assumption holds on everything measured (computed, not proved).
+- Claude B.1: `lastCost` and the price differ by the end-of-input discount, so they cannot be equal under R3-7 on
+  every input; the remaining lz whole-literal inputs (cost 6 or 10 against price 2-4) are this case.
+- Claude B.2: no derivation of `_floor = 4096` at a useful size was found.
+- Kit flaws found by Claude and Codex: `suite.sh` passes the dense row vacuously when 0 dense inputs run; `lasum.py`
+  accepts an engine that does not compile; lz lacked the two-edit input `S <- &'b' [ab] / &"cd" [a-z]+;` (added to
+  the controls); `tail90` is slow on the hidden-read family; `dense.sh` reports `lastCost` without checking the tree;
+  `cpfix.sh` skips two NUL inputs.
+
+**R14-5: vm14b becomes z46** (`_z46.dart`, byte-identical to `vr14/kit/.../vm14b.dart`). 499 -> 477 formatted LOC
+(-22, -4.4%), three way fields, 4 cell fields, engine fields 9 (unchanged), plus a one-field helper class `_Read`.
+Gains over z45: valid at the optimum on all 7 controls (z45: 1), 0 invalid of 304 pfam grammars (z45: 26), `lastCost`
+lower on 30 battery inputs, three packing cuts undone, the `i == k` exception gone. Losses: the allowed accuracy loss
+(R14-2) and semi3 1.9x. vg14 (495) is the alternative with no accuracy loss, but it is invalid on 6 of the 7 controls.
+
+**R14-6: elegance review of z46.**
+- In its favor: the window is now a defined quantity (the furthest position read), not a heuristic with an exception;
+  about 20 rules deleted; no expression-packed statements left from R13-5.
+- Against it: the trace builds a wrapped copy of the grammar on every fallback parse, which duplicates work the
+  library parser already does (the "never duplicate parsing work" ruling applies in spirit; the memo is not shared);
+  the fallback's limit is still the empirical `_floor = 4096`; the main search still carries the conditions Claude
+  names as the causes of the accuracy loss; `lastCost` still differs from the price on the whole-literal inputs.
+
+**R14-7: verdicts.** Claude: not converged (size, accuracy, elegance; "vc14n and vc14w are one decision away").
+Codex: not converged ("the next useful reduction is to expose native terminal read information from the library
+parser"). Gemini: converged on size and on z45's fixes, not converged on the window's completeness, which vx14aa's
+trace answers. No agent says further improvement is impossible.
+
+**The series ends here.** After round 14 the user changed the objective (12.49): stop full-repair search and try
+minimal coarse recovery inside the library. Round 15 was not run. z46 is the last engine of the vr series.
+
+### 12.49 Coarse recovery in the library: gaps at repetition stops (idea 1), and why sync rules (idea 2) were not built
+
+**The objective (user, 2026-11-01).** Stop full-repair search. Try (1) recovery only inside `*`/`+`: when the parse
+fails, take the places where a repetition stopped at the parse frontier and widen a syntax-error gap there, one
+character at a time, deepest repetition first, until a reparse gets further; or (2) recovery rules marked in the
+grammar (for example a statement) and resynchronization at the next place one matches. Expectation: recovery is
+coarse, but it should start as early as possible after the error, keep as much of the tree as possible, and report
+the later errors too. Built in the library itself (`Parser.parse(recover: true)`), not as a separate engine.
+
+**The algorithm (v10c, as committed).** 71 added code lines (combinators.dart +16, memo_entry.dart +8, parser.dart
++88/-2 with comments; 284/284 library tests pass, and `recover` defaults to false, so the plain parser is unchanged).
+- `Repetition` records every place its body failed (`stops`). If `gaps[(rep, pos)] = g` exists, it adds a
+  `SyntaxError` of `g` characters as a child and goes on after it.
+- Each memo entry stores `reach`, the furthest position any repetition tried its body during the attempts that set
+  the entry. After a gap at `pos` changes, only entries at or before `pos` whose reach is at least `pos` are dropped;
+  everything else is reused (the memo is never rebuilt from scratch, in the spirit of the no-duplicate-work ruling).
+- The frontier is the furthest position any mismatch in the result or in the recorded stops read.
+- For g = 1, 2, ...: every stop whose body read up to the frontier, or that reaches it with the gap, gets a trial gap
+  of g characters and a reparse. Among the trials that read past both the old frontier and the gap (or match the whole
+  input), the one that reads furthest is kept (innermost on a tie). Repeat until the whole input matches.
+- If no gap helps, `fillAtEnd` lets a `Seq` that is missing elements at the end of the input fill each with a
+  zero-length `SyntaxError`, and the search goes on.
+
+**Measures.** Driver `_gap1.dart`: the 2,101 inputs of the battery, scored against the reference trees; "tree" =
+the result is not one whole-input error; "first error before damage" = the first `SyntaxError` begins before the
+damaged position (lower is better recovery, since it means the error is reported earlier than the damage). Driver
+`_gapscale.dart members/k`: a generated JSON document of `members` members with `k` random edits, timed. Driver
+`_gapshow.dart`: prints each gap chosen.
+
+**Results.**
+
+| Variant | Battery score | Trees | Notes |
+|---|---:|---:|---|
+| recover=false (plain parser) | 0.1363 | 598 | 127 ms |
+| gap1: first stop at the frontier only | 0.5258 | | |
+| gap2: all stops at the frontier | 0.6222 | | |
+| gap3: kept only if the body matches again after the gap (strict, close to sync recovery) | 0.6114 | | |
+| gap4: gap2 + `fillAtEnd` | 0.8150 | | |
+| gap5/8/9 (v9): gap4 + memo reuse by `reach` | 0.8193 | 2066 | 335 ms; first error before damage 544 |
+| gap6: terminal repetitions excluded | 0.6719 | | |
+| gap7: terminal repetitions last | 0.8061 | | |
+| mode B / mode C (other acceptance rules) | 0.6134 / 0.7611 | | |
+| v10b: candidates widened to stops that reach the frontier with the gap | 0.8189 | 2090 | 357 ms |
+| v9 candidates + keep furthest | 0.8152 | 2068 | 342 ms |
+| **v10c: widened + keep furthest** | **0.8276** | **2090** | 396 ms; first error before damage 746 |
+
+v10c by category: deletion 0.7402, misc 0.7149, insertion 0.9813, substitution 0.8186, truncation 0.8493 (v9: 0.7364,
+0.6968, 0.9776, 0.7979, 0.8458).
+
+Scaling (one run each, nothing else running):
+
+| members/k | v9 gaps | v9 time | v10c gaps | v10c time |
+|---|---:|---:|---:|---:|
+| 1600/16 | 192 | 7.3 s | 46 | 0.45 s |
+| 1600/64 | 402 | 0.73 s | 184 | 2.1 s |
+| 6400/16 | 656 | 132 s | 41 | 1.8 s |
+| 6400/64 | 1375 | 71.6 s | 181 | 10.3 s |
+| 6400/256 | 1589 | 15.0 s | 745 | 24.3 s |
+
+No run returned a whole-input error. Memo reuse (v8 -> v9): 1600/4 3,044 -> 280 ms, 400/16 5,701 -> 212 ms,
+1600/1 876 -> 84 ms.
+
+**R-gap-1: v9's slow cases were a cascade, not a slow search (confirmed with `_gapshow` on 200/2).** A deleted `"`
+before `x` was repaired by a 1-character gap at whitespace, the first stop that moved the frontier. That made a later
+`}` close the top-level object early; from then on only JSON's trailing whitespace stopped at the frontier, and the
+rest of the document was skipped in about 94-character gaps, each ending where one space could be read (one space
+counts as progress), each needing about 94 trial reparses. The right repair was a 1-character gap at the member
+repetition's stop one position before the frontier, which v9 excluded because that stop's body did not read up to the
+frontier. v10c includes such stops and keeps the trial that reads furthest; 200/2 drops from 11 gaps to 5 and the
+16-error inputs from minutes to seconds.
+
+**R-gap-2: what remains coarse (confirmed on 400/4, inferred in general).** Progress is measured in characters read,
+so a gap that lets the parser read one more whitespace character counts as success, and a string-parity flip (a
+deleted `"`) is repaired by deleting the next quotes one at a time (400/4: 12 gaps for 4 edits). Trying every candidate
+for each g costs one reparse per candidate, which is why 6400/256 is 1.6x slower than v9. Possible fixes not yet
+tried: count progress in completed repetition iterations rather than characters; prefer the gap that lets its own
+repetition's body match again (gap3's rule as a tie-break, not a filter).
+
+**R-gap-3: idea (2) was not built (decision, with its reason).** gap3, which keeps a gap only when the repetition's
+body matches again after it, is the nearest automatic version of resynchronizing at a marked rule, and it scored
+0.6114 against gap4's 0.8150: requiring a whole new iteration skips too much. A marked recovery rule would also need
+the tree between the failure and the next match rebuilt for whatever rule encloses it, which the repetition gap gets
+for free because the repetition is the enclosing node. The metagrammar's `~` prefix shows where such a marker would
+go if it is wanted later.
+
+**Engine count to date (reported to the user).** 2,332 distinct engine files on disk; 262 more only in git history;
+423 named in LESSONS; 2,402 distinct engine contents on disk, 2,664 including git; 2,972-3,017 attempts counting
+every agent run and the attic.
