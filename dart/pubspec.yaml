@@ -1,14 +1,15 @@
-name: squirrel_parser
-description: "The squirrel parser: a linear-time PEG parser capable of left recursion and optimal error recovery"
-version: 1.0.4
-homepage: https://github.com/lukehutch/squirrelparser
-repository: https://github.com/lukehutch/squirrelparser
+name: squirrel_experiments
+description: "Experiments and scratch drivers for squirrel parser error recovery"
+publish_to: none
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  indent: ^2.0.0
+  # The parser library the experiments were written against: the coarse
+  # recovery tree. The other two trees are dart/noRecovery and dart/recovery.
+  squirrel_parser:
+    path: coarseRecovery
 
 dev_dependencies:
   test: ^1.24.0

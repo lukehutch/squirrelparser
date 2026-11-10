@@ -64,12 +64,14 @@ extract_test_count() {
 failures=0
 lang_idx=0
 
-# Dart
-if [ -d "dart" ]; then
-    lang_names[$lang_idx]="Dart"
+# Dart: the three parser packages (dart/ itself holds the recovery experiments)
+for pkg in noRecovery coarseRecovery recovery; do
+    dir="dart/$pkg"
+    [ -d "$dir" ] || continue
+    lang_names[$lang_idx]="Dart $pkg"
 
     echo ""
-    run_command "lints" "Dart" "dart" "dart analyze"
+    run_command "lints" "Dart $pkg" "$dir" "dart pub get > /dev/null 2>&1 && dart analyze"
     if [ $LAST_EXIT_CODE -eq 0 ]; then
         lint_status[$lang_idx]="✅ Pass"
     else
@@ -79,7 +81,7 @@ if [ -d "dart" ]; then
     lint_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
 
     echo ""
-    run_command "tests" "Dart" "dart" "dart pub get > /dev/null 2>&1 && dart test"
+    run_command "tests" "Dart $pkg" "$dir" "dart test"
     if [ $LAST_EXIT_CODE -eq 0 ]; then
         test_status[$lang_idx]="✅ Pass"
     else
@@ -90,7 +92,7 @@ if [ -d "dart" ]; then
     test_times[$lang_idx]=$(printf "%.2fs" "$LAST_ELAPSED")
 
     lang_idx=$((lang_idx+1))
-fi
+done
 
 # Print summary
 echo ""
@@ -98,12 +100,12 @@ echo "========================================"
 echo "                SUMMARY                 "
 echo "========================================"
 echo ""
-printf "%-12s │ %-8s %7s │ %-7s %7s %8s\n" "Language" "Lints" "Time" "Tests" "Count" "Time"
-printf "─────────────┼──────────────────┼─────────────────────────\n"
+printf "%-20s │ %-8s %7s │ %-7s %7s %8s\n" "Language" "Lints" "Time" "Tests" "Count" "Time"
+printf "─────────────────────┼──────────────────┼─────────────────────────\n"
 
 for i in "${!lang_names[@]}"; do
     # Emojis display as 2 chars wide, so use 1 less padding for columns with emojis
-    printf "%-12s │ %-9s %7s │ %-6s %7s %8s\n" \
+    printf "%-20s │ %-9s %7s │ %-6s %7s %8s\n" \
         "${lang_names[$i]}" \
         "${lint_status[$i]}" \
         "${lint_times[$i]}" \
