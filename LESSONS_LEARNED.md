@@ -14909,3 +14909,36 @@ limits on three interleaved repeats. On Claude's T stress set (200 random inputs
    fields to tell the kinds apart (vxf7n).
 4. Every engine in the round gave the same counts on the fresh and held-out sets; the T stress set was the only test that
    separated them. The fresh sets no longer measure the remaining differences.
+
+### 12.57 CD runs 3 and 4: z54, one field fewer, and a counter the search learned to fool
+
+**Result.** z54 = v4b, built from CD (computational discovery) runs 3 and 4 by hand merging and ablation. The run-3 merge
+v3m1 (never committed): vcd44 (z53 minus static `_Way.len`) + c5 (`_Cell.fresh` gone, the fresh list kept in the ends of
+the `(c, p)` cell) + c36 (recheck `c > 1`, bound `(l ? 2048 : 1024) + _len * 4`, cost-mode rerun) + c79 (fallback seeds the
+empty-edit start). z54 adds three changes from run 4's top candidate c377: the empty-edit start at `_len <= 12` (was 4),
+a fallback alphabet of the span ends plus the input's own characters (was one past each span end), and no substitution of
+a character by itself. Beside z53: fields 10 -> 9, bookkeeping lines (hand) 32 -> 30, 438 -> 454 formatted LOC (+16,
++3.7%; v3m1 450); priceWorse 10/6 -> 0/0, worse 132/93 (v3m1) -> 122/83, battery 0.9901/86.3, tfam 3/30, every checkF7
+part passes under the same load as v3m1; fresh f3a and held-out f3c answers equal to v3m1. Cost: Dyck 4.4 s (v3m1) ->
+8.3 s, below z37a's 11.1 s.
+
+| Engine | Change from v3m1 | floc | priceWorse | pfam 14/15 | tfam | Dyck ms (v3m1) | checkF7 | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| v3m1 | | 450 | 3/4 | 275/271 | 3/30 | 4.6 k | pass | base |
+| v4a | c377's four changes | 454 | 0/0 | 252/264 | 0/0 | 10-15 k | SLOW tfam, rg1, rg2; big | rejected |
+| v4d | v4b + recheck `_len <= 100` | 454 | 0/0 | 252/264 | 0/0 | 8.5 k | SLOW tfam, rg1, rg2 | rejected |
+| **v4b = z54** | **start `_len <= 12`, alphabet, no self-substitution** | **454** | **0/0** | **252/264** | **3/30** | **8.7 k** | **pass** | **chosen** |
+
+**What taught something.**
+1. A search scored by a field counter optimizes the counter. All of run 4's field and line reductions (top candidate:
+   fields 8, bookkeeping lines 8, against 9 and 35) were hiding, not removal: getters and setters wrapping each field so
+   that call sites stop naming it, `maxOwed` moved to the class the counter skips, and the two key kinds of `_cells`
+   merged into one by negating the position (`(c, -1 - p)`, `(c, ~p)`). The counter must count accessor bodies as uses,
+   count statics moved out of `_Way`, and treat a negated key as a second key kind before any further run.
+2. The logic changes inside the gamed candidate were real, and only ablation found which mattered: the recheck on short
+   inputs gives the whole tfam gain and fails the time limits; the empty-edit start gives the fuzzer and price-family
+   gains (fuzzer at threshold 12 or more, price families from 8), with Dyck time rising steeply with the threshold
+   (6: 1.1-1.2x, 8: 1.3-1.7x, 12: 2.7-3.3x, 15: 4-5x v3m1 in one interleaved run); the alphabet change alters no answer
+   but halves Dyck time at the higher threshold; the self-substitution skip alters no answer.
+3. A slowdown seen in a suite is real only when the reference engine run under the same load passes: v3m1 passed every
+   part of checkF7 at load 60 while v4a failed SLOW by up to 4.7x.
