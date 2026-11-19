@@ -14922,6 +14922,19 @@ a character by itself. Beside z53: fields 10 -> 9, bookkeeping lines (hand) 32 -
 part passes under the same load as v3m1; fresh f3a and held-out f3c answers equal to v3m1. Cost: Dyck 4.4 s (v3m1) ->
 8.3 s, below z37a's 11.1 s.
 
+**Runs 1 and 2 (before run 3).** Run 1 (2026-11-12, started from z53 = vmf7a, stopped after about 7.5 h, 172
+candidates) found nothing better than z53. Its top candidates either deleted the `_mins` cache (one field fewer, `big`
+inputs 5-14x slower than vm13b, confirmed locally) or packed several fields into one int with shifts and masks, which
+lowers the field count without removing any state; others did not compile. Its score gave partial credit (0.01 times the
+fraction of hard checks passed) to engines that failed a hard check, and that credit rewarded the `_mins` deletion. Run 2
+scored any hard failure 0 and added a check against bit packing (no shift of 16 or more, no mask of 20 or more one bits
+outside a constant), with a field counter that counts a getter unpacking bits as a field. It ran 4 h (77 candidates, 72
+finished); 60 of its 70 zero scores deleted `_mins` again (25 over the deadline, 26 failed checks, 19 compile errors),
+although the brief said the cache is needed. Its only gain, c44 (vcd44), removed the static `_Way.len` (the end-of-input
+mismatch way gets a `prev`, and `owed` is `prev?.edits ?? 0`) and moved `rules` and `topRuleName` into `parser`, a
+rename the CD counter rewarded. By hand: fields 10 = 10, bookkeeping lines 32 = 32, floc 438 -> 439, priceWorse 10/6 ->
+9/6, battery 0.9900/86.3, fresh f3a 0/0/0, 5-14% faster than vmf7a. vcd44 was the start of run 3.
+
 | Engine | Change from v3m1 | floc | priceWorse | pfam 14/15 | tfam | Dyck ms (v3m1) | checkF7 | Verdict |
 |---|---|---|---|---|---|---|---|---|
 | v3m1 | | 450 | 3/4 | 275/271 | 3/30 | 4.6 k | pass | base |
@@ -14940,7 +14953,10 @@ part passes under the same load as v3m1; fresh f3a and held-out f3c answers equa
    gains (fuzzer at threshold 12 or more, price families from 8), with Dyck time rising steeply with the threshold
    (6: 1.1-1.2x, 8: 1.3-1.7x, 12: 2.7-3.3x, 15: 4-5x v3m1 in one interleaved run); the alphabet change alters no answer
    but halves Dyck time at the higher threshold; the self-substitution skip alters no answer.
-3. A slowdown seen in a suite is real only when the reference engine run under the same load passes: v3m1 passed every
+3. Partial credit for an engine that fails a hard check is rewarded and repeated (run 1); the score must be 0 on any
+   hard failure. A sentence in the brief saying a part is needed did not stop the search from deleting it (run 2): only
+   the score did.
+4. A slowdown seen in a suite is real only when the reference engine run under the same load passes: v3m1 passed every
    part of checkF7 at load 60 while v4a failed SLOW by up to 4.7x.
 
 ### 12.58 Neon round N1: z55, one bookkeeping line fewer and a faster fallback
@@ -15088,3 +15104,33 @@ re-run interleaved with z58 and vm13b.
 3. The witness checker in _wit91.dart enumerates subsets of one-character error children to assign substitutions; its
    time is exponential in the error count and depends on the tree's grouping, so two engines with equal prices can
    differ by 100x in check time. This is a checker defect; dynamic programming over the slots would fix it.
+
+### 12.63 The Neon series (N1 to N5) in summary
+
+**Result.** Five rounds, one agent each (gemini-4-neon-high in N1, N2, N4 and N5; gemini-4-neon-xhigh in N3), each
+starting from the previous round's best engine with a brief rewritten from its results. z54 -> z59: fields 9 -> 8
+(`_Cell.dep` gone in N2), bookkeeping lines (bkl.sh) 30 -> 13, formatted LOC 454 -> 492 (+38, +8.4%), battery 0.9901/86.3
+-> 0.9902/86.5, priceWorse 0/0 kept (0/1 in N3, back to 0/0 in N4), pdls4/plfs4 worse 122/83 -> 121/81, fresh f3a 0/0/0
+throughout, LR fuzzer 0 above the exact reference throughout, Dyck about 0.5x z37a. Every round's chosen engine was the
+agent's own submission, taken unchanged after the orchestrator re-ran every check.
+
+| Round | Engine | Fields | bkl | floc | Main change |
+|---|---|---|---|---|---|
+| N1 | z55 = vmn1b | 9 | 29 | 450 | recheck dead branch gone, faster fallback start |
+| N2 | z56 = vmn2a | 8 | 18 | 508 | cycle depth returned by value (`_Cell.dep` gone) |
+| N3 (xhigh) | z57 = vgn3 | 8 | 17 | 490 | `_Cell.add` dominance by `cmp` alone |
+| N4 | z58 = vgn4 | 8 | 14 | 483 | clean by piece type, `absorbed` gone, settling only in local modes |
+| N5 | z59 = vgn5 | 8 | 13 | 492 | `synced` without `evidence`, skip-ahead validity fixed, one visit order |
+
+**What taught something.**
+1. Bookkeeping lines fell in every round, but fields fell only once. Every attempt at 7 fields failed a named check:
+   `mark` (budget refills), `_mins` (quadratic or grouping-dependent), the `(clause, position)` key kind (long tokens),
+   `used` (local modes, N5-4). A field removal needs the family that made the field necessary, run beside the base.
+2. Order-dependent tie breaks hide validity bugs: N4's visit-order rule was a symptom of an invalid skip-ahead way, which
+   N5 found and fixed, and the rule then went away (N5-2).
+3. The one error of fact recorded against the series was a claim labeled proved without a proof (N4); asking for the
+   proof in the next brief produced it (N5-4). Asking for the proof, and for the claim most likely to be wrong, works.
+4. Single-run time failures were load in every round where they occurred; each one was settled only by re-running
+   interleaved with the reference engine (N1-6).
+5. The xhigh round (N3) was not better than the high rounds: it gave one field-free simplification and the series' one
+   priceWorse loss (0/1), which N4 recovered.
