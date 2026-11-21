@@ -43,6 +43,16 @@ instruction counts of those whole parts are 0.995-1.034x z64 with identical outp
    discards everything the failed attempt touched, by construction, with no library field written. It costs a
    memo rebuild only on inputs that overflowed, which z62 already made rare (the sweep runs only after an
    overflow), so speed is unchanged on every row and the overflow test gives z64's costs 0/0/1.
+   A later depth sweep (S1 follow-up, driver kit/dart/experiments/recovery/_ovfscale.dart) found that z64's reset
+   is still wrong: on `S <- E; E <- F / '1' D; F <- E 'a'; D <- '(' D ')' / 'x';` with input
+   `1 (^d x )^d a!a`, z64 reports cost 3 (correct: 1) at every d from 750 to 2000, using 13.6-14.0e9
+   instructions; with one `)` missing it reports the right cost 1 but uses 5.6-9.8e9. z65 gives cost 1 at
+   0.13-0.21e9 (about 70x fewer). The N8 test checked only d = 500, 4000 and 16000, which miss this window.
+   Inferred cause: in this window the plain parse of the input fits on the stack but a later parse overflows, so
+   z64's partial reset (only entries still marked `inRecPath`) leaves memo entries that the next attempt trusts.
+   A new parser has no such entries. Outside the window (d = 500 and 2500-32000) z64 and z65 agree, with z65 at
+   0.81-1.14x z64's instructions, and z65's instructions grow 1.4-1.9x per doubling of d from 4000 to 32000, so
+   the overflow path stays linear.
 3. **A memo of a pure function never needs clearing inside its domain.** `_mins[m]` is the score of match `m`, a
    function of `m`'s subtree and the input length only, both fixed during one `recover`. Clearing it before every
    rung or recheck run threw away correct entries; dropping the three clears changed no output. It is not free:
@@ -74,4 +84,4 @@ instruction counts of those whole parts are 0.995-1.034x z64 with identical outp
 
 **Open.** The recheck constants (`r > 8`, `c * 3 < 2 L`, budget 4, `_len * c < 2048`); the tfam excess (14 on
 the T family); held-out 2/0/1 above z37a (unchanged since z64, cause not found, not reproduced on f3n); the
-packed `_mins` score arguably counts as one more field; the overflow test is still not in kit/check.sh.
+packed `_mins` score arguably counts as one more field; the overflow test, with depths 750-2000 added, is still not in kit/check.sh.
