@@ -5,7 +5,7 @@
 
 **Result.** z65 = vs6a: z64 (vgn8c) with (1) the score's radix set to the input length + 1 instead of 32, which
 removes the 32/31 weights, both `>= 32` thresholds, `_sd` and `_cmpEx`; (2) a new `Parser` for each attempt after a
-stack overflow, which removes the last write to library memo state (`memoVersion`, `inRecPath`, `foundLeftRec`);
+stack overflow, which removes the last write to library memo state (`MemoEntry.inRecPath`, `.foundLeftRec`, `.result` and `Parser.memoVersion`);
 (3) three size cuts with identical output (`_mins` kept across runs inside one `recover`, a shorter `_flat`, no
 append fast path in `_add`). Fields 7 -> 7, bookkeeping lines (bkl.sh) 11 -> 11, 575 -> 546 formatted LOC (-29,
 -5.0%). Every check.sh accuracy row is identical to z64 (battery 0.9901/86.6, pdls4/plfs4 worse 63/34, priceWorse
